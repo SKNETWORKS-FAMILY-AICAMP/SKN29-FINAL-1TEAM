@@ -1,5 +1,64 @@
-.personal
-.vscode
-.claude
+# ─────────────────────────────────────────────
+#  OS / Editor
+# ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
 
+# ─────────────────────────────────────────────
+#  Claude / personal (repo 관례 유지)
+# ─────────────────────────────────────────────
+.personal/
+.claude/
+
+# ─────────────────────────────────────────────
+#  Env / secrets
+# ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ─────────────────────────────────────────────
+#  Python / Django (apps/core, apps/ai)
+# ─────────────────────────────────────────────
 __pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Django
+apps/core/media/
+apps/core/staticfiles/
+*.sqlite3
+*.log
+
+# FastAPI(ai) — 로컬 모델/벡터 산출물
+apps/ai/var/
+*.pkl
+*.joblib
+
+# ─────────────────────────────────────────────
+#  Node / React (apps/web)
+# ─────────────────────────────────────────────
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ─────────────────────────────────────────────
+#  Docker / data volumes (로컬 바인드 시)
+# ─────────────────────────────────────────────
+.data/
+*.pid
