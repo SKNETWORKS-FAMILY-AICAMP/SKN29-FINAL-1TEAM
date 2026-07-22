@@ -1,10 +1,13 @@
 // S-06 정산 상세/증빙 확인 (공통 모달) — FR-DA-02~06, FR-ST-01~04, FR-AUD-01
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, Receipt } from 'lucide-react'
 import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type Settlement } from '../../types/domain'
 import { won } from '../../lib/format'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useRole } from '../../context/RoleContext'
+import { ReturnReasonModal } from './ReturnReasonModal'
 
 export function SettlementDetailModal({
   item,
@@ -14,18 +17,31 @@ export function SettlementDetailModal({
   onClose: () => void
 }) {
   const { role } = useRole()
+  const nav = useNavigate()
   const isAccountant = role === 'ACCOUNTANT'
   const needsExtra = CARD_NEEDS_EXTRA_INPUT[item.cardType]
+  const [showReturnModal, setShowReturnModal] = useState(false)
+
+  // F-2: 보완요청 사유는 별도 모달에서 받는다(단일 모달만 표시 — 상세 모달은 잠시 숨김).
+  if (showReturnModal) {
+    return (
+      <ReturnReasonModal
+        item={item}
+        onClose={() => setShowReturnModal(false)}
+        onSubmit={() => { setShowReturnModal(false); onClose() }}
+      />
+    )
+  }
 
   const footer = (
     <>
       <button className="btn" onClick={onClose}>취소</button>
       {isAccountant ? (
         <>
-          <button className="btn return">보완요청(RETURNED)</button>
+          <button className="btn return" onClick={() => setShowReturnModal(true)}>보완요청(RETURNED)</button>
           <button className="btn reject">반려(REJECT)</button>
           {/* FR-ST-03: 확신 통과 건이라도 사람 확정 필수 */}
-          <button className="btn approve">승인 · 확정(CONFIRMED)</button>
+          <button className="btn approve" onClick={() => nav(`/erp/${item.id}`)}>승인 · 확정(CONFIRMED)</button>
         </>
       ) : (
         <button className="btn primary">제출(SUBMITTED)</button>
@@ -88,7 +104,7 @@ export function SettlementDetailModal({
           <ul className="timeline">
             <li><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · 2026-07-17 09:12</div></li>
             <li><div>SUBMITTED — 제출</div><div className="t-meta">{item.user} · 09:40</div></li>
-            <li><div>RPA_JUDGED → IN_REVIEW — Rule 미매칭, 위험검토 이관</div><div className="t-meta">Rule Agent · 09:41</div></li>
+            <li><div>RPA_JUDGED → IN_REVIEW — confidence=0.61(미매칭), 위험검토 이관</div><div className="t-meta">Rule Agent · 09:41</div></li>
             <li><div>①이상탐지 → ②RAG 내규검증 수행</div><div className="t-meta">Risk Review Agent · 09:41</div></li>
           </ul>
         </div>

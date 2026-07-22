@@ -36,10 +36,13 @@ export function TeamAggregation() {
 
   return (
     <>
-      <div className="page-head">
-        <span className="screen-id">S-02</span>
-        <h1>팀 취합·제출</h1>
-        <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
+      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <span className="screen-id">S-02</span>
+          <h1>팀 취합·제출</h1>
+          <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
+        </div>
+        <span className="tag warn">마감 D-2</span>
       </div>
 
       <div className="kpi-grid">
@@ -55,6 +58,7 @@ export function TeamAggregation() {
           이상건만 보기
         </label>
         <div className="spacer" />
+        <button className="btn">제출 확정</button>
         <button className="btn primary">이상건 제외 일괄제출 ({stats.normal}건)</button>
       </div>
 
@@ -71,7 +75,7 @@ export function TeamAggregation() {
           const isOpen = expanded.has(m.name) || onlyAnomaly
           const memberAnomaly = m.items.filter((i) => anomalyTags(i).length > 0).length
           return (
-            <div className="card" key={m.name}>
+            <div className={'card' + (memberAnomaly > 0 ? ' anomaly' : '')} key={m.name}>
               <div
                 className="card-head"
                 role="button"

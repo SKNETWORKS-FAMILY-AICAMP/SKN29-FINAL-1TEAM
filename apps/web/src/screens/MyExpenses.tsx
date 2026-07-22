@@ -1,6 +1,7 @@
 // S-01 내 지출 — 사용자(임직원). FR-UI-01, FR-DA-01~09, FR-DB-02
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, Check, Plus } from 'lucide-react'
 import { myExpenses } from '../data/mock'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { won } from '../lib/format'
@@ -10,6 +11,7 @@ import { SettlementDetailModal } from '../components/settlement/SettlementDetail
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function MyExpenses() {
+  const nav = useNavigate()
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
@@ -28,10 +30,15 @@ export function MyExpenses() {
 
   return (
     <>
-      <div className="page-head">
-        <span className="screen-id">S-01</span>
-        <h1>내 지출</h1>
-        <div className="sub">AI 정산 초안을 확인·수정하고 제출합니다. AI 제안값은 노란 태그로 표시됩니다.</div>
+      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <span className="screen-id">S-01</span>
+          <h1>내 지출</h1>
+          <div className="sub">AI 정산 초안을 확인·수정하고 제출합니다. AI 제안값은 노란 태그로 표시됩니다.</div>
+        </div>
+        <button className="btn primary" onClick={() => nav('/my-expenses/new')}>
+          <Plus size={14} /> 신규 지출 등록
+        </button>
       </div>
 
       <div className="kpi-grid">
@@ -96,6 +103,10 @@ export function MyExpenses() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="text-meta" style={{ marginTop: 12 }}>
+        총 {myExpenses.length}건 중 {checked.size}건 선택됨
       </div>
 
       {selected && <SettlementDetailModal item={selected} onClose={() => setSelected(null)} />}
