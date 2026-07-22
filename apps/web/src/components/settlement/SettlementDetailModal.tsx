@@ -1,4 +1,5 @@
 // S-06 정산 상세/증빙 확인 (공통 모달) — FR-DA-02~06, FR-ST-01~04, FR-AUD-01
+import { AlertTriangle, Check, Receipt } from 'lucide-react'
 import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type Settlement } from '../../types/domain'
 import { won } from '../../lib/format'
 import { Modal } from '../ui/Modal'
@@ -37,7 +38,7 @@ export function SettlementDetailModal({
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{item.merchant}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{item.date} · {CARD_TYPE_LABEL[item.cardType]} 카드</div>
+          <div className="text-meta">{item.date} · {CARD_TYPE_LABEL[item.cardType]} 카드</div>
         </div>
         <StatusBadge status={item.status} />
       </div>
@@ -45,10 +46,10 @@ export function SettlementDetailModal({
       <div className="grid-2">
         {/* 영수증 뷰어 + 비전 판독 필드 (FR-DA-02) */}
         <div className="card">
-          <div className="card-head"><h3>영수증 이미지</h3><span className="tag ai">✓ Vision 판독</span></div>
+          <div className="card-head"><h3>영수증 이미지</h3><span className="tag ai"><Check size={11} /> Vision 판독</span></div>
           <div className="card-body">
-            <div style={{ height: 180, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', border: '1px dashed var(--border-strong)' }}>
-              {item.evidence === 'OK' ? '🧾 영수증 미리보기' : '⚠ 증빙 누락'}
+            <div style={{ height: 180, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: item.evidence === 'OK' ? 'var(--muted)' : 'var(--tone-red)', border: '1px dashed var(--border-strong)' }}>
+              {item.evidence === 'OK' ? <><Receipt size={16} /> 영수증 미리보기</> : <><AlertTriangle size={16} /> 증빙 누락</>}
             </div>
           </div>
         </div>

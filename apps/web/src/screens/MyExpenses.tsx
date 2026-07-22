@@ -1,11 +1,13 @@
 // S-01 내 지출 — 사용자(임직원). FR-UI-01, FR-DA-01~09, FR-DB-02
 import { useMemo, useState } from 'react'
+import { AlertTriangle, Check } from 'lucide-react'
 import { myExpenses } from '../data/mock'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
+import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function MyExpenses() {
   const [selected, setSelected] = useState<Settlement | null>(null)
@@ -60,13 +62,19 @@ export function MyExpenses() {
           </thead>
           <tbody>
             {myExpenses.map((e) => (
-              <tr key={e.id} onClick={() => setSelected(e)}>
-                <td onClick={(ev) => ev.stopPropagation()}>
+              <tr
+                key={e.id}
+                tabIndex={0}
+                onClick={() => setSelected(e)}
+                onKeyDown={activateOnEnterOrSpace(() => setSelected(e))}
+              >
+                <td className="checkbox-cell" onClick={(ev) => { ev.stopPropagation(); toggle(e.id) }}>
                   <input
                     type="checkbox"
                     disabled={e.status !== 'DRAFT'}
                     checked={checked.has(e.id)}
                     onChange={() => toggle(e.id)}
+                    onClick={(ev) => ev.stopPropagation()}
                   />
                 </td>
                 <td>{e.date}</td>
@@ -80,8 +88,8 @@ export function MyExpenses() {
                 </td>
                 <td>
                   {e.evidence === 'MISSING'
-                    ? <span className="tag warn">⚠ 누락</span>
-                    : <span className="tag ok">✓ 완료</span>}
+                    ? <span className="tag warn"><AlertTriangle size={11} /> 누락</span>
+                    : <span className="tag ok"><Check size={11} /> 완료</span>}
                 </td>
                 <td><StatusBadge status={e.status} /></td>
               </tr>

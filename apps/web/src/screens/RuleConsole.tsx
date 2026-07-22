@@ -1,8 +1,10 @@
 // S-04 Rule 콘솔 — 회계/운영(관리자). FR-UI-04, FR-RB-01~03, FR-RV-01~04
 import { useState, type CSSProperties } from 'react'
+import { Paperclip } from 'lucide-react'
 import { rules } from '../data/mock'
 import type { Rule } from '../types/domain'
 import { pct } from '../lib/format'
+import { activateOnEnterOrSpace } from '../lib/a11y'
 
 type Tab = 'DRAFT' | 'SIMULATED' | 'ACTIVE'
 const TAB_LABEL: Record<Tab, string> = { DRAFT: '초안 대기', SIMULATED: '시뮬레이션', ACTIVE: 'Active' }
@@ -42,9 +44,15 @@ export function RuleConsole() {
             <thead><tr><th>Rule</th><th>출처 조항</th></tr></thead>
             <tbody>
               {list.map((r) => (
-                <tr key={r.id} onClick={() => setSel(r)} style={sel?.id === r.id ? { background: 'var(--primary-soft)' } : undefined}>
-                  <td>{r.name}{r.version && <span className="tag" style={{ marginLeft: 6 }}>v{r.version}</span>}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{r.sourceClause}</td>
+                <tr
+                  key={r.id}
+                  tabIndex={0}
+                  className={sel?.id === r.id ? 'selected' : undefined}
+                  onClick={() => setSel(r)}
+                  onKeyDown={activateOnEnterOrSpace(() => setSel(r))}
+                >
+                  <td>{r.name}{r.version && <span className="tag" style={{ marginLeft: 8 }}>v{r.version}</span>}</td>
+                  <td className="text-meta">{r.sourceClause}</td>
                 </tr>
               ))}
               {list.length === 0 && <tr><td colSpan={2} className="muted">해당 상태의 Rule이 없습니다.</td></tr>}
@@ -53,13 +61,13 @@ export function RuleConsole() {
         </div>
 
         {sel && (
-          <div className="stack" style={{ gap: 16 }}>
+          <div className="stack-lg">
             <div className="card">
               <div className="card-head"><h3>{sel.name}</h3></div>
               <div className="card-body stack">
-                <div><span className="muted" style={{ fontSize: 12 }}>condition</span><pre style={pre}>{sel.condition}</pre></div>
-                <div><span className="muted" style={{ fontSize: 12 }}>action</span><pre style={pre}>{sel.action}</pre></div>
-                <div className="muted" style={{ fontSize: 12 }}>📎 {sel.sourceClause}</div>
+                <div><span className="text-meta">condition</span><pre style={pre}>{sel.condition}</pre></div>
+                <div><span className="text-meta">action</span><pre style={pre}>{sel.action}</pre></div>
+                <div className="text-meta row" style={{ gap: 4 }}><Paperclip size={12} />{sel.sourceClause}</div>
               </div>
             </div>
 
@@ -80,7 +88,7 @@ export function RuleConsole() {
                 <button className="btn">수정</button>
                 <button className="btn reject">폐기</button>
                 <div className="spacer" />
-                <span className="muted" style={{ fontSize: 12 }}>모든 변경은 audit_logs에 기록</span>
+                <span className="text-meta">모든 변경은 audit_logs에 기록</span>
               </div>
             </div>
           </div>
@@ -91,6 +99,6 @@ export function RuleConsole() {
 }
 
 const pre: CSSProperties = {
-  margin: '4px 0 0', padding: '8px 10px', background: 'var(--surface-2)',
-  border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, whiteSpace: 'pre-wrap',
+  margin: '4px 0 0', padding: '8px 12px', background: 'var(--surface-2)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', fontSize: 'var(--text-meta)', whiteSpace: 'pre-wrap',
 }

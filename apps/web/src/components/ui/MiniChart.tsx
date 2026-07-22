@@ -1,4 +1,5 @@
 // 의존성 없이 인라인 SVG로 그리는 경량 차트(대시보드용).
+import { pct } from '../../lib/format'
 
 export function BarChart({
   data,
@@ -58,25 +59,41 @@ export function StackedTrend({
   )
 }
 
+// 공용 "라벨 + 진행바 + %" — 예산 소진율, feature 기여도 등 값 하나를 0~1 비율로 보여줄 때 재사용.
+export function LabeledBar({
+  label,
+  value,
+  labelWidth = 110,
+  color = 'var(--primary)',
+}: {
+  label: string
+  value: number
+  labelWidth?: number
+  color?: string
+}) {
+  return (
+    <div className="row" style={{ gap: 12 }}>
+      <div style={{ width: labelWidth }} className="text-meta">{label}</div>
+      <div style={{ flex: 1, height: 10, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
+        <div style={{ width: pct(Math.min(value, 1)), height: '100%', background: color }} />
+      </div>
+      <div style={{ width: 44, fontSize: 12, fontWeight: 700 }} className="right">
+        {pct(value)}
+      </div>
+    </div>
+  )
+}
+
 export function LabeledBars({ data }: { data: { label: string; rate: number }[] }) {
   return (
     <div className="stack">
       {data.map((d) => (
-        <div key={d.label} className="row" style={{ gap: 12 }}>
-          <div style={{ width: 110, fontSize: 12 }} className="muted">{d.label}</div>
-          <div style={{ flex: 1, height: 10, background: 'var(--surface-2)', borderRadius: 999, overflow: 'hidden' }}>
-            <div
-              style={{
-                width: `${Math.min(d.rate, 1) * 100}%`,
-                height: '100%',
-                background: d.rate >= 0.9 ? 'var(--tone-red)' : d.rate >= 0.75 ? 'var(--tone-amber)' : 'var(--tone-green)',
-              }}
-            />
-          </div>
-          <div style={{ width: 44, fontSize: 12, fontWeight: 700 }} className="right">
-            {Math.round(d.rate * 100)}%
-          </div>
-        </div>
+        <LabeledBar
+          key={d.label}
+          label={d.label}
+          value={d.rate}
+          color={d.rate >= 0.9 ? 'var(--tone-red)' : d.rate >= 0.75 ? 'var(--tone-amber)' : 'var(--tone-green)'}
+        />
       ))}
     </div>
   )

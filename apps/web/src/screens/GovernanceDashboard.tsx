@@ -1,6 +1,7 @@
 // S-05 거버넌스 대시보드 — 회계/운영 상부. FR-UI-05, FR-DB-05~08
 // 예산·정책은 통제(차단)가 아니라 지표·추천으로만 반영한다.
 import { useNavigate } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { budgetByBU, policyInsights, rejectReasonsTop5, riskAlerts, spendTrend } from '../data/mock'
 import { KpiCard } from '../components/ui/KpiCard'
 import { LabeledBars, StackedTrend } from '../components/ui/MiniChart'
@@ -29,7 +30,7 @@ export function GovernanceDashboard() {
 
       <div className="grid-2" style={{ marginBottom: 16 }}>
         <div className="card">
-          <div className="card-head"><h3>분류별 지출 추세</h3><span className="muted" style={{ fontSize: 12 }}>식대·출장·접대</span></div>
+          <div className="card-head"><h3>분류별 지출 추세</h3><span className="text-meta">식대·출장·접대</span></div>
           <div className="card-body">
             <StackedTrend
               data={spendTrend}
@@ -48,7 +49,7 @@ export function GovernanceDashboard() {
         </div>
 
         <div className="card">
-          <div className="card-head"><h3>본부별 예산 소진율</h3><span className="muted" style={{ fontSize: 12 }}>경고성 모니터링</span></div>
+          <div className="card-head"><h3>본부별 예산 소진율</h3><span className="text-meta">경고성 모니터링</span></div>
           <div className="card-body"><LabeledBars data={budgetByBU.map((b) => ({ label: b.bu, rate: b.rate }))} /></div>
         </div>
       </div>
@@ -69,7 +70,7 @@ export function GovernanceDashboard() {
           </table>
         </div>
 
-        <div className="stack" style={{ gap: 16 }}>
+        <div className="stack-lg">
           {/* 정책 인사이트 추천 (FR-DB-07) — 최종 결정은 사람 */}
           <div className="card">
             <div className="card-head"><h3>정책 인사이트 추천</h3></div>
@@ -91,8 +92,10 @@ export function GovernanceDashboard() {
               {riskAlerts.map((a, i) => (
                 <div key={i} className="row" style={{ justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>⚠ {a.title}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{a.detail}</div>
+                    <div className="row" style={{ gap: 6, fontWeight: 600 }}>
+                      <AlertTriangle size={14} color="var(--tone-red)" />{a.title}
+                    </div>
+                    <div className="text-meta">{a.detail}</div>
                   </div>
                   <button className="btn sm" onClick={() => nav('/review')}>상세보기</button>
                 </div>

@@ -15,7 +15,7 @@ export function AppLayout() {
         </div>
         <Gnb />
         <div className="role-switch">
-          <span className="muted" style={{ fontSize: 12 }}>데모 역할</span>
+          <span className="text-meta">데모 역할</span>
           <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
             {ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABEL[r]}</option>

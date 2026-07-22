@@ -2,10 +2,13 @@
 // FR-UI-03, FR-RR-01~08, FR-RL-01~02, FR-DB-04
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
 import { useState } from 'react'
+import { Paperclip } from 'lucide-react'
 import { reviewItems } from '../data/mock'
 import type { ReviewItem } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
+import { LabeledBar } from '../components/ui/MiniChart'
+import { activateOnEnterOrSpace } from '../lib/a11y'
 
 const RECO_LABEL: Record<ReviewItem['aiRecommendation'], { text: string; cls: string }> = {
   APPROVE: { text: '승인 권장', cls: 'ok' },
@@ -48,14 +51,20 @@ export function ReviewWorkspace() {
       <div className="split">
         {/* Review List */}
         <div className="card">
-          <div className="card-head"><h3>Review List</h3><span className="muted" style={{ fontSize: 12 }}>anomaly_score 내림차순</span></div>
+          <div className="card-head"><h3>Review List</h3><span className="text-meta">anomaly_score 내림차순</span></div>
           <table className="table">
             <thead>
               <tr><th>위험도</th><th>가맹점</th><th className="num">금액</th><th>AI 권장</th></tr>
             </thead>
             <tbody>
               {sorted.map((i) => (
-                <tr key={i.id} onClick={() => setSel(i)} style={sel.id === i.id ? { background: 'var(--primary-soft)' } : undefined}>
+                <tr
+                  key={i.id}
+                  tabIndex={0}
+                  className={sel.id === i.id ? 'selected' : undefined}
+                  onClick={() => setSel(i)}
+                  onKeyDown={activateOnEnterOrSpace(() => setSel(i))}
+                >
                   <td style={{ width: 120 }}>
                     <div className="row" style={{ gap: 6 }}>
                       <b style={{ color: 'var(--tone-red)' }}>{Math.round(i.anomalyScore * 100)}</b>
@@ -72,20 +81,14 @@ export function ReviewWorkspace() {
         </div>
 
         {/* 상세 패널: ①이상탐지 + ②RAG검증 */}
-        <div className="stack" style={{ gap: 16 }}>
+        <div className="stack-lg">
           <div className="card">
             <div className="card-head"><h3>① 이상탐지 결과</h3><span className="tag" style={{ color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }}>anomaly {sel.anomalyScore.toFixed(2)}</span></div>
             <div className="card-body">
-              <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Feature 기여도 (어느 feature가 이상 신호를 유발했는가)</div>
+              <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (어느 feature가 이상 신호를 유발했는가)</div>
               <div className="stack">
                 {sel.featureContribs.map((f) => (
-                  <div key={f.feature} className="row" style={{ gap: 10 }}>
-                    <div style={{ width: 160, fontSize: 12 }}>{f.feature}</div>
-                    <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 999, overflow: 'hidden' }}>
-                      <div style={{ width: pct(f.weight), height: '100%', background: 'var(--tone-purple)' }} />
-                    </div>
-                    <div style={{ width: 40, fontSize: 12 }} className="right">{pct(f.weight)}</div>
-                  </div>
+                  <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
                 ))}
               </div>
             </div>
@@ -98,7 +101,7 @@ export function ReviewWorkspace() {
                 {sel.ragRefs.map((r) => (
                   <li key={r.source}>
                     <div>{r.title}</div>
-                    <div className="src">📎 {r.source}</div>
+                    <div className="src row" style={{ gap: 4 }}><Paperclip size={11} />{r.source}</div>
                   </li>
                 ))}
               </ul>
@@ -117,7 +120,7 @@ export function ReviewWorkspace() {
               <button className="btn return">보완요청(RETURNED)</button>
               <button className="btn reject">반려(REJECT)</button>
               <div className="spacer" />
-              <span className="muted" style={{ fontSize: 12 }}>결정은 decision_labels로 적재(향후 지도학습용)</span>
+              <span className="text-meta">결정은 decision_labels로 적재(향후 지도학습용)</span>
             </div>
           </div>
         </div>

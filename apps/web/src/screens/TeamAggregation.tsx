@@ -1,10 +1,12 @@
 // S-02 팀 취합·제출 — 팀장. FR-UI-02, FR-DA-07~08, FR-DB-03
 import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { anomalyTags, teamMembers } from '../data/mock'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
+import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function TeamAggregation() {
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
@@ -27,6 +29,10 @@ export function TeamAggregation() {
     next.has(name) ? next.delete(name) : next.add(name)
     setExpanded(next)
   }
+
+  const hasVisibleMember = teamMembers.some((m) =>
+    (onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items).length > 0
+  )
 
   return (
     <>
@@ -52,6 +58,12 @@ export function TeamAggregation() {
         <button className="btn primary">이상건 제외 일괄제출 ({stats.normal}건)</button>
       </div>
 
+      {!hasVisibleMember && (
+        <div className="card">
+          <div className="card-body text-meta">이상 건이 없습니다.</div>
+        </div>
+      )}
+
       <div className="stack" style={{ gap: 12 }}>
         {teamMembers.map((m) => {
           const visibleItems = onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items
@@ -60,9 +72,19 @@ export function TeamAggregation() {
           const memberAnomaly = m.items.filter((i) => anomalyTags(i).length > 0).length
           return (
             <div className="card" key={m.name}>
-              <div className="card-head" style={{ cursor: 'pointer' }} onClick={() => toggleMember(m.name)}>
-                <h3>{isOpen ? '▾' : '▸'} {m.name}
-                  <span className="muted" style={{ fontWeight: 500, marginLeft: 8, fontSize: 12 }}>
+              <div
+                className="card-head"
+                role="button"
+                tabIndex={0}
+                aria-expanded={isOpen}
+                style={{ cursor: 'pointer' }}
+                onClick={() => toggleMember(m.name)}
+                onKeyDown={activateOnEnterOrSpace(() => toggleMember(m.name))}
+              >
+                <h3 className="row" style={{ gap: 6 }}>
+                  {isOpen ? <ChevronDown size={16} className="muted" /> : <ChevronRight size={16} className="muted" />}
+                  {m.name}
+                  <span className="text-meta" style={{ fontWeight: 500, marginLeft: 8 }}>
                     {m.items.length}건 · 이상 {memberAnomaly}건
                   </span>
                 </h3>
@@ -77,7 +99,12 @@ export function TeamAggregation() {
                     {visibleItems.map((i) => {
                       const tags = anomalyTags(i)
                       return (
-                        <tr key={i.id} onClick={() => setSelected(i)}>
+                        <tr
+                          key={i.id}
+                          tabIndex={0}
+                          onClick={() => setSelected(i)}
+                          onKeyDown={activateOnEnterOrSpace(() => setSelected(i))}
+                        >
                           <td>{i.date}</td>
                           <td>{i.merchant}</td>
                           <td className="num">{won(i.amount)}</td>
@@ -94,7 +121,7 @@ export function TeamAggregation() {
                                 <button className="btn sm reject">반려</button>
                               </div>
                             ) : (
-                              <span className="muted" style={{ fontSize: 12 }}>일괄 대상</span>
+                              <span className="text-meta">일괄 대상</span>
                             )}
                           </td>
                         </tr>
