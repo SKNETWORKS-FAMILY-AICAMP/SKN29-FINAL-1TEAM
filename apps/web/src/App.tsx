@@ -1,23 +1,26 @@
-import { useEffect, useState } from 'react'
-import { api } from './api/client'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppLayout } from './components/layout/AppLayout'
+import { MyExpenses } from './screens/MyExpenses'
+import { TeamAggregation } from './screens/TeamAggregation'
+import { ReviewWorkspace } from './screens/ReviewWorkspace'
+import { RuleConsole } from './screens/RuleConsole'
+import { GovernanceDashboard } from './screens/GovernanceDashboard'
 
-// 스캐폴드 확인용 최소 화면: core 헬스체크 결과를 표시.
+// 화면설계서 §1 화면 목록 ↔ 라우트 매핑
+//  S-01 /my-expenses · S-02 /team · S-03 /review · S-04 /rules · S-05 /governance
+//  S-06(정산 상세)는 공통 모달로 각 목록 화면에서 호출.
 export default function App() {
-  const [health, setHealth] = useState<string>('checking...')
-
-  useEffect(() => {
-    api
-      .get('/health/')
-      .then((res) => setHealth(JSON.stringify(res.data)))
-      .catch((err) => setHealth('error: ' + err.message))
-  }, [])
-
   return (
-    <main style={{ fontFamily: 'sans-serif', padding: 32, lineHeight: 1.6 }}>
-      <h1>법인카드 정산 자동화 플랫폼</h1>
-      <p>모노레포 스캐폴드 (React · Django · FastAPI · Chroma · PostgreSQL)</p>
-      <h2>Core API health</h2>
-      <pre style={{ background: '#f4f4f4', padding: 12, borderRadius: 8 }}>{health}</pre>
-    </main>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route index element={<Navigate to="/my-expenses" replace />} />
+        <Route path="/my-expenses" element={<MyExpenses />} />
+        <Route path="/team" element={<TeamAggregation />} />
+        <Route path="/review" element={<ReviewWorkspace />} />
+        <Route path="/rules" element={<RuleConsole />} />
+        <Route path="/governance" element={<GovernanceDashboard />} />
+        <Route path="*" element={<Navigate to="/my-expenses" replace />} />
+      </Route>
+    </Routes>
   )
 }
