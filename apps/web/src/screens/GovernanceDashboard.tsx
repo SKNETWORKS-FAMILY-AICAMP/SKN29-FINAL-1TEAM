@@ -17,8 +17,8 @@ export function GovernanceDashboard() {
       </div>
 
       <div className="filter-bar">
-        <select><option>최근 6개월</option><option>이번 분기</option></select>
-        <select><option>전체 본부</option><option>AI사업본부</option><option>영업본부</option></select>
+        <select><option>2026 Q2</option><option>2026 Q1</option><option>2025 Q4</option></select>
+        <select><option>본부: 전체</option><option>본부: AI사업본부</option><option>본부: 영업본부</option><option>본부: 전략기획본부</option><option>본부: 경영지원본부</option></select>
       </div>
 
       <div className="kpi-grid">
@@ -96,6 +96,7 @@ export function GovernanceDashboard() {
                       <AlertTriangle size={14} color="var(--tone-red)" />{a.title}
                     </div>
                     <div className="text-meta">{a.detail}</div>
+                    {'note' in a && a.note && <div className="text-meta">{a.note}</div>}
                   </div>
                   <button className="btn sm" onClick={() => nav('/review')}>상세보기</button>
                 </div>

@@ -137,7 +137,25 @@ export const policyInsights = [
   { kind: '한도 재검토', text: '접대비 한도 초과 건이 전월 대비 63% 증가했습니다.', action: 'policy' },
 ]
 
+// ── F-3 알림함 ─────────────────────────────
+export type NotificationKind = 'warn' | 'rule' | 'budget' | 'deadline' | 'success'
+export interface AppNotification {
+  id: string
+  kind: NotificationKind
+  title: string
+  detail: string
+  time: string
+  unread: boolean
+}
+export const notifications: AppNotification[] = [
+  { id: 'N-1', kind: 'warn', title: '보완요청 도착', detail: '"거래처 회식" 건이 보완요청 처리되었습니다 — 증빙을 재업로드해주세요.', time: '5분 전', unread: true },
+  { id: 'N-2', kind: 'rule', title: 'Rule 승인 필요', detail: 'R-102 Rule 초안이 시뮬레이션을 통과해 승인 대기 중입니다.', time: '1시간 전', unread: true },
+  { id: 'N-3', kind: 'budget', title: '예산 소진 경고', detail: 'AI플랫폼부 출장비 예산이 92% 소진되었습니다.', time: '3시간 전', unread: true },
+  { id: 'N-4', kind: 'deadline', title: '제출 마감 임박', detail: '팀 취합 제출 마감이 2일 남았습니다.', time: '어제', unread: false },
+  { id: 'N-5', kind: 'success', title: '정산 승인 완료', detail: '"XYZ호텔" 출장비 건이 승인 처리되어 ERP 전표가 생성되었습니다.', time: '2일 전', unread: false },
+]
+
 export const riskAlerts = [
-  { title: '한도 회피성 분할결제 의심', detail: '최지우 — 메가커피 12건 4.68만원 (7/16)', target: 'S-03' },
+  { title: '한도 회피성 분할결제 의심', detail: '최지우 — 메가커피 12건 4.68만원 (7/16)', target: 'S-03', note: '회계팀에도 동일 노출 · Open Issue#11' },
   { title: '심야 고액 접대', detail: '정하윤 — 골든테이블 88만원 23:40 (7/17)', target: 'S-03' },
 ]
