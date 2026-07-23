@@ -3,11 +3,12 @@
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
 import { useState } from 'react'
 import { Paperclip } from 'lucide-react'
-import { reviewItems } from '../data/mock'
 import type { ReviewItem } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { LabeledBar } from '../components/ui/MiniChart'
+import { reviewSettlement } from '../api/settlementService'
+import { useSettlements } from '../context/SettlementsContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 const RECO_LABEL: Record<ReviewItem['aiRecommendation'], { text: string; cls: string }> = {
@@ -17,9 +18,36 @@ const RECO_LABEL: Record<ReviewItem['aiRecommendation'], { text: string; cls: st
 }
 
 export function ReviewWorkspace() {
-  // anomaly_score 내림차순 정렬 (FR-RL-01, FR-RR-04)
-  const sorted = [...reviewItems].sort((a, b) => b.anomalyScore - a.anomalyScore)
-  const [sel, setSel] = useState<ReviewItem>(sorted[0])
+  const { reviewItems: items, updateStatus } = useSettlements()
+  const [selId, setSelId] = useState(items[0]?.id)
+  const [busy, setBusy] = useState(false)
+
+  // 검토 대기 = 아직 사람이 결정하지 않은 IN_REVIEW 건만. anomaly_score 내림차순 (FR-RL-01, FR-RR-04)
+  const pending = [...items].filter((i) => i.status === 'IN_REVIEW').sort((a, b) => b.anomalyScore - a.anomalyScore)
+  const sel = pending.find((i) => i.id === selId) ?? pending[0]
+
+  const decide = async (decision: 'APPROVE' | 'RETURN' | 'REJECT') => {
+    if (!sel) return
+    setBusy(true)
+    const status = await reviewSettlement(sel.id, decision)
+    updateStatus(sel.id, status)
+    const next = pending.find((i) => i.id !== sel.id)
+    if (next) setSelId(next.id)
+    setBusy(false)
+  }
+
+  if (!sel) {
+    return (
+      <>
+        <div className="page-head">
+          <span className="screen-id">S-03</span>
+          <h1>검토 워크스페이스</h1>
+          <div className="sub">Rule 미매칭·불확실 건만 위험도순으로 정렬합니다. 최종 결정은 사람이 수행합니다.</div>
+        </div>
+        <div className="card"><div className="card-body text-meta">검토 대기 중인 건이 없습니다.</div></div>
+      </>
+    )
+  }
 
   return (
     <>
@@ -31,9 +59,9 @@ export function ReviewWorkspace() {
 
       <div className="kpi-grid">
         <KpiCard label="자동처리율" value={68} unit="%" />
-        <KpiCard label="검토 대기" value={sorted.length} unit="건" />
+        <KpiCard label="검토 대기" value={pending.length} unit="건" />
         <KpiCard label="평균 검토 시간" value={3.1} unit="분" />
-        <KpiCard label="이상 후보(고위험)" value={sorted.filter((i) => i.anomalyScore >= 0.7).length} unit="건" warn />
+        <KpiCard label="이상 후보(고위험)" value={pending.filter((i) => i.anomalyScore >= 0.7).length} unit="건" warn />
       </div>
 
       {/* 2단계 파이프라인 안내 (FR-RR-02) */}
@@ -57,13 +85,13 @@ export function ReviewWorkspace() {
               <tr><th>위험도</th><th>가맹점</th><th className="num">금액</th><th>AI 권장</th></tr>
             </thead>
             <tbody>
-              {sorted.map((i) => (
+              {pending.map((i) => (
                 <tr
                   key={i.id}
                   tabIndex={0}
                   className={sel.id === i.id ? 'selected' : undefined}
-                  onClick={() => setSel(i)}
-                  onKeyDown={activateOnEnterOrSpace(() => setSel(i))}
+                  onClick={() => setSelId(i.id)}
+                  onKeyDown={activateOnEnterOrSpace(() => setSelId(i.id))}
                 >
                   <td style={{ width: 120 }}>
                     <div className="row" style={{ gap: 6 }}>
@@ -116,9 +144,9 @@ export function ReviewWorkspace() {
           {/* 원클릭 처리 3종 (FR-UI-03) */}
           <div className="card">
             <div className="card-body row">
-              <button className="btn approve">승인</button>
-              <button className="btn return">보완요청(RETURNED)</button>
-              <button className="btn reject">반려(REJECT)</button>
+              <button className="btn approve" disabled={busy} onClick={() => decide('APPROVE')}>승인</button>
+              <button className="btn return" disabled={busy} onClick={() => decide('RETURN')}>보완요청(RETURNED)</button>
+              <button className="btn reject" disabled={busy} onClick={() => decide('REJECT')}>반려(REJECT)</button>
               <div className="spacer" />
               <span className="text-meta">결정은 decision_labels로 적재(향후 지도학습용)</span>
             </div>

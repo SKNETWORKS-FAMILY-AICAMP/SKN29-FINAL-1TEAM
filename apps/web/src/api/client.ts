@@ -10,6 +10,7 @@ export const api = axios.create({
 export const endpoints = {
   health: () => api.get('/health/'),
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
+  createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
   submit: (ids: string[]) => api.post('/settlements/submit/', { ids }), // FR-ST-01
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정
   review: (id: string, decision: 'APPROVE' | 'RETURN' | 'REJECT', reason?: string) =>

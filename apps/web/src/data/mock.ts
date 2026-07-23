@@ -1,5 +1,5 @@
 // 화면 렌더 확인용 목업 데이터. 백엔드 API 연동 전 임시 사용.
-import type { ReviewItem, Rule, Settlement } from '../types/domain'
+import type { ReviewItem, Settlement } from '../types/domain'
 
 export const myExpenses: Settlement[] = [
   { id: 'S-1001', date: '2026-07-18', merchant: '스타벅스 강남점', amount: 28000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '김민규' },
@@ -27,6 +27,19 @@ export const teamMembers: { name: string; items: Settlement[] }[] = [
     ],
   },
 ]
+
+// S-02 v2 팀 예산 현황 섹션
+export const teamBudget = {
+  total: 5000000,
+  used: 1720000,
+  categories: [
+    { label: '식대', used: 280000, limit: 1000000 },
+    { label: '출장', used: 540000, limit: 1200000 },
+    { label: '접대', used: 680000, limit: 1000000 },
+    { label: '비품', used: 120000, limit: 800000 },
+    { label: '회의', used: 100000, limit: 500000 },
+  ],
+}
 
 /** 이상 사유(태그) 판정 — 화면설계서 S-02 이상 사유 태그 로직 데모 */
 export function anomalyTags(s: Settlement): string[] {
@@ -81,29 +94,6 @@ export const reviewItems: ReviewItem[] = [
     ],
     aiRecommendation: 'RETURN', aiConfidence: 0.55,
     anomalyReasons: ['출장 신청서 미연결'],
-  },
-]
-
-export const rules: Rule[] = [
-  {
-    id: 'R-001', name: '식대 1인 5만원 초과 검토', status: 'DRAFT',
-    sourceClause: 'TIGER-REG-2026-003 §9조(식대 한도)',
-    condition: 'category=식대 AND amount/headcount > 50000',
-    action: 'flag: NEEDS_REVIEW',
-  },
-  {
-    id: 'R-002', name: '접대비 50만원 초과 사전결재', status: 'SIMULATED',
-    sourceClause: 'TIGER-REG-2026-003 §12조 2항',
-    condition: 'category=접대 AND amount > 500000 AND !preApproval',
-    action: 'decision: REJECT',
-    sim: { matched: 142, falsePositiveRate: 0.037, reviewReduction: 0.28 },
-  },
-  {
-    id: 'R-003', name: '소액 정형 식대 자동통과', status: 'ACTIVE', version: 3,
-    sourceClause: 'TIGER-REG-2026-003 §9조',
-    condition: 'category=식대 AND amount <= 15000 AND evidence=OK',
-    action: 'decision: PASS(θ_pass)',
-    sim: { matched: 1204, falsePositiveRate: 0.008, reviewReduction: 0.41 },
   },
 ]
 

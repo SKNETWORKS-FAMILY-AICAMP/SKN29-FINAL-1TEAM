@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { ROLE_LABEL, type Role } from '../../types/domain'
 import { Sidebar } from './Sidebar'
 import { NotificationPanel } from './NotificationPanel'
-import { notifications } from '../../data/mock'
+import { notifications as initialNotifications, type AppNotification } from '../../data/mock'
 
 const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'EXECUTIVE']
 
@@ -14,7 +14,11 @@ export function AppLayout() {
   const { role, setRole } = useRole()
   const { user } = useAuth()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
   const hasUnread = notifications.some((n) => n.unread)
+
+  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+  const markOneRead = (id: string) => setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)))
 
   // 로그인 플로우(O-1/R-0) 진입 전에도 기존 5개 화면을 데모 role-switch로 볼 수 있도록,
   // 인증된 user가 없으면 현재 선택된 role로 아바타 표시를 대신한다.
@@ -42,7 +46,14 @@ export function AppLayout() {
               <Bell size={18} />
               {hasUnread && <span className="dot" />}
             </button>
-            {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+            {notifOpen && (
+              <NotificationPanel
+                notifications={notifications}
+                onClose={() => setNotifOpen(false)}
+                onMarkAllRead={markAllRead}
+                onMarkOneRead={markOneRead}
+              />
+            )}
           </div>
           <div className="user-chip">
             <div className="avatar">{displayName.slice(0, 1)}</div>

@@ -9,11 +9,14 @@ export function Modal({
   onClose,
   children,
   footer,
+  maxWidth,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** 기본 880px. 그래프/트리 탐색기처럼 넓은 콘텐츠에 사용(예: 1360). */
+  maxWidth?: number
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -56,6 +59,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         ref={dialogRef}
+        style={maxWidth ? { maxWidth } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">

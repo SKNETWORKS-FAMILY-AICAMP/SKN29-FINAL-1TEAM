@@ -2,25 +2,64 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, Receipt } from 'lucide-react'
-import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type Settlement } from '../../types/domain'
+import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type Settlement, type SettlementStatus } from '../../types/domain'
 import { won } from '../../lib/format'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useRole } from '../../context/RoleContext'
+import { reviewSettlement, submitSettlements } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
+import { AdditionalEvidenceModal } from './AdditionalEvidenceModal'
 
 export function SettlementDetailModal({
   item,
   onClose,
+  onStatusChange,
 }: {
   item: Settlement
   onClose: () => void
+  /** 정산 상태가 실제로 바뀌었을 때 호출 — 부모 화면이 목록의 해당 건 상태를 갱신한다. */
+  onStatusChange?: (id: string, status: SettlementStatus) => void
 }) {
   const { role } = useRole()
   const nav = useNavigate()
   const isAccountant = role === 'ACCOUNTANT'
   const needsExtra = CARD_NEEDS_EXTRA_INPUT[item.cardType]
   const [showReturnModal, setShowReturnModal] = useState(false)
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false)
+  const [pending, setPending] = useState(false)
+  const needsEvidenceResubmit = !isAccountant && item.status === 'RETURNED'
+
+  const submit = async () => {
+    setPending(true)
+    const status = await submitSettlements([item.id])
+    onStatusChange?.(item.id, status)
+    setPending(false)
+    onClose()
+  }
+
+  const approve = async () => {
+    setPending(true)
+    const status = await reviewSettlement(item.id, 'APPROVE')
+    onStatusChange?.(item.id, status)
+    setPending(false)
+    nav(`/erp/${item.id}`)
+  }
+
+  const reject = async () => {
+    setPending(true)
+    const status = await reviewSettlement(item.id, 'REJECT')
+    onStatusChange?.(item.id, status)
+    setPending(false)
+    onClose()
+  }
+
+  const returnWithReason = async (reason: string, detail: string) => {
+    const status = await reviewSettlement(item.id, 'RETURN', detail ? `${reason} — ${detail}` : reason)
+    onStatusChange?.(item.id, status)
+    setShowReturnModal(false)
+    onClose()
+  }
 
   // F-2: 보완요청 사유는 별도 모달에서 받는다(단일 모달만 표시 — 상세 모달은 잠시 숨김).
   if (showReturnModal) {
@@ -28,23 +67,40 @@ export function SettlementDetailModal({
       <ReturnReasonModal
         item={item}
         onClose={() => setShowReturnModal(false)}
-        onSubmit={() => { setShowReturnModal(false); onClose() }}
+        onSubmit={returnWithReason}
+      />
+    )
+  }
+
+  // F-1 증빙 파일 추가 제출: 보완요청(RETURNED) 건을 임직원이 재제출할 때.
+  if (showEvidenceModal) {
+    return (
+      <AdditionalEvidenceModal
+        onClose={() => setShowEvidenceModal(false)}
+        onSubmit={async () => {
+          const status = await submitSettlements([item.id])
+          onStatusChange?.(item.id, status)
+          setShowEvidenceModal(false)
+          onClose()
+        }}
       />
     )
   }
 
   const footer = (
     <>
-      <button className="btn" onClick={onClose}>취소</button>
+      <button className="btn" onClick={onClose} disabled={pending}>취소</button>
       {isAccountant ? (
         <>
-          <button className="btn return" onClick={() => setShowReturnModal(true)}>보완요청(RETURNED)</button>
-          <button className="btn reject">반려(REJECT)</button>
+          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>보완요청(RETURNED)</button>
+          <button className="btn reject" onClick={reject} disabled={pending}>반려(REJECT)</button>
           {/* FR-ST-03: 확신 통과 건이라도 사람 확정 필수 */}
-          <button className="btn approve" onClick={() => nav(`/erp/${item.id}`)}>승인 · 확정(CONFIRMED)</button>
+          <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
+      ) : needsEvidenceResubmit ? (
+        <button className="btn primary" onClick={() => setShowEvidenceModal(true)} disabled={pending}>증빙 파일 추가 제출</button>
       ) : (
-        <button className="btn primary">제출(SUBMITTED)</button>
+        <button className="btn primary" onClick={submit} disabled={pending}>제출(SUBMITTED)</button>
       )}
     </>
   )

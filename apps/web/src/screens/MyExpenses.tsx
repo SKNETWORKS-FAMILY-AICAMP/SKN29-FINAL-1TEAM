@@ -2,30 +2,42 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, Plus } from 'lucide-react'
-import { myExpenses } from '../data/mock'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
+import { submitSettlements } from '../api/settlementService'
+import { useSettlements } from '../context/SettlementsContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function MyExpenses() {
   const nav = useNavigate()
+  const { myExpenses: expenses, updateStatus } = useSettlements()
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [submitting, setSubmitting] = useState(false)
 
   const stats = useMemo(() => {
-    const total = myExpenses.reduce((s, e) => s + e.amount, 0)
-    const unsubmitted = myExpenses.filter((e) => e.status === 'DRAFT').length
-    const returned = myExpenses.filter((e) => e.status === 'RETURNED').length
+    const total = expenses.reduce((s, e) => s + e.amount, 0)
+    const unsubmitted = expenses.filter((e) => e.status === 'DRAFT').length
+    const returned = expenses.filter((e) => e.status === 'RETURNED').length
     return { total, unsubmitted, returned }
-  }, [])
+  }, [expenses])
 
   const toggle = (id: string) => {
     const next = new Set(checked)
     next.has(id) ? next.delete(id) : next.add(id)
     setChecked(next)
+  }
+
+  const submitChecked = async () => {
+    const ids = [...checked]
+    setSubmitting(true)
+    const status = await submitSettlements(ids)
+    ids.forEach((id) => updateStatus(id, status))
+    setChecked(new Set())
+    setSubmitting(false)
   }
 
   return (
@@ -53,8 +65,8 @@ export function MyExpenses() {
         <select><option>전체 상태</option><option>초안</option><option>제출됨</option><option>보완요청</option></select>
         <select><option>전체 카드구분</option><option>개인 배정</option><option>팀 카드</option><option>공용</option></select>
         <div className="spacer" />
-        <button className="btn primary" disabled={checked.size === 0}>
-          선택 {checked.size}건 일괄 제출
+        <button className="btn primary" disabled={checked.size === 0 || submitting} onClick={submitChecked}>
+          {submitting ? '제출 중…' : `선택 ${checked.size}건 일괄 제출`}
         </button>
       </div>
 
@@ -68,7 +80,7 @@ export function MyExpenses() {
             </tr>
           </thead>
           <tbody>
-            {myExpenses.map((e) => (
+            {expenses.map((e) => (
               <tr
                 key={e.id}
                 tabIndex={0}
@@ -106,10 +118,16 @@ export function MyExpenses() {
       </div>
 
       <div className="text-meta" style={{ marginTop: 12 }}>
-        총 {myExpenses.length}건 중 {checked.size}건 선택됨
+        총 {expenses.length}건 중 {checked.size}건 선택됨
       </div>
 
-      {selected && <SettlementDetailModal item={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <SettlementDetailModal
+          item={selected}
+          onClose={() => setSelected(null)}
+          onStatusChange={updateStatus}
+        />
+      )}
     </>
   )
 }

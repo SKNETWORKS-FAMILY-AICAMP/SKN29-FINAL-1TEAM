@@ -84,14 +84,3 @@ export interface ReviewItem extends Settlement {
   aiConfidence: number // 0~1
   anomalyReasons: string[]
 }
-
-export interface Rule {
-  id: string
-  name: string
-  status: 'DRAFT' | 'SIMULATED' | 'ACTIVE'
-  sourceClause: string
-  condition: string
-  action: string
-  sim?: { matched: number; falsePositiveRate: number; reviewReduction: number }
-  version?: number
-}

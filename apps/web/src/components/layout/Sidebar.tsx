@@ -5,21 +5,24 @@ import type { Role } from '../../types/domain'
 interface MenuItem {
   to: string
   label: string
-  roles: Role[]
+  minRank: number
 }
 
-// 화면설계서 §1 화면 목록 + 역할 매핑. 역할별로 노출 메뉴가 달라진다(FR-DB-01).
+// 화면설계서 §1 화면 목록 — 역할 계층(사원<팀장<경리담당자<임원진) 누적형 메뉴(Figma Sidebar 스터디 기준, FR-DB-01).
+// 상위 역할일수록 하위 역할의 화면까지 모두 보인다. 단 "규정 문서 관리"는 아직 화면 미구현이라 제외.
+const ROLE_RANK: Record<Role, number> = { EMPLOYEE: 0, TEAM_LEAD: 1, ACCOUNTANT: 2, EXECUTIVE: 3 }
+
 const MENU: MenuItem[] = [
-  { to: '/my-expenses', label: '내 지출', roles: ['EMPLOYEE'] },
-  { to: '/team', label: '팀 취합', roles: ['TEAM_LEAD'] },
-  { to: '/review', label: '검토 워크스페이스', roles: ['ACCOUNTANT'] },
-  { to: '/rules', label: 'Rule 콘솔', roles: ['ACCOUNTANT', 'EXECUTIVE'] },
-  { to: '/governance', label: '거버넌스 대시보드', roles: ['EXECUTIVE'] },
+  { to: '/my-expenses', label: '내 지출', minRank: 0 },
+  { to: '/team', label: '팀 취합', minRank: 1 },
+  { to: '/review', label: '검토 워크스페이스', minRank: 2 },
+  { to: '/rules', label: 'Rule 콘솔', minRank: 2 },
+  { to: '/governance', label: '거버넌스 대시보드', minRank: 3 },
 ]
 
 export function Sidebar() {
   const { role } = useRole()
-  const items = MENU.filter((m) => m.roles.includes(role))
+  const items = MENU.filter((m) => ROLE_RANK[role] >= m.minRank)
 
   return (
     <aside className="sidebar">

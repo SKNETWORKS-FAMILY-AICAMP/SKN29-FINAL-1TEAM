@@ -1,16 +1,22 @@
 // F-4 ERP 전표(안) 확인 — 정산 확정(CONFIRMED) 후 자동 생성된 전표 초안. AppLayout 밖 풀스크린 라우트.
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { won } from '../lib/format'
-import { myExpenses, reviewItems, teamMembers } from '../data/mock'
-
-const ALL_SETTLEMENTS = [...myExpenses, ...reviewItems, ...teamMembers.flatMap((m) => m.items)]
+import { useSettlements } from '../context/SettlementsContext'
 
 export function ErpVoucherConfirm() {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
-  const item = ALL_SETTLEMENTS.find((s) => s.id === id) ?? ALL_SETTLEMENTS[0]
+  const { myExpenses, findById, updateStatus } = useSettlements()
+  const [sent, setSent] = useState(false)
+  const item = findById(id ?? '') ?? myExpenses[0]
 
   const voucherNo = `V-2026${item.date.replace(/-/g, '').slice(2)}-${item.id.replace(/\D/g, '').slice(-4)}`
+
+  const sendToErp = () => {
+    updateStatus(item.id, 'ERP_VOUCHER_DRAFTED')
+    setSent(true)
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: 'var(--space-6)', display: 'flex', justifyContent: 'center' }}>
@@ -20,7 +26,7 @@ export function ErpVoucherConfirm() {
             <h1 style={{ fontSize: 20 }}>ERP 전표(안) 확인</h1>
             <div className="text-meta">정산 확정 후 자동 생성된 전표 초안</div>
           </div>
-          <span className="tag ok">ERP 전표 초안 생성됨</span>
+          <span className="tag ok">{sent ? 'ERP 전송 완료' : 'ERP 전표 초안 생성됨'}</span>
         </div>
 
         <div className="card">
@@ -58,7 +64,11 @@ export function ErpVoucherConfirm() {
 
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
           <button className="btn" onClick={() => nav(-1)}>계정과목 수정</button>
-          <button className="btn primary" onClick={() => nav('/governance')}>ERP로 전송</button>
+          {sent ? (
+            <button className="btn primary" onClick={() => nav('/governance')}>거버넌스 대시보드로 이동 →</button>
+          ) : (
+            <button className="btn primary" onClick={sendToErp}>ERP로 전송</button>
+          )}
         </div>
       </div>
     </div>
