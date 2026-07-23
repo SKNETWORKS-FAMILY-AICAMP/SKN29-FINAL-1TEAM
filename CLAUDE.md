@@ -31,6 +31,7 @@ daily_scrum/  주차별 진행 보고
 - **예산·정책은 통제(차단)가 아니라 지표·추천으로만** 반영.
 - **사람 확정 원칙**: 확신 통과 건도 회계 담당자 확정 없이는 CONFIRMED 불가.
 - 영수증은 별도 OCR 없이 **OpenAI 비전**으로 직접 판독. Rule 적용은 결정론적 엔진, LLM은 Rule 생성 단계에서만.
+- **가맹점 업종 구분 시스템**: 자체 DB 캐시 → 카카오 지도 API → 웹검색 캐스케이드로 업종 판별 → 비용분류 **보조 힌트**로만 사용(세무 판단 아님). 표준 업종코드(MCC)는 카드사 제휴 **post-MVP** 확장. (기술 §7-1 / 요구사항 §6.5 / FR-DA-03a~c)
 
 ---
 
@@ -47,6 +48,7 @@ daily_scrum/  주차별 진행 보고
 | FastAPI Agent 로직 | 🔲 stub | `apps/ai/app/agents/*`·`mcp/tools.py` 대부분 자리표시자 |
 | 프론트 ↔ 백엔드 연동 | 🔲 미착수 | `apps/web/src/api/client.ts` 엔드포인트 헬퍼가 연결 지점 |
 | 이상탐지 실학습/RAG upsert | 🔲 미착수 | IsolationForest 래퍼·Chroma heartbeat까지만 |
+| 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
 
 다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.
 
