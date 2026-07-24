@@ -45,14 +45,17 @@ daily_scrum/  주차별 진행 보고
 | 문서: Risk Review 2단계 반영 | ✅ 완료 | 요구사항·기술·기획 3문서 + 화면설계서 일관 |
 | 모노레포 스캐폴드 | ✅ 부팅 가능 | `docker compose config`·`py_compile` 통과 |
 | 프론트 6개 화면(S-01~06) | ✅ 빌드 통과 | mock 데이터 렌더. `npm run build` OK |
-| Django 도메인 모델 | 🔲 stub | `apps/core/domain/*/models.py` docstring에 테이블 매핑만 |
+| Django 도메인 모델 | ✅ 구현 완료 | 전 앱 models + 마이그레이션 생성, `check` 통과. 커스텀 User(role/team), 룰 그래프, merchant_categories 포함 |
+| Django REST API | ✅ 구현 완료 | transactions·receipts·settlements(상태머신 액션)·rules(activate/rollback)·erp/vouchers·dashboard. 상태전이 서비스 스모크 테스트 통과 |
+| 프론트 ↔ 백엔드 연동 | 🔲 대기 | 프론트 Figma 목업 중. API는 `client.ts` 엔드포인트와 정합. 필드는 snake_case |
 | FastAPI Agent 로직 | 🔲 stub | `apps/ai/app/agents/*`·`mcp/tools.py` 대부분 자리표시자 |
-| 프론트 ↔ 백엔드 연동 | 🔲 미착수 | `apps/web/src/api/client.ts` 엔드포인트 헬퍼가 연결 지점 |
 | 이상탐지 실학습/RAG upsert | 🔲 미착수 | IsolationForest 래퍼·Chroma heartbeat까지만 |
-| 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
-| 룰 그래프(트리) 도메인 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `rule_graphs`/`rule_graph_versions`/`rules`(노드)/`rule_routings` 스키마·그래프 순회 엔진 필요. 프론트 S-04 그래프 뷰 미반영 |
+| 가맹점 업종 구분 시스템 | 📄 문서 + ✅ 모델 | `merchant_categories` 캐시 테이블 구현(core). 카카오/웹 실연동은 ai(FastAPI) 몫 |
+| 룰 그래프(트리) 도메인 | 📄 문서 + ✅ 모델/서비스 | `rule_graphs`/`versions`/`rules`(노드)/`rule_routings` + activate/rollback 서비스 구현. **그래프 순회 엔진은 ai(FastAPI)**. 프론트 S-04 그래프 뷰 미반영 |
 
-다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.
+> **RPA 판정 자리표시자**: `settlements/services.judge()`는 MVP에서 SUBMITTED→RPA_JUDGED→IN_REVIEW로 이관만. 실제 룰 그래프 순회 판정은 ai(FastAPI)가 수행 예정.
+
+다음 후보: Draft Agent(비전 판독)·Rule 그래프 순회 엔진·Risk Review 2단계를 **ai(FastAPI)** 에 구현 → core API와 연동 → 프론트 연결.
 
 ---
 
@@ -97,8 +100,12 @@ npm run build --prefix apps/web      # tsc 타입체크 + vite build
 
 # Django (core)
 docker compose exec core python manage.py migrate
+docker compose exec core python manage.py seed          # 데모 데이터(사용자 kim/lead/acc/exec, pass1234)
 docker compose exec core python manage.py createsuperuser
+# 모델 변경 시 마이그레이션 생성(로컬 venv 또는 컨테이너)
+docker compose exec core python manage.py makemigrations
 ```
+> 로컬 마이그레이션 검증용 venv: `apps/core/.venv`(git 미추적). `PYTHONPATH=apps/core DJANGO_SETTINGS_MODULE=config.settings python -m django makemigrations`.
 
 ---
 
