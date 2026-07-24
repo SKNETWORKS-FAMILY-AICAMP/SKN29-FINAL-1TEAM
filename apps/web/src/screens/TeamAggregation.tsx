@@ -77,31 +77,40 @@ export function TeamAggregation() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
           <h3>팀 예산 현황 · 2026년 7월</h3>
-          <span className="tag warn">총 소진율 {pct(teamBudget.used / teamBudget.total)}</span>
+          <span className="tag ok">잔여 {pct(1 - teamBudget.used / teamBudget.total)}</span>
         </div>
         <div className="card-body">
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
-            <span className="text-meta">팀 총 예산</span>
-            <span className="text-meta">{won(teamBudget.used)} 사용 / {won(teamBudget.total)}</span>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+            <span className="text-meta">잔여 예산</span>
+            <span className="text-meta">총 {won(teamBudget.total)}원 중 {won(teamBudget.used)}원 사용</span>
           </div>
-          <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
-            <div style={{ width: pct(teamBudget.used / teamBudget.total), height: '100%', background: 'var(--primary)' }} />
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tone-green)', marginBottom: 8 }}>
+            {won(teamBudget.total - teamBudget.used)}
+          </div>
+          <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ width: pct(teamBudget.used / teamBudget.total), height: '100%', background: 'var(--tone-green)' }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginTop: 20 }}>
+          <div className="text-meta" style={{ marginBottom: 12, fontWeight: 600 }}>항목별 잔여 예산</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
             {teamBudget.categories.map((c) => {
               const rate = c.used / c.limit
-              const warn = rate >= 0.6
+              const remaining = c.limit - c.used
+              const warn = rate >= 0.7
+              const barColor = rate >= 0.9 ? 'var(--tone-red)' : rate >= 0.7 ? 'var(--tone-orange)' : 'var(--tone-green)'
               return (
-                <div key={c.label}>
-                  <div className="row" style={{ justifyContent: 'space-between' }}>
-                    <span className="text-meta">{c.label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: warn ? 'var(--tone-red)' : 'var(--text)' }}>{pct(rate)}</span>
+                <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 14px', background: warn ? 'var(--tone-red-bg)' : 'var(--surface)' }}>
+                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 6px', borderRadius: 999, background: barColor + '22', color: barColor }}>{pct(rate)}</span>
                   </div>
-                  <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', margin: '6px 0' }}>
-                    <div style={{ width: pct(Math.min(rate, 1)), height: '100%', background: warn ? 'var(--tone-red)' : 'var(--primary)' }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: warn ? 'var(--tone-red)' : 'var(--tone-green)', marginBottom: 6 }}>
+                    잔여 {won(remaining)}
                   </div>
-                  <div className="text-meta">{won(c.used)} / {won(c.limit)}</div>
+                  <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 4 }}>
+                    <div style={{ width: pct(Math.min(rate, 1)), height: '100%', background: barColor, transition: 'width 0.3s' }} />
+                  </div>
+                  <div className="text-meta" style={{ fontSize: 10 }}>예산 {won(c.limit)}</div>
                 </div>
               )
             })}

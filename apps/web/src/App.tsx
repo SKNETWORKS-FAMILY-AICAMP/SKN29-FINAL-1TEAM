@@ -6,6 +6,7 @@ import { TeamAggregation } from './screens/TeamAggregation'
 import { ReviewWorkspace } from './screens/ReviewWorkspace'
 import { RuleConsole } from './screens/rule-console/RuleConsole'
 import { GovernanceDashboard } from './screens/GovernanceDashboard'
+import { PolicyDocuments } from './screens/PolicyDocuments'
 import { LoginScreen } from './screens/auth/LoginScreen'
 import { RoleSelectScreen } from './screens/auth/RoleSelectScreen'
 import { OnboardingWizard } from './screens/onboarding/OnboardingWizard'
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/team" element={<TeamAggregation />} />
         <Route path="/review" element={<ReviewWorkspace />} />
         <Route path="/rules" element={<RuleConsole />} />
+        <Route path="/policy-docs" element={<PolicyDocuments />} />
         <Route path="/governance" element={<GovernanceDashboard />} />
         <Route path="*" element={<Navigate to="/my-expenses" replace />} />
       </Route>

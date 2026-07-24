@@ -1,5 +1,5 @@
 // 화면 렌더 확인용 목업 데이터. 백엔드 API 연동 전 임시 사용.
-import type { ReviewItem, Settlement } from '../types/domain'
+import type { PolicyDocument, ReviewItem, Settlement } from '../types/domain'
 
 export const myExpenses: Settlement[] = [
   { id: 'S-1001', date: '2026-07-18', merchant: '스타벅스 강남점', amount: 28000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '김민규' },
@@ -52,48 +52,117 @@ export function anomalyTags(s: Settlement): string[] {
 
 export const reviewItems: ReviewItem[] = [
   {
-    id: 'S-3001', date: '2026-07-17', merchant: '골든테이블 룸살롱', amount: 880000, cardType: 'SHARED',
-    aiCategory: '접대', aiSuggested: true, evidence: 'MISSING', status: 'IN_REVIEW', user: '정하윤',
+    id: 'S-3001', date: '2026-07-18', merchant: '강남한식당', amount: 452000, cardType: 'SHARED',
+    aiCategory: '접대', aiSuggested: true, evidence: 'MISSING', status: 'IN_REVIEW', user: '이영희',
+    department: 'AI플랫폼부', purpose: '거래처 A사 계약 논의 접대',
     anomalyScore: 0.92,
     featureContribs: [
-      { feature: '심야 사용(23:40)', weight: 0.34 },
-      { feature: '건당 금액 상위 1%', weight: 0.29 },
-      { feature: '접대 한도 초과', weight: 0.21 },
+      { feature: '전월대비 결제금액 급증', weight: 0.45 },
+      { feature: '심야시간대 결제', weight: 0.32 },
+      { feature: '증빙 서류 누락', weight: 0.23 },
     ],
     ragRefs: [
-      { title: '접대비 건당 한도 50만원 초과 시 사전결재 필요', source: 'TIGER-REG-2026-003 §12조 2항' },
-      { title: '유흥업소 사용분 손금 불산입', source: '법인세법 시행령 §41' },
+      { title: '3만원 초과 접대비 지출 시 적격증빙(신용카드매출전표 등) 수취가 의무이며, 미수취 시 전액 손금불산입', source: '법인카드 사용규정 제11조 ②' },
+      { title: '유사사례 #1123(동일 가맹점·유사 금액대 접대비)는 적격증빙 미비로 반려 처리된 이력이 있으며, 현재 건과 91% 패턴이 일치', source: '과거 반려사례 DB' },
     ],
-    aiRecommendation: 'REJECT', aiConfidence: 0.86,
-    anomalyReasons: ['심야 시간대 고액 접대', '증빙 미첨부', '한도 초과'],
+    aiRecommendation: 'RETURN', aiConfidence: 0.78,
+    anomalyReasons: ['전월대비 결제금액 급증', '증빙 미첨부', '공용카드 실사용자 미지정'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/18 10:02', note: '자동 초안 생성' },
+      { status: 'SUBMITTED', actor: '이영희', timestamp: '07/18 10:05' },
+      { status: 'RPA_JUDGED', actor: 'Rule Agent', timestamp: '07/18 10:05', note: 'confidence=0.61 → 미매칭' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/18 10:06', note: '① 이상탐지 92% → ② RAG검증 이관' },
+    ],
   },
   {
-    id: 'S-3002', date: '2026-07-16', merchant: '메가커피 x 12건', amount: 46800, cardType: 'TEAM',
-    aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '최지우',
-    anomalyScore: 0.71,
+    id: 'S-3002', date: '2026-07-17', merchant: '박민수 영업본부', amount: 310000, cardType: 'TEAM',
+    aiCategory: '접대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '박민수',
+    department: '영업본부', purpose: '신규 고객사 미팅',
+    anomalyScore: 0.78,
     featureContribs: [
-      { feature: '동일 가맹점 빈도 급증', weight: 0.41 },
-      { feature: '한도 임계값 바로 아래', weight: 0.22 },
+      { feature: '건당한도 근거·유사사례 있음', weight: 0.48 },
+      { feature: '동일 가맹점 반복', weight: 0.30 },
+    ],
+    ragRefs: [
+      { title: '건당 30만원 초과 접대비는 사전결재 필요', source: '법인카드 사용규정 §10조' },
+    ],
+    aiRecommendation: 'RETURN', aiConfidence: 0.64,
+    anomalyReasons: ['한도 근거 유사사례 있음'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/17 14:00' },
+      { status: 'SUBMITTED', actor: '박민수', timestamp: '07/17 14:10' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/17 14:11', note: '이상탐지 78%' },
+    ],
+  },
+  {
+    id: 'S-3003', date: '2026-07-16', merchant: '스타벅스 광화문점', amount: 128000, cardType: 'PERSONAL',
+    aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '최지우',
+    department: '데이터부', purpose: '외부 파트너 미팅',
+    anomalyScore: 0.65,
+    featureContribs: [
+      { feature: '가맹점 반복·소액 다건', weight: 0.42 },
     ],
     ragRefs: [
       { title: '분할결제 의심 시 원거래 통합 검토', source: 'TIGER-REG-2026-003 §8조' },
     ],
-    aiRecommendation: 'RETURN', aiConfidence: 0.64,
-    anomalyReasons: ['한도 회피성 분할결제 의심'],
+    aiRecommendation: 'RETURN', aiConfidence: 0.55,
+    anomalyReasons: ['분할결제 의심'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/16 09:00' },
+      { status: 'SUBMITTED', actor: '최지우', timestamp: '07/16 09:15' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/16 09:16', note: '이상탐지 65%' },
+    ],
   },
   {
-    id: 'S-3003', date: '2026-07-15', merchant: '제주항공', amount: 210000, cardType: 'POST_PAID',
-    aiCategory: '출장', aiSuggested: true, evidence: 'MISSING', status: 'IN_REVIEW', user: '한서연',
-    anomalyScore: 0.58,
+    id: 'S-3004', date: '2026-07-15', merchant: '롯데호텔 서울', amount: 95000, cardType: 'PERSONAL',
+    aiCategory: '출장', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '김철수',
+    department: '클라우드부', purpose: '출장 숙박',
+    anomalyScore: 0.51,
     featureContribs: [
-      { feature: '출장 신청 미매칭', weight: 0.38 },
-      { feature: '증빙 미첨부', weight: 0.20 },
+      { feature: '분류 신뢰도 낮음', weight: 0.35 },
     ],
-    ragRefs: [
-      { title: '출장비는 출장 신청·일정과 대사 필요', source: 'TIGER-REG-2026-003 §15조' },
+    ragRefs: [],
+    aiRecommendation: 'APPROVE', aiConfidence: 0.72,
+    anomalyReasons: ['분류 신뢰도 낮음'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/15 18:00' },
+      { status: 'SUBMITTED', actor: '김철수', timestamp: '07/15 18:10' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/15 18:11', note: '이상탐지 51%' },
     ],
-    aiRecommendation: 'RETURN', aiConfidence: 0.55,
-    anomalyReasons: ['출장 신청서 미연결'],
+  },
+  {
+    id: 'S-3005', date: '2026-07-14', merchant: '정하늘 전략기획부', amount: 60000, cardType: 'PERSONAL',
+    aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '정하늘',
+    department: '전략기획부', purpose: '팀 회식',
+    anomalyScore: 0.43,
+    featureContribs: [
+      { feature: '주말 결제·소액', weight: 0.28 },
+    ],
+    ragRefs: [],
+    aiRecommendation: 'APPROVE', aiConfidence: 0.81,
+    anomalyReasons: ['주말 결제'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/14 12:00' },
+      { status: 'SUBMITTED', actor: '정하늘', timestamp: '07/14 12:20' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/14 12:21', note: '이상탐지 43%' },
+    ],
+  },
+  {
+    id: 'S-3006', date: '2026-07-13', merchant: '이도윤 공공사업부', amount: 42000, cardType: 'PERSONAL',
+    aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '이도윤',
+    department: '공공사업부', purpose: '점심 식사',
+    anomalyScore: 0.30,
+    featureContribs: [
+      { feature: '검이한 금액 편차', weight: 0.18 },
+    ],
+    ragRefs: [],
+    aiRecommendation: 'APPROVE', aiConfidence: 0.91,
+    anomalyReasons: ['금액 편차 낮음'],
+    auditTrail: [
+      { status: 'DRAFT', actor: 'Draft Agent', timestamp: '07/13 13:00' },
+      { status: 'SUBMITTED', actor: '이도윤', timestamp: '07/13 13:05' },
+      { status: 'IN_REVIEW', actor: 'Risk Review Agent', timestamp: '07/13 13:06', note: '이상탐지 30%' },
+    ],
   },
 ]
 
@@ -146,6 +215,24 @@ export const notifications: AppNotification[] = [
 ]
 
 export const riskAlerts = [
-  { title: '한도 회피성 분할결제 의심', detail: '최지우 — 메가커피 12건 4.68만원 (7/16)', target: 'S-03', note: '회계팀에도 동일 노출 · Open Issue#11' },
-  { title: '심야 고액 접대', detail: '정하윤 — 골든테이블 88만원 23:40 (7/17)', target: 'S-03' },
+  { title: '한도 회피성 분할결제 의심', detail: '최지우 — 스타벅스 12건 12.8만원 (7/16)', target: 'S-03', note: '회계팀에도 동일 노출 · Open Issue#11' },
+  { title: '공용카드 실사용자 미지정', detail: '이영희 — 강남한식당 45.2만원 접대 (7/18)', target: 'S-03' },
 ]
+
+// ── 규정 문서 관리 (S-05 규정문서) ──────────────
+export const policyDocuments: PolicyDocument[] = [
+  { id: 'PD-001', filename: '법인카드_사용규정_v2.pdf', docType: '법인카드 사용규정', uploadedAt: '2026-07-22', status: 'EMBEDDING', extractedClauses: 0, linkedRules: 0, fileFormat: 'PDF' },
+  { id: 'PD-002', filename: '법인카드_사용규정_v1.pdf', docType: '법인카드 사용규정', uploadedAt: '2026-07-01', status: 'DONE', extractedClauses: 42, linkedRules: 18, fileFormat: 'PDF' },
+  { id: 'PD-003', filename: '세법_시행령_발췌.docx', docType: '세법 시행령', uploadedAt: '2026-06-15', status: 'DONE', extractedClauses: 27, linkedRules: 9, fileFormat: 'DOC' },
+  { id: 'PD-004', filename: '출장_경비_사내지침.pdf', docType: '사내 정책', uploadedAt: '2026-05-20', status: 'DONE', extractedClauses: 15, linkedRules: 4, fileFormat: 'PDF' },
+  { id: 'PD-005', filename: '경조사비_지급기준.pdf', docType: '사내 정책', uploadedAt: '2026-04-10', status: 'DONE', extractedClauses: 8, linkedRules: 3, fileFormat: 'PDF' },
+  { id: 'PD-006', filename: '복리후생_규정_v3.pdf', docType: '사내 정책', uploadedAt: '2026-03-02', status: 'FAILED', extractedClauses: 0, linkedRules: 0, fileFormat: 'PDF' },
+]
+
+// ── S-05 거버넌스 대시보드 갱신 수치 ─────────────
+export const governanceKpi = {
+  totalSpend: '8.4억원',
+  budgetBurnRate: 68,
+  autoProcessRate: 82,
+  policyViolationCount: 3,
+}

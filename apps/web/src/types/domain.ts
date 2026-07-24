@@ -83,4 +83,36 @@ export interface ReviewItem extends Settlement {
   aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
   aiConfidence: number // 0~1
   anomalyReasons: string[]
+  department?: string
+  purpose?: string
+  auditTrail?: AuditEvent[]
+}
+
+export interface AuditEvent {
+  status: string
+  actor: string
+  timestamp: string
+  note?: string
+}
+
+// ── 규정 문서 관리 (S-05 규정문서) ─────────────
+export type EmbeddingStatus = 'EMBEDDING' | 'DONE' | 'FAILED'
+
+export const EMBEDDING_STATUS_META: Record<EmbeddingStatus, { label: string; tone: 'amber' | 'green' | 'red' }> = {
+  EMBEDDING: { label: '처리중', tone: 'amber' },
+  DONE: { label: '임베딩 완료', tone: 'green' },
+  FAILED: { label: '임베딩 실패', tone: 'red' },
+}
+
+export type PolicyDocType = '법인카드 사용규정' | '세법 시행령' | '사내 정책'
+
+export interface PolicyDocument {
+  id: string
+  filename: string
+  docType: PolicyDocType
+  uploadedAt: string
+  status: EmbeddingStatus
+  extractedClauses: number
+  linkedRules: number
+  fileFormat: 'PDF' | 'DOC' | 'XLSX'
 }

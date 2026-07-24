@@ -16,6 +16,7 @@ const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '내 지출', minRank: 0 },
   { to: '/team', label: '팀 취합', minRank: 1 },
   { to: '/review', label: '검토 워크스페이스', minRank: 2 },
+  { to: '/policy-docs', label: '규정 문서 관리', minRank: 2 },
   { to: '/rules', label: 'Rule 콘솔', minRank: 2 },
   { to: '/governance', label: '거버넌스 대시보드', minRank: 3 },
 ]

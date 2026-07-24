@@ -2,7 +2,7 @@
 // 예산·정책은 통제(차단)가 아니라 지표·추천으로만 반영한다.
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
-import { budgetByBU, policyInsights, rejectReasonsTop5, riskAlerts, spendTrend } from '../data/mock'
+import { budgetByBU, governanceKpi, policyInsights, rejectReasonsTop5, riskAlerts, spendTrend } from '../data/mock'
 import { KpiCard } from '../components/ui/KpiCard'
 import { LabeledBars, StackedTrend } from '../components/ui/MiniChart'
 
@@ -22,10 +22,10 @@ export function GovernanceDashboard() {
       </div>
 
       <div className="kpi-grid">
-        <KpiCard label="총 지출액" value="₩4.2억" />
-        <KpiCard label="예산 소진율" value={78} unit="%" />
-        <KpiCard label="자동처리율" value={68} unit="%" />
-        <KpiCard label="정책위반 의심" value={7} unit="건" warn />
+        <KpiCard label="총 지출액 (분기)" value={governanceKpi.totalSpend} />
+        <KpiCard label="예산 소진율" value={`${governanceKpi.budgetBurnRate}% (지표)`} />
+        <KpiCard label="자동처리율" value={governanceKpi.autoProcessRate} unit="%" />
+        <KpiCard label="정책위반 의심" value={governanceKpi.policyViolationCount} unit="건" warn />
       </div>
 
       <div className="grid-2" style={{ marginBottom: 16 }}>
@@ -104,6 +104,9 @@ export function GovernanceDashboard() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="text-meta" style={{ marginTop: 16, fontSize: 11 }}>
+        ※ 예산 지표는 경고성 모니터링이며, 초과 시에도 자동 차단 없음(정책 인사이트는 추천일 뿐 최종 결정은 상부가 수행)
       </div>
     </>
   )

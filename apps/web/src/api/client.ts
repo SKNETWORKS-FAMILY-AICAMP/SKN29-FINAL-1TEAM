@@ -19,4 +19,11 @@ export const endpoints = {
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   dashboard: (role: string) => api.get(`/dashboard/${role}/`),
+  // 규정 문서 관리 (S-05 규정문서) — RAG 소스 문서 CRUD
+  policyDocs: () => api.get('/policy-docs/'),
+  uploadPolicyDoc: (data: FormData) => api.post('/policy-docs/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  reembedPolicyDoc: (id: string) => api.post(`/policy-docs/${id}/reembed/`),
+  deletePolicyDoc: (id: string) => api.delete(`/policy-docs/${id}/`),
+  // Rule 버전 관리
+  ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
 }
