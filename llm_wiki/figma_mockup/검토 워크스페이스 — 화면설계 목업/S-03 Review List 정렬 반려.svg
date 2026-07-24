@@ -1,0 +1,84 @@
+<svg width="400" height="245" viewBox="0 0 400 245" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_408_332)">
+<rect width="400" height="245" rx="12" fill="white"/>
+<rect width="400" height="44" fill="#F2F4F7"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="18" y="27.4">Review List</tspan></text>
+<rect width="400" height="29" transform="translate(0 44)" fill="#F2F4F7"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="18" y="62.9">&#x2460; &#xc774;&#xc0c1;&#xd0d0;&#xc9c0; anomaly_score &#xc21c; &#xc815;&#xb82c;</tspan></text>
+<rect x="14.5" y="83.5" width="49" height="24" rx="6.5" fill="#F2F4F7"/>
+<rect x="14.5" y="83.5" width="49" height="24" rx="6.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="24" y="99.7">&#xc804;&#xccb4;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="48" y="99.5">6</tspan></text>
+<rect x="70.5" y="83.5" width="58" height="24" rx="6.5" fill="#F2F4F7"/>
+<rect x="70.5" y="83.5" width="58" height="24" rx="6.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="80" y="99.7">&#x2713; &#xc2b9;&#xc778;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="113" y="99.5">3</tspan></text>
+<rect x="135.5" y="83.5" width="81" height="24" rx="6.5" fill="#F2F4F7"/>
+<rect x="135.5" y="83.5" width="81" height="24" rx="6.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="145" y="99.7">&#x270e; &#xbcf4;&#xc644;&#xc694;&#xccad;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="201" y="99.5">2</tspan></text>
+<rect x="223" y="83" width="61" height="25" rx="7" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="bold" letter-spacing="0em"><tspan x="233" y="99.7">&#x2715; &#xbc18;&#xb824;</tspan></text>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="268" y="99.5">1</tspan></text>
+<rect width="400" height="47" transform="translate(0 118)" fill="#FEF3F2"/>
+<g clip-path="url(#clip1_408_332)">
+<g clip-path="url(#clip2_408_332)">
+<rect x="14" y="134.5" width="14" height="14" rx="4" fill="#F04438"/>
+</g>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" font-weight="500" letter-spacing="0em"><tspan x="34" y="145.9">&#xcd94;&#xcc9c;: &#xbc18;&#xb824; 1&#xac74; &#xc804;&#xccb4; &#xc120;&#xd0dd;&#xb428;</tspan></text>
+</g>
+<rect x="277" y="128" width="109" height="27" rx="7" fill="#F04438"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" font-weight="bold" letter-spacing="0em"><tspan x="289" y="145.9">&#xc120;&#xd0dd; 1&#xac74; &#xc77c;&#xad04; &#xbc18;&#xb824;</tspan></text>
+<mask id="path-21-inside-1_408_332" fill="white">
+<path d="M0 165H400V245H0V165Z"/>
+</mask>
+<path d="M0 165H400V245H0V165Z" fill="#FEF3F2"/>
+<path d="M400 245V244H0V245V246H400V245Z" fill="#E4E7EC" mask="url(#path-21-inside-1_408_332)"/>
+<g clip-path="url(#clip3_408_332)">
+<g clip-path="url(#clip4_408_332)">
+<g clip-path="url(#clip5_408_332)">
+<rect x="18" y="185" width="14" height="14" rx="4" fill="#F04438"/>
+</g>
+<rect x="42" y="182" width="41" height="20" rx="5" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="50" y="196.8">92%</tspan></text>
+<g clip-path="url(#clip6_408_332)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="500" letter-spacing="0em"><tspan x="93" y="190.2">&#xc774;&#xc601;&#xd76c;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="93" y="204.9">AI&#xd50c;&#xb7ab;&#xd3fc;&#xbd80;</tspan></text>
+</g>
+</g>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="500" letter-spacing="0em"><tspan x="324" y="197">452,000&#xc6d0;</tspan></text>
+</g>
+<g clip-path="url(#clip7_408_332)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="18" y="228.4">&#xc811;&#xb300;&#xbe44;&#xb7;&#xc2ec;&#xc57c;&#xacb0;&#xc81c;&#xb7;&#xc99d;&#xbe59;&#xc5c6;&#xc74c;</tspan></text>
+<rect x="323" y="215" width="59" height="18" rx="5" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" font-weight="500" letter-spacing="0em"><tspan x="331" y="228">&#xcd94;&#xcc9c;: &#xbc18;&#xb824;</tspan></text>
+</g>
+</g>
+<rect x="0.5" y="0.5" width="399" height="244" rx="11.5" stroke="#E4E7EC"/>
+<defs>
+<clipPath id="clip0_408_332">
+<rect width="400" height="245" rx="12" fill="white"/>
+</clipPath>
+<clipPath id="clip1_408_332">
+<rect width="141" height="14" fill="white" transform="translate(14 134.5)"/>
+</clipPath>
+<clipPath id="clip2_408_332">
+<rect width="14" height="14" fill="white" transform="translate(14 134.5)"/>
+</clipPath>
+<clipPath id="clip3_408_332">
+<rect width="364" height="30" fill="white" transform="translate(18 177)"/>
+</clipPath>
+<clipPath id="clip4_408_332">
+<rect width="126" height="30" fill="white" transform="translate(18 177)"/>
+</clipPath>
+<clipPath id="clip5_408_332">
+<rect width="14" height="14" fill="white" transform="translate(18 185)"/>
+</clipPath>
+<clipPath id="clip6_408_332">
+<rect width="51" height="30" fill="white" transform="translate(93 177)"/>
+</clipPath>
+<clipPath id="clip7_408_332">
+<rect width="364" height="18" fill="white" transform="translate(18 215)"/>
+</clipPath>
+</defs>
+</svg>

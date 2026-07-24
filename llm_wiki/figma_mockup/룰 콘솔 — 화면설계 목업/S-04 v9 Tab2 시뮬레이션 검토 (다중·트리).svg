@@ -1,0 +1,423 @@
+<svg width="1440" height="1833" viewBox="0 0 1440 1833" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_450_2)">
+<rect width="240" height="1833" fill="#101828"/>
+<rect x="24" y="32.5" width="28" height="28" rx="8" fill="#2563EB"/>
+<g clip-path="url(#clip1_450_2)">
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="15" font-weight="bold" letter-spacing="0em"><tspan x="62" y="47">TIGER</tspan></text>
+<text fill="#8896AB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="62" y="59.3">&#xc815;&#xc0b0; &#xc790;&#xb3d9;&#xd654; &#xd50c;&#xb7ab;&#xd3fc;</tspan></text>
+</g>
+<circle cx="27" cy="112" r="3" fill="#8896AB"/>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" letter-spacing="0em"><tspan x="42" y="117.4">&#xb0b4; &#xc9c0;&#xcd9c;</tspan></text>
+<circle cx="27" cy="154" r="3" fill="#8896AB"/>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" letter-spacing="0em"><tspan x="42" y="159.4">&#xd300; &#xcde8;&#xd569;</tspan></text>
+<circle cx="27" cy="196" r="3" fill="#8896AB"/>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" letter-spacing="0em"><tspan x="42" y="201.4">&#xac80;&#xd1a0; &#xc6cc;&#xd06c;&#xc2a4;&#xd398;&#xc774;&#xc2a4;</tspan></text>
+<circle cx="27" cy="238" r="3" fill="#8896AB"/>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" letter-spacing="0em"><tspan x="42" y="243.4">&#xaddc;&#xc815; &#xbb38;&#xc11c; &#xad00;&#xb9ac;</tspan></text>
+<rect width="240" height="38" transform="translate(0 261)" fill="#1D2B45"/>
+<circle cx="27" cy="280" r="3" fill="#2563EB"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="500" letter-spacing="0em"><tspan x="42" y="285.4">Rule &#xcf58;&#xc194;</tspan></text>
+<circle cx="27" cy="322" r="3" fill="#8896AB"/>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" letter-spacing="0em"><tspan x="42" y="327.4">&#xac70;&#xbc84;&#xb10c;&#xc2a4; &#xb300;&#xc2dc;&#xbcf4;&#xb4dc;</tspan></text>
+<rect width="1200" height="1833" transform="translate(240)" fill="#F7F8FA"/>
+<g clip-path="url(#clip2_450_2)">
+<g clip-path="url(#clip3_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="272" y="48">Rule &#xcf58;&#xc194;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="272" y="67.8">&#xc2dc;&#xbbac;&#xb808;&#xc774;&#xc158; &#xac80;&#xd1a0; (v9 &#xb7; &#xb2e4;&#xc911; Rule &#xbc30;&#xce58; &#xb7; &#xd2b8;&#xb9ac; &#xad6c;&#xc870;)</tspan></text>
+</g>
+<rect x="1288" y="38" width="120" height="22" rx="6" fill="#FFFAEB"/>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="1297" y="53.8">&#xbc30;&#xce58; &#xac80;&#xd1a0; &#xb7; 3&#xac74; &#xc120;&#xd0dd;</tspan></text>
+</g>
+<rect x="272.5" y="86.5" width="125" height="33" rx="7.5" fill="white"/>
+<rect x="272.5" y="86.5" width="125" height="33" rx="7.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="288" y="107.8">Rule &#xcd08;&#xc548; &#xb300;&#xae30; (5)</tspan></text>
+<rect x="406" y="86" width="112" height="34" rx="8" fill="#2563EB"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="422" y="107.8">&#xc2dc;&#xbbac;&#xb808;&#xc774;&#xc158; &#xacb0;&#xacfc;</tspan></text>
+<rect x="526.5" y="86.5" width="170" height="33" rx="7.5" fill="white"/>
+<rect x="526.5" y="86.5" width="170" height="33" rx="7.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="542" y="107.8">Active Rule (38, &#xbc84;&#xc804;&#xad00;&#xb9ac;)</tspan></text>
+<rect x="272" y="136" width="1136" height="34" rx="8" fill="#F4F3FF"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="286" y="158.16">&#x1f4a1;</tspan></text>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="500" letter-spacing="0em"><tspan x="306" y="157.6">v9 &#xbc18;&#xc601;: Agent &#xac80;&#xd1a0; &#xbcf4;&#xace0;&#xc11c;&#xb97c; &#xb2e8;&#xc21c; &#xc218;&#xce58; &#xc694;&#xc57d;&#xc774; &#xc544;&#xb2cc;, &#xbd84;&#xb958; &#xd310;&#xb2e8;&#xc774; &#xb2ec;&#xb77c;&#xc9c4; &#xac74;&#xbcc4; &#xac80;&#xd1a0; &#xacb0;&#xacfc; &#xbcf4;&#xace0;&#xc11c; &#xd615;&#xc2dd;&#xc73c;&#xb85c; &#xbcc0;&#xacbd;&#xd588;&#xc2b5;&#xb2c8;&#xb2e4;.</tspan></text>
+<rect x="272.5" y="186.5" width="1135" height="101" rx="11.5" fill="white"/>
+<rect x="272.5" y="186.5" width="1135" height="101" rx="11.5" stroke="#E4E7EC"/>
+<g clip-path="url(#clip4_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="292" y="215.4">&#xac80;&#xd1a0; &#xb300;&#xc0c1; Rule &#xc120;&#xd0dd; (&#xbc30;&#xce58; &#xc628;&#xbcf4;&#xb529;)</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="1284" y="214.6">&#xc120;&#xd0dd; 3&#xac74; &#xb7; &#xbbf8;&#xc120;&#xd0dd; 2&#xac74;</tspan></text>
+</g>
+<g clip-path="url(#clip5_450_2)">
+<rect x="292" y="228" width="211.2" height="44" rx="8" fill="#EFF4FF"/>
+<g clip-path="url(#clip6_450_2)">
+<rect x="304.75" y="243.75" width="12.5" height="12.5" rx="3.25" fill="#2563EB" stroke="#2563EB" stroke-width="1.5"/>
+</g>
+<g clip-path="url(#clip7_450_2)">
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="326" y="248.6">R-102</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="326" y="261.3">&#xc2dd;&#xb300; 30&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xc0ac;&#xc804;&#xc2b9;&#xc778;</tspan></text>
+</g>
+<rect x="513.2" y="228" width="211.2" height="44" rx="8" fill="#EFF4FF"/>
+<g clip-path="url(#clip8_450_2)">
+<rect x="525.95" y="243.75" width="12.5" height="12.5" rx="3.25" fill="#2563EB" stroke="#2563EB" stroke-width="1.5"/>
+</g>
+<g clip-path="url(#clip9_450_2)">
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="547.2" y="248.6">R-103</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="547.2" y="261.3">&#xacbd;&#xc870;&#xc0ac;&#xbe44; 20&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xc190;&#xae08;&#xacbd;&#xace0;</tspan></text>
+</g>
+<rect x="734.9" y="228.5" width="210.2" height="43" rx="7.5" fill="#F2F4F7"/>
+<rect x="734.9" y="228.5" width="210.2" height="43" rx="7.5" stroke="#E4E7EC"/>
+<g clip-path="url(#clip10_450_2)">
+<rect x="747.15" y="243.75" width="12.5" height="12.5" rx="3.25" stroke="#E4E7EC" stroke-width="1.5"/>
+</g>
+<g clip-path="url(#clip11_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="768.4" y="248.6">R-104</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="768.4" y="261.3">&#xacf5;&#xc6a9;&#xce74;&#xb4dc; &#xc2e4;&#xc0ac;&#xc6a9;&#xc790; &#xd655;&#xc778; &#xc0bd;&#xc785;</tspan></text>
+</g>
+<rect x="955.6" y="228" width="211.2" height="44" rx="8" fill="#EFF4FF"/>
+<g clip-path="url(#clip12_450_2)">
+<rect x="968.35" y="243.75" width="12.5" height="12.5" rx="3.25" fill="#2563EB" stroke="#2563EB" stroke-width="1.5"/>
+</g>
+<g clip-path="url(#clip13_450_2)">
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="989.6" y="248.6">R-105</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="989.6" y="261.3">&#xc811;&#xb300;&#xbe44; 3&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xc99d;&#xbe59;&#xd50c;&#xb798;&#xadf8;</tspan></text>
+</g>
+<rect x="1177.3" y="228.5" width="210.2" height="43" rx="7.5" fill="#F2F4F7"/>
+<rect x="1177.3" y="228.5" width="210.2" height="43" rx="7.5" stroke="#E4E7EC"/>
+<g clip-path="url(#clip14_450_2)">
+<rect x="1189.55" y="243.75" width="12.5" height="12.5" rx="3.25" stroke="#E4E7EC" stroke-width="1.5"/>
+</g>
+<g clip-path="url(#clip15_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="1210.8" y="248.6">R-106</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" letter-spacing="0em"><tspan x="1210.8" y="261.3">&#xd6c4;&#xc815;&#xc0b0; &#xc9c0;&#xcd9c; &#xc99d;&#xbe59; &#xd544;&#xc218; &#xac80;&#xc99d;</tspan></text>
+</g>
+</g>
+<rect x="272.5" y="304.5" width="1135" height="243" rx="11.5" fill="white"/>
+<rect x="272.5" y="304.5" width="1135" height="243" rx="11.5" stroke="#E4E7EC"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="14" letter-spacing="0em"><tspan x="312" y="344.52">&#x1f500;</tspan></text>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="334" y="343.9">Rule &#xc2e4;&#xd589; &#xd750;&#xb984;&#xb3c4;</tspan></text>
+<rect x="441" y="328" width="147" height="21" rx="6" fill="#FFFAEB"/>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="450" y="342.7">&#xc2e0;&#xaddc; 3&#xac74; &#xb7; &#xcda9;&#xb3cc; &#xd655;&#xc778; &#xd544;&#xc694; 2&#xac74;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="1248" y="342.9">&#xc27d;&#xac8c; &#xd480;&#xc5b4;&#xc11c; &#xbcf4;&#xc5ec;&#xb4dc;&#xb824;&#xc694; &#x1f642;</tspan></text>
+<rect x="312" y="375" width="158" height="34" rx="8" fill="#EFF4FF"/>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="326" y="396.8">&#x1f195; R-102</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="381" y="396.2">&#xc2dd;&#xb300; 30&#xb9cc;&#xc6d0; &#xcd08;&#xacfc;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="470" y="397.2">  &#x2192;  </tspan></text>
+<rect x="489" y="375" width="233" height="34" rx="8" fill="#FFFAEB"/>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="500" letter-spacing="0em"><tspan x="503" y="396.6">&#x25c7; R-033(&#xcd9c;&#xc7a5;&#xbe44; &#xd55c;&#xb3c4;)&#xc640; &#xc870;&#xac74;&#xc774; &#xacb9;&#xce58;&#xb098;&#xc694;?</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="722" y="397.2">  &#x2192;  </tspan></text>
+<rect x="741" y="375" width="162" height="34" rx="8" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="755" y="396.6">&#x26a0; &#xb124; &#x2192; &#xc2e4;&#xd589; &#xc21c;&#xc11c; &#xd655;&#xc778; &#xd544;&#xc694;</tspan></text>
+<rect x="312" y="421" width="162" height="34" rx="8" fill="#EFF4FF"/>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="326" y="442.8">&#x1f195; R-105</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="381" y="442.2">&#xc811;&#xb300;&#xbe44; 3&#xb9cc;&#xc6d0; &#xcd08;&#xacfc;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="474" y="443.2">  &#x2192;  </tspan></text>
+<rect x="493" y="421" width="256" height="34" rx="8" fill="#FFFAEB"/>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="500" letter-spacing="0em"><tspan x="507" y="442.6">&#x25c7; R-045(&#xc811;&#xb300;&#xbe44; &#xc99d;&#xbe59; &#xd544;&#xc218;)&#xc640; &#xc870;&#xac74;&#xc774; &#xacb9;&#xce58;&#xb098;&#xc694;?</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="749" y="443.2">  &#x2192;  </tspan></text>
+<rect x="768" y="421" width="162" height="34" rx="8" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="782" y="442.6">&#x26a0; &#xb124; &#x2192; &#xc2e4;&#xd589; &#xc21c;&#xc11c; &#xd655;&#xc778; &#xd544;&#xc694;</tspan></text>
+<rect x="312" y="467" width="177" height="34" rx="8" fill="#EFF4FF"/>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="326" y="488.8">&#x1f195; R-103</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="381" y="488.2">&#xacbd;&#xc870;&#xc0ac;&#xbe44; 20&#xb9cc;&#xc6d0; &#xcd08;&#xacfc;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="489" y="489.2">  &#x2192;  </tspan></text>
+<rect x="508" y="467" width="207" height="34" rx="8" fill="#ECFDF3"/>
+<text fill="#027A48" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="bold" letter-spacing="0em"><tspan x="522" y="488.6">&#x2705; &#xacb9;&#xce58;&#xb294; &#xc870;&#xac74; &#xc5c6;&#xc74c; &#x2192; &#xbc14;&#xb85c; &#xc801;&#xc6a9; &#xac00;&#xb2a5;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" letter-spacing="0em"><tspan x="312" y="523.7">&#x203b; &#xd655;&#xc778;&#xc774; &#xd544;&#xc694;&#xd55c; 2&#xac74;&#xc740; &#xc544;&#xb798; Agent &#xac80;&#xd1a0; &#xbcf4;&#xace0;&#xc11c;&#xc5d0;&#xc11c; &#xc790;&#xc138;&#xd55c; &#xc124;&#xba85;&#xc744; &#xd655;&#xc778;&#xd558;&#xc2e4; &#xc218; &#xc788;&#xc5b4;&#xc694;.</tspan></text>
+<g clip-path="url(#clip16_450_2)">
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="272" y="584.8">&#xacfc;&#xac70; &#xc774;&#xb825; &#xc0d8;&#xd50c; 12,480&#xac74;&#xc73c;&#xb85c; 3&#xac1c; Rule &#xbc30;&#xce58; &#xc2dc;&#xbbac;&#xb808;&#xc774;&#xc158; &#xc2e4;&#xd589;&#xb428; (2026-07-22 14:03)</tspan></text>
+<rect x="1318.5" y="564.5" width="89" height="31" rx="7.5" fill="white"/>
+<rect x="1318.5" y="564.5" width="89" height="31" rx="7.5" stroke="#E4E7EC"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="1332" y="584.8">&#x1f504; &#xb2e4;&#xc2dc; &#xc2e4;&#xd589;</tspan></text>
+</g>
+<g clip-path="url(#clip17_450_2)">
+<rect x="272.5" y="612.5" width="367" height="77" rx="11.5" fill="white"/>
+<rect x="272.5" y="612.5" width="367" height="77" rx="11.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="292" y="639.8">&#xbc30;&#xce58; &#xc804;&#xccb4; &#xb9e4;&#xce6d; &#xac74;&#xc218;</tspan></text>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="292" y="670">356&#xac74;</tspan></text>
+<rect x="656.5" y="612.5" width="367" height="77" rx="11.5" fill="white"/>
+<rect x="656.5" y="612.5" width="367" height="77" rx="11.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="676" y="639.8">&#xd3c9;&#xade0; &#xc624;&#xd0d0;&#xc728; (FP)</tspan></text>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="676" y="670">5.1%</tspan></text>
+<rect x="1040.5" y="612.5" width="367" height="77" rx="11.5" fill="white"/>
+<rect x="1040.5" y="612.5" width="367" height="77" rx="11.5" stroke="#E4E7EC"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="1060" y="639.8">&#xc608;&#xc0c1; &#xac80;&#xd1a0; &#xac10;&#xc18c;&#xb7c9;</tspan></text>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="1060" y="670">-27%</tspan></text>
+</g>
+<rect x="272.5" y="706.5" width="1135" height="566" rx="11.5" fill="white"/>
+<rect x="272.5" y="706.5" width="1135" height="566" rx="11.5" stroke="#E4E7EC"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="312" y="756.9">&#x1f916; Agent &#xac80;&#xd1a0; &#xbcf4;&#xace0;&#xc11c; &#x2014; &#xd310;&#xb2e8;&#xc774; &#xb2ec;&#xb77c;&#xc9c4; &#xac74; &#xac80;&#xd1a0;</tspan></text>
+<rect x="1267" y="742" width="101" height="19" rx="5" fill="#FFFAEB"/>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" font-weight="500" letter-spacing="0em"><tspan x="1275" y="755.9">&#xc0ac;&#xb78c; &#xd655;&#xc778; &#xd544;&#xc694; 3&#xac74;</tspan></text>
+<g clip-path="url(#clip18_450_2)">
+<g clip-path="url(#clip19_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="312" y="807.5">&#x2460; &#xc9c1;&#xc811;&#xac80;&#xd1a0; &#x2192; &#xc2b9;&#xc778;&#xb300;&#xae30;&#xb85c; &#xc804;&#xd658;&#xb41c; &#xac74; (3&#xac74;)</tspan></text>
+</g>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="312" y="828.9">Rule&#xc774; &#xc758;&#xb3c4;&#xd55c; &#xb300;&#xb85c; &#xb3d9;&#xc791;&#xd588;&#xb294;&#xc9c0; &#xac74;&#xbcc4;&#xb85c; &#xd310;&#xb2e8;&#xd558;&#xace0;, &#xc0ac;&#xb78c; &#xd655;&#xc778;&#xc774; &#xd544;&#xc694;&#xd55c; &#xac74;&#xc740; &#xc774;&#xc720;&#xb97c; &#xc790;&#xc138;&#xd788; &#xbcf4;&#xc5ec;&#xb4dc;&#xb824;&#xc694;.</tspan></text>
+<rect x="312" y="839" width="1056" height="63" rx="10" fill="#ECFDF3"/>
+<g clip-path="url(#clip20_450_2)">
+<g clip-path="url(#clip21_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="328" y="865.5">&#xc57c;&#xadfc;&#xc2dd;&#xb300; &#xb7; 320,000&#xc6d0;</tspan></text>
+<rect x="455" y="852" width="42" height="17" rx="5" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="463" y="864.3">R-102</tspan></text>
+</g>
+<rect x="1257" y="851" width="95" height="19" rx="5" fill="#12B76A"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="1265" y="864.7">&#x2705; Rule &#xc815;&#xc0c1; &#xb3d9;&#xc791;</tspan></text>
+</g>
+<text fill="#027A48" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="328" y="887.6">30&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xae30;&#xc900;&#xc5d0; &#xba85;&#xd655;&#xd788; &#xbd80;&#xd569;&#xd558;&#xace0;, &#xacfc;&#xac70; &#xc720;&#xc0ac; &#xc57c;&#xadfc;&#xc2dd;&#xb300; &#xc2b9;&#xc778; &#xac74;&#xacfc; &#xd328;&#xd134;&#xc774; &#xc77c;&#xce58;&#xd569;&#xb2c8;&#xb2e4;. &#xc0ac;&#xb78c; &#xd655;&#xc778; &#xc5c6;&#xc774; &#xc790;&#xb3d9; &#xc2b9;&#xc778;&#xb300;&#xae30; &#xc804;&#xd658;&#xc774; &#xc801;&#xc808;&#xd569;&#xb2c8;&#xb2e4;.</tspan></text>
+<rect x="312" y="910" width="1056" height="63" rx="10" fill="#FFFAEB"/>
+<g clip-path="url(#clip22_450_2)">
+<g clip-path="url(#clip23_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="328" y="936.5">&#xac70;&#xb798;&#xcc98; &#xc811;&#xb300; &#xb7; 412,000&#xc6d0;</tspan></text>
+<rect x="470" y="923" width="42" height="17" rx="5" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="478" y="935.3">R-105</tspan></text>
+</g>
+<rect x="1260" y="922" width="92" height="19" rx="5" fill="#F79009"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="1268" y="935.7">&#x1f50e; &#xc0ac;&#xb78c; &#xd655;&#xc778; &#xd544;&#xc694;</tspan></text>
+</g>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="328" y="958.6">&#xc811;&#xb300;&#xbe44; 3&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xae30;&#xc900;&#xc740; &#xcda9;&#xc871;&#xd558;&#xc9c0;&#xb9cc;, &#xcc38;&#xc11d;&#xc790; 4&#xc778; &#xc911; &#xc678;&#xbd80; 2&#xc778;&#xb7;&#xb0b4;&#xbd80; 2&#xc778;&#xc73c;&#xb85c; &#xc2e4;&#xc81c; &#xc811;&#xb300; &#xbaa9;&#xc801;&#xc774; &#xb9de;&#xb294;&#xc9c0; &#xc560;&#xb9e4;&#xd569;&#xb2c8;&#xb2e4;. &#xcc38;&#xc11d;&#xc790; &#xad6c;&#xc131;&#xc744; &#xd655;&#xc778;&#xd574;&#xc8fc;&#xc138;&#xc694;.</tspan></text>
+<rect x="312" y="981" width="1056" height="63" rx="10" fill="#FFFAEB"/>
+<g clip-path="url(#clip24_450_2)">
+<g clip-path="url(#clip25_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="328" y="1007.5">&#xc870;&#xce74; &#xacb0;&#xd63c;&#xc2dd; &#xb7; 250,000&#xc6d0;</tspan></text>
+<rect x="470" y="994" width="42" height="17" rx="5" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="478" y="1006.3">R-103</tspan></text>
+</g>
+<rect x="1260" y="993" width="92" height="19" rx="5" fill="#F79009"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="1268" y="1006.7">&#x1f50e; &#xc0ac;&#xb78c; &#xd655;&#xc778; &#xd544;&#xc694;</tspan></text>
+</g>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="328" y="1029.6">&#xacbd;&#xc870;&#xc0ac;&#xbe44; 20&#xb9cc;&#xc6d0; &#xcd08;&#xacfc; &#xae30;&#xc900;&#xc740; &#xcda9;&#xc871;&#xd558;&#xc9c0;&#xb9cc;, &#xc0ac;&#xaddc;&#xc0c1; &#xacbd;&#xc870;&#xc0ac;&#xbe44; &#xc9c0;&#xae09;&#xb300;&#xc0c1; &#xce5c;&#xc871; &#xbc94;&#xc704;&#xc5d0; &#34;&#xc870;&#xce74;&#34;&#xac00; &#xd3ec;&#xd568;&#xb418;&#xb294;&#xc9c0; &#xba85;&#xd655;&#xd558;&#xc9c0; &#xc54a;&#xc2b5;&#xb2c8;&#xb2e4;. &#xc778;&#xc0ac;&#xaddc;&#xc815; &#xd655;&#xc778;&#xc774; &#xd544;&#xc694;&#xd569;&#xb2c8;&#xb2e4;.</tspan></text>
+</g>
+<g clip-path="url(#clip26_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="312" y="1072.5">&#x2461; &#xc774;&#xc804; &#xd310;&#xb2e8;&#xacfc; &#xb2e4;&#xb974;&#xac8c; &#xbd84;&#xb958;&#xb41c; &#xac74; (1&#xac74;)</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="312" y="1093.9">&#xd310;&#xb2e8;&#xc774; &#xb2ec;&#xb77c;&#xc9c4; &#xac83;&#xc774; &#xaddc;&#xc815; &#xbcc0;&#xacbd;&#xacfc; &#xbd80;&#xd569;&#xd558;&#xb294; &#xbcc0;&#xd654;&#xc778;&#xc9c0; &#xd655;&#xc778;&#xd558;&#xace0;, &#xc18c;&#xae09; &#xc7ac;&#xac80;&#xd1a0;&#xac00; &#xd544;&#xc694;&#xd55c;&#xc9c0; &#xbcf4;&#xc5ec;&#xb4dc;&#xb824;&#xc694;.</tspan></text>
+<rect x="312" y="1104" width="1056" height="77" rx="10" fill="#FFFAEB"/>
+<g clip-path="url(#clip27_450_2)">
+<g clip-path="url(#clip28_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="328" y="1130.5">&#xc1a1;&#xb144;&#xd68c; &#xd68c;&#xc2dd;&#xbe44; &#xb7; 450,000&#xc6d0;</tspan></text>
+<rect x="481" y="1117" width="62" height="17" rx="5" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="489" y="1129.3">R-105 &#xac1c;&#xc815;</tspan></text>
+</g>
+<rect x="1282" y="1116" width="70" height="19" rx="5" fill="#F79009"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="1290" y="1129.7">&#x1f50e; &#xd655;&#xc778; &#xd544;&#xc694;</tspan></text>
+</g>
+<text fill="#B54708" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="328" y="1152.6">&#xc774;&#xc804;&#xc5d0;&#xb294; &#34;&#xbcf5;&#xb9ac;&#xd6c4;&#xc0dd;&#xbe44;&#34;&#xb85c; &#xbd84;&#xb958;&#xb410;&#xc73c;&#xb098;, &#xc774;&#xbc88;&#xc5d4; &#xc678;&#xbd80; &#xac70;&#xb798;&#xcc98; &#xcc38;&#xc11d;&#xc790;&#xac00; &#xd3ec;&#xd568;&#xb418;&#xc5b4; &#34;&#xc811;&#xb300;&#xbe44;&#34;&#xb85c; &#xc7ac;&#xbd84;&#xb958;&#xb410;&#xc2b5;&#xb2c8;&#xb2e4;. &#xcd5c;&#xadfc; &#xac1c;&#xc815;&#xb41c; &#34;&#xc678;&#xbd80;&#xc778; &#xcc38;&#xc11d; &#xc2dc; &#xc811;&#xb300;&#xbe44; &#xc6b0;&#xc120; &#xc801;&#xc6a9;&#34; &#xae30;&#xc900;&#xacfc; &#xc77c;&#xce58;&#xd558;&#xb294; &#xbcc0;&#xd654;&#xc778;&#xc9c0;, &#xadf8;&#xb9ac;&#xace0; &#xacfc;&#xac70; &#xc720;&#xc0ac; &#xac74;&#xb4e4;&#xb3c4; &#xc18c;&#xae09; &#xc7ac;&#xac80;&#xd1a0;</tspan><tspan x="328" y="1166.6">&#xac00; &#xd544;&#xc694;&#xd55c;&#xc9c0; &#xd655;&#xc778;&#xd574;&#xc8fc;&#xc138;&#xc694;.</tspan></text>
+</g>
+<g clip-path="url(#clip29_450_2)">
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="312" y="1208.8">&#xc885;&#xd569; &#xad8c;&#xace0;</tspan></text>
+<rect x="312" y="1215" width="1056" height="36" rx="8" fill="#F2F4F7"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="326" y="1237.6">4&#xac74; &#xc911; 1&#xac74;(&#xc57c;&#xadfc;&#xc2dd;&#xb300;)&#xb9cc; &#xc989;&#xc2dc; &#xc2b9;&#xc778;&#xb300;&#xae30; &#xc804;&#xd658;&#xc774; &#xc801;&#xc808;&#xd569;&#xb2c8;&#xb2e4;. &#xb098;&#xba38;&#xc9c0; 3&#xac74;&#xc740; &#xc704; &#xd655;&#xc778; &#xc0ac;&#xd56d;&#xc744; &#xac80;&#xd1a0;&#xd55c; &#xd6c4; &#xac1c;&#xbcc4;&#xc801;&#xc73c;&#xb85c; &#xcc98;&#xb9ac;&#xd574;&#xc8fc;&#xc138;&#xc694;.</tspan></text>
+</g>
+<g clip-path="url(#clip30_450_2)">
+<rect x="272" y="1289" width="1136" height="351" rx="12" fill="white"/>
+<g clip-path="url(#clip31_450_2)">
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11" letter-spacing="0em"><tspan x="292" y="1319.9">&#x25be;</tspan></text>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="305" y="1320.9">&#xbb34;&#xc5c7;&#xc774; &#xb2ec;&#xb77c;&#xc9c0;&#xb098;&#xc694;? (&#xc0c1;&#xc138; &#xbcc0;&#xacbd; &#xb0b4;&#xc5ed;)</tspan></text>
+<rect x="517" y="1305" width="34" height="21" rx="6" fill="#F2F4F7"/>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10.5" font-weight="500" letter-spacing="0em"><tspan x="526" y="1319.7">4&#xac74;</tspan></text>
+</g>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" font-weight="500" letter-spacing="0em"><tspan x="1360" y="1320.1">&#xc811;&#xae30; &#x25b4;</tspan></text>
+<rect x="292" y="1348" width="1096" height="64" rx="10" fill="#EFF4FF"/>
+<g clip-path="url(#clip32_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="308" y="1374.5">&#xc57c;&#xadfc;&#xc2dd;&#xb300; &#xb7; 320,000&#xc6d0;</tspan></text>
+<rect x="308" y="1379" width="64" height="19" rx="6" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="317" y="1392.3">R-102 &#xc801;&#xc6a9;</tspan></text>
+</g>
+<g clip-path="url(#clip33_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1157" y="1376">&#xc9c0;&#xae08;&#xae4c;&#xc9c0;&#xb294;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="1072" y="1391.8">&#x1f464; &#xd68c;&#xacc4;&#xb2f4;&#xb2f9;&#xc790;&#xac00; &#xc9c1;&#xc811; &#xac80;&#xd1a0;</tspan></text>
+</g>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="15" font-weight="bold" letter-spacing="0em"><tspan x="1213" y="1386">&#x2192;</tspan></text>
+<g clip-path="url(#clip34_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1238" y="1376">&#xc55e;&#xc73c;&#xb85c;&#xb294;</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="1238" y="1391.8">&#x26a1; &#xc790;&#xb3d9;&#xc73c;&#xb85c; &#xc2b9;&#xc778; &#xb300;&#xae30; &#xcc98;&#xb9ac;</tspan></text>
+</g>
+<rect x="292" y="1422" width="1096" height="64" rx="10" fill="#EFF4FF"/>
+<g clip-path="url(#clip35_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="308" y="1448.5">&#xac70;&#xb798;&#xcc98; &#xc811;&#xb300; &#xb7; 412,000&#xc6d0;</tspan></text>
+<rect x="308" y="1453" width="64" height="19" rx="6" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="317" y="1466.3">R-105 &#xc801;&#xc6a9;</tspan></text>
+</g>
+<g clip-path="url(#clip36_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1157" y="1450">&#xc9c0;&#xae08;&#xae4c;&#xc9c0;&#xb294;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="1072" y="1465.8">&#x1f464; &#xd68c;&#xacc4;&#xb2f4;&#xb2f9;&#xc790;&#xac00; &#xc9c1;&#xc811; &#xac80;&#xd1a0;</tspan></text>
+</g>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="15" font-weight="bold" letter-spacing="0em"><tspan x="1213" y="1460">&#x2192;</tspan></text>
+<g clip-path="url(#clip37_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1238" y="1450">&#xc55e;&#xc73c;&#xb85c;&#xb294;</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="1238" y="1465.8">&#x26a1; &#xc790;&#xb3d9;&#xc73c;&#xb85c; &#xc2b9;&#xc778; &#xb300;&#xae30; &#xcc98;&#xb9ac;</tspan></text>
+</g>
+<rect x="292" y="1496" width="1096" height="64" rx="10" fill="#EFF4FF"/>
+<g clip-path="url(#clip38_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="308" y="1522.5">&#xc870;&#xce74; &#xacb0;&#xd63c;&#xc2dd; &#xb7; 250,000&#xc6d0;</tspan></text>
+<rect x="308" y="1527" width="64" height="19" rx="6" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="317" y="1540.3">R-103 &#xc801;&#xc6a9;</tspan></text>
+</g>
+<g clip-path="url(#clip39_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1157" y="1524">&#xc9c0;&#xae08;&#xae4c;&#xc9c0;&#xb294;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="1072" y="1539.8">&#x1f464; &#xd68c;&#xacc4;&#xb2f4;&#xb2f9;&#xc790;&#xac00; &#xc9c1;&#xc811; &#xac80;&#xd1a0;</tspan></text>
+</g>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="15" font-weight="bold" letter-spacing="0em"><tspan x="1213" y="1534">&#x2192;</tspan></text>
+<g clip-path="url(#clip40_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1238" y="1524">&#xc55e;&#xc73c;&#xb85c;&#xb294;</tspan></text>
+<text fill="#2563EB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="1238" y="1539.8">&#x26a1; &#xc790;&#xb3d9;&#xc73c;&#xb85c; &#xc2b9;&#xc778; &#xb300;&#xae30; &#xcc98;&#xb9ac;</tspan></text>
+</g>
+<rect x="292" y="1570" width="1096" height="64" rx="10" fill="#F2F4F7"/>
+<g clip-path="url(#clip41_450_2)">
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" font-weight="bold" letter-spacing="0em"><tspan x="308" y="1596.5">&#xbd80;&#xc11c; &#xd68c;&#xc2dd; &#xb7; 340,000&#xc6d0;</tspan></text>
+<rect x="308" y="1601" width="64" height="19" rx="6" fill="#F4F3FF"/>
+<text fill="#7A5AF8" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="9.5" font-weight="500" letter-spacing="0em"><tspan x="317" y="1614.3">R-102 &#xc801;&#xc6a9;</tspan></text>
+</g>
+<g clip-path="url(#clip42_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1159" y="1598">&#xc9c0;&#xae08;&#xae4c;&#xc9c0;&#xb294;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="1074" y="1613.8">&#x1f464; &#xd68c;&#xacc4;&#xb2f4;&#xb2f9;&#xc790;&#xac00; &#xc9c1;&#xc811; &#xac80;&#xd1a0;</tspan></text>
+</g>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="15" font-weight="bold" letter-spacing="0em"><tspan x="1215" y="1608">&#x2192;</tspan></text>
+<g clip-path="url(#clip43_450_2)">
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="10" letter-spacing="0em"><tspan x="1240" y="1598">&#xc55e;&#xc73c;&#xb85c;&#xb294;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="bold" letter-spacing="0em"><tspan x="1240" y="1613.8">&#x1f464; &#xbcc0;&#xd654; &#xc5c6;&#xc74c; (&#xadf8;&#xb300;&#xb85c; &#xac80;&#xd1a0;)</tspan></text>
+</g>
+</g>
+<rect x="272.5" y="1289.5" width="1135" height="350" rx="11.5" stroke="#E4E7EC"/>
+<g clip-path="url(#clip44_450_2)">
+<rect x="272" y="1656" width="563" height="40" rx="8" fill="#FEF3F2"/>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="490" y="1681.2">&#xc804;&#xccb4; &#xbc18;&#xb824; (&#xc7ac;&#xc791;&#xc131; &#xc694;&#xccad;)</tspan></text>
+<rect x="845" y="1656" width="563" height="40" rx="8" fill="#2563EB"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="1037" y="1681.2">&#xc120;&#xd0dd; 3&#xac74; &#xc77c;&#xad04; &#xc2b9;&#xc778;&#xb300;&#xae30;&#xb85c; &#xc804;&#xd658; &#x2192;</tspan></text>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_450_2">
+<rect width="1440" height="1833" fill="white"/>
+</clipPath>
+<clipPath id="clip1_450_2">
+<rect width="75" height="29" fill="white" transform="translate(62 32)"/>
+</clipPath>
+<clipPath id="clip2_450_2">
+<rect width="1136" height="42" fill="white" transform="translate(272 28)"/>
+</clipPath>
+<clipPath id="clip3_450_2">
+<rect width="249" height="42" fill="white" transform="translate(272 28)"/>
+</clipPath>
+<clipPath id="clip4_450_2">
+<rect width="1096" height="16" fill="white" transform="translate(292 202)"/>
+</clipPath>
+<clipPath id="clip5_450_2">
+<rect width="1096" height="44" fill="white" transform="translate(292 228)"/>
+</clipPath>
+<clipPath id="clip6_450_2">
+<rect width="14" height="14" fill="white" transform="translate(304 243)"/>
+</clipPath>
+<clipPath id="clip7_450_2">
+<rect width="105" height="26" fill="white" transform="translate(326 237)"/>
+</clipPath>
+<clipPath id="clip8_450_2">
+<rect width="14" height="14" fill="white" transform="translate(525.2 243)"/>
+</clipPath>
+<clipPath id="clip9_450_2">
+<rect width="122" height="26" fill="white" transform="translate(547.2 237)"/>
+</clipPath>
+<clipPath id="clip10_450_2">
+<rect width="14" height="14" fill="white" transform="translate(746.4 243)"/>
+</clipPath>
+<clipPath id="clip11_450_2">
+<rect width="112" height="26" fill="white" transform="translate(768.4 237)"/>
+</clipPath>
+<clipPath id="clip12_450_2">
+<rect width="14" height="14" fill="white" transform="translate(967.6 243)"/>
+</clipPath>
+<clipPath id="clip13_450_2">
+<rect width="117" height="26" fill="white" transform="translate(989.6 237)"/>
+</clipPath>
+<clipPath id="clip14_450_2">
+<rect width="14" height="14" fill="white" transform="translate(1188.8 243)"/>
+</clipPath>
+<clipPath id="clip15_450_2">
+<rect width="105" height="26" fill="white" transform="translate(1210.8 237)"/>
+</clipPath>
+<clipPath id="clip16_450_2">
+<rect width="1136" height="32" fill="white" transform="translate(272 564)"/>
+</clipPath>
+<clipPath id="clip17_450_2">
+<rect width="1136" height="78" fill="white" transform="translate(272 612)"/>
+</clipPath>
+<clipPath id="clip18_450_2">
+<rect width="1056" height="249" fill="white" transform="translate(312 795)"/>
+</clipPath>
+<clipPath id="clip19_450_2">
+<rect width="220" height="15" fill="white" transform="translate(312 795)"/>
+</clipPath>
+<clipPath id="clip20_450_2">
+<rect width="1024" height="19" fill="white" transform="translate(328 851)"/>
+</clipPath>
+<clipPath id="clip21_450_2">
+<rect width="169" height="17" fill="white" transform="translate(328 852)"/>
+</clipPath>
+<clipPath id="clip22_450_2">
+<rect width="1024" height="19" fill="white" transform="translate(328 922)"/>
+</clipPath>
+<clipPath id="clip23_450_2">
+<rect width="184" height="17" fill="white" transform="translate(328 923)"/>
+</clipPath>
+<clipPath id="clip24_450_2">
+<rect width="1024" height="19" fill="white" transform="translate(328 993)"/>
+</clipPath>
+<clipPath id="clip25_450_2">
+<rect width="184" height="17" fill="white" transform="translate(328 994)"/>
+</clipPath>
+<clipPath id="clip26_450_2">
+<rect width="1056" height="121" fill="white" transform="translate(312 1060)"/>
+</clipPath>
+<clipPath id="clip27_450_2">
+<rect width="1024" height="19" fill="white" transform="translate(328 1116)"/>
+</clipPath>
+<clipPath id="clip28_450_2">
+<rect width="215" height="17" fill="white" transform="translate(328 1117)"/>
+</clipPath>
+<clipPath id="clip29_450_2">
+<rect width="1056" height="54" fill="white" transform="translate(312 1197)"/>
+</clipPath>
+<clipPath id="clip30_450_2">
+<rect x="272" y="1289" width="1136" height="351" rx="12" fill="white"/>
+</clipPath>
+<clipPath id="clip31_450_2">
+<rect width="259" height="21" fill="white" transform="translate(292 1305)"/>
+</clipPath>
+<clipPath id="clip32_450_2">
+<rect width="119" height="36" fill="white" transform="translate(308 1362)"/>
+</clipPath>
+<clipPath id="clip33_450_2">
+<rect width="131" height="28" fill="white" transform="translate(1072 1366)"/>
+</clipPath>
+<clipPath id="clip34_450_2">
+<rect width="134" height="28" fill="white" transform="translate(1238 1366)"/>
+</clipPath>
+<clipPath id="clip35_450_2">
+<rect width="134" height="36" fill="white" transform="translate(308 1436)"/>
+</clipPath>
+<clipPath id="clip36_450_2">
+<rect width="131" height="28" fill="white" transform="translate(1072 1440)"/>
+</clipPath>
+<clipPath id="clip37_450_2">
+<rect width="134" height="28" fill="white" transform="translate(1238 1440)"/>
+</clipPath>
+<clipPath id="clip38_450_2">
+<rect width="134" height="36" fill="white" transform="translate(308 1510)"/>
+</clipPath>
+<clipPath id="clip39_450_2">
+<rect width="131" height="28" fill="white" transform="translate(1072 1514)"/>
+</clipPath>
+<clipPath id="clip40_450_2">
+<rect width="134" height="28" fill="white" transform="translate(1238 1514)"/>
+</clipPath>
+<clipPath id="clip41_450_2">
+<rect width="122" height="36" fill="white" transform="translate(308 1584)"/>
+</clipPath>
+<clipPath id="clip42_450_2">
+<rect width="131" height="28" fill="white" transform="translate(1074 1588)"/>
+</clipPath>
+<clipPath id="clip43_450_2">
+<rect width="132" height="28" fill="white" transform="translate(1240 1588)"/>
+</clipPath>
+<clipPath id="clip44_450_2">
+<rect width="1136" height="40" fill="white" transform="translate(272 1656)"/>
+</clipPath>
+</defs>
+</svg>
