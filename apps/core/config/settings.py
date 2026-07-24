@@ -94,6 +94,9 @@ MEDIA_ROOT = BASE_DIR / "media"  # 증빙 이미지(로컬 볼륨). 운영은 Ob
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# 커스텀 유저(역할·팀 포함). 그린필드이므로 최초 마이그레이션 전에 지정.
+AUTH_USER_MODEL = "accounts.User"
+
 # ── DRF / JWT ───────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -101,6 +104,8 @@ REST_FRAMEWORK = {
     ),
     # 스캐폴드 단계: 우선 열어둠. 실제 RBAC는 역할별 권한으로 교체 예정.
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    # 금액(Decimal)을 문자열이 아닌 숫자로 직렬화 → 프론트 정수 처리 편의.
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 # 개발용 CORS (web:5173에서 직접 호출 시). Nginx 경유 시엔 same-origin.
