@@ -1,0 +1,97 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_50_2)">
+<rect width="720" height="900" fill="#101828"/>
+<g clip-path="url(#clip1_50_2)">
+<rect x="64" y="266" width="34" height="34" rx="10" fill="#2563EB"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="108" y="291">TIGER</tspan></text>
+</g>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="32" font-weight="bold" letter-spacing="0em"><tspan x="64" y="359.8">&#xbc95;&#xc778;&#xce74;&#xb4dc; &#xc815;&#xc0b0;,&#10;</tspan><tspan x="64" y="397.8">&#xc774;&#xc81c; AI&#xac00; &#xba3c;&#xc800; &#xd655;&#xc778;&#xd569;&#xb2c8;&#xb2e4;.</tspan></text>
+<text fill="#CBD5E1" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="14" letter-spacing="0em"><tspan x="64" y="446.1">&#xcd08;&#xc548; &#xc791;&#xc131;&#xbd80;&#xd130; &#xaddc;&#xc815; &#xac80;&#xd1a0;, &#xc704;&#xd5d8; &#xd0d0;&#xc9c0;&#xae4c;&#xc9c0;&#10;</tspan><tspan x="64" y="463.1">&#x2014; 3&#xac1c;&#xc758; AI Agent&#xac00; &#xc815;&#xc0b0; &#xd750;&#xb984;&#xc758; 80% &#xc774;&#xc0c1;&#xc744; &#xc790;&#xb3d9;&#xc73c;&#xb85c; &#xcc98;&#xb9ac;&#xd558;&#xace0;, &#xc0ac;&#xb78c;&#xc740; &#xc560;&#xb9e4;&#xd55c; &#xac74;&#xb9cc; &#xd655;&#xc778;&#xd569;&#xb2c8;&#xb2e4;.</tspan></text>
+<g clip-path="url(#clip2_50_2)">
+<rect x="64" y="502" width="32" height="32" rx="8" fill="#182236"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="73.5" y="523.2">&#x2460;</tspan></text>
+<g clip-path="url(#clip3_50_2)">
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="500" letter-spacing="0em"><tspan x="110" y="515.4">&#xcd08;&#xc548; &#xc791;&#xc131; Agent</tspan></text>
+<text fill="#8896AB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="110" y="531.8">&#xc601;&#xc218;&#xc99d; &#xc778;&#xc2dd;&#xb7;&#xc790;&#xb3d9; &#xbd84;&#xb958;</tspan></text>
+</g>
+</g>
+<g clip-path="url(#clip4_50_2)">
+<rect x="64" y="548" width="32" height="32" rx="8" fill="#182236"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="73.5" y="569.2">&#x2461;</tspan></text>
+<g clip-path="url(#clip5_50_2)">
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="500" letter-spacing="0em"><tspan x="110" y="561.4">Rule Agent</tspan></text>
+<text fill="#8896AB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="110" y="577.8">&#xd655;&#xc2e4;&#xd55c; &#xac74;&#xc740; &#xaddc;&#xc815;&#xc73c;&#xb85c; &#xc989;&#xc2dc; &#xd310;&#xc815;</tspan></text>
+</g>
+</g>
+<g clip-path="url(#clip6_50_2)">
+<rect x="64" y="594" width="32" height="32" rx="8" fill="#182236"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="73.5" y="615.2">&#x2462;</tspan></text>
+<g clip-path="url(#clip7_50_2)">
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="500" letter-spacing="0em"><tspan x="110" y="607.4">Risk Review Agent</tspan></text>
+<text fill="#8896AB" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" letter-spacing="0em"><tspan x="110" y="623.8">&#xc560;&#xb9e4;&#xd55c; &#xac74;&#xb9cc; &#xadfc;&#xac70;&#xc640; &#xd568;&#xaed8; &#xc120;&#xbcc4;</tspan></text>
+</g>
+</g>
+<rect width="720" height="900" transform="translate(720)" fill="#F7F8FA"/>
+<rect x="880.5" y="206" width="399" height="488" rx="15.5" fill="white"/>
+<rect x="880.5" y="206" width="399" height="488" rx="15.5" stroke="#E4E7EC"/>
+<text fill="#101828" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="22" font-weight="bold" letter-spacing="0em"><tspan x="920" y="267.3">&#xb85c;&#xadf8;&#xc778;</tspan></text>
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12.5" letter-spacing="0em"><tspan x="920" y="304">&#xd68c;&#xc0ac; &#xacc4;&#xc815;&#xc73c;&#xb85c; &#xb85c;&#xadf8;&#xc778;&#xd558;&#xc5ec; &#xc815;&#xc0b0; &#xd50c;&#xb7ab;&#xd3fc;&#xc744; &#xc774;&#xc6a9;&#xd558;&#xc138;&#xc694;.</tspan></text>
+<rect x="920" y="326.5" width="320" height="42" rx="8" fill="#2563EB"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="1000.5" y="352.9">&#xd68c;&#xc0ac; &#xacc4;&#xc815;&#xc73c;&#xb85c; &#xb85c;&#xadf8;&#xc778; (SSO)</tspan></text>
+<g clip-path="url(#clip8_50_2)">
+<rect x="920" y="395" width="160" height="1" fill="#E4E7EC"/>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="1090" y="400.1">&#xb610;&#xb294;</tspan></text>
+<rect x="1122" y="395" width="160" height="1" fill="#E4E7EC"/>
+</g>
+<g clip-path="url(#clip9_50_2)">
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="920" y="434.3">&#xc0ac;&#xc6d0;&#xbc88;&#xd638;</tspan></text>
+<rect x="920.5" y="443" width="319" height="37" rx="7.5" fill="#F7F8FA"/>
+<rect x="920.5" y="443" width="319" height="37" rx="7.5" stroke="#E4E7EC"/>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="934" y="466.7">xxxxxxxx</tspan></text>
+</g>
+<g clip-path="url(#clip10_50_2)">
+<text fill="#667085" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="12" font-weight="500" letter-spacing="0em"><tspan x="920" y="512.3">&#xbe44;&#xbc00;&#xbc88;&#xd638;</tspan></text>
+<rect x="920.5" y="521" width="319" height="37" rx="7.5" fill="#F7F8FA"/>
+<rect x="920.5" y="521" width="319" height="37" rx="7.5" stroke="#E4E7EC"/>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13" letter-spacing="0em"><tspan x="934" y="544.7">&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;</tspan></text>
+</g>
+<rect x="920" y="578.5" width="320" height="42" rx="8" fill="#101828"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="13.5" font-weight="bold" letter-spacing="0em"><tspan x="1061" y="604.9">&#xb85c;&#xadf8;&#xc778;</tspan></text>
+<text fill="#98A2B3" style="white-space: pre" xml:space="preserve" font-family="Noto Sans KR" font-size="11.5" letter-spacing="0em"><tspan x="920" y="652.1">&#xbe44;&#xbc00;&#xbc88;&#xd638;&#xb97c; &#xc78a;&#xc73c;&#xc168;&#xb098;&#xc694;?  &#xacbd;&#xc601;&#xc9c0;&#xc6d0;&#xbcf8;&#xbd80; IT&#xc6b4;&#xc601;&#xbd80;&#xc5d0; &#xbb38;&#xc758;&#xd558;&#xc138;&#xc694;.</tspan></text>
+</g>
+<defs>
+<clipPath id="clip0_50_2">
+<rect width="1440" height="900" fill="white"/>
+</clipPath>
+<clipPath id="clip1_50_2">
+<rect width="104" height="34" fill="white" transform="translate(64 266)"/>
+</clipPath>
+<clipPath id="clip2_50_2">
+<rect width="158" height="32" fill="white" transform="translate(64 502)"/>
+</clipPath>
+<clipPath id="clip3_50_2">
+<rect width="112" height="32" fill="white" transform="translate(110 502)"/>
+</clipPath>
+<clipPath id="clip4_50_2">
+<rect width="201" height="32" fill="white" transform="translate(64 548)"/>
+</clipPath>
+<clipPath id="clip5_50_2">
+<rect width="155" height="32" fill="white" transform="translate(110 548)"/>
+</clipPath>
+<clipPath id="clip6_50_2">
+<rect width="190" height="32" fill="white" transform="translate(64 594)"/>
+</clipPath>
+<clipPath id="clip7_50_2">
+<rect width="144" height="32" fill="white" transform="translate(110 594)"/>
+</clipPath>
+<clipPath id="clip8_50_2">
+<rect width="320" height="14" fill="white" transform="translate(920 388.5)"/>
+</clipPath>
+<clipPath id="clip9_50_2">
+<rect width="320" height="58" fill="white" transform="translate(920 422.5)"/>
+</clipPath>
+<clipPath id="clip10_50_2">
+<rect width="320" height="58" fill="white" transform="translate(920 500.5)"/>
+</clipPath>
+</defs>
+</svg>

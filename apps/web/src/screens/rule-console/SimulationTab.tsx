@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { won } from '../../lib/format'
 import {
-  BATCH_CANDIDATES, SIM_DIFF_ROWS, SIM_KPI, SIM_REPORT, SIM_RUN_META, type BatchCandidate,
+  BATCH_CANDIDATES, SIM_AGENT_ROWS, SIM_AGENT_SUMMARY, SIM_DIFF_ROWS, SIM_KPI, SIM_REPORT, SIM_RUN_META,
+  type BatchCandidate, type SimAgentRow,
 } from './data/ruleConsoleMock'
 import { RuleGraphExplorer, RuleGraphMini } from './RuleGraphView'
 import { RuleTreeExplorer, RuleTreeMini } from './RuleTreeView'
@@ -95,22 +96,59 @@ export function SimulationTab() {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h3>🤖 Agent 검토 보고서 (배치)</h3><span className="tag ai">2건 승인 권장 · 1건 검토 필요</span></div>
-        <div className="card-body stack">
-          <div><div className="text-meta" style={{ marginBottom: 4 }}>배치 요약</div><div>{SIM_REPORT.summary}</div></div>
+        <div className="card-head">
+          <h3>🤖 Agent 검토 보고서 — 판단이 달라진 건 검토</h3>
+          <span className="tag ai">사람 확인 필요 {SIM_AGENT_ROWS.filter((r) => r.verdict === 'check').length}건</span>
+        </div>
+        <div className="card-body stack" style={{ gap: 16 }}>
+          <div className="text-meta">{SIM_REPORT.summary}</div>
+
+          {/* ① 자동분류 → 승인대기 전환된 건 */}
           <div>
-            <div className="text-meta" style={{ marginBottom: 4 }}>{vizMode === 'tree' ? '트리 충돌 분석' : '그래프 충돌 분석'}</div>
-            <div>{vizMode === 'tree' ? SIM_REPORT.conflictTree : SIM_REPORT.conflictGraph}</div>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+              ① IN_REVIEW에서 Rule로 자동분류되어 승인대기로 전환된 건 ({SIM_AGENT_ROWS.filter((r) => r.group === 'auto').length}건)
+            </div>
+            <div className="stack">
+              {SIM_AGENT_ROWS.filter((r) => r.group === 'auto').map((r) => <AgentReportRow key={r.merchant} row={r} />)}
+            </div>
           </div>
-          <div><div className="text-meta" style={{ marginBottom: 4 }}>권고 의견</div><div>{SIM_REPORT.recommendation}</div></div>
+
+          {/* ② 이전 판단과 다르게 분류된 건 */}
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+              ② 이전 판단과 다르게 분류된 건 ({SIM_AGENT_ROWS.filter((r) => r.group === 'reclassified').length}건)
+            </div>
+            <div className="stack">
+              {SIM_AGENT_ROWS.filter((r) => r.group === 'reclassified').map((r) => <AgentReportRow key={r.merchant} row={r} />)}
+            </div>
+          </div>
+
+          <div className="note"><b>종합 권고</b> — {SIM_AGENT_SUMMARY}</div>
         </div>
       </div>
 
       <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
         <button className="btn reject">전체 반려 (재작성 요청)</button>
-        <button className="btn return">R-103만 제외하고 진행</button>
         <button className="btn approve">선택 {selectedCount}건 일괄 승인대기로 전환 →</button>
       </div>
     </>
+  )
+}
+
+// Agent 검토 보고서 — 세부 건별 row
+function AgentReportRow({ row }: { row: SimAgentRow }) {
+  const ok = row.verdict === 'ok'
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '10px 12px', background: 'var(--surface-2)' }}>
+      <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+        <span className="row" style={{ gap: 8 }}>
+          <b>{row.merchant}</b>
+          <span className="text-meta">{won(row.amount)}</span>
+          <span className="tag ai">{row.rule}</span>
+        </span>
+        {ok ? <span className="tag ok">✅ Rule 정상 동작</span> : <span className="tag warn">⚠ 사람 확인 필요</span>}
+      </div>
+      <div className="text-meta" style={{ marginTop: 6, lineHeight: 1.6 }}>{row.note}</div>
+    </div>
   )
 }

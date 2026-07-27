@@ -21,6 +21,7 @@ export function NewExpense() {
   const [merchant, setMerchant] = useState('강남한식당')
   const [dateTime, setDateTime] = useState('2026-07-18 19:20')
   const [amountText, setAmountText] = useState('452,000')
+  const [purpose, setPurpose] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const close = () => nav('/my-expenses')
@@ -37,6 +38,7 @@ export function NewExpense() {
       aiSuggested: true,
       evidence: 'OK' as const,
       user: user?.name ?? '홍길동',
+      purpose,
     }
     const created = await createSettlement(draft)
     addExpense(created)
@@ -136,7 +138,19 @@ export function NewExpense() {
                   ))}
                 </div>
               </div>
-              <div className="note">규정 힌트 — 3만원 초과 시 적격증빙 필수 · 30만원 이하로 사전승인 대상 아님</div>
+              <div className="field">
+                <label>지출 목적 / 사유</label>
+                <textarea rows={2} placeholder="예) 거래처 A사 계약 논의 접대" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+              </div>
+              {/* 규정 힌트 — 작은 하이라이트 박스 */}
+              <div style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+                background: 'var(--ai-soft)', border: '1px solid #f0dfae', color: 'var(--ai)',
+                borderRadius: 'var(--radius-control)', padding: '8px 10px', fontSize: 12,
+              }}>
+                <span>💡</span>
+                <span>규정 힌트 — 3만원 초과 시 적격증빙 필수 · 30만원 이하로 사전승인 대상 아님</span>
+              </div>
             </div>
             <div className="modal-foot">
               <button className="btn" disabled={submitting} onClick={() => setStep(1)}>이전</button>

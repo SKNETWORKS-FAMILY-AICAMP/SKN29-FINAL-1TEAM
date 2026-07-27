@@ -9,6 +9,8 @@ export interface DraftRule {
   logic: string
   sourceClause: string
   aiReason: string
+  /** 비개발자용 자연어 표현 — 코드 대신 기본 노출 */
+  plain: { category?: string; threshold?: number; extraCondition?: string; action: string }
 }
 
 export const DRAFT_RULES: DraftRule[] = [
@@ -18,11 +20,12 @@ export const DRAFT_RULES: DraftRule[] = [
     logic: 'IF category == "식대" AND amount > 300000\nTHEN flag = "PRE_APPROVAL_REQUIRED"',
     sourceClause: '법인카드 사용규정 제10조②',
     aiReason: 'RAG 검색 결과 제10조②항에서 식대·기업업무추진비는 직책과 무관하게 건당 30만원 초과 시 사전승인 대상으로 명시되어 있어, 해당 조건의 자동 판정 Rule을 제안합니다.',
+    plain: { category: '식대', threshold: 300000, action: '사전승인 필요로 표시' },
   },
-  { id: 'R-103', title: '경조사비 20만원 초과 소급경고', status: 'DRAFT', description: '경조사비 지급 후 20만원을 초과한 건에 소급 경고 플래그를 지정합니다.', logic: 'IF category == "경조사비" AND amount > 200000\nTHEN flag = "RETROSPECTIVE_WARNING"', sourceClause: '법인카드 사용규정 제13조', aiReason: '제13조에서 경조사비는 20만원까지 소명자료로 갈음 가능하다고 명시해, 초과분은 별도 경고가 필요합니다.' },
-  { id: 'R-104', title: '공용카드 실사용자 확인 삽입', status: 'DRAFT', description: '공용카드 거래에는 실사용자·목적 입력 여부를 검증합니다.', logic: 'IF cardType == "SHARED" AND actualUser == null\nTHEN flag = "ACTUAL_USER_REQUIRED"', sourceClause: '요구사항 §4.1', aiReason: '공용/팀 카드는 실사용자·목적 지정이 필요하다는 요구사항을 Rule로 변환했습니다.' },
-  { id: 'R-105', title: '접대비 3만원 초과 증빙플래그', status: 'DRAFT', description: '접대비 지출 중 3만원을 초과하는데 적격증빙이 없는 경우를 탐지합니다.', logic: 'IF category == "접대" AND amount > 30000 AND has_receipt == false\nTHEN flag = "NON_DEDUCTIBLE_RISK"', sourceClause: '법인카드 사용규정 제11조②', aiReason: '제11조②항의 3만원 초과 적격증빙 필수 규정을 근거로 제안합니다.' },
-  { id: 'R-106', title: '후정산 지출 증빙 필수 검증', status: 'DRAFT', description: '후정산 카드구분 지출에 대해 증빙 첨부 여부를 필수로 검증합니다.', logic: 'IF cardType == "POST_PAID" AND evidence == "MISSING"\nTHEN flag = "EVIDENCE_REQUIRED"', sourceClause: '법인카드 사용규정 제9조', aiReason: '후정산 방식은 사후 증빙 누락 위험이 커 별도 검증 Rule을 제안합니다.' },
+  { id: 'R-103', title: '경조사비 20만원 초과 소급경고', status: 'DRAFT', description: '경조사비 지급 후 20만원을 초과한 건에 소급 경고 플래그를 지정합니다.', logic: 'IF category == "경조사비" AND amount > 200000\nTHEN flag = "RETROSPECTIVE_WARNING"', sourceClause: '법인카드 사용규정 제13조', aiReason: '제13조에서 경조사비는 20만원까지 소명자료로 갈음 가능하다고 명시해, 초과분은 별도 경고가 필요합니다.', plain: { category: '경조사비', threshold: 200000, action: '소급 경고로 표시' } },
+  { id: 'R-104', title: '공용카드 실사용자 확인 삽입', status: 'DRAFT', description: '공용카드 거래에는 실사용자·목적 입력 여부를 검증합니다.', logic: 'IF cardType == "SHARED" AND actualUser == null\nTHEN flag = "ACTUAL_USER_REQUIRED"', sourceClause: '요구사항 §4.1', aiReason: '공용/팀 카드는 실사용자·목적 지정이 필요하다는 요구사항을 Rule로 변환했습니다.', plain: { extraCondition: '공용카드인데 실사용자가 입력되지 않으면', action: '실사용자·목적 입력을 요구' } },
+  { id: 'R-105', title: '접대비 3만원 초과 증빙플래그', status: 'DRAFT', description: '접대비 지출 중 3만원을 초과하는데 적격증빙이 없는 경우를 탐지합니다.', logic: 'IF category == "접대" AND amount > 30000 AND has_receipt == false\nTHEN flag = "NON_DEDUCTIBLE_RISK"', sourceClause: '법인카드 사용규정 제11조②', aiReason: '제11조②항의 3만원 초과 적격증빙 필수 규정을 근거로 제안합니다.', plain: { category: '접대', threshold: 30000, extraCondition: '적격증빙이 없으면', action: '손금불산입 위험으로 표시' } },
+  { id: 'R-106', title: '후정산 지출 증빙 필수 검증', status: 'DRAFT', description: '후정산 카드구분 지출에 대해 증빙 첨부 여부를 필수로 검증합니다.', logic: 'IF cardType == "POST_PAID" AND evidence == "MISSING"\nTHEN flag = "EVIDENCE_REQUIRED"', sourceClause: '법인카드 사용규정 제9조', aiReason: '후정산 방식은 사후 증빙 누락 위험이 커 별도 검증 Rule을 제안합니다.', plain: { extraCondition: '후정산 카드인데 증빙이 누락되면', action: '증빙 첨부를 필수로 요구' } },
 ]
 
 export interface ChatMessage {
@@ -112,6 +115,30 @@ export const SIM_REPORT = {
   conflictGraph: '감지된 충돌 2건 중 R-102↔R-033은 카테고리만 겹치고 금액 임계값이 달라 실질적 충돌 위험은 낮습니다. R-105↔R-045는 금액 임계값이 3만원 이내로 근접해 있어 순서(위치) 조정 또는 조건 재정의가 필요합니다.',
   recommendation: 'R-102, R-105는 이대로 승인 대기로 전환을 권장합니다. R-103은 충돌 재검토 후 개별적으로 재상신하는 것을 권장합니다.',
 }
+
+// Agent 검토 보고서 — 세부 row 형식.
+//  group 'auto' : IN_REVIEW에서 Rule로 자동분류되어 승인대기로 전환된 건
+//  group 'reclassified' : 이전과 분류 판단이 달라진 건 (소급 재검토 대상)
+//  verdict 'ok' : Rule 정상 동작 · 사람 확인 불필요 / 'check' : RAG 내규 기준 사람 확인 필요
+export interface SimAgentRow {
+  merchant: string
+  amount: number
+  rule: string
+  group: 'auto' | 'reclassified'
+  verdict: 'ok' | 'check'
+  note: string
+}
+export const SIM_AGENT_ROWS: SimAgentRow[] = [
+  { merchant: '야근식대', amount: 320000, rule: 'R-102', group: 'auto', verdict: 'ok',
+    note: '30만원 초과 기준에 명확히 부합하고, 과거 유사 야근식대 승인 건과 패턴이 일치합니다. 사람 확인 없이 자동 승인대기 전환이 적절합니다.' },
+  { merchant: '거래처 접대', amount: 412000, rule: 'R-105', group: 'auto', verdict: 'check',
+    note: '접대비 3만원 초과 기준은 충족하지만, 참석자 4인 중 외부 2인·내부 2인으로 실제 접대 목적이 맞는지 애매합니다. 참석자 구성을 확인해주세요.' },
+  { merchant: '조카 결혼식', amount: 250000, rule: 'R-103', group: 'auto', verdict: 'check',
+    note: '경조사비 20만원 초과 기준은 충족하지만, 사규상 경조사비 지급대상 친족 범위에 "조카"가 포함되는지 명확하지 않습니다. 인사규정 확인이 필요합니다.' },
+  { merchant: '송년회 회식비', amount: 450000, rule: 'R-105 개정', group: 'reclassified', verdict: 'check',
+    note: '이전에는 "복리후생비"로 분류됐으나, 이번엔 외부 거래처 참석자가 포함되어 "접대비"로 재분류됐습니다. 개정된 "외부인 참석 시 접대비 우선 적용" 기준과 부합하는 변화인지, 과거 유사 건 소급 재검토가 필요한지 확인해주세요.' },
+]
+export const SIM_AGENT_SUMMARY = '4건 중 1건(야근식대)만 즉시 승인대기 전환이 적절합니다. 나머지 3건은 위 확인 사항을 검토한 후 개별적으로 처리해주세요.'
 
 // ── Tab3: Active Rule 버전관리 (v4) ─────────────────────
 export const ACTIVE_RULE = {

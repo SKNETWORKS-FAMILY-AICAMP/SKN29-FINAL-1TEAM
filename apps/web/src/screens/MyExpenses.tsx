@@ -117,6 +117,18 @@ export function MyExpenses() {
         </table>
       </div>
 
+      {/* AI 분류 근거 · 규정 힌트 (FR-DA-03, FR-DA-06) */}
+      <div className="note" style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 16, lineHeight: 1.2 }}>💡</span>
+        <div>
+          <strong>AI 분류 근거 · 규정 힌트</strong>
+          <div style={{ marginTop: 4 }}>
+            AI 제안 분류(노란 태그)는 가맹점 업종코드·금액·결제 시각 패턴으로 추정됩니다.
+            접대성 지출은 3만원 초과 시 적격증빙이 필수이며, 30만원 이하는 사전승인 대상이 아닙니다.
+          </div>
+        </div>
+      </div>
+
       <div className="text-meta" style={{ marginTop: 12 }}>
         총 {expenses.length}건 중 {checked.size}건 선택됨
       </div>

@@ -134,7 +134,7 @@ export function TeamAggregation() {
           const isOpen = expanded.has(m.name) || onlyAnomaly
           const memberAnomaly = m.items.filter((i) => anomalyTags(i).length > 0).length
           return (
-            <div className={'card' + (memberAnomaly > 0 ? ' anomaly' : '')} key={m.name}>
+            <div className="card" key={m.name}>
               <div
                 className="card-head"
                 role="button"
@@ -148,7 +148,8 @@ export function TeamAggregation() {
                   {isOpen ? <ChevronDown size={16} className="muted" /> : <ChevronRight size={16} className="muted" />}
                   {m.name}
                   <span className="text-meta" style={{ fontWeight: 500, marginLeft: 8 }}>
-                    {m.items.length}건 · 이상 {memberAnomaly}건
+                    {m.items.length}건 · 이상{' '}
+                    <span style={memberAnomaly > 0 ? { color: 'var(--tone-red)', fontWeight: 700 } : undefined}>{memberAnomaly}건</span>
                   </span>
                 </h3>
                 <span className="tag">{won(m.items.reduce((s, i) => s + i.amount, 0))}</span>

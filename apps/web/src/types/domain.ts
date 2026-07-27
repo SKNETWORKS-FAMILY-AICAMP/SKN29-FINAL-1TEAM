@@ -73,14 +73,17 @@ export interface Settlement {
   evidence: 'OK' | 'MISSING'
   status: SettlementStatus
   user: string
+  purpose?: string // 지출 목적/사유
 }
 
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */
 export interface ReviewItem extends Settlement {
   anomalyScore: number // 0~1 (비지도 이상탐지)
   featureContribs: { feature: string; weight: number }[]
-  ragRefs: { title: string; source: string }[]
+  ragRefs: { title: string; source: string; kind?: 'policy' | 'case' }[]
   aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
   aiConfidence: number // 0~1
   anomalyReasons: string[]
+  dept?: string // 부서
+  time?: string // 결제 일시(HH:MM)
 }
