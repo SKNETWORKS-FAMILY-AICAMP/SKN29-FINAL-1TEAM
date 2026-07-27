@@ -27,7 +27,7 @@ daily_scrum/  주차별 진행 보고
 ## 2. 핵심 설계 결정 (변경 시 세 문서 + 화면 모두 동기화)
 
 - **Risk Review = MVP 2단계**: ① 단순 이상거래 탐지(비지도, anomaly_score) → ② RAG 내규 검증(이상 후보 한정). 지도학습(`review_probability`)·자동 재학습 피드백 루프는 **post-MVP 확장**. (콜드스타트/라벨부족 대응)
-- **상태머신(FR-ST-01)**: `DRAFT→SUBMITTED→RPA_JUDGED→(PENDING_CONFIRM/RETURNED/IN_REVIEW/REJECT)→CONFIRMED→ERP_VOUCHER_DRAFTED`. **REJECT=최종반려(재제출 불가)**, **RETURNED=보완요청(재제출 가능)** 구분.
+- **상태머신(FR-ST-01)** — 4단계: **① 개인 보유(`DRAFT`) → ② 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → ③ 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → ④ 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`)**. **팀 수준 보완/반려(`TEAM_*`, 팀장)** 와 **회계 수준(`RETURNED`/`REJECT`, 회계)** 은 별개 상태. `REJECT`=회계 최종반려(재제출 불가). ⚠️ 코드 enum(Django `SettlementStatus`·프론트 `SettlementStatus`·서비스 ALLOWED) 동기화 필요(현재 문서만 반영).
 - **예산·정책은 통제(차단)가 아니라 지표·추천으로만** 반영.
 - **사람 확정 원칙**: 확신 통과 건도 회계 담당자 확정 없이는 CONFIRMED 불가.
 - 영수증은 별도 OCR 없이 **OpenAI 비전**으로 직접 판독. Rule 적용은 결정론적 엔진, LLM은 Rule 생성 단계에서만.
@@ -56,18 +56,27 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 4. llm_wiki 문서 활용 추적
+## 4. 프로젝트 컨텍스트 구조 (llm_wiki) — 에이전트 자동 생성·활용
 
-각 문서의 **권위 범위(authority)**. 관련 변경 시 반드시 해당 문서를 함께 갱신하고, 세 문서 간 상충이 없도록 유지한다.
+`llm_wiki/`는 이 프로젝트 컨텍스트의 **단일 진실 원천(SoT)**. 에이전트/Claude는 **`llm_wiki/_index.md`(색인)를 세션 시작 시 먼저 읽고**, 컨텍스트를 바꾸면 해당 문서와 색인 행을 함께 갱신한다.
 
-| 문서 | 버전 | 권위 범위 | 상태 |
-|---|---|---|---|
-| `llm_wiki/요구사항_명세서.md` | Draft v0.3 | 기능/비기능 요구사항(FR-*), Open Issue | 최신 · REJECT 상태 추가됨 |
-| `llm_wiki/기술명세서.md` | Draft v0.1 | 아키텍처·데이터·API·FastMCP Tool·ML/RAG 파이프라인 | 유지 |
-| `llm_wiki/기획_확장안_v2.md` | Draft v0.2 | 제품 기획·3-Agent 서비스 플로우·객체 모델 | 유지 |
-| `llm_wiki/화면설계서/` | Rev.1 v1.1 | 6개 화면(S-01~06)·역할·상태머신 화면매핑. **압축해제된 docx 폴더** | 프론트 구현 기준 |
+```
+llm_wiki/
+├── _index.md            ← 컨텍스트 색인/매니페스트 (에이전트가 읽고 갱신하는 진입점)
+├── 요구사항_명세서.md    ┐ 권위(authored) 스펙 문서 — SoT
+├── 기술명세서.md         │  (권위 범위·버전·상태는 _index.md 표에서 관리)
+├── 기획_확장안_v2.md     ┘
+├── 화면설계서/           ← 압축해제 .docx (본문 word/document.xml, 추출 레시피는 CLAUDE.local.md)
+├── figma_mockup/         ← 화면 목업 SVG (참고용, 픽셀 매칭 불필요)
+└── _context/            ← 에이전트 생성 파생 컨텍스트 (결정 로그·용어집 등, 필요 시 생성)
+```
 
-- 화면설계서는 `.docx`를 풀어놓은 폴더다. 본문은 `word/document.xml`에 있으며, 읽으려면 §CLAUDE.local.md의 추출 레시피 사용.
+**자동 생성·갱신 프로토콜(에이전트 규약):**
+1. **세션 시작**: `_index.md`를 읽어 어떤 컨텍스트가 어디에 있는지·최신 상태를 파악한다.
+2. **컨텍스트 변경**: 결정·스펙이 바뀌면 **① 권위 문서 본문 + ② `_index.md`의 해당 행(버전/상태/최종갱신)** 을 같은 커밋에서 함께 갱신한다. 세 스펙 문서 간 상충 금지.
+3. **새 cross-cutting 컨텍스트**(결정 로그, 용어집, 상태머신 캐논 등): `_context/<slug>.md`로 생성하고 `_index.md`에 등록한다. (권위 스펙 문서와 중복 서술 금지 — 파생/요약만)
+4. **파일명 규칙**: 권위 스펙은 한글 문서명 유지, 에이전트 생성물은 `_` 접두(예: `_index.md`, `_context/decisions.md`)로 구분.
+
 - 외부 참조(레포에 없음): WBS.xlsx(2026-07-20~09-03), 프로젝트 기획서, 수집 데이터 보고서(AI Hub 합성데이터 벤치마크), 법인카드 사용 규정 `TIGER-REG-2026-003`.
 
 ---

@@ -17,6 +17,9 @@ export const ROLE_LABEL: Record<Role, string> = {
 //  REJECT=최종반려(재제출 불가), RETURNED=보완요청(재제출 가능)
 export type SettlementStatus =
   | 'DRAFT'
+  | 'TEAM_COLLECTING'
+  | 'TEAM_RETURNED'
+  | 'TEAM_REJECTED'
   | 'SUBMITTED'
   | 'RPA_JUDGED'
   | 'PENDING_CONFIRM'
@@ -30,8 +33,11 @@ type Tone =
   | 'gray' | 'blue' | 'amber' | 'orange' | 'purple' | 'red' | 'green' | 'teal'
 
 export const STATUS_META: Record<SettlementStatus, { label: string; tone: Tone }> = {
-  DRAFT: { label: '초안', tone: 'gray' },
-  SUBMITTED: { label: '제출됨', tone: 'blue' },
+  DRAFT: { label: '개인 보유중', tone: 'gray' },
+  TEAM_COLLECTING: { label: '팀 취합중', tone: 'blue' },
+  TEAM_RETURNED: { label: '팀 보완요청', tone: 'orange' },
+  TEAM_REJECTED: { label: '팀 반려', tone: 'red' },
+  SUBMITTED: { label: '회계 제출', tone: 'blue' },
   RPA_JUDGED: { label: '1차판정', tone: 'blue' },
   PENDING_CONFIRM: { label: '승인대기', tone: 'amber' },
   RETURNED: { label: '보완요청', tone: 'orange' },

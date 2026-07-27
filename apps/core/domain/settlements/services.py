@@ -9,9 +9,14 @@ from domain.risk.models import DecisionLabel
 from .models import Settlement, SettlementEvent
 from .models import SettlementStatus as S
 
-# 허용 전이표 (FR-ST-01). REJECT/ERP_VOUCHER_DRAFTED는 단말.
+# 허용 전이표 (FR-ST-01, 4단계). REJECT/TEAM_REJECTED/ERP_VOUCHER_DRAFTED는 단말.
+#  ① 개인(DRAFT) → ② 팀 취합(TEAM_*) → ③ 회계 제출(SUBMITTED)·룰엔진 → ④ 회계 검토·확정
+#  (기존 DRAFT→SUBMITTED 직행도 하위호환으로 유지)
 ALLOWED = {
-    S.DRAFT: {S.SUBMITTED},
+    S.DRAFT: {S.TEAM_COLLECTING, S.SUBMITTED},
+    S.TEAM_COLLECTING: {S.TEAM_RETURNED, S.TEAM_REJECTED, S.SUBMITTED},
+    S.TEAM_RETURNED: {S.DRAFT},        # 개인 수정 후 재상신
+    S.TEAM_REJECTED: set(),            # 팀 반려(종료)
     S.SUBMITTED: {S.RPA_JUDGED},
     S.RPA_JUDGED: {S.PENDING_CONFIRM, S.RETURNED, S.IN_REVIEW, S.REJECT},
     S.IN_REVIEW: {S.PENDING_CONFIRM, S.RETURNED, S.REJECT},

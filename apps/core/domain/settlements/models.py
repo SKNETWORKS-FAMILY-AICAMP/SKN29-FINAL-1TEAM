@@ -19,8 +19,12 @@ class Category(models.TextChoices):
 
 
 class SettlementStatus(models.TextChoices):
-    DRAFT = "DRAFT", "초안"
-    SUBMITTED = "SUBMITTED", "제출됨"
+    DRAFT = "DRAFT", "개인 보유중"
+    # ② 팀 취합 단계
+    TEAM_COLLECTING = "TEAM_COLLECTING", "팀 취합중"
+    TEAM_RETURNED = "TEAM_RETURNED", "팀 보완요청"
+    TEAM_REJECTED = "TEAM_REJECTED", "팀 반려"
+    SUBMITTED = "SUBMITTED", "회계 제출"
     RPA_JUDGED = "RPA_JUDGED", "1차판정"
     PENDING_CONFIRM = "PENDING_CONFIRM", "승인대기"
     RETURNED = "RETURNED", "보완요청"
