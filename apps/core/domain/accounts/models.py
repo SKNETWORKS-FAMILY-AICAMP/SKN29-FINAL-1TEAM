@@ -7,6 +7,7 @@ class Role(models.TextChoices):
     EMPLOYEE = "EMPLOYEE", "사용자(임직원)"
     TEAM_LEAD = "TEAM_LEAD", "팀장(제출 단위)"
     ACCOUNTANT = "ACCOUNTANT", "회계 담당자"
+    ACCOUNTANT_LEAD = "ACCOUNTANT_LEAD", "회계팀장"  # Rule ACTIVE 승인 권한
     EXECUTIVE = "EXECUTIVE", "회계·운영 상부"
 
 

@@ -1,10 +1,14 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { myExpenses as initialMyExpenses, reviewItems as initialReviewItems, teamMembers as initialTeamMembers } from '../data/mock'
 import type { ReviewItem, Settlement, SettlementStatus } from '../types/domain'
+import { USE_MOCK } from '../api/config'
+import { fetchSettlementsData } from '../api/settlements'
+import { useAuth } from './AuthContext'
 
-// 정산 데이터를 화면 간 공유하는 store. 라우트를 넘나들어도(예: 승인 → /erp/:id 이동 → 복귀)
-// 상태 변경이 유지되도록 하기 위함 — 화면별 로컬 useState는 언마운트 시 초기화되어버린다.
-// id 3종(S-1xxx/S-2xxx/S-3xxx)은 mock 데이터상 서로 겹치지 않아 updateStatus 하나로 전부 처리 가능.
+// 정산 데이터를 화면 간 공유하는 store.
+//  - mock 모드: data/mock.ts 로 초기화 (백엔드 불필요)
+//  - 실 연동 모드(USE_MOCK=false): 마운트 시 /api/settlements/ 에서 fetch
+// 상태 변경(updateStatus)은 서비스 호출 성공 후 로컬에 낙관적으로 반영한다.
 
 interface TeamMember { name: string; items: Settlement[] }
 
@@ -12,19 +16,39 @@ interface SettlementsCtx {
   myExpenses: Settlement[]
   teamMembers: TeamMember[]
   reviewItems: ReviewItem[]
-  /** 세 컬렉션을 모두 뒤져 id가 일치하는 건의 상태를 갱신한다. */
+  loading: boolean
   updateStatus: (id: string, status: SettlementStatus) => void
   findById: (id: string) => Settlement | undefined
-  /** F-1 신규 지출 등록 — 내 지출 목록에 새 건을 추가한다. */
   addExpense: (item: Settlement) => void
+  refresh: () => void
 }
 
 const Ctx = createContext<SettlementsCtx | null>(null)
 
 export function SettlementsProvider({ children }: { children: ReactNode }) {
-  const [myExpenses, setMyExpenses] = useState<Settlement[]>(initialMyExpenses)
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(initialTeamMembers)
-  const [reviewItems, setReviewItems] = useState<ReviewItem[]>(initialReviewItems)
+  const { user } = useAuth()
+  const [myExpenses, setMyExpenses] = useState<Settlement[]>(USE_MOCK ? initialMyExpenses : [])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(USE_MOCK ? initialTeamMembers : [])
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>(USE_MOCK ? initialReviewItems : [])
+  const [loading, setLoading] = useState(!USE_MOCK)
+
+  const refresh = () => {
+    if (USE_MOCK) return
+    setLoading(true)
+    fetchSettlementsData(user?.name)
+      .then((d) => {
+        setMyExpenses(d.myExpenses)
+        setTeamMembers(d.teamMembers)
+        setReviewItems(d.reviewItems)
+      })
+      .finally(() => setLoading(false))
+  }
+
+  // 실 연동 모드에서만 fetch (로그인 사용자 변경 시 재조회)
+  useEffect(() => {
+    if (!USE_MOCK) refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.name])
 
   const updateStatus = (id: string, status: SettlementStatus) => {
     setMyExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)))
@@ -40,7 +64,7 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
   const addExpense = (item: Settlement) => setMyExpenses((prev) => [item, ...prev])
 
   return (
-    <Ctx.Provider value={{ myExpenses, teamMembers, reviewItems, updateStatus, findById, addExpense }}>
+    <Ctx.Provider value={{ myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, refresh }}>
       {children}
     </Ctx.Provider>
   )

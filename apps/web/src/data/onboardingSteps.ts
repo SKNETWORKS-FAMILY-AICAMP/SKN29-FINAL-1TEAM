@@ -14,6 +14,7 @@ export const ROLE_TO_SLUG: Record<Role, RoleSlug> = {
   EMPLOYEE: 'employee',
   TEAM_LEAD: 'employee',
   ACCOUNTANT: 'accountant',
+  ACCOUNTANT_LEAD: 'accountant',
   EXECUTIVE: 'executive',
 }
 

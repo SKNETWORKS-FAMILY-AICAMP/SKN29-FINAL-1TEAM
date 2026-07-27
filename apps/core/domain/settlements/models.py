@@ -38,6 +38,7 @@ class Settlement(models.Model):
     ai_category = models.CharField(max_length=20, choices=Category.choices, blank=True)  # AI 제안
     ai_suggested = models.BooleanField(default=False)  # 저신뢰라 사용자 확인 필요
     merchant_industry = models.CharField(max_length=100, blank=True)  # 업종(보조, §6.5)
+    purpose = models.CharField("지출 목적/사유", max_length=300, blank=True)
     status = models.CharField(
         max_length=24, choices=SettlementStatus.choices, default=SettlementStatus.DRAFT
     )

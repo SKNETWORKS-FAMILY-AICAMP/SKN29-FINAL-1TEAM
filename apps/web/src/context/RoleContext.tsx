@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Role } from '../types/domain'
+import { useAuth } from './AuthContext'
 
-// 데모용 역할 전환 컨텍스트. 실제로는 JWT 클레임의 role로 대체된다.
-// 역할별 GNB 노출이 달라진다(FR-DB-01).
+// 화면 접근/메뉴의 "활성 역할" 소스.
+// 로그인 사용자가 있으면 그 역할로 동기화(실 세션·mock 공통). 상단 데모 스위처로 override 가능.
 interface RoleCtx {
   role: Role
   setRole: (r: Role) => void
@@ -11,7 +12,14 @@ interface RoleCtx {
 const Ctx = createContext<RoleCtx>({ role: 'EMPLOYEE', setRole: () => {} })
 
 export function RoleProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [role, setRole] = useState<Role>('EMPLOYEE')
+
+  // 로그인 사용자의 역할을 활성 역할로 반영
+  useEffect(() => {
+    if (user?.role) setRole(user.role)
+  }, [user?.role])
+
   return <Ctx.Provider value={{ role, setRole }}>{children}</Ctx.Provider>
 }
 

@@ -2,9 +2,9 @@
 // USE_MOCK=true인 동안은 실제 네트워크 호출 없이 지연만 흉내내고 새 상태를 돌려준다.
 // 백엔드(Django)가 준비되면 이 파일 안쪽만 endpoints.* 실제 호출로 바꾸면 되고, 화면 컴포넌트는 그대로 둔다.
 import { endpoints } from './client'
+import { USE_MOCK } from './config'
 import type { Settlement, SettlementStatus } from '../types/domain'
 
-const USE_MOCK = true
 const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 250))
 
 /** F-1: 신규 지출 등록(영수증 업로드 + AI 판독 확인 후 제출). id/status는 서버가 생성 — mock에서는 흉내낸다. */

@@ -8,10 +8,13 @@ import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
 import { reviewSettlement, submitSettlements } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
+import { useRole } from '../context/RoleContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function TeamAggregation() {
   const { teamMembers, updateStatus } = useSettlements()
+  const { role } = useRole()
+  const canManage = role !== 'EMPLOYEE' // 팀장급 이상만 개별 건 조회·처리 (임직원=예산 현황만)
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -109,6 +112,15 @@ export function TeamAggregation() {
         </div>
       </div>
 
+      {!canManage && (
+        <div className="card">
+          <div className="card-body text-meta">
+            개별 지출 건은 <b>팀장</b>만 조회·처리할 수 있습니다. 임직원은 팀 예산 현황만 확인할 수 있어요.
+          </div>
+        </div>
+      )}
+
+      {canManage && (<>
       <div className="filter-bar">
         <label className="row" style={{ gap: 6 }}>
           <input type="checkbox" checked={onlyAnomaly} onChange={(e) => setOnlyAnomaly(e.target.checked)} />
@@ -200,6 +212,7 @@ export function TeamAggregation() {
           )
         })}
       </div>
+      </>)}
 
       {selected && (
         <SettlementDetailModal

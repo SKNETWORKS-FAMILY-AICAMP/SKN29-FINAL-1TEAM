@@ -4,6 +4,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
 from domain.policies.views import RuleGraphViewSet
@@ -20,6 +21,12 @@ router.register("erp/vouchers", ErpVoucherViewSet)
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
+    # 세션 로그인(JWT 대신)
+    path("api/auth/csrf/", CsrfView.as_view(), name="csrf"),
+    path("api/auth/login/", LoginView.as_view(), name="session_login"),
+    path("api/auth/logout/", LogoutView.as_view(), name="session_logout"),
+    path("api/me/", MeView.as_view(), name="me"),
+    # JWT(보류 — 병행 유지)
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/dashboard/<str:role>/", DashboardView.as_view(), name="dashboard"),

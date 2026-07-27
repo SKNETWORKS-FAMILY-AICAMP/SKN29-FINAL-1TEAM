@@ -33,8 +33,12 @@ class SettlementEventSerializer(serializers.ModelSerializer):
 
 
 class SettlementSerializer(serializers.ModelSerializer):
-    """목록/상세 공용 — 거래 파생 필드를 평탄화(camelCase)."""
+    """목록/상세 공용 — 거래·부서·Risk 파생 필드를 평탄화(camelCase).
+
+    프론트 Settlement/ReviewItem 셰이프와 정합. Risk 필드는 위험검토(IN_REVIEW) 건에만 채워진다.
+    """
     date = serializers.SerializerMethodField()
+    time = serializers.SerializerMethodField()
     merchant = serializers.CharField(source="transaction.merchant", read_only=True)
     amount = serializers.DecimalField(
         source="transaction.amount", max_digits=12, decimal_places=0, read_only=True
@@ -46,18 +50,31 @@ class SettlementSerializer(serializers.ModelSerializer):
     evidence = serializers.SerializerMethodField()
     statusLabel = serializers.CharField(source="get_status_display", read_only=True)
     user = serializers.CharField(source="submitted_by.username", read_only=True, default=None)
+    dept = serializers.SerializerMethodField()
+    # ── Risk 평탄화 (ReviewItem 셰이프) ──
+    anomalyScore = serializers.SerializerMethodField()
+    aiRecommendation = serializers.SerializerMethodField()
+    aiConfidence = serializers.SerializerMethodField()
+    featureContribs = serializers.SerializerMethodField()
+    ragRefs = serializers.SerializerMethodField()
+    anomalyReasons = serializers.SerializerMethodField()
 
     class Meta:
         model = Settlement
         fields = [
-            "id", "date", "merchant", "amount", "cardType",
-            "category", "aiCategory", "aiSuggested", "merchantIndustry",
-            "evidence", "status", "statusLabel", "user",
+            "id", "date", "time", "merchant", "amount", "cardType",
+            "category", "aiCategory", "aiSuggested", "merchantIndustry", "purpose",
+            "evidence", "status", "statusLabel", "user", "dept",
+            "anomalyScore", "aiRecommendation", "aiConfidence",
+            "featureContribs", "ragRefs", "anomalyReasons",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
     def get_date(self, obj):
         return obj.transaction.ts.date().isoformat() if obj.transaction_id else None
+
+    def get_time(self, obj):
+        return obj.transaction.ts.strftime("%H:%M") if obj.transaction_id else None
 
     def get_cardType(self, obj):
         card = getattr(obj.transaction, "card", None)
@@ -67,6 +84,37 @@ class SettlementSerializer(serializers.ModelSerializer):
         if obj.transaction_id and obj.transaction.receipts.filter(status="MATCHED").exists():
             return "OK"
         return "MISSING"
+
+    def get_dept(self, obj):
+        return obj.submitted_by.team.name if (obj.submitted_by_id and obj.submitted_by.team_id) else None
+
+    def _risk(self, obj):
+        rrs = list(obj.risk_reviews.all())  # viewset에서 prefetch
+        return rrs[0] if rrs else None
+
+    def get_anomalyScore(self, obj):
+        r = self._risk(obj)
+        return r.anomaly_score if r else None
+
+    def get_aiRecommendation(self, obj):
+        r = self._risk(obj)
+        return r.ai_recommendation if r else None
+
+    def get_aiConfidence(self, obj):
+        r = self._risk(obj)
+        return r.ai_confidence if r else None
+
+    def get_featureContribs(self, obj):
+        r = self._risk(obj)
+        return r.reasons if r else []
+
+    def get_ragRefs(self, obj):
+        r = self._risk(obj)
+        return r.rag_refs if r else []
+
+    def get_anomalyReasons(self, obj):
+        r = self._risk(obj)
+        return r.anomaly_reasons if r else []
 
 
 class SettlementDetailSerializer(SettlementSerializer):

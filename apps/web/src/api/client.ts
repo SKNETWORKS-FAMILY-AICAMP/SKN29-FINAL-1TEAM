@@ -3,6 +3,7 @@ import axios from 'axios'
 // Django(core) 대외 REST 진입점. 기본 /api → vite proxy 또는 Nginx 경유.
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  withCredentials: true, // 세션 쿠키 전송(세션 로그인)
 })
 
 // 화면설계서 이벤트 스펙에 대응하는 엔드포인트 헬퍼(백엔드 구현 전 자리표시자).

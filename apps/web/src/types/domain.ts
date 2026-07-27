@@ -1,12 +1,13 @@
 // 화면설계서 §0 핵심 도메인 객체 + §2 상태머신 기반 타입 정의.
 
 // ── 역할(4종) ─────────────────────────────
-export type Role = 'EMPLOYEE' | 'TEAM_LEAD' | 'ACCOUNTANT' | 'EXECUTIVE'
+export type Role = 'EMPLOYEE' | 'TEAM_LEAD' | 'ACCOUNTANT' | 'ACCOUNTANT_LEAD' | 'EXECUTIVE'
 
 export const ROLE_LABEL: Record<Role, string> = {
   EMPLOYEE: '사용자(임직원)',
   TEAM_LEAD: '팀장(제출 단위)',
   ACCOUNTANT: '회계 담당자',
+  ACCOUNTANT_LEAD: '회계팀장',
   EXECUTIVE: '회계·운영 상부',
 }
 

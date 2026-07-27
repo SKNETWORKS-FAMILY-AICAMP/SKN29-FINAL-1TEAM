@@ -100,6 +100,8 @@ AUTH_USER_MODEL = "accounts.User"
 # ── DRF / JWT ───────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        # 세션 인증(SPA, dev CSRF 생략) — JWT는 보류(추후 병행 가능)
+        "domain.common.authentication.CsrfExemptSessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     # 스캐폴드 단계: 우선 열어둠. 실제 RBAC는 역할별 권한으로 교체 예정.

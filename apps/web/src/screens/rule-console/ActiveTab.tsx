@@ -7,8 +7,8 @@ import { ROLE_LABEL } from '../../types/domain'
 import { activateRule, rollbackRule } from '../../api/ruleService'
 import { ACTIVE_RULE, PENDING_VERSION, VERSION_HISTORY, type VersionRow } from './data/ruleConsoleMock'
 
-// "ACTIVE 승인 권한: 팀장급 이상" — 화면설계서 기준 TEAM_LEAD/EXECUTIVE만 승인 가능(ACCOUNTANT도 제외).
-const CAN_APPROVE_ROLES = ['TEAM_LEAD', 'EXECUTIVE']
+// "ACTIVE 승인 권한: 회계팀장급" — RBAC 기준 ACCOUNTANT_LEAD만 승인/롤백 가능(서버에서도 IsAccountantLead로 강제).
+const CAN_APPROVE_ROLES = ['ACCOUNTANT_LEAD']
 const todayKST = () => new Date().toISOString().slice(0, 10)
 
 export function ActiveTab() {
@@ -88,7 +88,7 @@ export function ActiveTab() {
             </div>
             <div className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: 12 }}>
               <div>
-                <b style={{ fontSize: 12.5 }}>ACTIVE 승인 권한: 팀장급 이상</b>
+                <b style={{ fontSize: 12.5 }}>ACTIVE 승인 권한: 회계팀장급</b>
                 <div className="text-meta">현재 로그인 계정: {ROLE_LABEL[role]} — {canApprove ? '승인 권한 있음' : '승인 권한 없음'}</div>
               </div>
               <button className="btn primary" disabled={!canApprove || busy} onClick={approve}>
@@ -96,7 +96,7 @@ export function ActiveTab() {
               </button>
             </div>
             <p className="text-meta" style={{ marginTop: 8 }}>
-              ※ 팀장급 이상 계정으로 로그인 시 위 버튼이 활성화되며, 승인 즉시 {PENDING_VERSION.version}가 ACTIVE로 전환되고 이전 버전은 과거 버전으로 이동합니다.
+              ※ 회계팀장급 계정으로 로그인 시 위 버튼이 활성화되며, 승인 즉시 {PENDING_VERSION.version}가 ACTIVE로 전환되고 이전 버전은 과거 버전으로 이동합니다.
             </p>
           </div>
         </div>

@@ -12,7 +12,8 @@ class RiskReview(models.Model):
         "settlements.Settlement", on_delete=models.CASCADE, related_name="risk_reviews"
     )
     anomaly_score = models.FloatField(default=0.0)          # 1차 비지도 이상탐지
-    reasons = models.JSONField(default=list, blank=True)    # 피처 기여/이상 사유
+    reasons = models.JSONField(default=list, blank=True)    # 피처 기여도 [{feature, weight}]
+    anomaly_reasons = models.JSONField(default=list, blank=True)  # 요약 사유 문구(리스트)
     rag_refs = models.JSONField(default=list, blank=True)   # 2차 RAG 근거(출처 포함)
     ai_recommendation = models.CharField(max_length=10, blank=True)  # APPROVE/RETURN/REJECT
     ai_confidence = models.FloatField(default=0.0)

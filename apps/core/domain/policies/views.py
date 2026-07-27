@@ -2,6 +2,8 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from domain.common.permissions import IsAccountantLead
+
 from . import services
 from .models import RuleGraph
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
@@ -24,6 +26,12 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         if self.request.query_params.get("status"):
             qs = qs.filter(status=self.request.query_params["status"])
         return qs
+
+    def get_permissions(self):
+        # Rule ACTIVE 승인/롤백은 회계팀장급만 (RBAC)
+        if self.action in ("activate", "rollback"):
+            return [IsAccountantLead()]
+        return super().get_permissions()
 
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):

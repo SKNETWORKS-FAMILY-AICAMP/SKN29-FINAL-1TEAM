@@ -10,11 +10,12 @@ interface MenuItem {
 
 // 화면설계서 §1 화면 목록 — 역할 계층(사원<팀장<경리담당자<임원진) 누적형 메뉴(Figma Sidebar 스터디 기준, FR-DB-01).
 // 상위 역할일수록 하위 역할의 화면까지 모두 보인다. 단 "규정 문서 관리"는 아직 화면 미구현이라 제외.
-const ROLE_RANK: Record<Role, number> = { EMPLOYEE: 0, TEAM_LEAD: 1, ACCOUNTANT: 2, EXECUTIVE: 3 }
+// 회계팀장(ACCOUNTANT_LEAD)은 회계 담당자와 같은 화면 + Rule ACTIVE 승인 권한.
+const ROLE_RANK: Record<Role, number> = { EMPLOYEE: 0, TEAM_LEAD: 1, ACCOUNTANT: 2, ACCOUNTANT_LEAD: 2, EXECUTIVE: 3 }
 
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '내 지출', minRank: 0 },
-  { to: '/team', label: '팀 취합', minRank: 1 },
+  { to: '/team', label: '팀 현황', minRank: 0 },        // 임직원=예산 현황 조회 / 팀장+=개별건 처리
   { to: '/review', label: '검토 워크스페이스', minRank: 2 },
   { to: '/rules', label: 'Rule 콘솔', minRank: 2 },
   { to: '/governance', label: '거버넌스 대시보드', minRank: 3 },

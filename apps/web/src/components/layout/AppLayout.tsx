@@ -1,18 +1,20 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { Bell, LogOut } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
 import { useAuth } from '../../context/AuthContext'
+import { USE_MOCK } from '../../api/config'
 import { ROLE_LABEL, type Role } from '../../types/domain'
 import { Sidebar } from './Sidebar'
 import { NotificationPanel } from './NotificationPanel'
 import { notifications as initialNotifications, type AppNotification } from '../../data/mock'
 
-const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'EXECUTIVE']
+const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'ACCOUNTANT_LEAD', 'EXECUTIVE']
 
 export function AppLayout() {
+  const nav = useNavigate()
   const { role, setRole } = useRole()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
   const hasUnread = notifications.some((n) => n.unread)
@@ -30,17 +32,19 @@ export function AppLayout() {
       <Sidebar />
       <div className="main-area">
         <header className="topbar">
-          <select
-            className="text-meta"
-            style={{ border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-control)', padding: '4px 8px' }}
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
-            aria-label="데모 역할 전환"
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-            ))}
-          </select>
+          {USE_MOCK && (
+            <select
+              className="text-meta"
+              style={{ border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-control)', padding: '4px 8px' }}
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              aria-label="데모 역할 전환"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+              ))}
+            </select>
+          )}
           <div style={{ position: 'relative' }}>
             <button className="notif-btn" aria-label="알림" onClick={() => setNotifOpen((v) => !v)}>
               <Bell size={18} />
@@ -62,6 +66,9 @@ export function AppLayout() {
               <div className="meta">{displayMeta}</div>
             </div>
           </div>
+          <button className="notif-btn" aria-label="로그아웃" title="로그아웃" onClick={() => { logout(); nav('/login') }}>
+            <LogOut size={18} />
+          </button>
         </header>
         <main className="page">
           <Outlet />

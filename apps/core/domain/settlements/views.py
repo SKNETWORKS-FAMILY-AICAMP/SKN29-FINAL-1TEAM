@@ -2,6 +2,8 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from domain.common.permissions import IsAccountant
+
 from . import services
 from .models import Settlement
 from .serializers import SettlementDetailSerializer, SettlementSerializer
@@ -27,6 +29,12 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         return SettlementDetailSerializer if self.action == "retrieve" else SettlementSerializer
+
+    def get_permissions(self):
+        # 검토(승인/보완/반려)·확정은 회계 담당자만 (RBAC)
+        if self.action in ("review", "confirm"):
+            return [IsAccountant()]
+        return super().get_permissions()
 
     def get_queryset(self):
         qs = super().get_queryset()
