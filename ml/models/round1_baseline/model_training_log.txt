@@ -1,0 +1,32 @@
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+[1/4] 데이터 로드 및 날짜순 정렬...
+  train: (1482969, 21), 기간 2021-01-01 ~ 2023-12-31
+  test : (469902, 21), 기간 2024-01-01 ~ 2024-12-31
+  feature columns (21): ['승인시간대', '통합승인금액', '최근7일사용횟수', '카드누적사용액', '사용자평균사용액_확장', '사용자표준편차_확장', '거래금액_Zscore_확장', '월말여부', '취소성거래_추정', '카드첫거래여부', '거래요일_한글_금', '거래요일_한글_목', '거래요일_한글_수', '거래요일_한글_월', '거래요일_한글_일', '거래요일_한글_토', '거래요일_한글_화', '시간대구간_심야(00-05)', '시간대구간_오전(06-11)', '시간대구간_오후(12-17)', '시간대구간_저녁(18-23)']
+  train 양성비율: 0.0375, scale_pos_weight=25.67
+[2/5] logistic_regression 학습 중...
+  학습 완료 (9.1s)
+  ROC-AUC=0.8903 PR-AUC=0.6166 F1=0.5513 Recall=0.7084 Precision=0.4512
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\logistic_regression.pkl
+[3/5] random_forest 학습 중...
+  학습 완료 (372.9s)
+  ROC-AUC=0.9685 PR-AUC=0.6970 F1=0.3830 Recall=0.9345 Precision=0.2409
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\random_forest.pkl
+[4/5] xgboost 학습 중...
+  학습 완료 (96.8s)
+  ROC-AUC=0.9671 PR-AUC=0.7064 F1=0.4194 Recall=0.8925 Precision=0.2741
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\xgboost.pkl
+[5/5] lightgbm 학습 중...
+  학습 완료 (46.3s)
+  ROC-AUC=0.9686 PR-AUC=0.7119 F1=0.4097 Recall=0.9068 Precision=0.2646
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\lightgbm.pkl
+
+=== 모델 비교 결과 (PR-AUC 기준 정렬) ===
+              model  roc_auc   pr_auc  precision@0.5  recall@0.5   f1@0.5     tn    fp   fn    tp
+           lightgbm 0.968583 0.711865       0.264642    0.906795 0.409712 412200 41308 1528 14866
+            xgboost 0.967075 0.706444       0.274084    0.892522 0.419381 414755 38753 1762 14632
+      random_forest 0.968518 0.696954       0.240862    0.934549 0.383011 405220 48288 1073 15321
+logistic_regression 0.890325 0.616640       0.451236    0.708369 0.551294 439385 14123 4781 11613
+
+총 소요시간: 542.3s

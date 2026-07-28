@@ -1,0 +1,63 @@
+[데이터 로드] 15개 피처(Tier0+일시불할부구분코드) 구성...
+  train (1482969, 26) / test (469902, 26)
+
+===== [logistic_regression] =====
+  학습 완료 (7.7s)
+  PR-AUC=0.7532 | top3% recall=0.7435 precision=0.8647
+  threshold(97pct)=0.9903 test 분류비율=0.0267
+  segment: {'reused': {'recall@top3%': 0.743453884541926, 'precision@top3%': 0.8644602048857368, 'recall@top10%': 0.827182551906845, 'precision@top10%': 0.28853262271125246}, 'new': {'recall@top3%': 0.7423312883435583, 'precision@top3%': 0.8832116788321168, 'recall@top10%': 0.8834355828220859, 'precision@top10%': 0.3150984682713348}}
+
+===== [random_forest] =====
+  학습 완료 (353.0s)
+  PR-AUC=0.8161 | top3% recall=0.7466 precision=0.8682
+  threshold(97pct)=0.9718 test 분류비율=0.0232
+  segment: {'reused': {'recall@top3%': 0.7465344094633726, 'precision@top3%': 0.8680421233612723, 'recall@top10%': 0.9182428685848069, 'precision@top10%': 0.3202957104788103}, 'new': {'recall@top3%': 0.7484662576687117, 'precision@top3%': 0.8905109489051095, 'recall@top10%': 0.9754601226993865, 'precision@top10%': 0.3479212253829322}}
+
+===== [extra_trees] =====
+  학습 완료 (632.7s)
+  PR-AUC=0.8022 | top3% recall=0.7452 precision=0.8666
+  threshold(97pct)=0.9462 test 분류비율=0.0198
+  segment: {'reused': {'recall@top3%': 0.7450557575010782, 'precision@top3%': 0.8663228024930153, 'recall@top10%': 0.8955085946645308, 'precision@top10%': 0.31236568383048224}, 'new': {'recall@top3%': 0.7484662576687117, 'precision@top3%': 0.8905109489051095, 'recall@top10%': 0.9386503067484663, 'precision@top10%': 0.3347921225382932}}
+
+===== [balanced_random_forest] =====
+  학습 완료 (33.4s)
+  PR-AUC=0.8194 | top3% recall=0.7472 precision=0.8689
+  threshold(97pct)=0.9711 test 분류비율=0.0193
+  segment: {'reused': {'recall@top3%': 0.747088903949233, 'precision@top3%': 0.8686868686868687, 'recall@top10%': 0.9206456780235353, 'precision@top10%': 0.32113384337660106}, 'new': {'recall@top3%': 0.754601226993865, 'precision@top3%': 0.8978102189781022, 'recall@top10%': 0.9693251533742331, 'precision@top10%': 0.34573304157549234}}
+
+===== [xgboost] =====
+  학습 완료 (28.9s)
+  PR-AUC=0.8272 | top3% recall=0.7466 precision=0.8682
+  threshold(97pct)=0.9828 test 분류비율=0.0266
+  segment: {'reused': {'recall@top3%': 0.7464727989649437, 'precision@top3%': 0.8679704849917615, 'recall@top10%': 0.919043805064383, 'precision@top10%': 0.3205750881114072}, 'new': {'recall@top3%': 0.7484662576687117, 'precision@top3%': 0.8905109489051095, 'recall@top10%': 0.9325153374233128, 'precision@top10%': 0.33260393873085337}}
+
+===== [lightgbm] =====
+  학습 완료 (22.5s)
+  PR-AUC=0.8192 | top3% recall=0.7446 precision=0.8659
+  threshold(97pct)=0.9837 test 분류비율=0.0261
+  segment: {'reused': {'recall@top3%': 0.7445628735136467, 'precision@top3%': 0.8657496955369296, 'recall@top10%': 0.916271332635081, 'precision@top10%': 0.3196080116908794}, 'new': {'recall@top3%': 0.7361963190184049, 'precision@top3%': 0.8759124087591241, 'recall@top10%': 0.950920245398773, 'precision@top10%': 0.33916849015317285}}
+
+===== [catboost] =====
+  학습 완료 (35.1s)
+  PR-AUC=0.8265 | top3% recall=0.7468 precision=0.8685
+  threshold(97pct)=0.9811 test 분류비율=0.0273
+  segment: {'reused': {'recall@top3%': 0.7466576304602304, 'precision@top3%': 0.8681854001002938, 'recall@top10%': 0.9169490481177993, 'precision@top10%': 0.31984440814923065}, 'new': {'recall@top3%': 0.7484662576687117, 'precision@top3%': 0.8905109489051095, 'recall@top10%': 0.9263803680981595, 'precision@top10%': 0.3304157549234136}}
+
+===== [mlp] =====
+  학습 완료 (1564.7s)
+  PR-AUC=0.8078 | top3% recall=0.7480 precision=0.8699
+  threshold(97pct)=0.6991 test 분류비율=0.0292
+  segment: {'reused': {'recall@top3%': 0.747951450927238, 'precision@top3%': 0.8696898058600186, 'recall@top10%': 0.8894091553200666, 'precision@top10%': 0.31023811570532106}, 'new': {'recall@top3%': 0.7607361963190185, 'precision@top3%': 0.9051094890510949, 'recall@top10%': 0.9079754601226994, 'precision@top10%': 0.3238512035010941}}
+
+=== 최종 비교 (PR-AUC 기준) ===
+                 model   pr_auc  recall@top3%  precision@top3%  recall@top10%  precision@top10%
+               xgboost 0.827232      0.746554         0.868199       0.919117          0.320664
+              catboost 0.826482      0.746798         0.868483       0.917165          0.319983
+balanced_random_forest 0.819410      0.747164         0.868908       0.921191          0.321388
+              lightgbm 0.819225      0.744602         0.865929       0.916677          0.319813
+         random_forest 0.816064      0.746554         0.868199       0.918751          0.320536
+                   mlp 0.807803      0.748018         0.869901       0.889472          0.310321
+           extra_trees 0.802181      0.745151         0.866567       0.895877          0.312556
+   logistic_regression 0.753156      0.743504         0.864652       0.827803          0.288806
+
+총 소요시간: 2724.7s
