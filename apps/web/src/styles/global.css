@@ -171,8 +171,29 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .table tbody tr { transition: background-color 150ms cubic-bezier(0.23,1,0.32,1); }
 .table tbody tr:hover { background: var(--surface-2); cursor: pointer; }
 .table tbody tr.selected { background: var(--primary-soft); }
+.table tbody tr.anomaly-row { background: #fff3f2; }
+.table tbody tr.anomaly-row:hover { background: var(--tone-red-bg); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table td.checkbox-cell { width: 40px; text-align: center; cursor: pointer; }
+.team-settlement-table { table-layout: fixed; }
+.team-settlement-table th, .team-settlement-table td { vertical-align: middle; }
+.team-settlement-table td:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-settlement-table .team-actions { min-width: 176px; }
+.team-settlement-table .team-actions .row { flex-wrap: nowrap; gap: var(--space-1); }
+.team-settlement-table .team-actions .btn { white-space: nowrap; }
+
+/* S-02 팀 예산·사람 필터 */
+.team-budget-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); }
+.team-budget-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
+.team-budget-item.caution { background: #fff8df; border-color: #ead798; }
+.team-budget-item.danger { background: var(--tone-red-bg); border-color: #f3c9c5; }
+.multi-select { position: relative; }
+.multi-select summary { list-style: none; cursor: pointer; min-width: 132px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); font-size: var(--text-body); font-weight: 600; }
+.multi-select summary::-webkit-details-marker { display: none; }
+.multi-select-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 180px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12); }
+.multi-select-menu label { display: flex; gap: var(--space-2); align-items: center; padding: 6px; white-space: nowrap; }
+
+@media (max-width: 1000px) { .team-budget-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ── 배지 / 태그 ──────────────────────────── */
 .badge {
@@ -242,6 +263,13 @@ textarea:focus-visible, [tabindex]:focus-visible {
   transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
 }
 .x-btn:hover { background: var(--surface-2); }
+.detail-value-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.detail-value-grid > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.detail-value-grid > div:nth-child(4n) { border-right: 0; }
+.detail-value-grid > div:nth-last-child(-n+4) { border-bottom: 0; }
+.detail-value-grid span { color: var(--muted); font-size: var(--text-caption); }
+.detail-value-grid b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-body); }
+.json-viewer { min-height: 180px; max-height: 320px; margin: 0; padding: 12px; overflow: auto; border-radius: var(--radius-control); background: #101828; color: #d7e2f0; font: 11px/1.55 Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
 
 /* ── 타임라인(Audit Trail) ───────────────── */
 .timeline { list-style: none; padding: 0; margin: 0; }

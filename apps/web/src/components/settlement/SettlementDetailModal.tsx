@@ -1,11 +1,12 @@
 // S-06 정산 상세 · 수정 · 신규등록 통합 모달 — FR-DA-02~06, FR-ST-01~04, FR-AUD-01
 //  item=null → 신규등록(빈 모달, 영수증 업로드 또는 직접 기입으로 생성)
-//  item=Settlement → 상세보기 및 수정
+//  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
+//  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Paperclip,
+  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock, Paperclip,
   Receipt, Sparkles, Upload, X,
 } from 'lucide-react'
 import {
@@ -17,7 +18,7 @@ import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useRole } from '../../context/RoleContext'
 import { useAuth } from '../../context/AuthContext'
-import { createSettlement, reviewSettlement, submitSettlements } from '../../api/settlementService'
+import { createSettlement, decideTeamSettlement, reviewSettlement, submitSettlements } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
@@ -33,6 +34,7 @@ export function SettlementDetailModal({
   onClose,
   onStatusChange,
   onCreated,
+  context = 'default',
 }: {
   /** null이면 신규 지출 등록(빈 모달). Settlement이면 상세보기·수정. */
   item: Settlement | null
@@ -41,12 +43,23 @@ export function SettlementDetailModal({
   onStatusChange?: (id: string, status: SettlementStatus) => void
   /** 신규 생성이 완료됐을 때 — 부모가 목록에 새 건을 추가 */
   onCreated?: (item: Settlement) => void
+  /** 'team'이면 팀 취합 뷰(팀장이 팀원 건을 팀 보완요청/팀 반려) */
+  context?: 'default' | 'team'
 }) {
   const { role } = useRole()
   const { user } = useAuth()
   const nav = useNavigate()
   const isCreate = item === null
   const isAccountant = role === 'ACCOUNTANT'
+
+  // ── 권한/모드 ──
+  const isTeamView = context === 'team'
+  // 개인/검토 화면(default)에선 편집 주체로 보고, 팀 취합 뷰에서만 소유자(이름 일치)로 한정.
+  //  (mock 로그인 이름이 데이터 소유자와 달라도 '내 지출' 편집/제출이 막히지 않도록)
+  const isOwner = isCreate || !isTeamView || item?.user === user?.name
+  // 팀 취합 뷰에서 팀장급이 '남의' 취합중(TEAM_COLLECTING) 건을 처리
+  const canTeamDecide = isTeamView && !isOwner && role !== 'EMPLOYEE' && item?.status === 'TEAM_COLLECTING'
+  const readOnly = !isCreate && !isOwner // 팀 취합 뷰에서 내 건이 아니면 보기만 가능
 
   // ── 편집 상태(우측 폼) ──
   const [merchant, setMerchant] = useState(item?.merchant ?? '')
@@ -69,7 +82,7 @@ export function SettlementDetailModal({
   const [showReturnModal, setShowReturnModal] = useState(false)
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
-  const needsResubmit = !isAccountant && !isCreate && item?.status === 'RETURNED'
+  const needsResubmit = isOwner && !isAccountant && !isCreate && item?.status === 'RETURNED'
 
   // fact.json — 현재 입력값으로 자동 생성(자동생성/자동갱신)
   const fact = useMemo(() => ({
@@ -90,7 +103,7 @@ export function SettlementDetailModal({
   // 영수증 업로드 → Vision 판독 흉내: 빈 필드 자동 채움 + 코멘트
   const uploadReceipt = () => {
     setReceiptUp(true)
-    let filled: string[] = []
+    const filled: string[] = []
     if (!merchant) { setMerchant(MOCK_OCR.merchant); filled.push('가맹점') }
     if (!amountText) { setAmountText(MOCK_OCR.amount); filled.push('금액') }
     if (isCreate) { setCategory(MOCK_OCR.category); setAiSuggested(true); filled.push('분류') }
@@ -118,7 +131,7 @@ export function SettlementDetailModal({
     pushComment({
       icon: 'ai',
       text: `분류 "${category}" 기준으로 재생성 — 지출목적을 보정하고 fact.json을 갱신했습니다.` +
-        (evidence === 'MISSING' ? ' (증빙 누락: 규정상 손금불산입 위험 안내)' : ''),
+        (evidence === 'MISSING' ? ' (증빙 없이도 자동 유연처리 — AI가 적격증빙 여부 별도 판단)' : ''),
     })
   }
 
@@ -170,9 +183,23 @@ export function SettlementDetailModal({
     onClose()
   }
 
+  // 팀 반려 — 팀 취합 단계 반려(회계 반려와 별개 상태)
+  const teamReject = async () => {
+    if (!item) return
+    setPending(true)
+    const status = await decideTeamSettlement(item.id, 'REJECT')
+    onStatusChange?.(item.id, status)
+    setPending(false)
+    onClose()
+  }
+
+  // 보완요청 사유 확정 — 팀 뷰면 팀 보완요청(TEAM_RETURNED), 아니면 회계 보완요청(RETURNED)
   const returnWithReason = async (reason: string, detail: string) => {
     if (!item) return
-    const status = await reviewSettlement(item.id, 'RETURN', detail ? `${reason} — ${detail}` : reason)
+    const msg = detail ? `${reason} — ${detail}` : reason
+    const status = canTeamDecide
+      ? await decideTeamSettlement(item.id, 'RETURN', msg)
+      : await reviewSettlement(item.id, 'RETURN', msg)
     onStatusChange?.(item.id, status)
     setShowReturnModal(false)
     onClose()
@@ -187,11 +214,16 @@ export function SettlementDetailModal({
 
   const footer = (
     <>
-      <button className="btn" onClick={onClose} disabled={pending}>취소</button>
+      <button className="btn" onClick={onClose} disabled={pending}>{readOnly && !canTeamDecide ? '닫기' : '취소'}</button>
       {isCreate ? (
         <button className="btn primary" onClick={save} disabled={pending || !canSave}>
           {pending ? '저장 중…' : '저장(등록)'}
         </button>
+      ) : canTeamDecide ? (
+        <>
+          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>팀 보완요청</button>
+          <button className="btn reject" onClick={teamReject} disabled={pending}>팀 반려</button>
+        </>
       ) : isAccountant ? (
         <>
           <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>보완요청(RETURNED)</button>
@@ -199,27 +231,31 @@ export function SettlementDetailModal({
           {/* FR-ST-03: 확신 통과 건이라도 사람 확정 필수 */}
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
-      ) : (
+      ) : isOwner ? (
         <button className="btn primary" onClick={submit} disabled={pending}>
           {needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
         </button>
+      ) : (
+        <span className="text-meta row" style={{ gap: 6 }}><Lock size={12} /> 본인 건이 아니어 조회만 가능합니다.</span>
       )}
     </>
   )
 
   const auditTrail = item ? (item as ReviewItem).auditTrail : undefined
+  const title = isCreate
+    ? '신규 지출 등록'
+    : `정산 상세${readOnly ? '' : ' · 수정'} · ${item!.id}`
 
   return (
-    <Modal
-      title={isCreate ? '신규 지출 등록' : `정산 상세 · 수정 · ${item!.id}`}
-      onClose={onClose}
-      footer={footer}
-      maxWidth={1040}
-    >
+    <Modal title={title} onClose={onClose} footer={footer} maxWidth={1040}>
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{merchant || (isCreate ? '신규 지출' : '—')}</div>
-          <div className="text-meta">{dateStr} · {CARD_TYPE_LABEL[cardType]} 카드</div>
+          <div className="text-meta">
+            {dateStr} · {CARD_TYPE_LABEL[cardType]} 카드
+            {!isCreate && item!.user ? ` · ${item!.user}` : ''}
+            {readOnly ? ' · 조회 전용' : ''}
+          </div>
         </div>
         {isCreate
           ? <span className="tag">신규 작성</span>
@@ -239,15 +275,17 @@ export function SettlementDetailModal({
               <div style={{
                 height: 168, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: 6, color: receiptUp ? 'var(--muted)' : 'var(--tone-red)', border: '1px dashed var(--border-strong)',
+                gap: 6, color: 'var(--muted)', border: '1px dashed var(--border-strong)',
               }}>
                 {receiptUp
                   ? <><Receipt size={18} /> 영수증 미리보기</>
-                  : <><AlertTriangle size={16} /> 증빙 없음 — 업로드하거나 직접 기입</>}
+                  : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '증빙 없음 — 업로드하거나 직접 기입'}</>}
               </div>
-              <button className="btn primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={uploadReceipt} disabled={pending}>
-                <Upload size={14} /> {receiptUp ? '영수증 다시 업로드' : '영수증 업로드 (자동 분석)'}
-              </button>
+              {!readOnly && (
+                <button className="btn primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={uploadReceipt} disabled={pending}>
+                  <Upload size={14} /> {receiptUp ? '영수증 다시 업로드' : '영수증 업로드 (자동 분석)'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -255,24 +293,28 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head"><h3>추가 증빙 자료</h3><span className="text-meta">미리보기 없음</span></div>
             <div className="card-body">
-              <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={uploadExtra} disabled={pending}>
-                <Paperclip size={14} /> 계약서·이체확인증 등 첨부
-              </button>
-              {extraFiles.length > 0 && (
-                <div className="stack" style={{ marginTop: 10 }}>
+              {!readOnly && (
+                <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={uploadExtra} disabled={pending}>
+                  <Paperclip size={14} /> 계약서·이체확인증 등 첨부
+                </button>
+              )}
+              {extraFiles.length > 0 ? (
+                <div className="stack" style={{ marginTop: readOnly ? 0 : 10 }}>
                   {extraFiles.map((f) => (
                     <div key={f.id} className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '8px 10px' }}>
                       <div className="row" style={{ gap: 8 }}>
                         <FileText size={16} color="var(--tone-red)" />
                         <span style={{ fontSize: 12.5 }}>{f.name}</span>
                       </div>
-                      <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(f.id)}>
-                        <X size={13} />
-                      </button>
+                      {!readOnly && (
+                        <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(f.id)}>
+                          <X size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              )}
+              ) : readOnly && <div className="text-meta">첨부된 추가 증빙이 없습니다.</div>}
             </div>
           </div>
 
@@ -307,37 +349,39 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head">
               <h3>기본 내역</h3>
-              <button className="btn sm" onClick={regenerate} disabled={pending}>
-                <Sparkles size={13} /> AI로 생성·수정
-              </button>
+              {!readOnly && (
+                <button className="btn sm" onClick={regenerate} disabled={pending}>
+                  <Sparkles size={13} /> AI로 생성·수정
+                </button>
+              )}
             </div>
             <div className="card-body">
               <div className="field"><label>가맹점</label>
-                <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="가맹점명" />
+                <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="가맹점명" disabled={readOnly} />
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
                 <div className="field"><label>거래일자</label>
-                  <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
+                  <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} disabled={readOnly} />
                 </div>
                 <div className="field"><label>금액 (원)</label>
-                  <input value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="0" inputMode="numeric" />
+                  <input value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="0" inputMode="numeric" disabled={readOnly} />
                 </div>
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
                 <div className="field"><label>카드 구분</label>
-                  <select value={cardType} onChange={(e) => setCardType(e.target.value as CardType)}>
+                  <select value={cardType} onChange={(e) => setCardType(e.target.value as CardType)} disabled={readOnly}>
                     {Object.entries(CARD_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label>비용 분류 {aiSuggested && <span className="tag ai">AI 제안</span>}</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value as Category)}>
+                  <select value={category} onChange={(e) => setCategory(e.target.value as Category)} disabled={readOnly}>
                     {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
               <div className="field"><label>지출 목적 · 사유</label>
-                <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" />
+                <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" disabled={readOnly} />
               </div>
             </div>
           </div>
@@ -368,7 +412,9 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head"><h3>AI 코멘트</h3></div>
             <div className="card-body">
-              {comments.length === 0 ? (
+              {readOnly ? (
+                <div className="text-meta">조회 전용 화면입니다. {canTeamDecide ? '팀 보완요청·팀 반려로 처리하세요.' : ''}</div>
+              ) : comments.length === 0 ? (
                 <div className="text-meta">영수증·증빙을 업로드하거나 AI 버튼을 누르면 무엇을 반영해 어디를 수정했는지 안내합니다.</div>
               ) : (
                 <ul className="stack" style={{ gap: 8, listStyle: 'none', padding: 0, margin: 0 }}>

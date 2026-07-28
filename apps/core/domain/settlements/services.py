@@ -29,6 +29,7 @@ ALLOWED = {
 
 # 회계 담당자 검토 결정 → 목표 상태
 REVIEW_MAP = {"APPROVE": S.PENDING_CONFIRM, "RETURN": S.RETURNED, "REJECT": S.REJECT}
+TEAM_DECISION_MAP = {"RETURN": S.TEAM_RETURNED, "REJECT": S.TEAM_REJECTED}
 
 
 class TransitionError(Exception):
@@ -77,6 +78,13 @@ def review(settlement, decision: str, actor=None, reason: str = ""):
     transition(settlement, REVIEW_MAP[decision], actor, reason)
     DecisionLabel.objects.create(settlement=settlement, label=decision, actor=actor)
     return settlement
+
+
+def team_decide(settlement, decision: str, actor=None, reason: str = ""):
+    """팀 취합 단계의 보완요청/반려. 회계 검토 상태와 분리한다(FR-ST-05~06)."""
+    if decision not in TEAM_DECISION_MAP:
+        raise TransitionError(f"알 수 없는 팀 결정: {decision}")
+    return transition(settlement, TEAM_DECISION_MAP[decision], actor, reason)
 
 
 @db_tx.atomic

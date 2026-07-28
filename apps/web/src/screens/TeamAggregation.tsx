@@ -6,7 +6,7 @@ import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
-import { reviewSettlement, submitSettlements } from '../api/settlementService'
+import { decideTeamSettlement, submitSettlements } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
 import { useRole } from '../context/RoleContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
@@ -16,11 +16,21 @@ export function TeamAggregation() {
   const { role } = useRole()
   const canManage = role !== 'EMPLOYEE' // 팀장급 이상만 개별 건 조회·처리 (임직원=예산 현황만)
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
+  const [memberFilter, setMemberFilter] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
   const all = teamMembers.flatMap((m) => m.items)
+  const filteredMembers = memberFilter.size === 0 ? teamMembers : teamMembers.filter((m) => memberFilter.has(m.name))
+  const visibleAll = filteredMembers.flatMap((m) => m.items)
+  const budget = useMemo(() => {
+    const categories = teamBudget.categories.map((category) => ({
+      ...category,
+      used: all.filter((item) => item.aiCategory === category.label).reduce((sum, item) => sum + item.amount, 0),
+    }))
+    return { categories, total: categories.reduce((sum, c) => sum + c.limit, 0), used: categories.reduce((sum, c) => sum + c.used, 0) }
+  }, [all])
   const stats = useMemo(() => {
     const anomalous = all.filter((i) => anomalyTags(i).length > 0).length
     return {
@@ -39,7 +49,7 @@ export function TeamAggregation() {
 
   const handleRowDecision = async (id: string, decision: 'RETURN' | 'REJECT') => {
     setBusy(true)
-    const status = await reviewSettlement(id, decision)
+    const status = await decideTeamSettlement(id, decision)
     updateStatus(id, status)
     setBusy(false)
   }
@@ -52,12 +62,23 @@ export function TeamAggregation() {
     setBusy(false)
   }
 
-  const submitNormalOnly = () => submitIds(all.filter((i) => anomalyTags(i).length === 0 && i.status === 'DRAFT').map((i) => i.id))
-  const confirmSubmitAll = () => submitIds(all.filter((i) => i.status === 'DRAFT').map((i) => i.id))
+  const submitNormalOnly = () => submitIds(visibleAll.filter((i) => anomalyTags(i).length === 0 && i.status === 'TEAM_COLLECTING').map((i) => i.id))
+  const requestAnomalyCorrections = async () => {
+    const targets = visibleAll.filter((i) => anomalyTags(i).length > 0 && i.status === 'TEAM_COLLECTING')
+    if (targets.length === 0) return
+    setBusy(true)
+    const results = await Promise.all(targets.map(async (item) => ({ id: item.id, status: await decideTeamSettlement(item.id, 'RETURN', `자동 보완요청: ${anomalyTags(item).join(', ')}`) })))
+    results.forEach(({ id, status }) => updateStatus(id, status))
+    setBusy(false)
+  }
 
-  const hasVisibleMember = teamMembers.some((m) =>
+  const hasVisibleMember = filteredMembers.some((m) =>
     (onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items).length > 0
   )
+  const budgetRemaining = budget.total - budget.used
+  const budgetRemainingRate = budgetRemaining / budget.total
+  const budgetTone = budgetRemainingRate <= 0.2 ? 'var(--tone-red)' : budgetRemainingRate <= 0.5 ? 'var(--tone-amber)' : 'var(--tone-green)'
+  const budgetRateLabel = budgetRemainingRate < 0 ? `초과 ${pct(budgetRemainingRate)}` : `잔여 ${pct(budgetRemainingRate)}`
 
   return (
     <>
@@ -80,38 +101,40 @@ export function TeamAggregation() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
           <h3>팀 예산 현황 · 2026년 7월</h3>
-          <span className="tag ok">잔여 {pct(1 - teamBudget.used / teamBudget.total)}</span>
+          <span className="tag" style={{ color: budgetTone, borderColor: budgetTone }}>{budgetRateLabel}</span>
         </div>
         <div className="card-body">
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
             <span className="text-meta">잔여 예산</span>
-            <span className="text-meta">총 {won(teamBudget.total)}원 중 {won(teamBudget.used)}원 사용</span>
+            <span className="text-meta">총 {won(budget.total)}원 중 {won(budget.used)}원 사용</span>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tone-green)', marginBottom: 8 }}>
-            {won(teamBudget.total - teamBudget.used)}
+          <div style={{ fontSize: 22, fontWeight: 700, color: budgetTone, marginBottom: 8 }}>
+            {budgetRemaining < 0 ? `초과 ${won(Math.abs(budgetRemaining))}` : won(budgetRemaining)}
           </div>
           <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 20 }}>
-            <div style={{ width: pct(teamBudget.used / teamBudget.total), height: '100%', background: 'var(--tone-green)' }} />
+            <div style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), height: '100%', background: budgetTone }} />
           </div>
 
           <div className="text-meta" style={{ marginBottom: 12, fontWeight: 600 }}>항목별 잔여 예산</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
-            {teamBudget.categories.map((c) => {
-              const rate = c.used / c.limit
+          <div className="team-budget-grid">
+            {budget.categories.slice(0, 10).map((c) => {
               const remaining = c.limit - c.used
-              const warn = rate >= 0.7
-              const barColor = rate >= 0.9 ? 'var(--tone-red)' : rate >= 0.7 ? 'var(--tone-orange)' : 'var(--tone-green)'
+              const remainingRate = remaining / c.limit
+              const tone = remainingRate <= 0.2 ? 'danger' : remainingRate <= 0.5 ? 'caution' : 'safe'
+              const barColor = tone === 'danger' ? 'var(--tone-red)' : tone === 'caution' ? 'var(--tone-amber)' : 'var(--tone-green)'
               return (
-                <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 14px', background: warn ? 'var(--tone-red-bg)' : 'var(--surface)' }}>
+                <div key={c.label} className={`team-budget-item ${tone}`}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 6px', borderRadius: 999, background: barColor + '22', color: barColor }}>{pct(rate)}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 6px', borderRadius: 999, background: barColor + '22', color: barColor }}>
+                      {remainingRate < 0 ? `초과 ${pct(remainingRate)}` : `잔여 ${pct(remainingRate)}`}
+                    </span>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: warn ? 'var(--tone-red)' : 'var(--tone-green)', marginBottom: 6 }}>
-                    잔여 {won(remaining)}
+                  <div style={{ fontSize: 15, fontWeight: 700, color: barColor, marginBottom: 6 }}>
+                    {remaining < 0 ? `초과 ${won(Math.abs(remaining))}` : `잔여 ${won(remaining)}`}
                   </div>
                   <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ width: pct(Math.min(rate, 1)), height: '100%', background: barColor, transition: 'width 0.3s' }} />
+                    <div style={{ width: pct(Math.max(0, Math.min(remainingRate, 1))), height: '100%', background: barColor, transition: 'width 0.3s' }} />
                   </div>
                   <div className="text-meta" style={{ fontSize: 10 }}>예산 {won(c.limit)}</div>
                 </div>
@@ -131,12 +154,19 @@ export function TeamAggregation() {
 
       {canManage && (<>
       <div className="filter-bar">
+        <details className="multi-select">
+          <summary>사람별 보기 {memberFilter.size > 0 ? `(${memberFilter.size}명)` : '(전체)'}</summary>
+          <div className="multi-select-menu">
+            {teamMembers.map((member) => <label key={member.name}><input type="checkbox" checked={memberFilter.has(member.name)} onChange={() => setMemberFilter((current) => { const next = new Set(current); next.has(member.name) ? next.delete(member.name) : next.add(member.name); return next })} />{member.name}</label>)}
+            {memberFilter.size > 0 && <button className="btn sm" onClick={() => setMemberFilter(new Set())}>전체 보기</button>}
+          </div>
+        </details>
         <label className="row" style={{ gap: 6 }}>
           <input type="checkbox" checked={onlyAnomaly} onChange={(e) => setOnlyAnomaly(e.target.checked)} />
           이상건만 보기
         </label>
         <div className="spacer" />
-        <button className="btn" disabled={busy} onClick={confirmSubmitAll}>제출 확정</button>
+        <button className="btn return" disabled={busy || stats.anomalous === 0} onClick={requestAnomalyCorrections}>이상건 자동 보완요청</button>
         <button className="btn primary" disabled={busy || stats.normal === 0} onClick={submitNormalOnly}>
           이상건 제외 일괄제출 ({stats.normal}건)
         </button>
@@ -149,7 +179,7 @@ export function TeamAggregation() {
       )}
 
       <div className="stack" style={{ gap: 12 }}>
-        {teamMembers.map((m) => {
+        {filteredMembers.map((m) => {
           const visibleItems = onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items
           if (visibleItems.length === 0) return null
           const isOpen = expanded.has(m.name) || onlyAnomaly
@@ -176,7 +206,15 @@ export function TeamAggregation() {
                 <span className="tag">{won(m.items.reduce((s, i) => s + i.amount, 0))}</span>
               </div>
               {isOpen && (
-                <table className="table">
+                <table className="table team-settlement-table">
+                  <colgroup>
+                    <col style={{ width: 112 }} />
+                    <col />
+                    <col style={{ width: 112 }} />
+                    <col style={{ width: 108 }} />
+                    <col style={{ width: 190 }} />
+                    <col style={{ width: 176 }} />
+                  </colgroup>
                   <thead>
                     <tr><th>거래일자</th><th>가맹점</th><th className="num">금액</th><th>카드구분</th><th>이상 사유</th><th>처리</th></tr>
                   </thead>
@@ -186,6 +224,7 @@ export function TeamAggregation() {
                       return (
                         <tr
                           key={i.id}
+                          className={tags.length > 0 ? 'anomaly-row' : undefined}
                           tabIndex={0}
                           onClick={() => setSelected(i)}
                           onKeyDown={activateOnEnterOrSpace(() => setSelected(i))}
@@ -199,10 +238,10 @@ export function TeamAggregation() {
                               ? <span className="tag ok">정상</span>
                               : tags.map((t) => <span key={t} className="tag warn" style={{ marginRight: 4 }}>{t}</span>)}
                           </td>
-                          <td onClick={(ev) => ev.stopPropagation()}>
+                          <td className="team-actions" onClick={(ev) => ev.stopPropagation()}>
                             {tags.length === 0 ? (
                               <span className="text-meta">일괄 대상</span>
-                            ) : i.status !== 'DRAFT' ? (
+                            ) : i.status !== 'TEAM_COLLECTING' ? (
                               <span className="text-meta">처리됨 · {i.status}</span>
                             ) : (
                               <div className="row">
@@ -228,6 +267,7 @@ export function TeamAggregation() {
           item={selected}
           onClose={() => setSelected(null)}
           onStatusChange={updateStatus}
+          context="team"
         />
       )}
     </>
