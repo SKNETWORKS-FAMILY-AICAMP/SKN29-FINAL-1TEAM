@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, Receipt } from 'lucide-react'
-import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type Settlement, type SettlementStatus } from '../../types/domain'
+import { CARD_NEEDS_EXTRA_INPUT, CARD_TYPE_LABEL, CATEGORIES, type ReviewItem, type Settlement, type SettlementStatus } from '../../types/domain'
 import { won } from '../../lib/format'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -158,10 +158,18 @@ export function SettlementDetailModal({
         <div className="card-head"><h3>상태 변경 이력 (Audit Trail)</h3></div>
         <div className="card-body">
           <ul className="timeline">
-            <li><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · 2026-07-17 09:12</div></li>
-            <li><div>SUBMITTED — 제출</div><div className="t-meta">{item.user} · 09:40</div></li>
-            <li><div>RPA_JUDGED → IN_REVIEW — confidence=0.61(미매칭), 위험검토 이관</div><div className="t-meta">Rule Agent · 09:41</div></li>
-            <li><div>①이상탐지 → ②RAG 내규검증 수행</div><div className="t-meta">Risk Review Agent · 09:41</div></li>
+            {(item as ReviewItem).auditTrail?.map((ev, i) => (
+              <li key={i}>
+                <div style={{ fontSize: 13 }}>{ev.status}{ev.note ? ` — ${ev.note}` : ''}</div>
+                <div className="t-meta">{ev.actor} · {ev.timestamp}</div>
+              </li>
+            )) ?? (
+              <>
+                <li><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item.date} 09:12</div></li>
+                <li><div>SUBMITTED — 제출</div><div className="t-meta">{item.user} · 09:40</div></li>
+                <li><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
+              </>
+            )}
           </ul>
         </div>
       </div>
