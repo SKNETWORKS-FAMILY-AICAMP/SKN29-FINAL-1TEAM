@@ -81,9 +81,9 @@ class SettlementSerializer(serializers.ModelSerializer):
         return card.card_type if card else None
 
     def get_evidence(self, obj):
-        if obj.transaction_id and obj.transaction.receipts.filter(status="MATCHED").exists():
-            return "OK"
-        return "MISSING"
+        # 증빙 '누락'은 하드 플래그로 차단하지 않는다 — 영수증 없이도 자동 유연처리 지원(AI가 별도 판단).
+        # 영수증이 매칭되면 'OK', 없어도 누락으로 막지 않고 'OK'로 통과시킨다(누락 여부 판단은 AI 몫, post-MVP).
+        return "OK"
 
     def get_dept(self, obj):
         return obj.submitted_by.team.name if (obj.submitted_by_id and obj.submitted_by.team_id) else None

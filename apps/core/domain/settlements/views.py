@@ -1,18 +1,21 @@
 import re
 from datetime import datetime, time
 
+from django.db.models import Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from domain.cards.models import Card
 from domain.common.permissions import IsAccountant
 from domain.transactions.models import Receipt, Transaction
 
 from . import services
-from .models import Settlement
+from .models import Settlement, TeamBudget
 from .serializers import SettlementDetailSerializer, SettlementSerializer
 
 
@@ -124,3 +127,48 @@ class SettlementViewSet(viewsets.ModelViewSet):
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
+
+
+# 반려 상태는 예산 사용액에서 제외
+_BUDGET_EXCLUDE = ["REJECT", "TEAM_REJECTED"]
+
+
+class TeamBudgetView(APIView):
+    """GET /api/team-budget/?team=<id>&month=YYYY-MM — 팀 예산 현황(S-02).
+
+    한도(limit)는 TeamBudget(DB)에서, 사용액(used)은 해당 팀·월 Settlement 집계로 산출한다(실 내역 기반).
+    프론트 data/mock.ts의 teamBudget 셰이프({total, used, categories:[{label,limit,used}]})와 정합.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        team_id = request.query_params.get("team")
+        month = request.query_params.get("month") or ""
+
+        budgets = TeamBudget.objects.all()
+        if team_id:
+            budgets = budgets.filter(team_id=team_id)
+        if month:
+            budgets = budgets.filter(year_month=month)
+
+        used_qs = Settlement.objects.exclude(status__in=_BUDGET_EXCLUDE)
+        if team_id:
+            used_qs = used_qs.filter(team_id=team_id)
+        if month and "-" in month:
+            y, m = month.split("-")[:2]
+            used_qs = used_qs.filter(transaction__ts__year=int(y), transaction__ts__month=int(m))
+        used_by_cat = {
+            r["category"]: int(r["s"] or 0)
+            for r in used_qs.values("category").annotate(s=Sum("transaction__amount"))
+        }
+
+        total_limit, categories = 0, []
+        for b in budgets:
+            if b.category == "":
+                total_limit = b.limit_amount
+            else:
+                categories.append({"label": b.category, "limit": b.limit_amount, "used": used_by_cat.get(b.category, 0)})
+        return Response({
+            "team": int(team_id) if team_id else None, "month": month,
+            "total": total_limit, "used": sum(used_by_cat.values()), "categories": categories,
+        })

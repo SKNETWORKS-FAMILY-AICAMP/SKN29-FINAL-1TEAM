@@ -8,7 +8,7 @@ from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
 from domain.policies.views import RuleGraphViewSet
-from domain.settlements.views import SettlementViewSet
+from domain.settlements.views import SettlementViewSet, TeamBudgetView
 from domain.transactions.views import ReceiptViewSet, TransactionViewSet
 
 router = DefaultRouter()
@@ -30,5 +30,6 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/dashboard/<str:role>/", DashboardView.as_view(), name="dashboard"),
+    path("api/team-budget/", TeamBudgetView.as_view(), name="team_budget"),
     path("api/", include(router.urls)),
 ]

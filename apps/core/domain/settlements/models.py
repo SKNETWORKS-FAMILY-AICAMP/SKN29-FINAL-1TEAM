@@ -64,6 +64,30 @@ class Settlement(models.Model):
         return f"Settlement#{self.pk} ({self.status})"
 
 
+class TeamBudget(models.Model):
+    """팀·월·계정과목별 예산 한도 (SoR의 DB 데이터).
+
+    예산은 통제(차단)가 아니라 지표·추천 근거로만 쓴다(CLAUDE §2). 한도(limit)만 DB로 정의하고,
+    사용액(used)은 저장하지 않고 해당 팀·월·과목의 Settlement 집계로 산출한다(실 내역 개체 기반).
+    category='' 행은 팀 총예산(월 총한도)을 의미한다.
+    """
+    team = models.ForeignKey(
+        "accounts.Team", on_delete=models.CASCADE, related_name="budgets"
+    )
+    year_month = models.CharField("YYYY-MM", max_length=7)  # 예: '2026-07'
+    category = models.CharField(max_length=20, choices=Category.choices, blank=True)  # ''=팀 총예산
+    limit_amount = models.PositiveBigIntegerField("한도(원)", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("team", "year_month", "category")
+        ordering = ["team", "year_month", "category"]
+
+    def __str__(self):
+        return f"{self.team} {self.year_month} {self.category or '총액'} {self.limit_amount:,}"
+
+
 class SettlementEvent(models.Model):
     settlement = models.ForeignKey(Settlement, on_delete=models.CASCADE, related_name="events")
     from_state = models.CharField(max_length=24, blank=True)

@@ -20,7 +20,7 @@ from domain.policies.models import (
     OnResult, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting,
 )
 from domain.risk.models import RiskReview
-from domain.settlements.models import Category as C, Settlement, SettlementStatus as S
+from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
 from domain.transactions.models import MerchantCategory, MerchantSource, Receipt, Transaction
 
 User = get_user_model()
@@ -93,24 +93,31 @@ class Command(BaseCommand):
 
         # ── 김영업(영업팀 1인) '내 지출' 처리 흐름 (전 상태) ──
         mk(kim, "스타벅스 강남점", 18000, kim_card, C.MEETING, True, S.DRAFT, "OK", 1, 10, "거래처 미팅 음료", "카페")
-        mk(kim, "카카오T", 23400, kim_card, C.TRIP, False, S.DRAFT, "MISSING", 1, 9, "고객사 방문 이동")
+        mk(kim, "카카오T", 23400, kim_card, C.TRIP, False, S.DRAFT, "OK", 1, 9, "고객사 방문 이동")
         mk(kim, "GS칼텍스 주유", 70000, kim_card, C.TRIP, False, S.SUBMITTED, "OK", 2, 8, "지방 출장 주유")
         mk(kim, "본죽 역삼점", 12000, kim_card, C.MEAL, True, S.PENDING_CONFIRM, "OK", 3, 12, "야근 식대")
         mk(kim, "교보문고", 38000, kim_card, C.SUPPLIES, False, S.RETURNED, "OK", 5, 14, "영업 자료 서적")
         mk(kim, "롯데호텔 커피숍", 46000, kim_card, C.MEETING, True, S.CONFIRMED, "OK", 8, 15, "거래처 상담")
         mk(kim, "대한항공", 210000, postpaid, C.TRIP, True, S.ERP_VOUCHER_DRAFTED, "OK", 12, 7, "부산 출장 항공", "항공")
 
-        # ── 영업팀 취합용(팀장 뷰) 다른 팀원 건 ──
-        mk(u["박민수"], "배달의민족", 84000, sales_team_card, C.MEAL, True, S.SUBMITTED, "OK", 2, 20, "팀 야근 식대")
-        mk(u["정하늘"], "이마트", 51000, sales_team_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 3, 17, "팀 비품")
+        # ── 영업팀 취합 단계(팀장 뷰) — TEAM_* 상태 다양화 ──
+        mk(u["박민수"], "배달의민족", 84000, sales_team_card, C.MEAL, True, S.TEAM_COLLECTING, "OK", 2, 20, "팀 야근 식대")
+        mk(u["박민수"], "신라스테이", 450000, postpaid, C.TRIP, True, S.TEAM_COLLECTING, "OK", 3, 21, "지방 출장 숙박")
+        mk(u["정하늘"], "이마트", 51000, sales_team_card, C.SUPPLIES, False, S.TEAM_RETURNED, "OK", 3, 17, "팀 비품 - 사용목적 보완 필요")
+        mk(u["정하늘"], "스타벅스 코엑스", 26000, sales_team_card, C.MEETING, False, S.TEAM_COLLECTING, "OK", 4, 14, "주간 회의 다과")
+        mk(u["이도윤"], "한우명가", 298000, shared_card, C.ENTERTAIN, True, S.TEAM_COLLECTING, "OK", 5, 19, "거래처 접대(실사용자 지정 필요)")
+        mk(u["이도윤"], "롯데시네마 건대", 132000, shared_card, C.ENTERTAIN, True, S.TEAM_REJECTED, "OK", 6, 18, "접대 성격 불명확 - 팀 반려")
+        mk(u["이도윤"], "카카오T", 12600, sales_team_card, C.TRIP, False, S.DRAFT, "OK", 2, 9, "고객사 방문 이동")
+        # 이미 회계로 제출된 건(SUBMITTED)도 일부 유지
+        mk(u["정하늘"], "교보문고", 54000, kim_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 8, 12, "기술서적 구입")
 
         # ── 검토 워크스페이스(IN_REVIEW) 다양한 샘플 ──
         reviews = [
-            (u["이영희"], "강남한식당", 452000, shared_card, C.ENTERTAIN, "MISSING", 1, 19, "거래처 A사 계약 논의 접대", "한식",
-             0.92, [{"feature": "전월대비 결제금액 급증", "weight": 0.45}, {"feature": "심야 시간대 결제", "weight": 0.32}, {"feature": "증빙 서류 누락", "weight": 0.23}],
+            (u["이영희"], "강남한식당", 452000, shared_card, C.ENTERTAIN, "OK", 1, 19, "거래처 A사 계약 논의 접대", "한식",
+             0.92, [{"feature": "전월대비 결제금액 급증", "weight": 0.45}, {"feature": "심야 시간대 결제", "weight": 0.32}, {"feature": "적격증빙 확인 필요(AI 검토)", "weight": 0.23}],
              [{"title": "3만원 초과 접대비는 적격증빙 필수, 미수취 시 손금불산입", "source": "법인카드 사용규정 제11조", "kind": "policy"},
               {"title": "유사사례 #1123 — 적격증빙 미비 반려(91% 패턴 일치)", "source": "과거 반려사례 DB", "kind": "case"}],
-             ["접대비·심야결제·증빙없음"], "REJECT", 0.86),
+             ["접대비·심야결제·적격증빙 확인"], "REJECT", 0.86),
             (u["박민수"], "신라스테이", 310000, postpaid, C.ENTERTAIN, "OK", 2, 21, "거래처 접대 후 숙박", "숙박",
              0.78, [{"feature": "건당 한도 근접", "weight": 0.36}, {"feature": "유사 반려사례 존재", "weight": 0.28}],
              [{"title": "접대비 건당 한도 50만원 초과 시 사전결재", "source": "TIGER-REG-2026-003 §12조", "kind": "policy"}],
@@ -158,7 +165,19 @@ class Command(BaseCommand):
               [("n_pp", {"expr": "cardType=='POST_PAID' and evidence=='MISSING'"}, {"decision": "RETURN"}, 0)],
               [("n_pp", OnResult.MATCH, "", 0)])
 
+        # ── 팀 예산(TeamBudget) — 한도만 DB 정의, 사용액은 Settlement 집계로 산출 ──
+        # category='' 행은 팀 월 총한도. 프론트 teamBudget 셰이프와 정합.
+        this_month = now.strftime("%Y-%m")
+        budget_plan = {
+            sales: {"": 5000000, C.MEAL: 1000000, C.TRIP: 1200000, C.ENTERTAIN: 1000000, C.SUPPLIES: 800000, C.MEETING: 500000},
+            devai: {"": 4000000, C.MEAL: 800000, C.TRIP: 1000000, C.ENTERTAIN: 900000, C.SUPPLIES: 900000, C.MEETING: 400000},
+        }
+        for team, plan in budget_plan.items():
+            for cat, lim in plan.items():
+                TeamBudget.objects.create(team=team, year_month=this_month, category=cat, limit_amount=lim)
+
         self.stdout.write(self.style.SUCCESS(
             f"시드 완료 - 팀 {Team.objects.count()} / 사용자 {User.objects.count()} / 카드 {Card.objects.count()} / "
-            f"정산 {Settlement.objects.count()}(검토 {RiskReview.objects.count()}) / 룰그래프 {RuleGraph.objects.count()}"
+            f"정산 {Settlement.objects.count()}(검토 {RiskReview.objects.count()}) / 룰그래프 {RuleGraph.objects.count()} / "
+            f"예산 {TeamBudget.objects.count()}"
         ))

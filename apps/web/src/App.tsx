@@ -10,7 +10,6 @@ import { PolicyDocuments } from './screens/PolicyDocuments'
 import { LoginScreen } from './screens/auth/LoginScreen'
 import { RoleSelectScreen } from './screens/auth/RoleSelectScreen'
 import { OnboardingWizard } from './screens/onboarding/OnboardingWizard'
-import { NewExpense } from './screens/NewExpense'
 import { ErpVoucherConfirm } from './screens/ErpVoucherConfirm'
 import { useAuth } from './context/AuthContext'
 import { ROLE_TO_SLUG } from './data/onboardingSteps'
@@ -34,8 +33,7 @@ export default function App() {
       <Route path="/select-role" element={<RoleSelectScreen />} />
       <Route path="/onboarding/:role/:step" element={<OnboardingWizard />} />
 
-      {/* F-1/F-4: 사이드바 없는 풀스크린 플로우(로그인은 필요) */}
-      <Route path="/my-expenses/new" element={<RequireAuth><NewExpense /></RequireAuth>} />
+      {/* F-4: 사이드바 없는 풀스크린 플로우(로그인은 필요). 신규 지출 등록은 S-01 통합 모달로 대체됨 */}
       <Route path="/erp/:id" element={<RequireAuth><ErpVoucherConfirm /></RequireAuth>} />
 
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>

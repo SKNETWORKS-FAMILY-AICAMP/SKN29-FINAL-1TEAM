@@ -20,6 +20,8 @@ export const endpoints = {
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   dashboard: (role: string) => api.get(`/dashboard/${role}/`),
+  // S-02 팀 예산 현황 — 한도(DB) + 사용액(Settlement 집계). {total, used, categories:[{label,limit,used}]}
+  teamBudget: (team: string | number, month: string) => api.get('/team-budget/', { params: { team, month } }),
   // 규정 문서 관리 (S-05 규정문서) — RAG 소스 문서 CRUD
   policyDocs: () => api.get('/policy-docs/'),
   uploadPolicyDoc: (data: FormData) => api.post('/policy-docs/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
