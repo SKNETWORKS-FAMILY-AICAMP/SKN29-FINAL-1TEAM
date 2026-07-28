@@ -14,30 +14,28 @@ export const teamMembers: { name: string; items: Settlement[] }[] = [
   {
     name: '이서준',
     items: [
-      { id: 'S-2001', date: '2026-07-18', merchant: 'GS25', amount: 8200, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '이서준' },
-      { id: 'S-2002', date: '2026-07-17', merchant: '신라스테이', amount: 450000, cardType: 'POST_PAID', aiCategory: '출장', aiSuggested: true, evidence: 'MISSING', status: 'DRAFT', user: '이서준' },
+      { id: 'S-2001', date: '2026-07-18', merchant: 'GS25', amount: 8200, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '이서준' },
+      { id: 'S-2002', date: '2026-07-17', merchant: '신라스테이', amount: 450000, cardType: 'POST_PAID', aiCategory: '출장', aiSuggested: true, evidence: 'MISSING', status: 'TEAM_COLLECTING', user: '이서준' },
     ],
   },
   {
     name: '박도윤',
     items: [
-      { id: 'S-2003', date: '2026-07-18', merchant: '배달의민족', amount: 96000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '박도윤' },
-      { id: 'S-2004', date: '2026-07-16', merchant: '이마트', amount: 49000, cardType: 'TEAM', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '박도윤' },
-      { id: 'S-2005', date: '2026-07-15', merchant: '한우명가', amount: 298000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'MISSING', status: 'DRAFT', user: '박도윤' },
+      { id: 'S-2003', date: '2026-07-18', merchant: '배달의민족', amount: 96000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤' },
+      { id: 'S-2004', date: '2026-07-16', merchant: '이마트', amount: 49000, cardType: 'TEAM', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤' },
+      { id: 'S-2005', date: '2026-07-15', merchant: '한우명가', amount: 298000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'MISSING', status: 'TEAM_COLLECTING', user: '박도윤' },
     ],
   },
 ]
 
 // S-02 v2 팀 예산 현황 섹션
 export const teamBudget = {
-  total: 5000000,
-  used: 1720000,
   categories: [
-    { label: '식대', used: 280000, limit: 1000000 },
-    { label: '출장', used: 540000, limit: 1200000 },
-    { label: '접대', used: 680000, limit: 1000000 },
-    { label: '비품', used: 120000, limit: 800000 },
-    { label: '회의', used: 100000, limit: 500000 },
+    { label: '식대', limit: 1000000 },
+    { label: '출장', limit: 1200000 },
+    { label: '접대', limit: 1000000 },
+    { label: '비품', limit: 800000 },
+    { label: '회의', limit: 500000 },
   ],
 }
 

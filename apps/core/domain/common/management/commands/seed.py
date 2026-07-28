@@ -5,6 +5,7 @@
 팀은 3개(영업팀 / AI·개발팀 / 재무회계팀)로 단순화.
 로그인 계정(pw pass1234): kim(영업사원)·lead(영업팀장)·acc(회계담당)·acclead(회계팀장)·exec(운영진)
 - kim(영업팀 1인) '내 지출' 처리 흐름 샘플
+- 영업팀 취합(TEAM_COLLECTING) 정상·증빙누락·고액·공용카드 샘플
 - 검토 워크스페이스(IN_REVIEW) 다양한 내역 샘플
 - 샘플 Rule 그래프(초안/시뮬/활성) — 화면 실제 연동용
 """
@@ -69,9 +70,10 @@ class Command(BaseCommand):
         # ── 카드 ─────────────────────────────────
         kim_card = Card.objects.create(card_type=CardType.PERSONAL, name="김영업 개인카드", number_masked="**** 1001", owner=kim)
         sales_team_card = Card.objects.create(card_type=CardType.TEAM, name="영업팀 팀카드", number_masked="**** 7001", team=sales)
+        sales_shared_card = Card.objects.create(card_type=CardType.SHARED, name="영업본부 공용", number_masked="**** 7700", team=sales)
         shared_card = Card.objects.create(card_type=CardType.SHARED, name="AI·개발팀 공용", number_masked="**** 9999", team=devai)
         postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="후정산 청구", number_masked="후정산")
-        Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales)
+        sales_prepaid = Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales)
 
         for nm, code, label in [("스타벅스", "CE7", "카페"), ("강남한식당", "FD6", "한식"),
                                 ("신라스테이", "AD5", "숙박"), ("메가커피", "CE7", "카페")]:
@@ -103,6 +105,26 @@ class Command(BaseCommand):
         # ── 영업팀 취합용(팀장 뷰) 다른 팀원 건 ──
         mk(u["박민수"], "배달의민족", 84000, sales_team_card, C.MEAL, True, S.SUBMITTED, "OK", 2, 20, "팀 야근 식대")
         mk(u["정하늘"], "이마트", 51000, sales_team_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 3, 17, "팀 비품")
+
+        # ── 영업팀 취합 대기(TEAM_COLLECTING) 다양한 처리 샘플 ──
+        # 프론트 S-02의 사람별 필터·분류별 예산·이상건 강조/자동 보완요청 시연용.
+        collecting = [
+            # owner, merchant, amount, card, category, ai, evidence, days, hour, purpose, industry
+            (u["박민수"], "성수동 커피랩", 27000, sales_team_card, C.MEETING, True, "OK", 1, 10, "거래처 킥오프 미팅", "카페"),
+            (u["박민수"], "KTX 서울-부산", 119600, postpaid, C.TRIP, False, "OK", 2, 7, "부산 고객사 방문", "철도"),
+            (u["박민수"], "그랜드호텔 레스토랑", 420000, sales_team_card, C.ENTERTAIN, True, "OK", 3, 20, "신규 거래처 접대", "한식"),
+            (u["정하늘"], "오피스디포", 73500, sales_team_card, C.SUPPLIES, False, "OK", 1, 15, "영업 제안서 바인더 및 용지", "사무용품"),
+            (u["정하늘"], "카카오T 블랙", 38600, postpaid, C.TRIP, True, "MISSING", 2, 22, "야간 고객사 미팅 복귀", "운수"),
+            (u["정하늘"], "한강파크 푸드코트", 66500, sales_prepaid, C.MEAL, False, "OK", 4, 12, "현장 영업팀 오찬", "음식점"),
+            (u["이도윤"], "렌탈프로 행사장비", 680000, sales_team_card, C.OPERATION, True, "MISSING", 1, 16, "제품 시연회 장비 대여", "렌탈"),
+            (u["이도윤"], "공용카드 온라인몰", 158000, sales_shared_card, C.SUPPLIES, True, "OK", 2, 14, "고객 증정용 샘플", "전자상거래"),
+            (u["이도윤"], "마티나라운지", 91000, postpaid, C.MEAL, True, "MISSING", 5, 6, "조찬 출장 식사", "음식점"),
+            (kim, "테크노마트", 245000, kim_card, C.SUPPLIES, False, "OK", 3, 13, "시연용 휴대 기기", "전자기기"),
+            (kim, "스타벅스 역삼점", 31500, kim_card, C.MEETING, True, "MISSING", 4, 11, "잠재고객 상담", "카페"),
+            (kim, "비즈니스 디너", 298000, sales_team_card, C.ENTERTAIN, False, "OK", 6, 19, "재계약 협의 저녁", "양식"),
+        ]
+        for owner, merchant, amount, card, cat, ai, ev, days, hour, purpose, industry in collecting:
+            mk(owner, merchant, amount, card, cat, ai, S.TEAM_COLLECTING, ev, days, hour, purpose, industry)
 
         # ── 검토 워크스페이스(IN_REVIEW) 다양한 샘플 ──
         reviews = [

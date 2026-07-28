@@ -121,10 +121,60 @@ class SettlementDetailSerializer(SettlementSerializer):
     """상세: Audit Trail(상태 이력) + Risk(이상탐지+RAG) 포함."""
     events = SettlementEventSerializer(many=True, read_only=True)
     risk = serializers.SerializerMethodField()
+    additionalEvidence = serializers.SerializerMethodField()
+    facts = serializers.SerializerMethodField()
+    ruleHits = serializers.SerializerMethodField()
 
     class Meta(SettlementSerializer.Meta):
-        fields = SettlementSerializer.Meta.fields + ["events", "risk"]
+        fields = SettlementSerializer.Meta.fields + [
+            "events", "risk", "additionalEvidence", "facts", "ruleHits",
+        ]
 
     def get_risk(self, obj):
         rr = obj.risk_reviews.first()
         return RiskReviewSerializer(rr).data if rr else None
+
+    def get_additionalEvidence(self, obj):
+        if not obj.transaction_id:
+            return []
+        return [
+            {"id": receipt.id, "name": receipt.file_ref or f"증빙 #{receipt.id}", "status": receipt.status}
+            for receipt in obj.transaction.receipts.all()
+        ]
+
+    def get_facts(self, obj):
+        tx = obj.transaction
+        card = tx.card if tx else None
+        return {
+            "settlement_id": obj.id,
+            "transaction": {
+                "merchant": tx.merchant,
+                "amount": int(tx.amount),
+                "occurred_at": tx.ts.isoformat(),
+                "has_receipt": tx.receipts.filter(status="MATCHED").exists(),
+            },
+            "card": {"type": card.card_type if card else None, "name": card.name if card else None},
+            "submitter": {
+                "username": obj.submitted_by.username if obj.submitted_by_id else None,
+                "team": obj.team.name if obj.team_id else None,
+            },
+            "settlement": {
+                "category": obj.category,
+                "ai_category": obj.ai_category,
+                "merchant_industry": obj.merchant_industry,
+                "purpose": obj.purpose,
+                "status": obj.status,
+            },
+        }
+
+    def get_ruleHits(self, obj):
+        return [
+            {
+                "graph": hit.graph.name if hit.graph_id else None,
+                "graphVersion": hit.graph_version,
+                "path": hit.path,
+                "decision": hit.decision,
+                "confidence": hit.confidence,
+            }
+            for hit in obj.rule_hits.select_related("graph").all()
+        ]

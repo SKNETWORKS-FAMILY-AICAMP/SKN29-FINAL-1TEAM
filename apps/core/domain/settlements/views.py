@@ -23,7 +23,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
     """
     queryset = Settlement.objects.select_related(
         "transaction", "transaction__card", "submitted_by"
-    ).prefetch_related("events", "risk_reviews")
+    ).prefetch_related("events", "risk_reviews", "rule_hits__graph", "transaction__receipts")
     serializer_class = SettlementSerializer
     http_method_names = ["get", "patch", "post", "head", "options"]
 
@@ -80,6 +80,18 @@ class SettlementViewSet(viewsets.ModelViewSet):
         s = self.get_object()
         try:
             services.review(s, request.data.get("decision"), _actor(request), request.data.get("reason", ""))
+        except services.TransitionError as e:
+            return Response({"detail": str(e)}, status=400)
+        return Response(self.get_serializer(s).data)
+
+    # POST /api/settlements/{id}/team-decision/  {decision, reason}
+    @action(detail=True, methods=["post"], url_path="team-decision")
+    def team_decision(self, request, pk=None):
+        s = self.get_object()
+        try:
+            services.team_decide(
+                s, request.data.get("decision"), _actor(request), request.data.get("reason", "")
+            )
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)

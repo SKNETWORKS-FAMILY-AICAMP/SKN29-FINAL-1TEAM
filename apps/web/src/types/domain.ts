@@ -81,6 +81,14 @@ export interface Settlement {
   status: SettlementStatus
   user: string
   purpose?: string // 지출 목적/사유
+  time?: string
+  dept?: string
+  category?: Category
+  merchantIndustry?: string
+  additionalEvidence?: { id: number; name: string; status: string }[]
+  facts?: Record<string, unknown>
+  events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]
+  ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; confidence: number }[]
 }
 
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */
