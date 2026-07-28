@@ -18,14 +18,14 @@
 
 - **정산 상태머신(4단계)**: 개인 보유(`DRAFT`) → 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`). 팀 수준(`TEAM_*`)과 회계 수준(`RETURNED`/`REJECT`) 구분. — 요구사항 §4.4·§5.6 / 기술 §3.3
 - **Risk Review = MVP 2단계**(이상탐지→RAG 내규검증), 지도학습은 post-MVP. — 요구사항 §6
-- **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. — 기술 §3.1·§4.2
+- **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. **룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL**. — 기술 §4.2 / `_context/rule-engine.md`
 - **가맹점 업종 구분**(캐시→카카오→웹), 비용분류 보조 힌트(세무 아님), MCC는 post-MVP. — 기술 §7-1
 
 ## 3. 파생 컨텍스트 (`_context/`, 에이전트 생성)
 
 | 파일 | 용도 | 상태 |
 |---|---|---|
-| (없음 — 필요 시 결정 로그/용어집 등을 생성해 여기 등록) | | |
+| `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루 | 2026-07-28 |
 
 ## 4. 데이터/자산 위치 (문서 아님)
 
