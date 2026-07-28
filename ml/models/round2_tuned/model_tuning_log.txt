@@ -1,0 +1,119 @@
+[데이터 로드] train/test 로드 및 날짜순 정렬...
+  train 전체: (1482969, 21) (2021-01-01 ~ 2023-12-31)
+  test      : (469902, 21) (2024-01-01 ~ 2024-12-31)
+  train_fit(탐색/학습용): (1359347, 21) (~2023-10-01 이전)
+  val(임계값 선택용)    : (123622, 21) (2023-10-01 이후)
+  탐색용 서브샘플: (250000, 21) (양성비율 0.0382)
+
+===== [logistic_regression] 시작 =====
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\model_selection\_search.py:324: UserWarning: The total space of parameters 6 is smaller than n_iter=10. Running 6 iterations. For exhaustive searches, use GridSearchCV.
+  warnings.warn(
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+  [1/3] 하이퍼파라미터 탐색 완료 (34.1s) best_params={'clf__C': 0.1} best_cv_pr_auc=0.6249
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (11.2s) 선택된 threshold=0.97 (val F1=0.6829)
+C:\Users\dlqkf\miniconda3\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+  [3/3] 전체 train 재학습 + test 평가 완료 (9.4s)
+  TEST 결과 @thr=0.97: ROC-AUC=0.9138 PR-AUC=0.6270 F1=0.7240 Recall=0.6363 Precision=0.8397
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\logistic_regression_tuned.pkl (총 소요 54.8s)
+
+===== [random_forest] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (246.6s) best_params={'n_estimators': 200, 'min_samples_leaf': 20, 'max_depth': None} best_cv_pr_auc=0.6940
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (366.7s) 선택된 threshold=0.90 (val F1=0.6872)
+  [3/3] 전체 train 재학습 + test 평가 완료 (489.7s)
+  TEST 결과 @thr=0.90: ROC-AUC=0.9692 PR-AUC=0.7131 F1=0.7245 Recall=0.6411 Precision=0.8327
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\random_forest_tuned.pkl (총 소요 1103.5s)
+
+===== [extra_trees] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (134.4s) best_params={'n_estimators': 200, 'min_samples_leaf': 20, 'max_depth': None} best_cv_pr_auc=0.6553
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (192.3s) 선택된 threshold=0.83 (val F1=0.6885)
+  [3/3] 전체 train 재학습 + test 평가 완료 (209.5s)
+  TEST 결과 @thr=0.83: ROC-AUC=0.9621 PR-AUC=0.6789 F1=0.7245 Recall=0.6377 Precision=0.8388
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\extra_trees_tuned.pkl (총 소요 536.5s)
+
+===== [balanced_random_forest] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (63.2s) best_params={'n_estimators': 100, 'min_samples_leaf': 20, 'max_depth': None} best_cv_pr_auc=0.6838
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (886.5s) 선택된 threshold=0.92 (val F1=0.6863)
+  [3/3] 전체 train 재학습 + test 평가 완료 (45.8s)
+  TEST 결과 @thr=0.92: ROC-AUC=0.9694 PR-AUC=0.7029 F1=0.7241 Recall=0.6418 Precision=0.8308
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\balanced_random_forest_tuned.pkl (총 소요 995.8s)
+
+===== [xgboost] 시작 =====
+C:\Users\dlqkf\miniconda3\Lib\site-packages\joblib\externals\loky\process_executor.py:782: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+  [1/3] 하이퍼파라미터 탐색 완료 (121.8s) best_params={'subsample': 0.85, 'n_estimators': 300, 'max_depth': 6, 'learning_rate': 0.05, 'colsample_bytree': 1.0} best_cv_pr_auc=0.7117
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (35.3s) 선택된 threshold=0.93 (val F1=0.6857)
+  [3/3] 전체 train 재학습 + test 평가 완료 (55.2s)
+  TEST 결과 @thr=0.93: ROC-AUC=0.9693 PR-AUC=0.7144 F1=0.7249 Recall=0.6511 Precision=0.8177
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\xgboost_tuned.pkl (총 소요 212.3s)
+
+===== [lightgbm] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (59.8s) best_params={'num_leaves': 31, 'n_estimators': 400, 'learning_rate': 0.1, 'feature_fraction': 1.0} best_cv_pr_auc=0.7124
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (88.6s) 선택된 threshold=0.94 (val F1=0.6853)
+  [3/3] 전체 train 재학습 + test 평가 완료 (37.0s)
+  TEST 결과 @thr=0.94: ROC-AUC=0.9682 PR-AUC=0.7113 F1=0.7255 Recall=0.6470 Precision=0.8256
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\lightgbm_tuned.pkl (총 소요 185.4s)
+
+===== [catboost] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (486.6s) best_params={'learning_rate': 0.1, 'l2_leaf_reg': 7, 'iterations': 200, 'depth': 8} best_cv_pr_auc=0.7064
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (85.4s) 선택된 threshold=0.95 (val F1=0.6859)
+  [3/3] 전체 train 재학습 + test 평가 완료 (87.1s)
+  TEST 결과 @thr=0.95: ROC-AUC=0.9697 PR-AUC=0.7148 F1=0.7257 Recall=0.6474 Precision=0.8256
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\catboost_tuned.pkl (총 소요 659.0s)
+
+===== [mlp] 시작 =====
+  [1/3] 하이퍼파라미터 탐색 완료 (64.0s) best_params={'clf__learning_rate_init': 0.005, 'clf__hidden_layer_sizes': (128,), 'clf__alpha': 0.01} best_cv_pr_auc=0.6812
+  [2/3] train_fit 학습 + 임계값 탐색 완료 (711.1s) 선택된 threshold=0.27 (val F1=0.6897)
+  [3/3] 전체 train 재학습 + test 평가 완료 (939.3s)
+  TEST 결과 @thr=0.27: ROC-AUC=0.9516 PR-AUC=0.6804 F1=0.7241 Recall=0.6422 Precision=0.8298
+  저장: D:\SKN29-FINAL-1TEAM\ml\models\mlp_tuned.pkl (총 소요 1714.4s)
+
+=== 튜닝 결과 비교 (PR-AUC 기준 정렬) ===
+                 model  chosen_threshold  test_roc_auc_tunedthr  test_pr_auc_tunedthr  test_precision_tunedthr  test_recall_tunedthr  test_f1_tunedthr
+              catboost              0.95               0.969654              0.714809                 0.825593              0.647371          0.725700
+               xgboost              0.93               0.969269              0.714381                 0.817680              0.651092          0.724939
+         random_forest              0.90               0.969154              0.713133                 0.832686              0.641149          0.724472
+              lightgbm              0.94               0.968209              0.711281                 0.825640              0.647005          0.725488
+balanced_random_forest              0.92               0.969444              0.702935                 0.830780              0.641759          0.724138
+                   mlp              0.27               0.951634              0.680380                 0.829774              0.642247          0.724066
+           extra_trees              0.83               0.962136              0.678876                 0.838803              0.637672          0.724538
+   logistic_regression              0.97               0.913813              0.626969                 0.839665              0.636330          0.723992
+
+전체 소요시간: 5473.7s
