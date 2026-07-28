@@ -1,8 +1,15 @@
+import re
+from datetime import datetime, time
+
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from domain.cards.models import Card
 from domain.common.permissions import IsAccountant
+from domain.transactions.models import Receipt, Transaction
 
 from . import services
 from .models import Settlement
@@ -35,6 +42,30 @@ class SettlementViewSet(viewsets.ModelViewSet):
         if self.action in ("review", "confirm"):
             return [IsAccountant()]
         return super().get_permissions()
+
+    # POST /api/settlements/  (신규 지출 등록 — 거래+정산 생성)
+    def create(self, request, *args, **kwargs):
+        d = request.data
+        raw_date = (d.get("date") or "")[:10]
+        pd = parse_date(raw_date) if raw_date else None
+        ts = timezone.make_aware(datetime.combine(pd, time(12, 0))) if pd else timezone.now()
+        amount = int(re.sub(r"[^0-9]", "", str(d.get("amount") or "0")) or 0)
+        card = Card.objects.filter(card_type=d.get("cardType")).first() if d.get("cardType") else None
+        category = d.get("category") or d.get("aiCategory") or ""
+
+        tx = Transaction.objects.create(
+            card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
+        )
+        if d.get("evidence") == "OK":
+            Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
+        actor = _actor(request)
+        s = Settlement.objects.create(
+            transaction=tx, category=category, ai_category=d.get("aiCategory") or category,
+            ai_suggested=bool(d.get("aiSuggested")), merchant_industry=d.get("merchantIndustry", ""),
+            purpose=d.get("purpose", ""), submitted_by=actor,
+            team=getattr(actor, "team", None), status="DRAFT",
+        )
+        return Response(self.get_serializer(s).data, status=201)
 
     def get_queryset(self):
         qs = super().get_queryset()

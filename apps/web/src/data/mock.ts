@@ -2,12 +2,19 @@
 import type { PolicyDocument, ReviewItem, Settlement } from '../types/domain'
 
 export const myExpenses: Settlement[] = [
+  // ── 이번 달(2026-07) ──
+  { id: 'S-1004', date: '2026-07-16', merchant: '교보문고', amount: 46500, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'MISSING', status: 'RETURNED', user: '김민규' },
+  { id: 'S-1007', date: '2026-07-13', merchant: '갤러리아 백화점', amount: 210000, cardType: 'PERSONAL', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'REJECT', user: '김민규' },
   { id: 'S-1001', date: '2026-07-18', merchant: '스타벅스 강남점', amount: 28000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '김민규' },
   { id: 'S-1002', date: '2026-07-18', merchant: '카카오T', amount: 14300, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: false, evidence: 'MISSING', status: 'DRAFT', user: '김민규' },
   { id: 'S-1003', date: '2026-07-17', merchant: '더본코리아', amount: 132000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'SUBMITTED', user: '김민규' },
-  { id: 'S-1004', date: '2026-07-16', merchant: '교보문고', amount: 46500, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'RETURNED', user: '김민규' },
+  { id: 'S-1008', date: '2026-07-16', merchant: 'GS25 역삼점', amount: 8800, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'PENDING_CONFIRM', user: '김민규' },
   { id: 'S-1005', date: '2026-07-15', merchant: '롯데호텔', amount: 380000, cardType: 'POST_PAID', aiCategory: '접대', aiSuggested: true, evidence: 'MISSING', status: 'IN_REVIEW', user: '김민규' },
   { id: 'S-1006', date: '2026-07-14', merchant: '쿠팡', amount: 89000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
+  // ── 지난 달(2026-06) 처리 완료 — 기본 숨김, 필터로 조회 ──
+  { id: 'S-0927', date: '2026-06-27', merchant: '이디야커피 역삼', amount: 15000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
+  { id: 'S-0920', date: '2026-06-20', merchant: 'SRT 수서', amount: 96000, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: true, evidence: 'OK', status: 'ERP_VOUCHER_DRAFTED', user: '김민규' },
+  { id: 'S-0911', date: '2026-06-11', merchant: '올리브영', amount: 34000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
 ]
 
 export const teamMembers: { name: string; items: Settlement[] }[] = [

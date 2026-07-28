@@ -11,7 +11,8 @@ const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 250))
 export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>): Promise<Settlement> {
   if (USE_MOCK) {
     await mockDelay()
-    return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'SUBMITTED' }
+    // 신규 건은 '개인 보유중(DRAFT)'으로 생성 — 이후 목록에서 제출
+    return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'DRAFT' }
   }
   const res = await endpoints.createSettlement(draft)
   return res.data
