@@ -183,8 +183,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .team-settlement-table .team-actions .btn { white-space: nowrap; }
 
 /* S-02 팀 예산·사람 필터 */
-.team-budget-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); }
-.team-budget-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
+/* 기준 5개/줄, 최대 10개(2줄). flex-grow로 3개·7개처럼 부분 행도 빈칸 없이 늘려 채운다. */
+.team-budget-grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.team-budget-item { flex: 1 1 calc(20% - var(--space-3)); min-width: 150px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
 .team-budget-item.caution { background: #fff8df; border-color: #ead798; }
 .team-budget-item.danger { background: var(--tone-red-bg); border-color: #f3c9c5; }
 .multi-select { position: relative; }
@@ -193,7 +194,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .multi-select-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 180px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12); }
 .multi-select-menu label { display: flex; gap: var(--space-2); align-items: center; padding: 6px; white-space: nowrap; }
 
-@media (max-width: 1000px) { .team-budget-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .team-budget-item { flex-basis: calc(33.333% - var(--space-3)); } }
 
 /* ── 배지 / 태그 ──────────────────────────── */
 .badge {
