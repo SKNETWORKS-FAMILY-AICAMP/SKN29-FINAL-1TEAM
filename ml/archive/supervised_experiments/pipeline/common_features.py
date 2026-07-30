@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE = Path(__file__).resolve().parent.parent.parent / ".data" / "data" / "processed"
+BASE = Path(__file__).resolve().parent.parent.parent.parent.parent / ".data" / "data" / "processed"
 
 NUMERIC_COLS = [
     "승인시간대", "통합승인금액", "최근7일사용횟수", "카드누적사용액",
