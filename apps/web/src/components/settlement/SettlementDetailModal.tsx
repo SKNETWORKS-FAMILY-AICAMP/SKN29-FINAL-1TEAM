@@ -14,6 +14,7 @@ import {
   type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
 import { won } from '../../lib/format'
+import { anomalyTags } from '../../data/mock'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useRole } from '../../context/RoleContext'
@@ -83,6 +84,8 @@ export function SettlementDetailModal({
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !isAccountant && !isCreate && item?.status === 'RETURNED'
+  // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
+  const isAnomaly = !isCreate && item ? anomalyTags(item).length > 0 : false
 
   // fact.json — 현재 입력값으로 자동 생성(자동생성/자동갱신)
   const fact = useMemo(() => ({
@@ -214,7 +217,10 @@ export function SettlementDetailModal({
 
   const footer = (
     <>
-      <button className="btn" onClick={onClose} disabled={pending}>{readOnly && !canTeamDecide ? '닫기' : '취소'}</button>
+      {/* 팀 취합 뷰에선 취소 버튼을 두지 않는다(닫기는 우상단 X·Esc). 그 외 화면은 기존대로 취소/닫기 노출 */}
+      {!isTeamView && (
+        <button className="btn" onClick={onClose} disabled={pending}>{readOnly ? '닫기' : '취소'}</button>
+      )}
       {isCreate ? (
         <button className="btn primary" onClick={save} disabled={pending || !canSave}>
           {pending ? '저장 중…' : '저장(등록)'}
@@ -223,6 +229,15 @@ export function SettlementDetailModal({
         <>
           <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>팀 보완요청</button>
           <button className="btn reject" onClick={teamReject} disabled={pending}>팀 반려</button>
+          {/* 이상 건은 제출 불가 — 보완요청·반려로 처리 유도 */}
+          <button
+            className="btn primary"
+            onClick={submit}
+            disabled={pending || isAnomaly}
+            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 팀 보완요청·팀 반려로 처리하세요.' : undefined}
+          >
+            {isAnomaly ? '제출 불가 (이상 건)' : '제출(SUBMITTED)'}
+          </button>
         </>
       ) : isAccountant ? (
         <>
@@ -232,8 +247,13 @@ export function SettlementDetailModal({
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
       ) : isOwner ? (
-        <button className="btn primary" onClick={submit} disabled={pending}>
-          {needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
+        <button
+          className="btn primary"
+          onClick={submit}
+          disabled={pending || (isTeamView && isAnomaly)}
+          title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다. 보완 후 제출하세요.' : undefined}
+        >
+          {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
         </button>
       ) : (
         <span className="text-meta row" style={{ gap: 6 }}><Lock size={12} /> 본인 건이 아니어 조회만 가능합니다.</span>
