@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { Role } from '../types/domain'
+import type { Capability, Role } from '../types/domain'
 import { ROLE_LABEL } from '../types/domain'
 import { USE_MOCK } from '../api/config'
 import { fetchMe, sessionLogin, sessionLogout, type MeResponse } from '../api/auth'
@@ -12,6 +12,8 @@ export interface AuthUser {
   role: Role
   dept: string
   position: string
+  /** 실 모드: 서버가 준 유효 능력(역할기본 ∪ 개인부여). mock 모드는 useCapabilities가 역할 기본값을 사용. */
+  capabilities?: Capability[]
 }
 
 interface AuthCtx {
@@ -38,7 +40,10 @@ const Ctx = createContext<AuthCtx>({
 
 function toUser(me: MeResponse): AuthUser {
   const role = (me.role as Role) ?? 'EMPLOYEE'
-  return { name: me.username ?? '사용자', role, dept: me.dept ?? '-', position: ROLE_LABEL[role] }
+  return {
+    name: me.username ?? '사용자', role, dept: me.dept ?? '-', position: ROLE_LABEL[role],
+    capabilities: (me.capabilities ?? []) as Capability[],
+  }
 }
 
 function loadInitial(): { user: AuthUser | null; hasOnboarded: boolean } {

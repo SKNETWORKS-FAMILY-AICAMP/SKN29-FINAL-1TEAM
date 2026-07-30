@@ -5,13 +5,20 @@ import { endpoints } from './client'
 import { USE_MOCK } from './config'
 import type { Settlement, SettlementStatus } from '../types/domain'
 
+export async function fetchSettlementDetail(item: Settlement): Promise<Settlement> {
+  if (USE_MOCK) return item
+  const res = await endpoints.settlement(item.id)
+  return res.data
+}
+
 const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 250))
 
 /** F-1: 신규 지출 등록(영수증 업로드 + AI 판독 확인 후 제출). id/status는 서버가 생성 — mock에서는 흉내낸다. */
 export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>): Promise<Settlement> {
   if (USE_MOCK) {
     await mockDelay()
-    return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'SUBMITTED' }
+    // 신규 건은 '개인 보유중(DRAFT)'으로 생성 — 이후 목록에서 제출
+    return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'DRAFT' }
   }
   const res = await endpoints.createSettlement(draft)
   return res.data
@@ -38,5 +45,19 @@ export async function reviewSettlement(
     return decision === 'APPROVE' ? 'CONFIRMED' : decision === 'RETURN' ? 'RETURNED' : 'REJECT'
   }
   const res = await endpoints.review(id, decision, reason)
+  return res.data.status
+}
+
+/** S-02/S-06: 팀 취합 단계의 보완요청·반려(회계 결정과 별도 상태). */
+export async function decideTeamSettlement(
+  id: string,
+  decision: 'RETURN' | 'REJECT',
+  reason?: string,
+): Promise<SettlementStatus> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return decision === 'RETURN' ? 'TEAM_RETURNED' : 'TEAM_REJECTED'
+  }
+  const res = await endpoints.teamDecision(id, decision, reason)
   return res.data.status
 }

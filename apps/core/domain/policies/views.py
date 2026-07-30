@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from domain.common.permissions import IsAccountantLead
+from domain.common.permissions import CanActivateRule
 
 from . import services
 from .models import RuleGraph
@@ -28,9 +28,9 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
     def get_permissions(self):
-        # Rule ACTIVE 승인/롤백은 회계팀장급만 (RBAC)
+        # Rule ACTIVE 승인/롤백은 룰 활성 권한 보유자만 (Capability RBAC)
         if self.action in ("activate", "rollback"):
-            return [IsAccountantLead()]
+            return [CanActivateRule()]
         return super().get_permissions()
 
     @action(detail=True, methods=["post"])

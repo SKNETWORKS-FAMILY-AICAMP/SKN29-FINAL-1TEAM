@@ -11,6 +11,19 @@ export const ROLE_LABEL: Record<Role, string> = {
   EXECUTIVE: '회계·운영 상부',
 }
 
+// ── 기능 단위 권한(Capability) — 백엔드 accounts.Capability와 값 동기화 ──
+//  인가는 역할이 아니라 이 4개 능력으로 판정한다(백 §3.1a). 실 모드는 /api/me의 capabilities,
+//  mock 모드는 아래 역할 기본값을 사용(데모 역할 스위처를 따르도록).
+export type Capability = 'team_aggregate' | 'accounting_review' | 'rule_view' | 'rule_activate' | 'governance_view'
+
+export const ROLE_DEFAULT_CAPABILITIES: Record<Role, Capability[]> = {
+  EMPLOYEE: [],
+  TEAM_LEAD: ['team_aggregate'],
+  ACCOUNTANT: ['accounting_review', 'rule_view'],
+  ACCOUNTANT_LEAD: ['accounting_review', 'rule_view', 'rule_activate'],
+  EXECUTIVE: ['governance_view'],
+}
+
 // ── 정산 상태머신(FR-ST-01) ───────────────
 //  DRAFT → SUBMITTED → RPA_JUDGED → (PENDING_CONFIRM/RETURNED/IN_REVIEW/REJECT)
 //        → CONFIRMED → ERP_VOUCHER_DRAFTED
@@ -81,6 +94,14 @@ export interface Settlement {
   status: SettlementStatus
   user: string
   purpose?: string // 지출 목적/사유
+  time?: string
+  dept?: string
+  category?: Category
+  merchantIndustry?: string
+  additionalEvidence?: { id: number; name: string; status: string }[]
+  facts?: Record<string, unknown>
+  events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]
+  ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; confidence: number }[]
 }
 
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */

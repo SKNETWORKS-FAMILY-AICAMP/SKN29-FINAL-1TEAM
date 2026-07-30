@@ -17,8 +17,10 @@ export async function fetchSettlementsData(currentUser?: string): Promise<Settle
   const myExpenses = currentUser ? all.filter((s) => s.user === currentUser) : all
   const reviewItems = all.filter((s) => s.status === 'IN_REVIEW') as ReviewItem[]
 
+  // S-02는 팀장이 실제로 취합 처리할 TEAM_COLLECTING 건만 노출한다.
+  const teamCollecting = all.filter((s) => s.status === 'TEAM_COLLECTING')
   const byUser = new Map<string, Settlement[]>()
-  for (const s of all) {
+  for (const s of teamCollecting) {
     const key = s.user ?? '미지정'
     if (!byUser.has(key)) byUser.set(key, [])
     byUser.get(key)!.push(s)

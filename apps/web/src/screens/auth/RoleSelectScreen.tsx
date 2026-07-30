@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useRole } from '../../context/RoleContext'
+import { ROLE_DEFAULT_CAPABILITIES } from '../../types/domain'
 import { MOCK_PROFILE, ROLE_SLUG_META, SLUG_TO_ROLE, type RoleSlug } from '../../data/onboardingSteps'
 
 const SLUGS: RoleSlug[] = ['employee', 'accountant', 'executive']
@@ -13,7 +14,8 @@ export function RoleSelectScreen() {
 
   const choose = (slug: RoleSlug) => {
     const profile = MOCK_PROFILE[slug]
-    login({ name: profile.name, role: SLUG_TO_ROLE[slug], dept: profile.dept, position: profile.position })
+    const role = SLUG_TO_ROLE[slug]
+    login({ name: profile.name, role, dept: profile.dept, position: profile.position, capabilities: ROLE_DEFAULT_CAPABILITIES[role] })
     setRole(SLUG_TO_ROLE[slug])
     nav(`/onboarding/${slug}/1`)
   }

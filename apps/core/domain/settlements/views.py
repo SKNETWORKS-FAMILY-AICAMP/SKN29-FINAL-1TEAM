@@ -1,11 +1,21 @@
+import re
+from datetime import datetime, time
+
+from django.db.models import Sum
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from domain.common.permissions import IsAccountant
+from domain.cards.models import Card
+from domain.common.permissions import CanAccountingReview, CanTeamAggregate
+from domain.transactions.models import Receipt, Transaction
 
 from . import services
-from .models import Settlement
+from .models import Settlement, TeamBudget
 from .serializers import SettlementDetailSerializer, SettlementSerializer
 
 
@@ -23,7 +33,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
     """
     queryset = Settlement.objects.select_related(
         "transaction", "transaction__card", "submitted_by"
-    ).prefetch_related("events", "risk_reviews")
+    ).prefetch_related("events", "risk_reviews", "rule_hits__graph", "transaction__receipts")
     serializer_class = SettlementSerializer
     http_method_names = ["get", "patch", "post", "head", "options"]
 
@@ -31,10 +41,36 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return SettlementDetailSerializer if self.action == "retrieve" else SettlementSerializer
 
     def get_permissions(self):
-        # 검토(승인/보완/반려)·확정은 회계 담당자만 (RBAC)
+        # 기능 단위 인가(Capability RBAC)
         if self.action in ("review", "confirm"):
-            return [IsAccountant()]
+            return [CanAccountingReview()]
+        if self.action == "team_decision":  # 팀 취합(보완요청/반려/제출) — 기존 미보호 구멍 방어
+            return [CanTeamAggregate()]
         return super().get_permissions()
+
+    # POST /api/settlements/  (신규 지출 등록 — 거래+정산 생성)
+    def create(self, request, *args, **kwargs):
+        d = request.data
+        raw_date = (d.get("date") or "")[:10]
+        pd = parse_date(raw_date) if raw_date else None
+        ts = timezone.make_aware(datetime.combine(pd, time(12, 0))) if pd else timezone.now()
+        amount = int(re.sub(r"[^0-9]", "", str(d.get("amount") or "0")) or 0)
+        card = Card.objects.filter(card_type=d.get("cardType")).first() if d.get("cardType") else None
+        category = d.get("category") or d.get("aiCategory") or ""
+
+        tx = Transaction.objects.create(
+            card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
+        )
+        if d.get("evidence") == "OK":
+            Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
+        actor = _actor(request)
+        s = Settlement.objects.create(
+            transaction=tx, category=category, ai_category=d.get("aiCategory") or category,
+            ai_suggested=bool(d.get("aiSuggested")), merchant_industry=d.get("merchantIndustry", ""),
+            purpose=d.get("purpose", ""), submitted_by=actor,
+            team=getattr(actor, "team", None), status="DRAFT",
+        )
+        return Response(self.get_serializer(s).data, status=201)
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -84,6 +120,18 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
 
+    # POST /api/settlements/{id}/team-decision/  {decision, reason}
+    @action(detail=True, methods=["post"], url_path="team-decision")
+    def team_decision(self, request, pk=None):
+        s = self.get_object()
+        try:
+            services.team_decide(
+                s, request.data.get("decision"), _actor(request), request.data.get("reason", "")
+            )
+        except services.TransitionError as e:
+            return Response({"detail": str(e)}, status=400)
+        return Response(self.get_serializer(s).data)
+
     # POST /api/settlements/{id}/judge/  (RPA 1차판정 placeholder → IN_REVIEW)
     @action(detail=True, methods=["post"])
     def judge(self, request, pk=None):
@@ -93,3 +141,48 @@ class SettlementViewSet(viewsets.ModelViewSet):
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
+
+
+# 반려 상태는 예산 사용액에서 제외
+_BUDGET_EXCLUDE = ["REJECT", "TEAM_REJECTED"]
+
+
+class TeamBudgetView(APIView):
+    """GET /api/team-budget/?team=<id>&month=YYYY-MM — 팀 예산 현황(S-02).
+
+    한도(limit)는 TeamBudget(DB)에서, 사용액(used)은 해당 팀·월 Settlement 집계로 산출한다(실 내역 기반).
+    프론트 data/mock.ts의 teamBudget 셰이프({total, used, categories:[{label,limit,used}]})와 정합.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        team_id = request.query_params.get("team")
+        month = request.query_params.get("month") or ""
+
+        budgets = TeamBudget.objects.all()
+        if team_id:
+            budgets = budgets.filter(team_id=team_id)
+        if month:
+            budgets = budgets.filter(year_month=month)
+
+        used_qs = Settlement.objects.exclude(status__in=_BUDGET_EXCLUDE)
+        if team_id:
+            used_qs = used_qs.filter(team_id=team_id)
+        if month and "-" in month:
+            y, m = month.split("-")[:2]
+            used_qs = used_qs.filter(transaction__ts__year=int(y), transaction__ts__month=int(m))
+        used_by_cat = {
+            r["category"]: int(r["s"] or 0)
+            for r in used_qs.values("category").annotate(s=Sum("transaction__amount"))
+        }
+
+        total_limit, categories = 0, []
+        for b in budgets:
+            if b.category == "":
+                total_limit = b.limit_amount
+            else:
+                categories.append({"label": b.category, "limit": b.limit_amount, "used": used_by_cat.get(b.category, 0)})
+        return Response({
+            "team": int(team_id) if team_id else None, "month": month,
+            "total": total_limit, "used": sum(used_by_cat.values()), "categories": categories,
+        })
