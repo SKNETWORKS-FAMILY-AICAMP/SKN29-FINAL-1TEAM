@@ -17,7 +17,7 @@ import { won } from '../../lib/format'
 import { anomalyTags } from '../../data/mock'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
-import { useRole } from '../../context/RoleContext'
+import { useCan } from '../../lib/capabilities'
 import { useAuth } from '../../context/AuthContext'
 import { createSettlement, decideTeamSettlement, reviewSettlement, submitSettlements } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
@@ -47,11 +47,11 @@ export function SettlementDetailModal({
   /** 'team'이면 팀 취합 뷰(팀장이 팀원 건을 팀 보완요청/팀 반려) */
   context?: 'default' | 'team'
 }) {
-  const { role } = useRole()
+  const can = useCan()
   const { user } = useAuth()
   const nav = useNavigate()
   const isCreate = item === null
-  const isAccountant = role === 'ACCOUNTANT'
+  const canReview = can('accounting_review') // 회계 검토·확정 권한(회계담당·회계팀장 등)
 
   // ── 권한/모드 ──
   const isTeamView = context === 'team'
@@ -59,7 +59,7 @@ export function SettlementDetailModal({
   //  (mock 로그인 이름이 데이터 소유자와 달라도 '내 지출' 편집/제출이 막히지 않도록)
   const isOwner = isCreate || !isTeamView || item?.user === user?.name
   // 팀 취합 뷰에서 팀장급이 '남의' 취합중(TEAM_COLLECTING) 건을 처리
-  const canTeamDecide = isTeamView && !isOwner && role !== 'EMPLOYEE' && item?.status === 'TEAM_COLLECTING'
+  const canTeamDecide = isTeamView && !isOwner && can('team_aggregate') && item?.status === 'TEAM_COLLECTING'
   const readOnly = !isCreate && !isOwner // 팀 취합 뷰에서 내 건이 아니면 보기만 가능
 
   // ── 편집 상태(우측 폼) ──
@@ -83,7 +83,7 @@ export function SettlementDetailModal({
   const [showReturnModal, setShowReturnModal] = useState(false)
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
-  const needsResubmit = isOwner && !isAccountant && !isCreate && item?.status === 'RETURNED'
+  const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
   // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
   const isAnomaly = !isCreate && item ? anomalyTags(item).length > 0 : false
 
@@ -239,7 +239,7 @@ export function SettlementDetailModal({
             {isAnomaly ? '제출 불가 (이상 건)' : '제출(SUBMITTED)'}
           </button>
         </>
-      ) : isAccountant ? (
+      ) : canReview ? (
         <>
           <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>보완요청(RETURNED)</button>
           <button className="btn reject" onClick={reject} disabled={pending}>반려(REJECT)</button>

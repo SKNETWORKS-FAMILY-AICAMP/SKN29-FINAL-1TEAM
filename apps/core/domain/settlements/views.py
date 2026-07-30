@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from domain.cards.models import Card
-from domain.common.permissions import IsAccountant
+from domain.common.permissions import CanAccountingReview, CanTeamAggregate
 from domain.transactions.models import Receipt, Transaction
 
 from . import services
@@ -41,9 +41,11 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return SettlementDetailSerializer if self.action == "retrieve" else SettlementSerializer
 
     def get_permissions(self):
-        # 검토(승인/보완/반려)·확정은 회계 담당자만 (RBAC)
+        # 기능 단위 인가(Capability RBAC)
         if self.action in ("review", "confirm"):
-            return [IsAccountant()]
+            return [CanAccountingReview()]
+        if self.action == "team_decision":  # 팀 취합(보완요청/반려/제출) — 기존 미보호 구멍 방어
+            return [CanTeamAggregate()]
         return super().get_permissions()
 
     # POST /api/settlements/  (신규 지출 등록 — 거래+정산 생성)

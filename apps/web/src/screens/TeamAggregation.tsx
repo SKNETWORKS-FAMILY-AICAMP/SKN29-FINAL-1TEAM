@@ -8,13 +8,15 @@ import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
 import { decideTeamSettlement, submitSettlements } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
-import { useRole } from '../context/RoleContext'
+import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/capabilities'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 export function TeamAggregation() {
   const { teamMembers, updateStatus } = useSettlements()
-  const { role } = useRole()
-  const canManage = role !== 'EMPLOYEE' // 팀장급 이상만 개별 건 조회·처리 (임직원=예산 현황만)
+  const { user } = useAuth()
+  const teamName = user?.dept ?? '내 팀' // 로그인 사용자의 소속 팀(재무회계팀 / AI·개발팀 등)
+  const canManage = useCan()('team_aggregate') // 팀 취합 권한 보유자만 개별 건 조회·처리
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
   const [memberFilter, setMemberFilter] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Settlement | null>(null)
@@ -85,7 +87,7 @@ export function TeamAggregation() {
       <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <span className="screen-id">S-02</span>
-          <h1>팀 취합·제출</h1>
+          <h1>팀 취합·제출 · {teamName}</h1>
           <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
         </div>
         <span className="tag warn">마감 D-2</span>

@@ -3,18 +3,18 @@ import { useState } from 'react'
 import { Lock, RotateCcw } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
 import { useAuth } from '../../context/AuthContext'
+import { useCan } from '../../lib/capabilities'
 import { ROLE_LABEL } from '../../types/domain'
 import { activateRule, rollbackRule } from '../../api/ruleService'
 import { ACTIVE_RULE, PENDING_VERSION, VERSION_HISTORY, type VersionRow } from './data/ruleConsoleMock'
 
-// "ACTIVE 승인 권한: 회계팀장급" — RBAC 기준 ACCOUNTANT_LEAD만 승인/롤백 가능(서버에서도 IsAccountantLead로 강제).
-const CAN_APPROVE_ROLES = ['ACCOUNTANT_LEAD']
 const todayKST = () => new Date().toISOString().slice(0, 10)
 
 export function ActiveTab() {
   const { role } = useRole()
   const { user } = useAuth()
-  const canApprove = CAN_APPROVE_ROLES.includes(role)
+  // ACTIVE 승인/롤백은 룰 활성 권한 보유자만(서버에서도 CanActivateRule로 강제).
+  const canApprove = useCan()('rule_activate')
   const approverName = user?.name ?? ROLE_LABEL[role]
 
   const [versions, setVersions] = useState<VersionRow[]>(VERSION_HISTORY)

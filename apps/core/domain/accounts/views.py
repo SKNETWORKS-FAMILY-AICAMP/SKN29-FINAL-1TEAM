@@ -15,6 +15,7 @@ def user_payload(u):
         "username": u.username,
         "role": getattr(u, "role", "EMPLOYEE"),
         "dept": u.team.name if getattr(u, "team_id", None) else None,
+        "capabilities": u.capabilities if hasattr(u, "capabilities") else [],
         "isSuperuser": u.is_superuser,
     }
 

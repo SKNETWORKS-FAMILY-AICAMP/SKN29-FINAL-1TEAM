@@ -1,30 +1,30 @@
 import { NavLink } from 'react-router-dom'
-import { useRole } from '../../context/RoleContext'
-import type { Role } from '../../types/domain'
+import type { Capability } from '../../types/domain'
+import { useCan } from '../../lib/capabilities'
 
 interface MenuItem {
   to: string
   label: string
-  minRank: number
+  /** 필요 기능 권한. 없으면 인증만으로 노출(내 지출·팀 현황). */
+  capability?: Capability
 }
 
-// 화면설계서 §1 화면 목록 — 역할 계층(사원<팀장<회계<임원진) 누적형 메뉴(Figma Sidebar 기준, FR-DB-01).
-// 상위 역할일수록 하위 역할의 화면까지 모두 보인다.
-// "규정 문서 관리(PolicyDocuments)"는 회계 담당자(minRank 2)부터 접근. 회계팀장(ACCOUNTANT_LEAD)은 + Rule ACTIVE 승인 권한.
-const ROLE_RANK: Record<Role, number> = { EMPLOYEE: 0, TEAM_LEAD: 1, ACCOUNTANT: 2, ACCOUNTANT_LEAD: 2, EXECUTIVE: 3 }
-
+// 화면설계서 §1 화면 목록 — 기능 단위(Capability) 게이트(백 §3.1a).
+//  · 내 지출·팀 현황: 공통(권한 불필요, 팀 현황의 개별건 처리 컨트롤은 team_aggregate로 별도 게이트)
+//  · 검토 워크스페이스·규정 문서 관리: accounting_review
+//  · Rule 콘솔: rule_view(열람) — ACTIVE 전환 버튼만 rule_activate로 별도 게이트  · 거버넌스: governance_view
 const MENU: MenuItem[] = [
-  { to: '/my-expenses', label: '내 지출', minRank: 0 },
-  { to: '/team', label: '팀 현황', minRank: 0 },        // 임직원=예산 현황 조회 / 팀장+=개별건 처리
-  { to: '/review', label: '검토 워크스페이스', minRank: 2 },
-  { to: '/policy-docs', label: '규정 문서 관리', minRank: 2 },
-  { to: '/rules', label: 'Rule 콘솔', minRank: 2 },
-  { to: '/governance', label: '거버넌스 대시보드', minRank: 3 },
+  { to: '/my-expenses', label: '내 지출' },
+  { to: '/team', label: '팀 현황' },
+  { to: '/review', label: '검토 워크스페이스', capability: 'accounting_review' },
+  { to: '/policy-docs', label: '규정 문서 관리', capability: 'accounting_review' },
+  { to: '/rules', label: 'Rule 콘솔', capability: 'rule_view' },
+  { to: '/governance', label: '거버넌스 대시보드', capability: 'governance_view' },
 ]
 
 export function Sidebar() {
-  const { role } = useRole()
-  const items = MENU.filter((m) => ROLE_RANK[role] >= m.minRank)
+  const can = useCan()
+  const items = MENU.filter((m) => !m.capability || can(m.capability))
 
   return (
     <aside className="sidebar">

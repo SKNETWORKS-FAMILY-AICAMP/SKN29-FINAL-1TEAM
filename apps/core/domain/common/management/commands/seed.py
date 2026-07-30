@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from domain.accounts.models import Role, Team
+from domain.accounts.models import Capability, Role, Team
 from domain.cards.models import Card, CardType
 from domain.policies.models import (
     OnResult, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting,
@@ -52,9 +52,14 @@ class Command(BaseCommand):
         fin = Team.objects.create(name="재무회계팀", bu="경영지원본부")
 
         # ── 로그인 계정 ───────────────────────────
+        # 인가는 기능 단위(Capability) — 역할 기본값 ∪ extra_capabilities. (accounts.ROLE_DEFAULT_CAPABILITIES)
+        #  kim=일반 사원(능력 없음)
+        #  acc=회계작업·룰콘솔열람(역할기본) + 팀취합(추가부여)
+        #  acclead=회계작업·룰콘솔열람·룰활성(역할기본)
         kim = User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE, team=sales, first_name="김영업")
         User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD, team=sales, first_name="이팀장")
-        User.objects.create_user("acc", password="pass1234", role=Role.ACCOUNTANT, team=fin, first_name="박회계")
+        acc = User.objects.create_user("acc", password="pass1234", role=Role.ACCOUNTANT, team=fin, first_name="박회계",
+                                       extra_capabilities=[Capability.TEAM_AGGREGATE.value])
         User.objects.create_user("acclead", password="pass1234", role=Role.ACCOUNTANT_LEAD, team=fin, first_name="정회계팀장")
         User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영")
 
@@ -69,6 +74,7 @@ class Command(BaseCommand):
 
         # ── 카드 ─────────────────────────────────
         kim_card = Card.objects.create(card_type=CardType.PERSONAL, name="김영업 개인카드", number_masked="**** 1001", owner=kim)
+        acc_card = Card.objects.create(card_type=CardType.PERSONAL, name="박회계 개인카드", number_masked="**** 2002", owner=acc)
         sales_team_card = Card.objects.create(card_type=CardType.TEAM, name="영업팀 팀카드", number_masked="**** 7001", team=sales)
         sales_shared_card = Card.objects.create(card_type=CardType.SHARED, name="영업본부 공용", number_masked="**** 7700", team=sales)
         shared_card = Card.objects.create(card_type=CardType.SHARED, name="AI·개발팀 공용", number_masked="**** 9999", team=devai)
@@ -101,6 +107,16 @@ class Command(BaseCommand):
         mk(kim, "교보문고", 38000, kim_card, C.SUPPLIES, False, S.RETURNED, "OK", 5, 14, "영업 자료 서적")
         mk(kim, "롯데호텔 커피숍", 46000, kim_card, C.MEETING, True, S.CONFIRMED, "OK", 8, 15, "거래처 상담")
         mk(kim, "대한항공", 210000, postpaid, C.TRIP, True, S.ERP_VOUCHER_DRAFTED, "OK", 12, 7, "부산 출장 항공", "항공")
+
+        # ── 박회계(재무회계팀) '내 지출' — 회계 담당자 개인 법인카드 지출 다양화(전 상태) ──
+        mk(acc, "투썸플레이스 을지로", 15400, acc_card, C.MEETING, True, S.DRAFT, "OK", 1, 10, "결산 리뷰 미팅 음료", "카페")
+        mk(acc, "오피스디포", 42000, acc_card, C.SUPPLIES, False, S.DRAFT, "MISSING", 1, 13, "회계 증빙 보관용 파일박스")
+        mk(acc, "김밥천국 여의도", 9000, acc_card, C.MEAL, True, S.SUBMITTED, "OK", 2, 20, "월말 결산 야근 식대")
+        mk(acc, "코레일 KTX", 47600, acc_card, C.TRIP, False, S.SUBMITTED, "OK", 3, 8, "세무조사 대응 본사 출장", "철도")
+        mk(acc, "교보문고", 33000, acc_card, C.SUPPLIES, False, S.PENDING_CONFIRM, "OK", 4, 15, "개정세법 실무 서적")
+        mk(acc, "스타벅스 여의도", 21000, acc_card, C.ENTERTAIN, True, S.RETURNED, "OK", 5, 16, "외부 회계법인 미팅 - 목적 보완 필요", "카페")
+        mk(acc, "본죽 여의도", 12800, acc_card, C.MEAL, False, S.CONFIRMED, "OK", 9, 12, "주말 결산 근무 식대")
+        mk(acc, "우체국 등기", 8000, acc_card, C.OPERATION, False, S.ERP_VOUCHER_DRAFTED, "OK", 13, 11, "회계 원본 증빙 발송")
 
         # ── 영업팀 취합 단계(팀장 뷰) — TEAM_* 상태 다양화 ──
         mk(u["박민수"], "배달의민족", 84000, sales_team_card, C.MEAL, True, S.TEAM_COLLECTING, "OK", 2, 20, "팀 야근 식대")

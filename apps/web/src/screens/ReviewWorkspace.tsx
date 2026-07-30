@@ -11,6 +11,7 @@ import { DecisionReasonModal } from '../components/settlement/DecisionReasonModa
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { reviewSettlement } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
+import { useCan } from '../lib/capabilities'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 type Reco = ReviewItem['aiRecommendation']
@@ -30,6 +31,7 @@ const catAbbr = (c: string) => CAT_ABBR[c as Category] ?? c.slice(0, 2)
 
 export function ReviewWorkspace() {
   const { reviewItems: items, updateStatus } = useSettlements()
+  const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
   const [selId, setSelId] = useState<string | undefined>(items[0]?.id)
   const [filter, setFilter] = useState<Filter>('ALL')
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -180,7 +182,7 @@ export function ReviewWorkspace() {
             {!isHistory && filter !== 'ALL' && checked.size > 0 && (
               <div className="row" style={{ justifyContent: 'space-between', padding: '10px 16px 0' }}>
                 <span className="text-meta">추천: {RECO_LABEL[filter].text} {checked.size}건 선택됨</span>
-                <button className={'btn sm ' + (filter === 'APPROVE' ? 'approve' : filter === 'RETURN' ? 'return' : 'reject')} disabled={busy} onClick={decideBulk}>
+                <button className={'btn sm ' + (filter === 'APPROVE' ? 'approve' : filter === 'RETURN' ? 'return' : 'reject')} disabled={busy || !canReview} onClick={decideBulk}>
                   선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
                 </button>
               </div>
@@ -218,7 +220,7 @@ export function ReviewWorkspace() {
                         <button
                           type="button"
                           className={'tag reco-btn ' + reco.cls}
-                          disabled={busy || isHistory}
+                          disabled={busy || isHistory || !canReview}
                           title={isHistory ? '이미 처리된 건입니다' : `클릭하여 ${reco.text} 처리`}
                           onClick={(e) => { e.stopPropagation(); decideItem(i, i.aiRecommendation) }}
                         >
@@ -382,9 +384,9 @@ export function ReviewWorkspace() {
                       </div>
                     )}
                     <div className="row review-actions">
-                      <button className="btn approve" disabled={busy || isHistory} onClick={() => decideOne('APPROVE')}>승인</button>
-                      <button className="btn return" disabled={busy || isHistory} onClick={() => decideOne('RETURN')}>보완요청</button>
-                      <button className="btn reject" disabled={busy || isHistory} onClick={() => decideOne('REJECT')}>반려(최종)</button>
+                      <button className="btn approve" disabled={busy || isHistory || !canReview} onClick={() => decideOne('APPROVE')}>승인</button>
+                      <button className="btn return" disabled={busy || isHistory || !canReview} onClick={() => decideOne('RETURN')}>보완요청</button>
+                      <button className="btn reject" disabled={busy || isHistory || !canReview} onClick={() => decideOne('REJECT')}>반려(최종)</button>
                     </div>
                     <div className="text-meta" style={{ marginTop: 10, textAlign: 'right' }}>결정 → decision_labels 적재 (MVP 재학습 미적용)</div>
                   </div>

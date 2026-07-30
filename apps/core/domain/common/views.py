@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from domain.accounts.models import Capability
 from domain.settlements.models import Settlement
 from domain.settlements.models import SettlementStatus as S
 
@@ -32,6 +33,11 @@ class DashboardView(APIView):
 
     def get(self, _request, role):
         role = (role or "").upper()
+        # 거버넌스(임원) 지표는 열람 권한 보유자만 — 나머지 역할 KPI는 개방(스캐폴드)
+        if role == "EXECUTIVE":
+            u = getattr(_request, "user", None)
+            if not (u and u.is_authenticated and u.has_capability(Capability.GOVERNANCE_VIEW)):
+                return Response({"detail": "거버넌스 대시보드 열람 권한이 필요합니다."}, status=403)
         qs = Settlement.objects.all()
         total = qs.count()
         total_amount = qs.aggregate(v=Sum("transaction__amount"))["v"] or 0
