@@ -164,3 +164,136 @@ export const VERSION_HISTORY: VersionRow[] = [
 // ── 규정 문서 업로드 모달 (v4) ────────────────────────────
 export const POLICY_DOC_TYPES = ['법인카드 사용규정', '세법 시행령', '사내 정책', '기타'] as const
 export const POLICY_UPLOAD_PROGRESS = { fileName: '법인카드_사용규정_v2.pdf', stage: 'chunking' as 'upload' | 'chunking' | 'embedding', percent: 67 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  룰 그래프(RuleGraph) 중심 모델 — 백엔드 policies 도메인과 동형(플레이스홀더)
+//   · 초안/시뮬레이션/활성·버전관리·롤백은 전부 "그래프 단위"
+//   · 단건 룰(GraphNode)은 그래프 상세의 세부 설정에서만 유효
+// ════════════════════════════════════════════════════════════════════════
+export type GraphStatus = 'DRAFT' | 'SIMULATED' | 'ACTIVE' | 'ARCHIVED'
+export const GRAPH_STATUS_LABEL: Record<GraphStatus, string> = {
+  DRAFT: '초안', SIMULATED: '시뮬레이션', ACTIVE: '활성', ARCHIVED: '보관',
+}
+
+export interface NodePlain { category?: string; threshold?: number; extraCondition?: string; action: string }
+
+export interface GraphNode {
+  nodeKey: string
+  title: string
+  origin: 'existing' | 'new'
+  /** 비개발자용 자연어 표현 */
+  plain: NodePlain
+  /** 개발자용 조건 DSL 원문(백엔드 condition.expr) */
+  conditionExpr: string
+  sourceClause: string
+  aiReason?: string
+}
+
+export interface GraphVersion {
+  version: number
+  label: string
+  status: '초안' | '승인대기' | '현재 활성' | '과거'
+  approvedAt?: string
+  approver?: string
+  matched?: number
+  fpRate?: number
+  note?: string
+}
+
+export interface GraphSim { matched: number; fpRate: number; reviewReduction: number; sampleSize: number; ranAt: string }
+
+export interface RuleGraph {
+  id: string
+  name: string
+  scope: string
+  status: GraphStatus
+  sourceClause: string
+  entryNodeKey: string
+  nodes: GraphNode[]
+  routings: { from: string; onResult: 'MATCH' | 'NO_MATCH'; to: string }[]
+  versions: GraphVersion[]
+  sim?: GraphSim
+}
+
+export const RULE_GRAPHS: RuleGraph[] = [
+  {
+    id: 'G-ENTERTAIN', name: '접대비 검증 그래프', scope: '접대', status: 'ACTIVE',
+    sourceClause: '법인카드 사용규정 제11조② · 기업업무추진비 규정',
+    entryNodeKey: 'R-045',
+    nodes: [
+      { nodeKey: 'R-045', title: '접대비 3만원 초과 증빙 필수', origin: 'existing',
+        plain: { category: '접대', threshold: 30000, extraCondition: '적격증빙이 없으면', action: '손금불산입 위험으로 표시' },
+        conditionExpr: 'category == "접대" AND amount > 30000 AND has_receipt == false', sourceClause: '제11조②' },
+      { nodeKey: 'R-110', title: '접대비 봉사료 과다 포함', origin: 'new',
+        plain: { category: '접대', extraCondition: '봉사료가 10% 이상 포함되면', action: '보완요청으로 표시' },
+        conditionExpr: 'category == "접대" AND service_charge_ratio >= 0.10', sourceClause: '제12조②',
+        aiReason: '봉사료 10% 이상은 업무관련성 엄격 심사 대상이라는 조항을 근거로 제안합니다.' },
+    ],
+    routings: [{ from: 'R-045', onResult: 'MATCH', to: 'R-110' }, { from: 'R-045', onResult: 'NO_MATCH', to: '' }],
+    versions: [
+      { version: 4, label: 'v4', status: '승인대기', matched: 445, fpRate: 0.024, note: 'has_receipt 조건에 전자영수증 인식 추가' },
+      { version: 3, label: 'v3', status: '현재 활성', approvedAt: '2026-07-10', approver: '정회계팀장', matched: 412, fpRate: 0.031 },
+      { version: 2, label: 'v2', status: '과거', approvedAt: '2026-06-02', approver: '정회계팀장', matched: 380, fpRate: 0.068 },
+      { version: 1, label: 'v1', status: '과거', approvedAt: '2026-05-02', approver: '박재무', matched: 290, fpRate: 0.094 },
+    ],
+    sim: { matched: 445, fpRate: 0.024, reviewReduction: 0.28, sampleSize: 12480, ranAt: '2026-07-21 14:03' },
+  },
+  {
+    id: 'G-POSTPAID', name: '후정산 증빙 그래프', scope: '후정산', status: 'SIMULATED',
+    sourceClause: '법인카드 사용규정 제9조',
+    entryNodeKey: 'R-106',
+    nodes: [
+      { nodeKey: 'R-106', title: '후정산 증빙 필수 검증', origin: 'new',
+        plain: { extraCondition: '후정산 카드인데 증빙이 누락되면', action: '증빙 첨부를 필수로 요구' },
+        conditionExpr: 'card_type == "POST_PAID" AND evidence == "MISSING"', sourceClause: '제9조',
+        aiReason: '후정산 방식은 사후 증빙 누락 위험이 커 별도 검증 Rule을 제안합니다.' },
+    ],
+    routings: [{ from: 'R-106', onResult: 'MATCH', to: '' }],
+    versions: [{ version: 1, label: 'v1', status: '승인대기', matched: 88, fpRate: 0.052, note: '시뮬레이션 완료 — 승인대기' }],
+    sim: { matched: 88, fpRate: 0.052, reviewReduction: 0.15, sampleSize: 12480, ranAt: '2026-07-20 10:11' },
+  },
+  {
+    id: 'G-DINING', name: '식대·회식 한도 그래프', scope: '식대', status: 'DRAFT',
+    sourceClause: '법인카드 사용규정 제10조②',
+    entryNodeKey: 'R-102',
+    nodes: [
+      { nodeKey: 'R-102', title: '식대 30만원 초과 사전승인 필요', origin: 'new',
+        plain: { category: '식대', threshold: 300000, action: '사전승인 필요로 표시' },
+        conditionExpr: 'category == "식대" AND amount > 300000', sourceClause: '제10조②',
+        aiReason: 'RAG 검색 결과 제10조②항에서 식대는 건당 30만원 초과 시 사전승인 대상으로 명시되어 있어 자동 판정 Rule을 제안합니다.' },
+    ],
+    routings: [{ from: 'R-102', onResult: 'MATCH', to: '' }],
+    versions: [{ version: 1, label: 'v1', status: '초안', note: '신규 초안 작성 중' }],
+  },
+  {
+    id: 'G-SHARED', name: '공용카드 검증 그래프', scope: '공용카드', status: 'DRAFT',
+    sourceClause: '요구사항 §4.1',
+    entryNodeKey: 'R-104',
+    nodes: [
+      { nodeKey: 'R-104', title: '공용카드 실사용자 확인', origin: 'new',
+        plain: { extraCondition: '공용카드인데 실사용자가 입력되지 않으면', action: '실사용자·목적 입력을 요구' },
+        conditionExpr: 'card_type == "SHARED" AND actual_user == null', sourceClause: '§4.1' },
+    ],
+    routings: [{ from: 'R-104', onResult: 'MATCH', to: '' }],
+    versions: [{ version: 1, label: 'v1', status: '초안' }],
+  },
+  {
+    id: 'G-WELFARE', name: '복리후생·경조사 그래프', scope: '복리후생', status: 'DRAFT',
+    sourceClause: '법인카드 사용규정 제13조',
+    entryNodeKey: 'R-103',
+    nodes: [
+      { nodeKey: 'R-103', title: '경조사비 20만원 초과 소급경고', origin: 'new',
+        plain: { category: '경조사비', threshold: 200000, action: '소급 경고로 표시' },
+        conditionExpr: 'category == "경조사비" AND amount > 200000', sourceClause: '제13조',
+        aiReason: '제13조에서 경조사비는 20만원까지 소명자료로 갈음 가능해 초과분은 별도 경고가 필요합니다.' },
+    ],
+    routings: [{ from: 'R-103', onResult: 'MATCH', to: '' }],
+    versions: [{ version: 1, label: 'v1', status: '초안' }],
+  },
+]
+
+export const graphsByStatus = (s: GraphStatus) => RULE_GRAPHS.filter((g) => g.status === s)
+/** 시뮬레이션 대상 = 초안/시뮬레이션 단계 그래프 */
+export const simulatableGraphs = () => RULE_GRAPHS.filter((g) => g.status === 'DRAFT' || g.status === 'SIMULATED')
+export const workingVersion = (g: RuleGraph) =>
+  g.versions.find((v) => v.status === '초안' || v.status === '승인대기') ?? g.versions[0]
