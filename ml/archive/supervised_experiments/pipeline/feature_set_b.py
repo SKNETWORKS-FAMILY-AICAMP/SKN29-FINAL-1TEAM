@@ -3,7 +3,7 @@
 
 주의: 이 로더는 Tier0(12, 피처 A와 동일) + 일시불할부구분코드(1) 외에
 거래일자/거래연월을 정렬 순서를 보존하는 정수(ordinal)로 변환해 함께 넣는다.
-이건 실제 팀원의 Isolation Forest 원본 작업(`ml/ML_0728/`)에는 없는 컬럼이라 팀원
+이건 실제 팀원의 Isolation Forest 원본 작업(`ml/mvp_isolation_forest/`)에는 없는 컬럼이라 팀원
 원본과는 피처 구성이 다르다(팀원 원본은 날짜 컬럼을 모델 입력에 아예 안 씀).
 supervised_topk_ranking.py의
 기존 결과(§3-3)는 이 로더 기준으로 이미 산출된 값이라 그대로 두되, 재현/재현 시
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from sklearn.metrics import precision_score, recall_score
 
-BASE = Path(__file__).resolve().parent.parent.parent / ".data" / "data" / "processed"
+BASE = Path(__file__).resolve().parent.parent.parent.parent.parent / ".data" / "data" / "processed"
 
 # Tier0(14) — feature_tiers.json의 tier0_transaction_safe에서 가맹점 관련 2개 제외
 NUMERIC_COLS = [
@@ -25,7 +25,7 @@ NUMERIC_COLS = [
 FLAG_COLS = ["월말여부", "취소성거래_추정", "카드첫거래여부"]
 DATE_COLS = ["거래일자", "거래연월"]
 CATEGORICAL_COLS = ["거래요일_한글", "시간대구간"]
-# Tier1에서 유일하게 도움이 된 피처 (팀원 ablation 결과, ml/ML_0728 참고)
+# Tier1에서 유일하게 도움이 된 피처 (팀원 ablation 결과, ml/mvp_isolation_forest 참고)
 EXTRA_CATEGORICAL = ["일시불할부구분코드"]
 
 TARGET = "이상거래여부"

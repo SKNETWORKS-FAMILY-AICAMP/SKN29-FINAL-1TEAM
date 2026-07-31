@@ -1,5 +1,5 @@
 """
-8개 지도학습 모델 — Isolation Forest MVP(팀원 원본: `ml/ML_0728/`)와 동일한 top-K% 랭킹 평가
+8개 지도학습 모델 — Isolation Forest MVP(팀원 원본: `ml/mvp_isolation_forest/`)와 동일한 top-K% 랭킹 평가
 조건으로 재실행. 피처 로더는 `feature_set_b.py`(이 실험 전용 재구성 — 팀원 원본과 피처 구성이
 일부 다름, 해당 모듈 docstring 참고).
 

@@ -1,7 +1,7 @@
 # 법인카드 이상거래 탐지 — 모델 결과 정리
 
 이 폴더의 모델들이 무엇이고, 왜 두 갈래(비지도/지도학습)로 나뉘어 있는지, 어떤 게
-실제 MVP 배포 후보인지 정리한 문서. Isolation Forest 관련 내용은 `ml/ML_0728/`(팀원 작업
+실제 MVP 배포 후보인지 정리한 문서. Isolation Forest 관련 내용은 `ml/mvp_isolation_forest/`(팀원 작업
 노트북 4개 + `isolation_forest_modeling_결과.md`)을 기준으로 정리했다.
 
 ---
@@ -9,7 +9,7 @@
 ## 0. 현재 상태 요약 (재검토 중)
 
 - **현재 MVP 후보**: Isolation Forest(비지도, 피처 Tier0+`일시불할부구분코드` 15개). 원본:
-  `ml/ML_0728/법인카드_이상거래_모델링_v2_최종test평가.ipynb`. test 기준 PR-AUC 0.5865,
+  `ml/mvp_isolation_forest/법인카드_이상거래_모델링_v2_최종test평가.ipynb`. test 기준 PR-AUC 0.5865,
   상위 3% 검토 시 recall 52.6% / precision 61.1%, 상위 10% 검토 시 recall 79.0% / precision 27.6%.
 - **이 후보를 고른 원래 근거**: 지도학습 8개는 수치상 더 높지만(PR-AUC 최대 0.827), 학습에 쓴
   정답(`이상거래여부`)이 카드사 부정사용 기준일 뿐 회계 담당자의 실제 승인/반려 판단이 아니라서
@@ -44,7 +44,7 @@
 - **8개 지도학습 모델(logistic_regression ~ mlp)** — `이상거래여부`를 정답으로 직접
   학습시킨 참고/비교 실험. **지금 당장 배포 대상이 아님.** "나중에 진짜 라벨이 쌓이면
   지도학습으로 바꿨을 때 얼마나 더 잘할 수 있는지" 미리 살펴본 자료.
-- **Isolation Forest(비지도)** — 팀원이 `ml/ML_0728/`에서 직접 검증한 MVP 후보.
+- **Isolation Forest(비지도)** — 팀원이 `ml/mvp_isolation_forest/`에서 직접 검증한 MVP 후보.
   원본 노트북·결과 요약은 그 폴더를 참고한다.
 
 두 트랙 모두 **동일한 데이터**(2021~2023 학습 / 2024 평가, 날짜 기준 분할)를 쓴다.
@@ -58,16 +58,16 @@
 | 세트 | 개수 | 구성 | 사용처 |
 |---|---|---|---|
 | A | 12개 | Tier0(거래·카드 이력) 중 가맹점 관련 2개(`가맹점평균금액_확장`,`가맹점첫거래여부`) 제외, 날짜 원본 컬럼도 제외 | `*_tuned.pkl` (1차 라운드) |
-| B | 15개 | 피처 A와 동일한 12개 + `일시불할부구분코드` 1개(원-핫 후 24컬럼) | `*_topk_ranking.pkl`, Isolation Forest MVP(`ML_0728`) |
+| B | 15개 | 피처 A와 동일한 12개 + `일시불할부구분코드` 1개(원-핫 후 24컬럼) | `*_topk_ranking.pkl`, Isolation Forest MVP(`mvp_isolation_forest`) |
 
 세트 B는 팀원이 ablation(넣었다 뺐다 실험)으로 검증한 조합 — Tier0 단독 PR-AUC 0.4711(5-fold
 기준선) 대비, Tier0+Tier1 전체(32컬럼)를 다 넣으면 0.2101로 오히려 55% 떨어졌고, Tier1 10개를
 하나씩 넣어본 결과(leave-one-in) 9개는 마이너스, `일시불할부구분코드` 1개만 +7.2%로 도움이
 됐다. 그래서 `Tier0 + 일시불할부구분코드`만 최종 채택했다(0.4946, +4.98%). 상세:
-`ml/ML_0728/isolation_forest_modeling_결과.md` §3.
+`ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §3.
 
 > **주의**: 우리 쪽 지도학습 8개 실험(`supervised_topk_ranking.py`)이 쓰는 피처 세트 B는
-> `ml/pipeline/feature_set_b.py`에 구현돼 있는데, 여기엔 `거래일자`/`거래연월`을 정렬 순서를 보존하는
+> `ml/archive/supervised_experiments/pipeline/feature_set_b.py`에 구현돼 있는데, 여기엔 `거래일자`/`거래연월`을 정렬 순서를 보존하는
 > 숫자(ordinal)로 변환해 2개 더 포함한다(팀원 원본 Isolation Forest에는 없는 컬럼). 즉 우리
 > 지도학습 실험과 팀원의 실제 Isolation Forest는 피처 구성이 완전히 동일하지는 않다 — 아래
 > §3-3 비교표를 "동일 조건 비교"로 과신하지 말 것.
@@ -121,9 +121,9 @@
 | MLP | 지도학습 | 0.808 | 74.8% | 87.0% | 88.9% | 31.0% | `round3_topk_ranking/mlp_topk_ranking.pkl` |
 | Extra Trees | 지도학습 | 0.802 | 74.5% | 86.7% | 89.6% | 31.3% | `round3_topk_ranking/extra_trees_topk_ranking.pkl` |
 | 로지스틱 회귀 | 지도학습 | 0.753 | 74.4% | 86.5% | 82.8% | 28.9% | `round3_topk_ranking/logistic_regression_topk_ranking.pkl` |
-| **Isolation Forest** | **비지도 (MVP)** | **0.5865** | 52.6% | 61.1% | 79.0% | 27.6% | `ml/ML_0728/법인카드_이상거래_모델링_v2_최종test평가.ipynb` — n_estimators=200, max_samples=auto, contamination=auto |
+| **Isolation Forest** | **비지도 (MVP)** | **0.5865** | 52.6% | 61.1% | 79.0% | 27.6% | `ml/mvp_isolation_forest/법인카드_이상거래_모델링_v2_최종test평가.ipynb` — n_estimators=200, max_samples=auto, contamination=auto |
 
-상세(지도학습 8개): `topk_ranking_results.csv`. 상세(Isolation Forest): `ml/ML_0728/isolation_forest_modeling_결과.md`.
+상세(지도학습 8개): `topk_ranking_results.csv`. 상세(Isolation Forest): `ml/mvp_isolation_forest/isolation_forest_modeling_결과.md`.
 
 **해석 주의**: 지도학습 8개가 PR-AUC·top-K% 지표 모두에서 Isolation Forest보다 높게 나오는 건
 "정답을 직접 학습했으니 당연한 결과"이지 "지도학습이 실전에서 더 우월하다"는 뜻이 아니다.
@@ -153,7 +153,7 @@
 
 **train 기준 임계값을 test에 적용하면 정확히 3%가 아니라 오차가 생긴다**: 고정값(0.0620)을
 test(2024)에 그대로 적용하면, 의도한 3.00%가 아니라 **실제로는 3.29%**가 걸린다(오차 0.29%p —
-`ml/ML_0728/isolation_forest_modeling_결과.md` §5). train과 test의 점수 분포가 완전히 같지 않아서
+`ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §5). train과 test의 점수 분포가 완전히 같지 않아서
 생기는 자연스러운 오차이며, 이 오차가 크지 않다는 건 "임계값이 미래 시점에도 안정적으로 작동한다"는
 근거로 해석된다. test 기준 연간 약 15,465건(하루 평균 약 42건)이 '검토 대상'으로 분류된다.
 
@@ -175,7 +175,7 @@ recall 90% 이상을 요구하면 전체 거래의 32% 이상을 검토해야 �
 충돌한다. **대안으로 제시된 방향**: Risk Review 2단계 구조(비지도 1차 탐지 → RAG 내규 검증
 2차)에서 1차 컷오프를 top3%보다 넉넉히(예: top10~15%)로 낮춰 recall을 우선 확보하고, 2차
 필터(RAG/Rule)로 정밀도를 보강하는 방식. **목표 recall 수준(80%? 90%?) 자체는 아직 회계팀·PM과
-합의되지 않아 미확정**이다. 상세: `ml/ML_0728/isolation_forest_modeling_결과.md` §5.
+합의되지 않아 미확정**이다. 상세: `ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §5.
 
 #### 이상 점수를 "확률"로 그대로 쓰면 안 되는 이유
 
@@ -192,7 +192,7 @@ UI·RAG에 노출하면 오도의 소지가 있다. 대신 점수 구간(백분�
 
 즉 "상위 10% 안에 들어도 실제 확률은 27.6% 수준"이라, "위험도 90%" 같은 표현은 쓰면 안 되고
 "이 점수대는 과거 기준 약 X% 확률로 이상거래였다"는 식으로 실측 구간표를 근거로 문구를 구성해야
-한다. 이 보정 테이블은 모델·피처셋이 바뀌면 재계산이 필요하다. 전체 10구간 표: `ml/ML_0728/isolation_forest_modeling_결과.md` §4.
+한다. 이 보정 테이블은 모델·피처셋이 바뀌면 재계산이 필요하다. 전체 10구간 표: `ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §4.
 
 #### MVP 범위 확인 — 지도학습 관련 (팀원 분석과 독립적으로 같은 결론)
 
@@ -202,14 +202,14 @@ UI·RAG에 노출하면 오도의 소지가 있다. 대신 점수 구간(백분�
 것은 현재 지침과 어긋난다"고 결론 내렸다 — `decision_labels`(회계 담당자의 실제 결정)가 쌓이기
 전까지는 라벨 자체를 신뢰할 수 없다는, §1과 동일한 논리다. 다만 팀원 md도 "팀 내 이견이 있으면
 논의 필요"라고 열어뒀다 — 즉 이 결론은 **한 사람의 분석 결과 + 문서 근거**이지, 아직 팀 전체가
-논의를 마친 최종 확정은 아니다. 상세: `ml/ML_0728/isolation_forest_modeling_결과.md` §6.
+논의를 마친 최종 확정은 아니다. 상세: `ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §6.
 
 ### 세그먼트 진단 (재사용 카드 vs 신규 카드, top-K% 랭킹 방식 공통 적용)
 
 Isolation Forest는 신규 카드(4,574건, 그중 실제 이상거래 163건)에서 오히려 성능이 더 좋게
 나와(top3% recall 57.7% vs 재사용카드 52.6%) "카드 이력을 암기해 신규 카드에서 성능이 떨어질
 것"이라는 우려가 기우였음을 확인. 다만 신규 카드의 실제 이상거래 표본이 163건으로 작아,
-절대 수치보다 상대적 경향으로 해석해야 한다(`ml/ML_0728/isolation_forest_modeling_결과.md` §4).
+절대 수치보다 상대적 경향으로 해석해야 한다(`ml/mvp_isolation_forest/isolation_forest_modeling_결과.md` §4).
 지도학습 8개 모델도 자체 세그먼트 진단을 거쳤으며 세부 수치는 `topk_ranking_results.csv`의
 `seg_reused`/`seg_new` 컬럼 참고.
 
@@ -223,37 +223,46 @@ Isolation Forest는 신규 카드(4,574건, 그중 실제 이상거래 163건)�
 각 폴더에는 해당 스크립트를 실행했을 때의 콘솔 로그(`*_log.txt`)도 같이 넣어뒀다 — 결과표
 숫자가 어떤 과정으로 나왔는지 재확인하고 싶을 때 참고.
 
+> **2026-07-30 폴더 재정리**: 최종 확정(비지도 Isolation Forest) 이후 `ml/` 최상위 구조가 아래처럼
+> 바뀌었다. `ML_0728/`은 최종 MVP 원본으로 승격되어 `mvp_isolation_forest/`로 이름이 바뀌었고,
+> 이 파일이 속한 지도학습 비교 실험(`pipeline/`+`models/`)은 참고용임을 명확히 하기 위해
+> `archive/supervised_experiments/` 아래로 이동했다. 최신 요약은 `ml/ml_final_report.md` 참고.
+
 ```
 ml/
-├─ ML_0728/                팀원 원본 — Isolation Forest 전처리·모델링 노트북 4개 + 결과 요약 md
+├─ ml_final_report.md      최종 확정 요약 보고서 — 여기부터 읽을 것
+├─ mvp_isolation_forest/   팀원 원본(구 ML_0728) — 최종 MVP: Isolation Forest 전처리·모델링 노트북 4개 + 결과 요약 md
 │   ├─ 법인카드_이상거래_전처리_v2_가맹점제외.ipynb
 │   ├─ 법인카드_이상거래_전처리_v3_세그먼트플래그.ipynb
 │   ├─ 법인카드_이상거래_모델링_v1_Tier0vs1_비교.ipynb
 │   ├─ 법인카드_이상거래_모델링_v2_최종test평가.ipynb
 │   └─ isolation_forest_modeling_결과.md   ← §3-3 Isolation Forest 수치의 1차 출처
-├─ pipeline/               재현 스크립트+노트북(§5) — 이 폴더 안에서 실행
-│   ├─ common_features.py / feature_set_b.py
-│   ├─ model_training.py / .ipynb
-│   ├─ model_tuning.py / .ipynb
-│   └─ supervised_topk_ranking.py / .ipynb
-└─ models/
-   ├─ round1_baseline/        §3-1 베이스라인 — pipeline/model_training.py
-   │   ├─ {model}.pkl              4개(logistic_regression/random_forest/xgboost/lightgbm)
-   │   ├─ model_comparison.csv
-   │   └─ model_training_log.txt
-   ├─ round2_tuned/           §3-2 튜닝 — pipeline/model_tuning.py, 피처 A(12개)
-   │   ├─ {model}_tuned.pkl         8개
-   │   ├─ tuning_results.csv / .json
-   │   └─ model_tuning_log.txt
-   ├─ round3_topk_ranking/    §3-3 top-K% 랭킹 재실행 — pipeline/supervised_topk_ranking.py, 피처 B(15개)
-   │   ├─ {model}_topk_ranking.pkl   8개
-   │   ├─ topk_ranking_results.csv / .json
-   │   └─ supervised_topk_ranking_log.txt
-   └─ shared/                 피처 A 재현 정보(원-핫 컬럼 순서 등) — pipeline/model_training.py 산출
-       └─ feature_meta.json / .pkl
+└─ archive/                참고용 보관 — 현재 배포 대상 아님
+   ├─ early_eda_preprocessing/   초기 EDA·전처리 노트북(mvp_isolation_forest가 최신 기준)
+   └─ supervised_experiments/    지도학습 8개 모델 비교 실험 (이 README가 속한 폴더)
+      ├─ pipeline/               재현 스크립트+노트북(§5) — 이 폴더 안에서 실행
+      │   ├─ common_features.py / feature_set_b.py
+      │   ├─ model_training.py / .ipynb
+      │   ├─ model_tuning.py / .ipynb
+      │   └─ supervised_topk_ranking.py / .ipynb
+      └─ models/
+         ├─ round1_baseline/        §3-1 베이스라인 — pipeline/model_training.py
+         │   ├─ {model}.pkl              4개(logistic_regression/random_forest/xgboost/lightgbm)
+         │   ├─ model_comparison.csv
+         │   └─ model_training_log.txt
+         ├─ round2_tuned/           §3-2 튜닝 — pipeline/model_tuning.py, 피처 A(12개)
+         │   ├─ {model}_tuned.pkl         8개
+         │   ├─ tuning_results.csv / .json
+         │   └─ model_tuning_log.txt
+         ├─ round3_topk_ranking/    §3-3 top-K% 랭킹 재실행 — pipeline/supervised_topk_ranking.py, 피처 B(15개)
+         │   ├─ {model}_topk_ranking.pkl   8개
+         │   ├─ topk_ranking_results.csv / .json
+         │   └─ supervised_topk_ranking_log.txt
+         └─ shared/                 피처 A 재현 정보(원-핫 컬럼 순서 등) — pipeline/model_training.py 산출
+             └─ feature_meta.json / .pkl
 ```
 
-## 5. 재현 스크립트 (`ml/pipeline/` 폴더)
+## 5. 재현 스크립트 (`ml/archive/supervised_experiments/pipeline/` 폴더)
 
 | 스크립트 | 역할 |
 |---|---|
@@ -263,5 +272,5 @@ ml/
 | `model_tuning.py` | §3-2 튜닝 (약 90분 소요) |
 | `supervised_topk_ranking.py` | §3-3, 피처 B + top-K% 평가로 8개 모델 재실행 |
 
-반드시 `ml/pipeline/` 안에서 실행할 것(상대 import·상대경로 산출물 저장 때문). 상세:
-`ml/pipeline/README.md`. Isolation Forest MVP의 재현·재실행 기준은 `ml/ML_0728/`의 노트북이다.
+반드시 `ml/archive/supervised_experiments/pipeline/` 안에서 실행할 것(상대 import·상대경로 산출물 저장 때문). 상세:
+`ml/archive/supervised_experiments/pipeline/README.md`. Isolation Forest MVP의 재현·재실행 기준은 `ml/mvp_isolation_forest/`의 노트북이다.
