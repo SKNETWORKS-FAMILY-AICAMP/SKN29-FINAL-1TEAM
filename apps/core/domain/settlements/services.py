@@ -11,9 +11,9 @@ from .models import SettlementStatus as S
 
 # 허용 전이표 (FR-ST-01, 4단계). REJECT/TEAM_REJECTED/ERP_VOUCHER_DRAFTED는 단말.
 #  ① 개인(DRAFT) → ② 팀 취합(TEAM_*) → ③ 회계 제출(SUBMITTED)·룰엔진 → ④ 회계 검토·확정
-#  (기존 DRAFT→SUBMITTED 직행도 하위호환으로 유지)
+#  개인은 팀 취합으로만 "올림"(DRAFT→TEAM_COLLECTING). 회계 제출(SUBMITTED)은 팀 단계에서만 — 직행 금지(1인 팀도 팀 취합 경유).
 ALLOWED = {
-    S.DRAFT: {S.TEAM_COLLECTING, S.SUBMITTED},
+    S.DRAFT: {S.TEAM_COLLECTING},
     S.TEAM_COLLECTING: {S.TEAM_RETURNED, S.TEAM_REJECTED, S.SUBMITTED},
     S.TEAM_RETURNED: {S.DRAFT},        # 개인 수정 후 재상신
     S.TEAM_REJECTED: set(),            # 팀 반려(종료)
@@ -53,8 +53,13 @@ def transition(settlement: Settlement, to_state: str, actor=None, reason: str = 
     return settlement
 
 
+def raise_to_team(settlement, actor=None):
+    """DRAFT → TEAM_COLLECTING (개인 '올림'). 1인 팀(영업사원·임원 개인)도 이 단계를 거친다."""
+    return transition(settlement, S.TEAM_COLLECTING, actor, "팀 취합 올림")
+
+
 def submit(settlement, actor=None):
-    """DRAFT → SUBMITTED (Rule 판정 대기열로)."""
+    """TEAM_COLLECTING/RETURNED → SUBMITTED (팀 제출 / 회계 보완요청 재제출). Rule 판정 대기열로."""
     return transition(settlement, S.SUBMITTED, actor, "제출")
 
 

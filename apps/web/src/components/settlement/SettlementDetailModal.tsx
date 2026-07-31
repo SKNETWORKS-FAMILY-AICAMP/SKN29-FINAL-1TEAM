@@ -19,7 +19,7 @@ import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
 import { useAuth } from '../../context/AuthContext'
-import { createSettlement, decideTeamSettlement, reviewSettlement, submitSettlements } from '../../api/settlementService'
+import { createSettlement, decideTeamSettlement, raiseSettlements, reviewSettlement, submitSettlements } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
@@ -84,6 +84,7 @@ export function SettlementDetailModal({
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
+  const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
   // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
   const isAnomaly = !isCreate && item ? anomalyTags(item).length > 0 : false
 
@@ -159,6 +160,17 @@ export function SettlementDetailModal({
     onClose()
   }
 
+  // 개인 '올림' (DRAFT → TEAM_COLLECTING). 1인 팀도 팀 취합 단계를 거친다.
+  const raise = async () => {
+    if (!item) return
+    setPending(true)
+    const status = await raiseSettlements([item.id])
+    onStatusChange?.(item.id, status)
+    setPending(false)
+    onClose()
+  }
+
+  // 팀 제출 (TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출 (RETURNED → SUBMITTED)
   const submit = async () => {
     if (!item) return
     setPending(true)
@@ -247,14 +259,18 @@ export function SettlementDetailModal({
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
       ) : isOwner ? (
-        <button
-          className="btn primary"
-          onClick={submit}
-          disabled={pending || (isTeamView && isAnomaly)}
-          title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다. 보완 후 제출하세요.' : undefined}
-        >
-          {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
-        </button>
+        isDraft ? (
+          <button className="btn primary" onClick={raise} disabled={pending}>팀에 올림</button>
+        ) : (
+          <button
+            className="btn primary"
+            onClick={submit}
+            disabled={pending || (isTeamView && isAnomaly)}
+            title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
+          >
+            {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
+          </button>
+        )
       ) : (
         <span className="text-meta row" style={{ gap: 6 }}><Lock size={12} /> 본인 건이 아니어 조회만 가능합니다.</span>
       )}

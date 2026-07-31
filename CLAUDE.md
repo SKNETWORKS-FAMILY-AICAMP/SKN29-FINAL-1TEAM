@@ -27,7 +27,7 @@ daily_scrum/  주차별 진행 보고
 ## 2. 핵심 설계 결정 (변경 시 세 문서 + 화면 모두 동기화)
 
 - **Risk Review = MVP 2단계**: ① 단순 이상거래 탐지(비지도, anomaly_score) → ② RAG 내규 검증(이상 후보 한정). 지도학습(`review_probability`)·자동 재학습 피드백 루프는 **post-MVP 확장**. (콜드스타트/라벨부족 대응)
-- **상태머신(FR-ST-01)** — 4단계: **① 개인 보유(`DRAFT`) → ② 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → ③ 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → ④ 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`)**. **팀 수준 보완/반려(`TEAM_*`, 팀장)** 와 **회계 수준(`RETURNED`/`REJECT`, 회계)** 은 별개 상태. `REJECT`=회계 최종반려(재제출 불가). ⚠️ 코드 enum(Django `SettlementStatus`·프론트 `SettlementStatus`·서비스 ALLOWED) 동기화 필요(현재 문서만 반영).
+- **상태머신(FR-ST-01)** — 4단계: **① 개인 보유(`DRAFT`) → ② 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → ③ 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → ④ 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`)**. **팀 수준 보완/반려(`TEAM_*`, 팀장)** 와 **회계 수준(`RETURNED`/`REJECT`, 회계)** 은 별개 상태. `REJECT`=회계 최종반려(재제출 불가). 제출=2단계(개인 올림 `raise_to_team`: `DRAFT→TEAM_COLLECTING` / 팀 제출 `submit`: `TEAM_COLLECTING→SUBMITTED`), 1인 팀도 동일 경로. ✅ **구현 반영**: ① `DRAFT→SUBMITTED` 직행 제거·S-01 "팀에 올림" ② 계정과목=비용분류(`Category`) 매핑 `policies/scope.normalize_scope`. 🚧 남음: `/submit` 팀 동일성 배치 강제(Open #8), 엔진 scope 연결. (기술 §3.3 / 요구사항 FR-ST-05·Open #8~9)
 - **예산·정책은 통제(차단)가 아니라 지표·추천으로만** 반영.
 - **사람 확정 원칙**: 확신 통과 건도 회계 담당자 확정 없이는 CONFIRMED 불가.
 - 영수증은 별도 OCR 없이 **OpenAI 비전**으로 직접 판독. Rule 적용은 결정론적 엔진, LLM은 Rule 생성 단계에서만.

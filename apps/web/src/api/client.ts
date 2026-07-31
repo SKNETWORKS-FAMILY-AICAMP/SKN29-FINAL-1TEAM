@@ -13,7 +13,8 @@ export const endpoints = {
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
   settlement: (id: string) => api.get(`/settlements/${id}/`),
   createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
-  submit: (ids: string[]) => api.post('/settlements/submit/', { ids }), // FR-ST-01
+  raise: (ids: string[]) => api.post('/settlements/raise/', { ids }), // 개인 올림 DRAFT→TEAM_COLLECTING
+  submit: (ids: string[]) => api.post('/settlements/submit/', { ids }), // 팀 제출 TEAM_COLLECTING→SUBMITTED / 재제출
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정
   review: (id: string, decision: 'APPROVE' | 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/review/`, { decision, reason }),

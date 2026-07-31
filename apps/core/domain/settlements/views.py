@@ -87,7 +87,20 @@ class SettlementViewSet(viewsets.ModelViewSet):
             qs = qs.filter(team_id=p["team"])
         return qs
 
-    # POST /api/settlements/submit/  {ids:[...]}
+    # POST /api/settlements/raise/  {ids:[...]}  개인 '올림'(DRAFT → TEAM_COLLECTING)
+    @action(detail=False, methods=["post"], url_path="raise")
+    def raise_to_team(self, request):
+        ids = request.data.get("ids", [])
+        raised, skipped = [], []
+        for s in Settlement.objects.filter(id__in=ids):
+            try:
+                services.raise_to_team(s, _actor(request))
+                raised.append(s.id)
+            except services.TransitionError:
+                skipped.append(s.id)
+        return Response({"raised": raised, "skipped": skipped})
+
+    # POST /api/settlements/submit/  {ids:[...]}  팀 제출(TEAM_COLLECTING → SUBMITTED)·재제출(RETURNED → SUBMITTED)
     @action(detail=False, methods=["post"])
     def submit(self, request):
         ids = request.data.get("ids", [])

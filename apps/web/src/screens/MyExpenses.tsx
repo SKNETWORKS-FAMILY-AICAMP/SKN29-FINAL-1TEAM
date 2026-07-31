@@ -6,14 +6,14 @@ import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
-import { submitSettlements } from '../api/settlementService'
+import { raiseSettlements } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
 
 const THIS_MONTH = '2026-07' // 데모 기준 '이번 달'
 const DONE: SettlementStatus[] = ['CONFIRMED', 'ERP_VOUCHER_DRAFTED']
 const PROCESSING: SettlementStatus[] = ['SUBMITTED', 'RPA_JUDGED', 'PENDING_CONFIRM', 'IN_REVIEW', 'TEAM_COLLECTING', 'TEAM_RETURNED', 'TEAM_REJECTED']
-const SUBMITTABLE: SettlementStatus[] = ['DRAFT'] // 제출 가능 = 작성중
+const SUBMITTABLE: SettlementStatus[] = ['DRAFT'] // 올림 가능 = 작성중(개인 → 팀 취합)
 
 // 메인 화면 우선순위: 보완요청 → 반려 → 작성중 → 처리중 → (완료는 기본 숨김)
 function priorityOf(s: SettlementStatus): number {
@@ -67,10 +67,10 @@ export function MyExpenses() {
     setChecked(next)
   }
 
-  const submitChecked = async () => {
+  const raiseChecked = async () => {
     const ids = [...checked]
     setSubmitting(true)
-    const status = await submitSettlements(ids)
+    const status = await raiseSettlements(ids) // DRAFT → TEAM_COLLECTING (팀에 올림)
     ids.forEach((id) => updateStatus(id, status))
     setChecked(new Set())
     setSubmitting(false)
@@ -91,7 +91,7 @@ export function MyExpenses() {
 
       <div className="kpi-grid">
         <KpiCard label="이번달 사용액" value={won(stats.total)} />
-        <KpiCard label="작성중(제출 가능)" value={stats.draft} unit="건" />
+        <KpiCard label="작성중(올림 가능)" value={stats.draft} unit="건" />
         <KpiCard label="보완요청" value={stats.returned} unit="건" warn={stats.returned > 0} />
         <KpiCard label="반려" value={stats.rejected} unit="건" warn={stats.rejected > 0} />
       </div>
@@ -111,8 +111,8 @@ export function MyExpenses() {
           <option value="ALL">전체</option>
         </select>
         <div className="spacer" />
-        <button className="btn primary" disabled={checked.size === 0 || submitting} onClick={submitChecked}>
-          {submitting ? '제출 중…' : `선택 ${checked.size}건 일괄 제출`}
+        <button className="btn primary" disabled={checked.size === 0 || submitting} onClick={raiseChecked}>
+          {submitting ? '올리는 중…' : `선택 ${checked.size}건 팀에 올림`}
         </button>
       </div>
 

@@ -24,7 +24,17 @@ export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>)
   return res.data
 }
 
-/** S-01/S-02: 선택 건 일괄 제출(DRAFT → SUBMITTED). */
+/** S-01: 개인 '올림'(DRAFT → TEAM_COLLECTING). 팀 취합 단계로 넘긴다(1인 팀도 동일 경로). */
+export async function raiseSettlements(ids: string[]): Promise<SettlementStatus> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return 'TEAM_COLLECTING'
+  }
+  await endpoints.raise(ids)
+  return 'TEAM_COLLECTING'
+}
+
+/** S-02: 팀 제출(TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출(RETURNED → SUBMITTED). */
 export async function submitSettlements(ids: string[]): Promise<SettlementStatus> {
   if (USE_MOCK) {
     await mockDelay()
