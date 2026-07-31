@@ -55,8 +55,14 @@ class RuleGraphListSerializer(serializers.ModelSerializer):
     simResult = serializers.JSONField(source="sim_result", read_only=True)
     nodeCount = serializers.IntegerField(source="nodes.count", read_only=True)
     familyKey = serializers.UUIDField(source="family_key", read_only=True)
+    entryNodeKey = serializers.CharField(source="entry_node_key", read_only=True)
+    nodes = RuleNodeSerializer(many=True, read_only=True)
+    routings = RuleRoutingSerializer(many=True, read_only=True)
+    versions = RuleGraphVersionSerializer(many=True, read_only=True)
 
     class Meta:
         model = RuleGraph
-        fields = ["id", "familyKey", "name", "scope", "status", "statusLabel", "version",
-                  "sourceClause", "simResult", "nodeCount"]
+        fields = [
+            "id", "familyKey", "name", "scope", "status", "statusLabel", "version",
+            "entryNodeKey", "sourceClause", "simResult", "nodeCount", "nodes", "routings", "versions",
+        ]

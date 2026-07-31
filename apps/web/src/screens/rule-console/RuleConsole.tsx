@@ -34,9 +34,9 @@ export function RuleConsole() {
         </div>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar rule-console-tabs" role="tablist" aria-label="룰 그래프 화면 전환">
         {(['DRAFT', 'SIMULATION', 'ACTIVE'] as Tab[]).map((t) => (
-          <button key={t} className={'btn' + (tab === t ? ' primary' : '')} onClick={() => setTab(t)}>
+          <button key={t} role="tab" aria-selected={tab === t} className={'btn' + (tab === t ? ' primary' : '')} onClick={() => setTab(t)}>
             {TAB_LABEL[t]}
           </button>
         ))}

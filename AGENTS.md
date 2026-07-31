@@ -49,10 +49,10 @@ daily_scrum/  주차별 진행 보고
 | 프론트 6개 화면(S-01~06) | ✅ 빌드 통과 | mock 데이터 렌더. `npm run build` OK |
 | Django 도메인 모델 | ✅ 구현 완료 | 8개 도메인 18개 테이블(실 필드·FK·제약·마이그레이션). `RuleHit.eval_context/flags/schema_version/builder_version` + `0002` 마이그레이션 반영. 설계 문서 `.personal/데이터베이스_저장소_설계문서.md` |
 | FastAPI Agent 로직 | 🔲 stub | `apps/ai/app/agents/*`·`mcp/tools.py` 대부분 자리표시자 |
-| 프론트 ↔ 백엔드 연동 | 🔲 미착수 | `apps/web/src/api/client.ts` 엔드포인트 헬퍼가 연결 지점 |
+| 프론트 ↔ 백엔드 연동 | 🚧 부분 착수 | S-04 초안 그래프 목록·버전 생성·신규 그래프 생성은 `/api/rules/` 실제 응답 사용. 노드 상세 편집 저장·시뮬레이션 연동은 후속 |
 | 이상탐지 실학습/RAG upsert | 🔲 미착수 | IsolationForest 래퍼·Chroma heartbeat까지만 |
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
-| 룰 그래프(트리) 도메인 | 🚧 백엔드 기반 구현 중 / 🖥️ 프론트 S-04 플레이스홀더 | DSL·EvalContext 계약·순수 엔진·DAG/사이클·ACTIVE 완전성 gate. 그래프 한 행=한 버전(`family_key`), scope당 ACTIVE 1개 DB 제약, 기존 그래프→다음 버전 DRAFT 복제, 실제 Category scope 선택 구현. GLOBAL R-002·R-003 시드 완료. 남음: context 조립기·orchestrator/상태매핑·별표/업종·카테고리 시드·FastMCP. |
+| 룰 그래프(트리) 도메인 | 🚧 백엔드 기반 구현 중 / 🖥️ S-04 scope·버전 편집 연동 | scope별 버전, DRAFT 복제/원복, 노드·비활성 그래프 삭제, blur/전환/1분 저장, DSL 자연어·전체 액션/우선순위/라우팅/근거 표시. GLOBAL 시드 설명·생성이유·처리안내 보강. S-03/S-04 고정 목록+가변 상세 반응형 적용. |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 
 다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.

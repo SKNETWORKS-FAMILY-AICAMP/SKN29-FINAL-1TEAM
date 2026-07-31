@@ -38,6 +38,12 @@ class CanActivateRule(HasCapability):
     message = "룰 활성 전환 권한이 필요합니다."
 
 
+class CanViewRule(HasCapability):
+    """룰 콘솔 조회와 DRAFT 작성 권한."""
+    capability = Capability.RULE_VIEW
+    message = "룰 콘솔 권한이 필요합니다."
+
+
 class CanViewGovernance(HasCapability):
     capability = Capability.GOVERNANCE_VIEW
     message = "거버넌스 대시보드 열람 권한이 필요합니다."

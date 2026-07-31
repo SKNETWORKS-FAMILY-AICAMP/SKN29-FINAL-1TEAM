@@ -16,7 +16,8 @@ import { ROLE_TO_SLUG } from './data/onboardingSteps'
 
 // 미인증 시 /login, 로그인은 했지만 온보딩 전이면 본인 역할의 온보딩 1단계로 유도(mock 가드).
 function RequireAuth({ children }: { children: ReactElement }) {
-  const { isLoggedIn, hasOnboarded, user } = useAuth()
+  const { isRestoring, isLoggedIn, hasOnboarded, user } = useAuth()
+  if (isRestoring) return <div className="page"><div className="text-meta">로그인 세션을 확인하는 중입니다.</div></div>
   if (!isLoggedIn) return <Navigate to="/login" replace />
   if (!hasOnboarded) return <Navigate to={`/onboarding/${ROLE_TO_SLUG[user!.role]}/1`} replace />
   return children

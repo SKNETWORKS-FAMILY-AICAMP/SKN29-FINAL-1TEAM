@@ -1,36 +1,127 @@
-// Tab1 — Rule 초안 대기 · 그래프 단위 묶음(버전 표현, 접기/펼치기) + 노드 상세 세부설정.
-//  좌: 초안 룰그래프 트리(그래프→노드) / 중: 선택 노드 세부설정 / 우: 대화형 지시.
-//  룰 노드는 이 상세에서만 유효하며, 시뮬레이션·활성은 그래프 단위(다른 탭)에서 처리한다.
-import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Code2, Send, Sparkles, Wand2 } from 'lucide-react'
-import {
-  DRAFT_CHAT_SCRIPT, GRAPH_STATUS_LABEL, graphsByStatus, workingVersion,
-  RULE_GRAPHS, type ChatMessage, type GraphNode, type RuleGraph,
-} from './data/ruleConsoleMock'
-import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
+// Tab1 — 실제 API의 DRAFT RuleGraph 버전 조회 + 노드 상세 편집 플레이스홀더.
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronRight, Code2, Plus, Send, Trash2 } from 'lucide-react'
+import { endpoints } from '../../api/client'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
+import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
+import {
+  DRAFT_CHAT_SCRIPT, GRAPH_STATUS_LABEL,
+  type ChatMessage, type GraphNode, type GraphStatus, type RuleGraph,
+} from './data/ruleConsoleMock'
+
+type ApiNode = {
+  nodeKey: string
+  condition: unknown
+  action: Record<string, unknown>
+  priority: number
+}
+type ApiRouting = { fromNodeKey: string; onResult: 'MATCH' | 'NO_MATCH'; toNodeKey: string; priority: number }
+type ApiGraph = {
+  id: number | string
+  familyKey: string
+  name: string
+  scope: string
+  status: GraphStatus
+  version: number
+  entryNodeKey: string
+  sourceClause: string
+  nodes: ApiNode[]
+  routings: ApiRouting[]
+  versions: { version: number; approved_at?: string; isActive: boolean }[]
+}
+
+const actionText = (action: Record<string, unknown>) =>
+  [action.decision, action.severity, action.flag].filter(Boolean).join(' · ')
+
+const toGraph = (raw: ApiGraph): RuleGraph => ({
+  id: String(raw.id),
+  familyKey: raw.familyKey,
+  version: raw.version,
+  name: raw.name,
+  scope: raw.scope,
+  status: raw.status,
+  sourceClause: raw.sourceClause ?? '',
+  entryNodeKey: raw.entryNodeKey ?? '',
+  nodes: (raw.nodes ?? []).map((node) => ({
+    nodeKey: node.nodeKey,
+    title: String(node.action?.title ?? node.nodeKey),
+    origin: node.action?.origin === 'new' || node.nodeKey.startsWith('R-N') ? 'new' : 'existing',
+    plain: { category: raw.scope === 'GLOBAL' ? undefined : raw.scope, action: actionText(node.action ?? {}) },
+    conditionExpr: JSON.stringify(node.condition ?? {}, null, 2),
+    sourceClause: String(node.action?.source_clause ?? raw.sourceClause ?? ''),
+    aiReason: String(node.action?.ai_reason ?? ''),
+    description: String(node.action?.description ?? ''),
+    actionDetail: {
+      decision: String(node.action?.decision ?? ''), severity: String(node.action?.severity ?? ''),
+      flag: String(node.action?.flag ?? ''), note: String(node.action?.note ?? ''),
+      approver: String(node.action?.approver ?? ''),
+    },
+    priority: node.priority,
+    workflowStatus: String(node.action?.workflow_status ?? (
+      raw.status === 'ACTIVE' ? 'ACTIVE' : raw.status === 'SIMULATED' ? 'VERIFIED' : 'DRAFT'
+    )) as GraphNode['workflowStatus'],
+  })),
+  routings: (raw.routings ?? []).map((route) => ({
+    from: route.fromNodeKey, onResult: route.onResult, to: route.toNodeKey, priority: route.priority,
+  })),
+  versions: (raw.versions ?? []).map((version) => ({
+    version: version.version, label: `v${version.version}`,
+    status: version.isActive ? '현재 활성' : '과거', approvedAt: version.approved_at,
+  })),
+})
 
 const emptyNode = (nodeKey: string): GraphNode => ({
-  nodeKey, title: '(제목 미설정)', origin: 'new',
+  nodeKey, title: '(제목 미설정)', origin: 'new', description: '',
   plain: { action: '' }, conditionExpr: '', sourceClause: '',
+  actionDetail: { decision: '', severity: '', flag: '', note: '' },
+  workflowStatus: 'DRAFT',
+  priority: 0,
   aiReason: '대화 또는 직접 입력으로 조건·액션을 설정하세요.',
 })
 
 export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean; setNewRuleOpen: (b: boolean) => void }) {
-  const [graphs, setGraphs] = useState<RuleGraph[]>(() => graphsByStatus('DRAFT').map((g) => ({ ...g, nodes: [...g.nodes] })))
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(graphs.map((g) => g.id)))
-  const [sel, setSel] = useState<{ graphId: string; nodeKey: string } | null>(
-    graphs[0] ? { graphId: graphs[0].id, nodeKey: graphs[0].nodes[0].nodeKey } : null,
-  )
+  const [allGraphs, setAllGraphs] = useState<RuleGraph[]>([])
+  const [graphs, setGraphs] = useState<RuleGraph[]>([])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [sel, setSel] = useState<{ graphId: string; nodeKey: string } | null>(null)
+  const [nodeFilter, setNodeFilter] = useState<'all' | 'modified'>('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [seq, setSeq] = useState(1)
   const [chat, setChat] = useState<ChatMessage[]>(DRAFT_CHAT_SCRIPT)
   const [input, setInput] = useState('')
+  const [deleteMode, setDeleteMode] = useState(false)
 
-  const selGraph = graphs.find((g) => g.id === sel?.graphId)
-  const selNode = selGraph?.nodes.find((n) => n.nodeKey === sel?.nodeKey)
+  useEffect(() => {
+    let cancelled = false
+    endpoints.rules().then(({ data }) => {
+      if (cancelled) return
+      const loaded = (data as ApiGraph[]).map(toGraph)
+      setAllGraphs(loaded)
+      setGraphs(loaded)
+      setExpanded(new Set(loaded.map((graph) => graph.id)))
+      const first = loaded.find((graph) => graph.nodes.length)?.nodes[0]
+      const firstGraph = loaded.find((graph) => graph.nodes.length)
+      setSel(first && firstGraph ? { graphId: firstGraph.id, nodeKey: first.nodeKey } : null)
+    }).catch(() => {
+      if (!cancelled) setError('룰 그래프를 불러오지 못했습니다. Core API 연결을 확인해주세요.')
+    }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
-  const toggle = (id: string) => setExpanded((prev) => {
-    const next = new Set(prev)
+  const visibleGraphs = useMemo(() => nodeFilter === 'all'
+    ? graphs
+    : graphs.filter((graph) => graph.status === 'DRAFT'), [graphs, nodeFilter])
+  const visibleScopes = useMemo(() => Object.entries(visibleGraphs.reduce<Record<string, RuleGraph[]>>((groups, graph) => {
+    ;(groups[graph.scope] ??= []).push(graph)
+    return groups
+  }, {})), [visibleGraphs])
+  const nodesFor = (graph: RuleGraph) => graph.nodes
+  const selGraph = graphs.find((graph) => graph.id === sel?.graphId)
+  const selNode = selGraph?.nodes.find((node) => node.nodeKey === sel?.nodeKey)
+
+  const toggle = (id: string) => setExpanded((previous) => {
+    const next = new Set(previous)
     next.has(id) ? next.delete(id) : next.add(id)
     return next
   })
@@ -39,202 +130,361 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const send = () => {
     const text = input.trim()
     if (!text) return
-    setChat((prev) => [
-      ...prev,
-      { role: 'user', text },
-      { role: 'ai', text: '네, 반영했습니다. 가운데 "이 Rule이 하는 일"에서 변경 내용을 확인해주세요.', appliedNote: '노드 조건·액션에 적용됨' },
-    ])
+    setChat((previous) => [...previous, { role: 'user', text }, {
+      role: 'ai', text: '네, 반영했습니다. 가운데 조건·액션·라우팅에서 변경 내용을 확인해주세요.', appliedNote: '노드 설정에 적용됨',
+    }])
     setInput('')
   }
 
-  // 신규 룰 생성 확정 → 빈 노드 추가/빈 그래프 생성 → 상세로 이동
-  const createRule = (choice: NewRuleChoice) => {
+  const createRule = async (choice: NewRuleChoice) => {
     const key = `R-N${seq}`
-    setSeq((s) => s + 1)
-    if (choice.kind === 'existing') {
-      const source = RULE_GRAPHS.find((g) => g.id === choice.graphId)
-      if (!source) return
-      const nextVersion = Math.max(...source.versions.map((v) => v.version), source.versions[0]?.version ?? 0) + 1
-      const gid = `${source.id}-v${nextVersion}`
-      const draft: RuleGraph = {
-        ...source,
-        id: gid,
-        status: 'DRAFT',
-        nodes: [...source.nodes.map((node) => ({ ...node })), emptyNode(key)],
-        routings: [...source.routings],
-        versions: [
-          { version: nextVersion, label: `v${nextVersion}`, status: '초안', note: `v${source.versions[0]?.version ?? nextVersion - 1}에서 버전업` },
-          ...source.versions,
-        ],
-      }
-      setGraphs((prev) => [draft, ...prev])
-      setExpanded((prev) => new Set(prev).add(gid))
-      setSel({ graphId: gid, nodeKey: key })
-    } else {
-      const gid = `G-N${seq}`
-      const g: RuleGraph = {
-        id: gid, name: choice.name, scope: choice.scope, status: 'DRAFT',
-        sourceClause: '(미지정)', entryNodeKey: key, nodes: [emptyNode(key)],
-        routings: [{ from: key, onResult: 'MATCH', to: '' }],
-        versions: [{ version: 1, label: 'v1', status: '초안', note: '신규 그래프' }],
-      }
-      setGraphs((prev) => [g, ...prev])
-      setExpanded((prev) => new Set(prev).add(gid))
-      setSel({ graphId: gid, nodeKey: key })
+    setSeq((value) => value + 1)
+    try {
+      const response = choice.kind === 'existing'
+        ? await endpoints.createRuleVersion(choice.graphId)
+        : await endpoints.createRuleGraph(choice.name, choice.scope)
+      const draft = toGraph(response.data as ApiGraph)
+      await endpoints.createRuleNode(draft.id, key)
+      draft.nodes = [...draft.nodes, emptyNode(key)]
+      if (!draft.entryNodeKey) draft.entryNodeKey = key
+      setAllGraphs((previous) => [draft, ...previous])
+      setGraphs((previous) => [draft, ...previous])
+      setExpanded((previous) => new Set(previous).add(draft.id))
+      setSel({ graphId: draft.id, nodeKey: key })
+      setChat([])
+      setNewRuleOpen(false)
+    } catch {
+      setError('새 룰 버전을 만들지 못했습니다. 권한과 API 연결을 확인해주세요.')
     }
-    setChat([])
-    setNewRuleOpen(false)
+  }
+
+  const createWorkingVersion = async (graph: RuleGraph) => {
+    const existingDraft = graphs.find((candidate) => candidate.familyKey === graph.familyKey && candidate.status === 'DRAFT')
+    if (existingDraft) return existingDraft
+    const response = await endpoints.createRuleVersion(graph.id)
+    const draft = toGraph(response.data as ApiGraph)
+    setGraphs((previous) => [draft, ...previous])
+    setAllGraphs((previous) => [draft, ...previous])
+    return draft
+  }
+
+  const addNode = async (source: RuleGraph) => {
+    const key = `R-N${seq}`
+    setSeq((value) => value + 1)
+    try {
+      const graph = source.status === 'DRAFT' ? source : await createWorkingVersion(source)
+      await endpoints.createRuleNode(graph.id, key)
+      const node = emptyNode(key)
+      setGraphs((previous) => previous.map((item) => item.id === graph.id ? { ...item, nodes: [...item.nodes, node] } : item))
+      setAllGraphs((previous) => previous.map((item) => item.id === graph.id ? { ...item, nodes: [...item.nodes, node] } : item))
+      setExpanded((previous) => new Set(previous).add(graph.id))
+      setSel({ graphId: graph.id, nodeKey: key })
+    } catch {
+      setError('노드를 추가하지 못했습니다.')
+    }
+  }
+
+  const startNodeEdit = async (graph: RuleGraph, nodeKey: string) => {
+    try {
+      const draft = await createWorkingVersion(graph)
+      setExpanded((previous) => new Set(previous).add(draft.id))
+      setSel({ graphId: draft.id, nodeKey })
+    } catch {
+      setError('수정 버전을 만들지 못했습니다.')
+    }
+  }
+
+  const sameAsActive = (draft: RuleGraph, nextNodes: GraphNode[]) => {
+    const active = graphs.find((candidate) => candidate.familyKey === draft.familyKey && candidate.status === 'ACTIVE')
+    if (!active || active.nodes.length !== nextNodes.length) return false
+    const compact = (nodes: GraphNode[]) => nodes.map((node) => ({
+      key: node.nodeKey, title: node.title, description: node.description,
+      condition: node.conditionExpr, action: node.actionDetail,
+    }))
+    return JSON.stringify(compact(active.nodes)) === JSON.stringify(compact(nextNodes))
+      && JSON.stringify(active.routings) === JSON.stringify(draft.routings)
+  }
+
+  const deleteNode = async (graph: RuleGraph, node: GraphNode) => {
+    try {
+      await endpoints.deleteRuleNode(graph.id, node.nodeKey)
+      const nextNodes = graph.nodes.filter((candidate) => candidate.nodeKey !== node.nodeKey)
+      if (sameAsActive(graph, nextNodes)) {
+        await endpoints.discardRuleDraft(graph.id)
+        setGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
+        setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
+        const active = graphs.find((candidate) => candidate.familyKey === graph.familyKey && candidate.status === 'ACTIVE')
+        setSel(active?.nodes[0] ? { graphId: active.id, nodeKey: active.nodes[0].nodeKey } : null)
+      } else {
+        setGraphs((previous) => previous.map((candidate) => candidate.id === graph.id ? { ...candidate, nodes: nextNodes } : candidate))
+        setSel(nextNodes[0] ? { graphId: graph.id, nodeKey: nextNodes[0].nodeKey } : null)
+      }
+    } catch {
+      setError('노드를 삭제하지 못했습니다.')
+    }
+  }
+
+  const revertToActive = (draft: RuleGraph, activeId: string) => {
+    setGraphs((previous) => previous.filter((candidate) => candidate.id !== draft.id))
+    setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== draft.id))
+    const active = graphs.find((candidate) => candidate.id === activeId)
+    setSel(active?.nodes[0] ? { graphId: active.id, nodeKey: active.nodes[0].nodeKey } : null)
+  }
+
+  const reflectNode = (graphId: string, nodeKey: string, patch: Partial<GraphNode>) => {
+    const apply = (items: RuleGraph[]) => items.map((graph) => graph.id === graphId ? {
+      ...graph, nodes: graph.nodes.map((node) => node.nodeKey === nodeKey ? { ...node, ...patch } : node),
+    } : graph)
+    setGraphs(apply)
+    setAllGraphs(apply)
+  }
+
+  const deleteGraph = async (graph: RuleGraph) => {
+    if (graph.status === 'ACTIVE') {
+      window.alert('Active된 그래프는 삭제할 수 없습니다. 다른 버전을 Active로 전환한 뒤 삭제해주세요.')
+      return
+    }
+    if (!window.confirm(`“${graph.name} v${graph.version ?? 1}” 그래프를 삭제하시겠습니까?`)) return
+    try {
+      await endpoints.deleteRuleGraph(graph.id)
+      setGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
+      setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
+      if (sel?.graphId === graph.id) setSel(null)
+      setDeleteMode(false)
+    } catch { setError('그래프를 삭제하지 못했습니다.') }
   }
 
   return (
     <>
-      <div className="note" style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Sparkles size={14} />
-        룰은 <b>그래프 단위</b>로 묶여 버전으로 관리됩니다. 좌측에서 그래프를 펼쳐 노드를 선택해 세부 설정하고, 검증·활성은 그래프 단위로 진행합니다.
-      </div>
-
       <div className="rule-draft-grid">
-        {/* ── 좌: 초안 그래프 트리 (그래프 → 노드, 접기/펼치기) ── */}
         <div className="card">
-          <div className="card-head"><h3>대기 중 룰그래프 ({graphs.length})</h3></div>
-          <div className="stack" style={{ padding: 8, gap: 4 }}>
-            {graphs.map((g) => {
-              const open = expanded.has(g.id)
-              const wv = workingVersion(g)
+          <div className="card-head" style={{ alignItems: 'flex-start' }}>
+            <div><h3>룰 그래프 보기 ({visibleGraphs.length})</h3><div className="text-meta">실제 그래프와 버전별 노드</div></div>
+          </div>
+          <div className="row" style={{ padding: '0 12px 8px', gap: 6 }}>
+            <button className={'btn sm' + (nodeFilter === 'all' ? ' primary' : '')} onClick={() => setNodeFilter('all')}>전체보기</button>
+            <button className={'btn sm' + (nodeFilter === 'modified' ? ' primary' : '')} onClick={() => setNodeFilter('modified')}>수정건 보기</button>
+            <div className="spacer" />
+            <button className={'btn sm' + (deleteMode ? ' primary' : '')} onClick={() => setDeleteMode((value) => !value)}>
+              <Trash2 size={11} /> {deleteMode ? '삭제 취소' : '그래프 삭제'}
+            </button>
+          </div>
+          {loading && <div className="text-meta" style={{ padding: 16 }}>룰 그래프를 불러오는 중입니다.</div>}
+          {error && <div className="note" style={{ margin: 12, color: 'var(--tone-red)' }}>{error}</div>}
+          {!loading && !error && visibleGraphs.length === 0 && <div className="text-meta" style={{ padding: 16 }}>표시할 룰 그래프가 없습니다.</div>}
+          <div className="stack" style={{ padding: 8, gap: 8 }}>
+            {visibleScopes.map(([scope, scopeGraphs]) => <div key={scope} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: 4 }}>
+              <div style={{ padding: '7px 10px 4px', fontSize: 12, fontWeight: 700 }}>{scope}</div>
+              {scopeGraphs.sort((a, b) => (b.version ?? 0) - (a.version ?? 0)).map((graph) => {
+              const open = expanded.has(graph.id)
+              const nodes = nodesFor(graph)
               return (
-                <div key={g.id}>
-                  <div
-                    className="rule-graph-row" role="button" tabIndex={0}
-                    onClick={() => toggle(g.id)} onKeyDown={activateOnEnterOrSpace(() => toggle(g.id))}
-                  >
+                <div key={graph.id}>
+                  <div className="rule-graph-row" role="button" tabIndex={0}
+                    onClick={() => toggle(graph.id)} onKeyDown={activateOnEnterOrSpace(() => toggle(graph.id))}>
                     {open ? <ChevronDown size={14} className="muted" /> : <ChevronRight size={14} className="muted" />}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="row" style={{ gap: 6 }}>
-                        <b style={{ fontSize: 13 }}>{g.name}</b>
-                        <span className="tag">{wv?.label} {wv?.status}</span>
+                      <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                        <span className={'tag ' + (graph.status === 'ACTIVE' ? 'ok' : graph.status === 'DRAFT' ? 'ai' : '')}>v{graph.version ?? 1} · {graph.status === 'ACTIVE' ? 'Active' : graph.status === 'DRAFT' ? '수정중' : GRAPH_STATUS_LABEL[graph.status]}</span>
+                        <b style={{ fontSize: 13 }}>{graph.name}</b>
+                        {deleteMode
+                          ? <button className="btn sm" style={{ marginLeft: 6 }} onClick={(event) => { event.stopPropagation(); void deleteGraph(graph) }}><Trash2 size={11} /> 그래프 삭제</button>
+                          : (graph.status === 'DRAFT' || graph.status === 'ACTIVE') && <button className="btn sm" style={{ marginLeft: 6 }} onClick={(event) => { event.stopPropagation(); void addNode(graph) }}><Plus size={11} /> 노드 추가</button>}
                       </div>
-                      <div className="text-meta">{g.scope} · 노드 {g.nodes.length} · {GRAPH_STATUS_LABEL[g.status]}</div>
                     </div>
                   </div>
-                  {open && (
-                    <div className="rule-node-list">
-                      {g.nodes.map((n) => (
-                        <div
-                          key={n.nodeKey}
-                          className={'rule-node-item' + (sel?.graphId === g.id && sel?.nodeKey === n.nodeKey ? ' selected' : '')}
-                          role="button" tabIndex={0}
-                          onClick={() => selectNode(g.id, n.nodeKey)}
-                          onKeyDown={activateOnEnterOrSpace(() => selectNode(g.id, n.nodeKey))}
-                        >
-                          <div className="row" style={{ justifyContent: 'space-between', gap: 6 }}>
-                            <span style={{ fontSize: 12.5 }}>{n.title}</span>
-                            {n.origin === 'new' && <span className="tag ai" style={{ flexShrink: 0 }}>신규</span>}
-                          </div>
-                          <div className="text-meta">{n.nodeKey}</div>
-                        </div>
-                      ))}
+                  {open && <div className="rule-node-list">{nodes.map((node) => (
+                    <div key={node.nodeKey}
+                      className={'rule-node-item' + (sel?.graphId === graph.id && sel?.nodeKey === node.nodeKey ? ' selected' : '')}
+                      role="button" tabIndex={0} onClick={() => selectNode(graph.id, node.nodeKey)}
+                      onKeyDown={activateOnEnterOrSpace(() => selectNode(graph.id, node.nodeKey))}>
+                      <div className="row" style={{ justifyContent: 'flex-start', gap: 6 }}>
+                        <span className={'tag ' + (node.workflowStatus === 'ACTIVE' ? 'ok' : node.workflowStatus === 'WAITING' ? 'ai' : '')}>{nodeStatusLabel(node.workflowStatus)}</span>
+                        <span style={{ fontSize: 12.5 }}>{node.title}</span>
+                      </div>
                     </div>
-                  )}
+                  ))}</div>}
                 </div>
               )
-            })}
+            })}</div>)}
           </div>
         </div>
 
-        {/* ── 중: 선택 노드 세부 설정 ── */}
-        {selGraph && selNode ? (
-          <NodeDetail key={`${selGraph.id}-${selNode.nodeKey}`} graph={selGraph} node={selNode} />
-        ) : (
-          <div className="card"><div className="card-body text-meta">좌측에서 노드를 선택하거나 신규 룰을 생성하세요.</div></div>
-        )}
+        {selGraph && selNode
+          ? <NodeDetail key={`${selGraph.id}-${selNode.nodeKey}`} graph={selGraph} node={selNode}
+              onStartEdit={() => void startNodeEdit(selGraph, selNode.nodeKey)} onDelete={() => void deleteNode(selGraph, selNode)}
+              onReverted={(activeId) => revertToActive(selGraph, activeId)}
+              onNodeChanged={(patch) => reflectNode(selGraph.id, selNode.nodeKey, patch)} />
+          : <div className="card"><div className="card-body text-meta">좌측에서 노드를 선택하거나 신규 룰을 생성하세요.</div></div>}
 
-        {/* ── 우: 대화형 지시·수정 ── */}
         <div className="card" style={{ borderColor: 'var(--primary)' }}>
           <div className="card-head"><h3>대화형 지시·수정</h3></div>
           <div className="text-meta" style={{ padding: '0 16px' }}>자연어로 말하면 AI가 노드 필드를 직접 수정합니다.</div>
           <div className="stack" style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
-            {chat.length === 0 && <div className="text-meta">예) "식대 30만원 초과면 사전승인 필요로 표시해줘" 처럼 입력하면 조건·액션이 채워집니다.</div>}
-            {chat.map((m, i) => (
-              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '92%' }}>
-                <div style={{
-                  padding: '8px 12px', borderRadius: 'var(--radius-control)', fontSize: 12.5, whiteSpace: 'pre-line',
-                  background: m.role === 'user' ? 'var(--primary)' : 'var(--surface-2)',
-                  color: m.role === 'user' ? '#fff' : 'var(--text)',
-                }}>{m.text}</div>
-                {m.appliedNote && <div className="text-meta" style={{ color: 'var(--tone-green)', marginTop: 4 }}>✓ {m.appliedNote}</div>}
-              </div>
-            ))}
+            {chat.length === 0 && <div className="text-meta">예) “금액 기준을 40만원으로 올리고 보완요청으로 바꿔줘”</div>}
+            {chat.map((message, index) => <div key={index} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '92%' }}>
+              <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-control)', fontSize: 12.5, whiteSpace: 'pre-line', background: message.role === 'user' ? 'var(--primary)' : 'var(--surface-2)', color: message.role === 'user' ? '#fff' : 'var(--text)' }}>{message.text}</div>
+              {message.appliedNote && <div className="text-meta" style={{ color: 'var(--tone-green)', marginTop: 4 }}>✓ {message.appliedNote}</div>}
+            </div>)}
           </div>
           <div className="row" style={{ padding: 16, borderTop: '1px solid var(--border)', gap: 8 }}>
-            <input placeholder='예) 금액 기준을 40만원으로 올려줘' value={input}
-              onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send() }} style={{ flex: 1 }} />
+            <input placeholder="예) 액션을 RETURN으로 바꿔줘" value={input} onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') send() }} style={{ flex: 1 }} />
             <button className="btn primary" onClick={send} aria-label="전송"><Send size={14} /></button>
           </div>
         </div>
       </div>
 
-      {newRuleOpen && (
-        <NewRuleGraphModal graphs={RULE_GRAPHS} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />
-      )}
+      {newRuleOpen && <NewRuleGraphModal graphs={allGraphs} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />}
     </>
   )
 }
 
-// 선택 노드 세부 설정 — key로 노드 전환 시 입력값 초기화. 검증/활성은 그래프 단위라 여기선 노드 편집만.
-function NodeDetail({ graph, node }: { graph: RuleGraph; node: GraphNode }) {
+const NODE_STATUS_LABEL = { DRAFT: '초안', WAITING: '대기', VERIFIED: '검증완료', ACTIVE: '활성' } as const
+const nodeStatusLabel = (status?: GraphNode['workflowStatus']) => NODE_STATUS_LABEL[status ?? 'DRAFT']
+
+const PATH_LABELS: Record<string, string> = {
+  'merchant.merchant_type': '가맹점 업종', 'category.item_type': '항목 유형',
+  'tx.payment_method': '결제 수단', 'tx.amount': '결제 금액',
+}
+const literalText = (value: unknown) => typeof value === 'string' ? `“${value}”` : String(value)
+const describeDsl = (value: unknown): string => {
+  if (value === true) return '항상 적용됩니다.'
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return String(value ?? '')
+  const expression = value as Record<string, unknown>
+  const [operator, args] = Object.entries(expression)[0] ?? []
+  if (operator === 'var') return PATH_LABELS[String(args)] ?? String(args)
+  if (operator === 'and' || operator === 'or') {
+    const items = (args as unknown[]).map(describeDsl)
+    return `${operator === 'and' ? '다음 조건을 모두 만족합니다.' : '다음 조건 중 하나를 만족합니다.'}\n• ${items.join('\n• ')}`
+  }
+  if (operator === 'not') return `${describeDsl(args)} 조건이 아닌 경우`
+  if (Array.isArray(args) && args.length === 2) {
+    const left = describeDsl(args[0])
+    if (operator === 'in' && Array.isArray(args[1])) {
+      const choices = args[1].map(literalText)
+      return `${left}이 ${choices.join(' 또는 ')}에 해당합니다.`
+    }
+    const right = typeof args[1] === 'object' ? describeDsl(args[1]) : literalText(args[1])
+    const sentence: Record<string, string> = {
+      '==': `${left}이 ${right}입니다.`, '!=': `${left}이 ${right}이 아닙니다.`,
+      '>': `${left}이 ${right}보다 큽니다.`, '>=': `${left}이 ${right} 이상입니다.`,
+      '<': `${left}이 ${right}보다 작습니다.`, '<=': `${left}이 ${right} 이하입니다.`,
+    }
+    return sentence[operator] ?? `${left} ${operator} ${right}`
+  }
+  return '설정된 DSL 조건에 일치하는 경우'
+}
+
+function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged }: {
+  graph: RuleGraph; node: GraphNode; onStartEdit: () => void; onDelete: () => void
+  onReverted: (activeId: string) => void; onNodeChanged: (patch: Partial<GraphNode>) => void
+}) {
+  const editable = graph.status === 'DRAFT'
   const [showCode, setShowCode] = useState(false)
-  const [threshold, setThreshold] = useState<number | undefined>(node.plain.threshold)
-  const plain = node.plain
-  const wv = useMemo(() => workingVersion(graph), [graph])
+  const [title, setTitle] = useState(node.title)
+  const [description, setDescription] = useState(node.description ?? '')
+  const [conditionText, setConditionText] = useState(node.conditionExpr)
+  const [routes, setRoutes] = useState(() => graph.routings.filter((route) => route.from === node.nodeKey))
+  const [action, setAction] = useState(node.actionDetail ?? {})
+  const [workflowStatus, setWorkflowStatus] = useState<GraphNode['workflowStatus']>(node.workflowStatus ?? 'DRAFT')
+  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved')
+  const dirty = useRef(false)
+  const saveRef = useRef<() => Promise<void>>(async () => undefined)
 
-  return (
-    <div className="card">
-      <div className="card-head">
-        <div>
-          <h3>{node.title}</h3>
-          <div className="text-meta">{node.nodeKey} · {graph.name} · {wv?.label} {wv?.status}</div>
-        </div>
-        {node.origin === 'new' && <span className="tag ai">신규 노드</span>}
-      </div>
-      <div className="card-body stack">
-        <div className="field">
-          <label className="row" style={{ justifyContent: 'space-between' }}>제목 <button className="btn sm"><Wand2 size={11} /> 수정</button></label>
-          <input defaultValue={node.title} placeholder="예) 식대 30만원 초과 사전승인" />
-        </div>
+  const saveNow = async (override?: { routes?: typeof routes; workflowStatus?: GraphNode['workflowStatus'] }) => {
+    if (!editable || (!dirty.current && !override)) return
+    setSaveState('saving')
+    let condition: unknown = {}
+    try { condition = conditionText.trim() ? JSON.parse(conditionText) : {} } catch { setSaveState('error'); return }
+    try {
+      const { data } = await endpoints.saveRuleNode(graph.id, node.nodeKey, {
+        condition,
+        action: {
+          ...action, title, description, origin: node.origin,
+          workflow_status: override?.workflowStatus ?? workflowStatus, ai_reason: node.aiReason, source_clause: node.sourceClause,
+        },
+        routings: (override?.routes ?? routes).map((route) => ({ onResult: route.onResult, toNodeKey: route.to })),
+      })
+      dirty.current = false
+      if (data?.revertedToGraphId) onReverted(String(data.revertedToGraphId))
+      else setSaveState('saved')
+    } catch { setSaveState('error') }
+  }
+  saveRef.current = saveNow
 
-        <div className="field">
-          <label className="row" style={{ justifyContent: 'space-between' }}>
-            이 Rule이 하는 일
-            <button className="btn sm" onClick={() => setShowCode((v) => !v)}>
-              <Code2 size={11} /> {showCode ? '코드 숨기기' : '개발자용 코드로 보기'}
-            </button>
-          </label>
-          <div className="note" style={{ lineHeight: 2, color: 'var(--text)' }}>
-            {plain.category && <>비용 분류가 <span className="tag ai">{plain.category}</span> 이고, 지출 금액이{' '}</>}
-            {plain.threshold !== undefined && (
-              <input type="number" value={threshold ?? plain.threshold} onChange={(e) => setThreshold(Number(e.target.value))}
-                style={{ width: 130, display: 'inline-block', margin: '0 4px', padding: '4px 8px' }} />
-            )}
-            {plain.threshold !== undefined && <>원을 초과{plain.extraCondition ? '하고, ' : '하면 '}</>}
-            {plain.extraCondition && <><b>{plain.extraCondition}</b> </>}
-            {plain.action ? <>→ <b style={{ color: 'var(--primary)' }}>{plain.action}</b> 합니다.</> : <span className="text-meta">아직 설정되지 않았습니다 — 우측 대화 또는 코드로 조건·액션을 설정하세요.</span>}
-          </div>
-          {showCode && (
-            <pre style={{ margin: '8px 0 0', padding: '10px 12px', background: 'var(--sidebar-bg)', color: '#d1fae5', borderRadius: 'var(--radius-control)', fontSize: 12, whiteSpace: 'pre-wrap' }}>
-              {node.conditionExpr || '// 조건 미설정'}
-            </pre>
-          )}
-        </div>
+  useEffect(() => {
+    if (!editable) return
+    const interval = window.setInterval(() => { if (dirty.current) void saveRef.current() }, 60_000)
+    return () => { window.clearInterval(interval); if (dirty.current) void saveRef.current() }
+  }, [editable])
 
-        <div className="field"><label>관련 조항</label><div><span className="tag">📎 {node.sourceClause || '(미지정)'}</span></div></div>
-        <div className="field"><label>생성 이유 (AI 근거)</label><div className="note">{node.aiReason ?? '—'}</div></div>
-      </div>
-      <div className="modal-foot">
-        <button className="btn">임시저장</button>
-        <div className="spacer" />
-        <span className="text-meta" style={{ alignSelf: 'center' }}>검증·활성은 그래프 단위</span>
-        <button className="btn primary">이 그래프를 시뮬레이션으로 보내기 →</button>
-      </div>
+  const naturalCondition = useMemo(() => {
+    try { return conditionText.trim() ? describeDsl(JSON.parse(conditionText)) : '조건이 아직 설정되지 않았습니다.' }
+    catch { return 'DSL 형식을 확인해주세요.' }
+  }, [conditionText])
+  const markDirty = () => { dirty.current = true; setSaveState('saved') }
+  const addRoute = () => {
+    const next = [...routes, { from: node.nodeKey, onResult: 'MATCH' as const, to: '' }]
+    setRoutes(next); dirty.current = true; void saveNow({ routes: next })
+  }
+  const removeRoute = (index: number) => {
+    const next = routes.filter((_route, routeIndex) => routeIndex !== index)
+    setRoutes(next); dirty.current = true; void saveNow({ routes: next })
+  }
+  const toggleWaiting = () => {
+    const next = workflowStatus === 'WAITING' ? 'DRAFT' : 'WAITING'
+    setWorkflowStatus(next); onNodeChanged({ workflowStatus: next }); dirty.current = true
+    void saveNow({ workflowStatus: next })
+  }
+
+  return <div className="card">
+    <div className="card-head">
+      <div><h3>{title}</h3><div className="text-meta">{graph.scope} · v{graph.version ?? 1}</div></div>
+      <span className={'tag ' + (workflowStatus === 'ACTIVE' ? 'ok' : workflowStatus === 'WAITING' ? 'ai' : '')}>{nodeStatusLabel(workflowStatus)}</span>
     </div>
-  )
+    <div className="card-body stack">
+      <div className="field"><label>제목</label><input value={title} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setTitle(event.target.value); onNodeChanged({ title: event.target.value }); markDirty() }} /></div>
+      <div className="field"><label>설명</label><textarea rows={3} value={description} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setDescription(event.target.value); onNodeChanged({ description: event.target.value }); markDirty() }} placeholder="이 룰의 목적과 적용 대상을 설명하세요." /></div>
+
+      <div className="field">
+        <label>이 Rule이 하는 일</label>
+        <div className="note" style={{ lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{naturalCondition}</div>
+        <div className="dsl-disclosure" role="button" tabIndex={0} onClick={() => setShowCode((value) => !value)}><Code2 size={13} /> DSL 코드 {showCode ? '접기' : '펼치기'} <span>{showCode ? '⌃' : '⌄'}</span></div>
+        {showCode && <textarea rows={7} value={conditionText} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setConditionText(event.target.value); onNodeChanged({ conditionExpr: event.target.value }); markDirty() }} placeholder="JSON DSL 조건" style={{ fontFamily: 'monospace' }} />}
+      </div>
+
+      <div className="field"><label>액션</label><div className="grid-2" style={{ gap: 8 }}>
+        <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">결정 선택</option><option>PASS</option><option>REJECT</option><option>REVIEW</option><option>RETURN</option><option>PASS_THROUGH</option></select>
+        <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">심각도 선택</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select>
+        <input disabled={!editable} value={action.flag ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, flag: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="플래그" />
+        <input disabled={!editable} value={action.note ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, note: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="처리 안내/메모" />
+        <input disabled={!editable} value={action.approver ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, approver: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="확인·승인 주체" />
+        <input value={`평가 우선순위 ${node.priority ?? 0}`} readOnly aria-label="평가 우선순위" />
+      </div></div>
+
+      <div className="field">
+        <label>라우팅</label>
+        <div className="stack" style={{ gap: 8 }}>
+          {routes.length === 0 && <div className="text-meta">등록된 라우팅이 없습니다. 현재 노드의 액션으로 종료됩니다.</div>}
+          {routes.map((route, index) => <div className="routing-row" key={`${route.onResult}-${index}`}>
+            <span className="routing-order" title="라우팅 우선순위">#{route.priority ?? index}</span>
+            <select disabled={!editable} style={{ flex: 1 }} value={route.onResult} onBlur={() => void saveNow()} onChange={(event) => { setRoutes((previous) => previous.map((item, i) => i === index ? { ...item, onResult: event.target.value as 'MATCH' | 'NO_MATCH' } : item)); markDirty() }}><option>MATCH</option><option>NO_MATCH</option></select>
+            <select disabled={!editable} style={{ flex: 2 }} value={route.to} onBlur={() => void saveNow()} onChange={(event) => { setRoutes((previous) => previous.map((item, i) => i === index ? { ...item, to: event.target.value } : item)); markDirty() }}><option value="">종료</option>{graph.nodes.filter((candidate) => candidate.nodeKey !== node.nodeKey).map((candidate) => <option key={candidate.nodeKey} value={candidate.nodeKey}>{candidate.title}</option>)}</select>
+            {editable && <button className="btn sm" onClick={() => removeRoute(index)} aria-label="라우팅 제거"><Trash2 size={12} /></button>}
+          </div>)}
+          {editable && <button className="routing-add" onClick={addRoute}><Plus size={13} /> 라우팅 추가</button>}
+        </div>
+      </div>
+
+      <div className="field"><label>생성 이유 · 근거</label><div className="note"><div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>{node.sourceClause && <a href="/governance" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}</div></div>
+    </div>
+    <div className="modal-foot">
+      <span className="text-meta">{!editable ? '읽기 전용' : saveState === 'saving' ? '저장 중…' : saveState === 'error' ? '저장 실패 또는 DSL 오류' : '변경사항 자동 저장됨'}</span>
+      <div className="spacer" />
+      {!editable && graph.status === 'ACTIVE' && <button className="btn primary" onClick={onStartEdit}>v{(graph.version ?? 1) + 1} 수정 시작</button>}
+      {editable && <button className="btn warn" onClick={onDelete}><Trash2 size={12} /> 노드 삭제</button>}
+      {editable && <button className={'btn ' + (workflowStatus === 'WAITING' ? '' : 'primary')} onClick={toggleWaiting}>{workflowStatus === 'WAITING' ? '초안으로 전환' : '초안 완료 · 검증 대기로 전환'}</button>}
+    </div>
+  </div>
 }

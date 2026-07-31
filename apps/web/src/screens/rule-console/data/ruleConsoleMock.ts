@@ -187,6 +187,10 @@ export interface GraphNode {
   conditionExpr: string
   sourceClause: string
   aiReason?: string
+  description?: string
+  actionDetail?: { decision?: string; severity?: string; flag?: string; note?: string; approver?: string }
+  workflowStatus?: 'DRAFT' | 'WAITING' | 'VERIFIED' | 'ACTIVE'
+  priority?: number
 }
 
 export interface GraphVersion {
@@ -204,13 +208,15 @@ export interface GraphSim { matched: number; fpRate: number; reviewReduction: nu
 
 export interface RuleGraph {
   id: string
+  familyKey?: string
+  version?: number
   name: string
   scope: string
   status: GraphStatus
   sourceClause: string
   entryNodeKey: string
   nodes: GraphNode[]
-  routings: { from: string; onResult: 'MATCH' | 'NO_MATCH'; to: string }[]
+  routings: { from: string; onResult: 'MATCH' | 'NO_MATCH'; to: string; priority?: number }[]
   versions: GraphVersion[]
   sim?: GraphSim
 }

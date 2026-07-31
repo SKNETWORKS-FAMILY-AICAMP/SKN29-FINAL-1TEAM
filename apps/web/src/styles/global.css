@@ -165,13 +165,22 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .split { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-4); align-items: start; }
 
 /* ── S-03 검토 워크스페이스 : 작업 화면이라 전폭 사용(글로벌 .page 1280px 상한을 이 화면에서만 해제) ── */
-.page:has(.review-ws) { max-width: none; }
-/* Review List는 좁게 고정, 선택 건 상세가 남는 폭을 모두 차지 */
-.review-ws .split { grid-template-columns: 340px minmax(0, 1fr); }
+.page:has(.review-ws) { max-width: none; overflow-x: auto; }
+/* Review List는 고정, 선택 건 상세만 남는 폭에 따라 확장 */
+.review-ws .split { grid-template-columns: 360px minmax(720px, 1fr); min-width: 1100px; }
 
 /* ── S-04 Rule 콘솔 : 작업 화면 전폭 + 초안 그래프 트리 ── */
-.page:has(.rule-console-full) { max-width: none; }
-.rule-draft-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr) 360px; gap: var(--space-4); align-items: start; }
+.page:has(.rule-console-full) { max-width: none; overflow-x: auto; }
+.rule-draft-grid { display: grid; grid-template-columns: 450px minmax(520px, 1.4fr) minmax(340px, 1fr); min-width: 1350px; gap: var(--space-4); align-items: start; }
+.rule-console-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.rule-console-tabs .btn { border-color: transparent; background: transparent; box-shadow: none; }
+.rule-console-tabs .btn.primary { color: #fff; background: var(--primary); box-shadow: var(--shadow-sm); }
+.dsl-disclosure { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 2px; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; border-top: 1px solid var(--border); }
+.dsl-disclosure span { margin-left: auto; }
+.routing-row { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); }
+.routing-order { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border-strong); color: var(--primary); font-size: 12px; font-weight: 700; }
+.routing-add { width: 100%; min-height: 38px; border: 1px dashed var(--border-strong); border-radius: var(--radius-control); background: transparent; color: var(--primary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.routing-add:hover { background: var(--primary-soft); border-color: var(--primary); }
 .rule-graph-row { display: flex; align-items: flex-start; gap: 6px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); cursor: pointer; transition: background-color 150ms; }
 .rule-graph-row:hover { background: var(--surface-2); }
 .rule-node-list { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px 22px; }
@@ -363,10 +372,15 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .note { font-size: var(--text-meta); color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); }
 
 /* 반응형 */
-@media (max-width: 900px) {
+@media (max-width: 1350px) and (min-width: 1051px) {
+  .rule-draft-grid { grid-template-columns: 450px minmax(520px, 1fr); min-width: 1000px; }
+  .rule-draft-grid > :nth-child(3) { grid-column: 1 / -1; }
+}
+@media (max-width: 1050px) {
   .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
-  .split, .review-ws .split { grid-template-columns: 1fr; }
-  .rule-draft-grid { grid-template-columns: 1fr; }
+  .split, .review-ws .split { grid-template-columns: 1fr; min-width: 0; }
+  .rule-draft-grid { grid-template-columns: 1fr; min-width: 0; }
+  .rule-draft-grid > :nth-child(3) { grid-column: auto; }
 }
 @media (max-width: 640px) {
   .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }

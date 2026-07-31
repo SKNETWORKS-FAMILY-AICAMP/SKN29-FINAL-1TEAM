@@ -17,6 +17,7 @@ export interface AuthUser {
 }
 
 interface AuthCtx {
+  isRestoring: boolean
   isLoggedIn: boolean
   hasOnboarded: boolean
   user: AuthUser | null
@@ -30,6 +31,7 @@ const STORAGE_KEY = 'tiger-auth-mock'
 
 const Ctx = createContext<AuthCtx>({
   isLoggedIn: false,
+  isRestoring: !USE_MOCK,
   hasOnboarded: false,
   user: null,
   login: () => {},
@@ -58,6 +60,7 @@ function loadInitial(): { user: AuthUser | null; hasOnboarded: boolean } {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [{ user, hasOnboarded }, setState] = useState(loadInitial)
+  const [isRestoring, setIsRestoring] = useState(!USE_MOCK)
 
   useEffect(() => {
     if (USE_MOCK) localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, hasOnboarded }))
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchMe()
       .then((me) => { if (me.isAuthenticated) setState({ user: toUser(me), hasOnboarded: true }) })
       .catch(() => undefined)
+      .finally(() => setIsRestoring(false))
   }, [])
 
   const login = (u: AuthUser) => setState((s) => ({ ...s, user: u }))
@@ -87,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ isLoggedIn: user !== null, hasOnboarded, user, login, loginWithCredentials, completeOnboarding, logout }}>
+    <Ctx.Provider value={{ isRestoring, isLoggedIn: user !== null, hasOnboarded, user, login, loginWithCredentials, completeOnboarding, logout }}>
       {children}
     </Ctx.Provider>
   )
