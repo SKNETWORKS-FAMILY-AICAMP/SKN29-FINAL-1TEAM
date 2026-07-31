@@ -36,7 +36,10 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
         graph = self.get_object()
-        services.activate(graph, _actor(request))
+        try:
+            services.activate(graph, _actor(request))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
         return Response(RuleGraphSerializer(graph).data)
 
     @action(detail=True, methods=["post"])

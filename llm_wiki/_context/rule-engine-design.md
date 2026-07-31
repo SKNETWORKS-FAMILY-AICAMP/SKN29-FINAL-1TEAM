@@ -318,12 +318,12 @@ builder_version             = models.CharField(max_length=20, blank=True)
 
 ---
 
-## 7. 구현 로드맵 (TODO — 미구현)
-1. `RuleHit`에 `eval_context/flags/schema_version/builder_version` 추가 + 마이그레이션. (감사 기반 선확보)
-2. `dsl.py`: evaluate/validate/extract_vars + 단위테스트. (엔진과 독립, 먼저 완성 가능)
-3. `eval_context.py`: 스키마(TypedDict) + `EVAL_CONTEXT_SCHEMA_PATHS` + `build_rule_context`(섹션별 조립·파생·별표 선해소).
-4. `engine.py`: `run_rule_engine` + DAG/사이클 검증.
-5. `orchestrator.py`: GLOBAL→scope 선택·hit 기록·상태 매핑. 활성 전환 시 `validate_graph_vars` 게이트.
+## 7. 구현 로드맵
+1. ✅ `RuleHit`에 `eval_context/flags/schema_version/builder_version` 추가 + `0002` 마이그레이션. (2026-07-31)
+2. ✅ `dsl.py`: evaluate/validate/extract_vars + 단위테스트. 허용 연산자·깊이·널·타입 계약 반영. (2026-07-31)
+3. 🚧 `eval_context.py`: TypedDict·전체 `EVAL_CONTEXT_SCHEMA_PATHS`·null-safe 기본 컨텍스트 구현. **남음:** `build_rule_context` 섹션별 ORM 조립·파생·별표 선해소.
+4. ✅ `engine.py`: `run_rule_engine` + 참조 무결성·라우팅 중복·DAG/사이클 검증 + 골든 단위테스트. (2026-07-31)
+5. 🚧 ACTIVE 전환에 `validate_graph` + `validate_graph_vars` hard gate 연결. **남음:** `orchestrator.py` GLOBAL→scope 선택·hit 기록·상태 매핑.
 6. `tables.py`: 별표 버전드 로더. `classify_merchant` 연동(§7-1).
 7. 시드 룰 그래프(→ `_context/rule-seed-plan.md`)로 골든 테스트 구성.
 8. FastMCP 프록시(build_rule_context/run_rule_engine) → Django 내부 엔드포인트 위임.

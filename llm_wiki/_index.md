@@ -28,7 +28,7 @@
 | 파일 | 용도 | 상태 |
 |---|---|---|
 | `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루 | 2026-07-28 |
-| `_context/rule-engine-design.md` | 룰엔진 **엔지니어링 설계** — EvalContext 필드 카탈로그(룰 명세서 §2)·DSL 문법·엔진·백엔드 지원(rule_hits 스냅샷·완전성 게이트·테스트) | 2026-07-31 |
+| `_context/rule-engine-design.md` | 룰엔진 **엔지니어링 설계·구현 추적** — EvalContext 필드 카탈로그·DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. 로드맵 1·2·4 완료, 3·5 진행 | 2026-07-31 |
 | `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 생성 계획(매핑·scope 분할·오픈이슈, 구현 아님) | 2026-07-30 |
 
 ## 4. 데이터/자산 위치 (문서 아님)

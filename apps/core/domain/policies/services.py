@@ -4,6 +4,8 @@ from django.utils import timezone
 
 from domain.common.models import AuditLog
 
+from .engine import validate_graph
+from .eval_context import validate_graph_vars
 from .models import RuleGraph, RuleGraphStatus, RuleGraphVersion
 
 
@@ -21,6 +23,13 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
 
     자동 승인 금지: 반드시 관리자 호출로만 실행된다(FR-RV-04).
     """
+    # 기존 ACTIVE를 건드리기 전에 새 그래프의 실행 가능성을 hard gate로 검증한다.
+    snapshot = _snapshot(graph)
+    validate_graph(snapshot)
+    missing = validate_graph_vars(snapshot)
+    if missing:
+        raise ValueError(f"EvalContext에 정의되지 않은 경로입니다: {', '.join(sorted(missing))}")
+
     RuleGraph.objects.filter(scope=graph.scope, status=RuleGraphStatus.ACTIVE).exclude(pk=graph.pk).update(
         status=RuleGraphStatus.ARCHIVED
     )
@@ -32,7 +41,7 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     graph.versions.update(is_active=False)
     RuleGraphVersion.objects.update_or_create(
         graph=graph, version=graph.version,
-        defaults={"snapshot": _snapshot(graph), "approved_by": actor,
+        defaults={"snapshot": snapshot, "approved_by": actor,
                   "approved_at": timezone.now(), "is_active": True},
     )
     AuditLog.objects.create(actor=actor, action="rulegraph.activate",

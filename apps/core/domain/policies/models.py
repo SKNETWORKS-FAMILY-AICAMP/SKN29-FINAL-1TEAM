@@ -116,12 +116,16 @@ class RuleRouting(models.Model):
 
 
 class RuleHit(models.Model):
-    """Rule 판정 로그 — 순회 경로(path)·그래프 버전 포함."""
+    """Rule 판정 로그 — 판정 입력 전체를 보존해 재현·감사를 지원."""
     transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True, on_delete=models.SET_NULL)
     settlement = models.ForeignKey("settlements.Settlement", null=True, blank=True, on_delete=models.SET_NULL, related_name="rule_hits")
     graph = models.ForeignKey(RuleGraph, null=True, blank=True, on_delete=models.SET_NULL)
     graph_version = models.PositiveIntegerField(default=0)
     path = models.JSONField(default=list, blank=True)  # 방문 노드 순서
+    eval_context = models.JSONField(default=dict, blank=True)  # 판정 시점 facts 스냅샷
+    flags = models.JSONField(default=list, blank=True)  # 매칭 노드의 사유 플래그
+    eval_context_schema_version = models.PositiveIntegerField(default=1)
+    builder_version = models.CharField(max_length=20, blank=True)
     decision = models.CharField(max_length=12, blank=True)
     confidence = models.FloatField(default=0.0)
     created_at = models.DateTimeField(auto_now_add=True)
