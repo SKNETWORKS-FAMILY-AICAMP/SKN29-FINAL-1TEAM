@@ -35,8 +35,10 @@ class SettlementStatus(models.TextChoices):
 
 
 class Settlement(models.Model):
+    # PROTECT: 거래를 물리 삭제해도 정산·이력·감사(events/risk/labels/hits/voucher)가 연쇄 삭제되지 않도록 차단.
+    #  (append-only·감사추적 원칙 — 다른 FK도 이력 보존 위해 SET_NULL). 삭제가 필요하면 소프트 삭제(상태값)로.
     transaction = models.ForeignKey(
-        "transactions.Transaction", on_delete=models.CASCADE, related_name="settlements"
+        "transactions.Transaction", on_delete=models.PROTECT, related_name="settlements"
     )
     category = models.CharField(max_length=20, choices=Category.choices, blank=True)
     ai_category = models.CharField(max_length=20, choices=Category.choices, blank=True)  # AI 제안
