@@ -7,8 +7,16 @@
 - RuleRouting(next_routings): 평가 결과별 다음 노드 라우팅.
 - 엔진: ACTIVE 그래프를 엔트리부터 순회 → 단말 결정, 경로를 RuleHit.path에 기록.
 """
+import uuid
+
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
+
+from domain.settlements.models import Category
+
+
+RULE_SCOPE_CHOICES = [("GLOBAL", "공통 필수 게이트"), *Category.choices]
 
 
 class Policy(models.Model):
@@ -46,9 +54,10 @@ class RuleGraphStatus(models.TextChoices):
 
 
 class RuleGraph(models.Model):
-    """룰 그래프 = 최종 상태 도메인. ACTIVE·버전·롤백 단위."""
+    """룰 그래프의 한 버전. 같은 ``family_key`` 행들이 버전 계열을 이룬다."""
+    family_key = models.UUIDField(default=uuid.uuid4, db_index=True)
     name = models.CharField(max_length=150)
-    scope = models.CharField(max_length=50, default="GLOBAL")  # 전사/분류/본부
+    scope = models.CharField(max_length=20, choices=RULE_SCOPE_CHOICES, default="GLOBAL")
     status = models.CharField(max_length=12, choices=RuleGraphStatus.choices, default=RuleGraphStatus.DRAFT)
     version = models.PositiveIntegerField(default=1)
     entry_node_key = models.CharField(max_length=64, blank=True)
@@ -60,6 +69,17 @@ class RuleGraph(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["family_key", "version"], name="uq_rulegraph_family_version"),
+            models.UniqueConstraint(
+                fields=["scope"], condition=Q(status=RuleGraphStatus.ACTIVE),
+                name="uq_rulegraph_active_scope",
+            ),
+            models.CheckConstraint(
+                condition=Q(scope__in=["GLOBAL", *Category.values]),
+                name="ck_rulegraph_scope",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} v{self.version} ({self.status})"
@@ -76,7 +96,12 @@ class RuleGraphVersion(models.Model):
 
     class Meta:
         ordering = ["-version"]
-        unique_together = ("graph", "version")
+        constraints = [
+            models.UniqueConstraint(fields=["graph", "version"], name="uq_graph_snapshot_version"),
+            models.UniqueConstraint(
+                fields=["graph"], condition=Q(is_active=True), name="uq_graph_active_snapshot"
+            ),
+        ]
 
 
 class RuleNode(models.Model):
@@ -113,6 +138,12 @@ class RuleRouting(models.Model):
 
     class Meta:
         ordering = ["priority"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["graph", "from_node_key", "on_result", "priority"],
+                name="uq_rule_routing_priority",
+            )
+        ]
 
 
 class RuleHit(models.Model):

@@ -23,6 +23,8 @@ export const endpoints = {
   rules: () => api.get('/rules/'),
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
+  createRuleVersion: (id: string) => api.post(`/rules/${id}/versions/`),
+  createRuleGraph: (name: string, scope: string) => api.post('/rules/drafts/', { name, scope }),
   dashboard: (role: string) => api.get(`/dashboard/${role}/`),
   // S-02 팀 예산 현황 — 한도(DB) + 사용액(Settlement 집계). {total, used, categories:[{label,limit,used}]}
   teamBudget: (team: string | number, month: string) => api.get('/team-budget/', { params: { team, month } }),

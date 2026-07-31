@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Code2, Send, Sparkles, Wand2 } from 'lucide-react'
 import {
   DRAFT_CHAT_SCRIPT, GRAPH_STATUS_LABEL, graphsByStatus, workingVersion,
-  type ChatMessage, type GraphNode, type RuleGraph,
+  RULE_GRAPHS, type ChatMessage, type GraphNode, type RuleGraph,
 } from './data/ruleConsoleMock'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
@@ -52,9 +52,24 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     const key = `R-N${seq}`
     setSeq((s) => s + 1)
     if (choice.kind === 'existing') {
-      setGraphs((prev) => prev.map((g) => g.id === choice.graphId ? { ...g, nodes: [...g.nodes, emptyNode(key)] } : g))
-      setExpanded((prev) => new Set(prev).add(choice.graphId))
-      setSel({ graphId: choice.graphId, nodeKey: key })
+      const source = RULE_GRAPHS.find((g) => g.id === choice.graphId)
+      if (!source) return
+      const nextVersion = Math.max(...source.versions.map((v) => v.version), source.versions[0]?.version ?? 0) + 1
+      const gid = `${source.id}-v${nextVersion}`
+      const draft: RuleGraph = {
+        ...source,
+        id: gid,
+        status: 'DRAFT',
+        nodes: [...source.nodes.map((node) => ({ ...node })), emptyNode(key)],
+        routings: [...source.routings],
+        versions: [
+          { version: nextVersion, label: `v${nextVersion}`, status: '초안', note: `v${source.versions[0]?.version ?? nextVersion - 1}에서 버전업` },
+          ...source.versions,
+        ],
+      }
+      setGraphs((prev) => [draft, ...prev])
+      setExpanded((prev) => new Set(prev).add(gid))
+      setSel({ graphId: gid, nodeKey: key })
     } else {
       const gid = `G-N${seq}`
       const g: RuleGraph = {
@@ -159,7 +174,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       </div>
 
       {newRuleOpen && (
-        <NewRuleGraphModal graphs={graphs} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />
+        <NewRuleGraphModal graphs={RULE_GRAPHS} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />
       )}
     </>
   )

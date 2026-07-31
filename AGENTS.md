@@ -38,7 +38,7 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-07-22_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-07-31_
 
 작업 진행/추적용. **의미 있는 진척마다 이 섹션을 갱신**한다.
 
@@ -52,7 +52,7 @@ daily_scrum/  주차별 진행 보고
 | 프론트 ↔ 백엔드 연동 | 🔲 미착수 | `apps/web/src/api/client.ts` 엔드포인트 헬퍼가 연결 지점 |
 | 이상탐지 실학습/RAG upsert | 🔲 미착수 | IsolationForest 래퍼·Chroma heartbeat까지만 |
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
-| 룰 그래프(트리) 도메인 | 🚧 백엔드 기반 구현 중 / 🖥️ 프론트 S-04 플레이스홀더 | DSL(evaluate/validate/extract_vars)·EvalContext 정적 계약·결정론적 순회 엔진·DAG/사이클 검증·ACTIVE 경로 완전성 hard gate 구현. 남음: 실제 context 조립기·orchestrator/상태매핑·별표/업종·시드/FastMCP 프록시. `_context/rule-engine-design.md` §7 |
+| 룰 그래프(트리) 도메인 | 🚧 백엔드 기반 구현 중 / 🖥️ 프론트 S-04 플레이스홀더 | DSL·EvalContext 계약·순수 엔진·DAG/사이클·ACTIVE 완전성 gate. 그래프 한 행=한 버전(`family_key`), scope당 ACTIVE 1개 DB 제약, 기존 그래프→다음 버전 DRAFT 복제, 실제 Category scope 선택 구현. GLOBAL R-002·R-003 시드 완료. 남음: context 조립기·orchestrator/상태매핑·별표/업종·카테고리 시드·FastMCP. |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 
 다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.

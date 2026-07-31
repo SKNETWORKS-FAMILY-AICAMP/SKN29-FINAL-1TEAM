@@ -17,7 +17,7 @@ class RuleRoutingInline(admin.TabularInline):
 
 @admin.register(RuleGraph)
 class RuleGraphAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "scope", "status", "version", "activated_at")
+    list_display = ("id", "family_key", "name", "scope", "status", "version", "activated_at")
     list_filter = ("status", "scope")
     inlines = [RuleNodeInline, RuleRoutingInline]
 

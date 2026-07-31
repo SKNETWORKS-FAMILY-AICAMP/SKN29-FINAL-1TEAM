@@ -6,6 +6,8 @@ import { Modal } from '../../components/ui/Modal'
 import type { RuleGraph } from './data/ruleConsoleMock'
 import { GRAPH_STATUS_LABEL, workingVersion } from './data/ruleConsoleMock'
 
+const RULE_SCOPES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
+
 export type NewRuleChoice =
   | { kind: 'existing'; graphId: string }
   | { kind: 'new'; name: string; scope: string }
@@ -13,7 +15,7 @@ export type NewRuleChoice =
 export function NewRuleGraphModal({
   graphs, onClose, onConfirm,
 }: {
-  /** 노드를 붙일 수 있는 초안 단계 그래프 목록 */
+  /** 새 버전을 만들 수 있는 기존 그래프 목록 */
   graphs: RuleGraph[]
   onClose: () => void
   onConfirm: (choice: NewRuleChoice) => void
@@ -48,8 +50,8 @@ export function NewRuleGraphModal({
         <label className={'newrule-opt' + (mode === 'existing' ? ' active' : '')}>
           <input type="radio" checked={mode === 'existing'} onChange={() => setMode('existing')} disabled={!graphs.length} />
           <div style={{ flex: 1 }}>
-            <div className="row" style={{ gap: 6 }}><GitBranch size={14} /> <b>기존 룰그래프 버전에 노드 추가</b></div>
-            <div className="text-meta" style={{ margin: '2px 0 8px' }}>선택한 그래프의 작업중 버전(초안)에 빈 노드를 추가합니다.</div>
+            <div className="row" style={{ gap: 6 }}><GitBranch size={14} /> <b>기존 룰그래프 수정</b></div>
+            <div className="text-meta" style={{ margin: '2px 0 8px' }}>선택한 버전을 복제해 다음 버전(v2, v3…) 초안을 만들고 빈 노드를 추가합니다.</div>
             <select value={graphId} onChange={(e) => setGraphId(e.target.value)} disabled={mode !== 'existing' || !graphs.length} style={{ width: '100%' }}>
               {graphs.length === 0 && <option value="">추가 가능한 초안 그래프가 없습니다</option>}
               {graphs.map((g) => (
@@ -69,7 +71,10 @@ export function NewRuleGraphModal({
             <div className="text-meta" style={{ margin: '2px 0 8px' }}>새 그래프(v1 초안)를 만들고 첫 빈 노드를 생성합니다.</div>
             <div className="grid-2" style={{ gap: 8 }}>
               <input placeholder="그래프 이름 (예: 출장 여비 검증)" value={name} onChange={(e) => setName(e.target.value)} disabled={mode !== 'new'} />
-              <input placeholder="적용 범위/계정과목 (예: 출장)" value={scope} onChange={(e) => setScope(e.target.value)} disabled={mode !== 'new'} />
+              <select value={scope} onChange={(e) => setScope(e.target.value)} disabled={mode !== 'new'}>
+                <option value="">비용분류 선택</option>
+                {RULE_SCOPES.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
             </div>
           </div>
         </label>

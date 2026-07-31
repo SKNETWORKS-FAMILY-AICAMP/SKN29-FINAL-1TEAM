@@ -6,7 +6,7 @@ from domain.common.models import AuditLog
 
 from .engine import validate_graph
 from .eval_context import validate_graph_vars
-from .models import RuleGraph, RuleGraphStatus, RuleGraphVersion
+from .models import RULE_SCOPE_CHOICES, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting
 
 
 def _snapshot(graph: RuleGraph) -> dict:
@@ -15,6 +15,69 @@ def _snapshot(graph: RuleGraph) -> dict:
         "routings": list(graph.routings.values("from_node_key", "on_result", "to_node_key", "priority")),
         "entry_node_key": graph.entry_node_key,
     }
+
+
+def _valid_scopes() -> set[str]:
+    return {value for value, _label in RULE_SCOPE_CHOICES}
+
+
+@db_tx.atomic
+def create_draft_version(graph: RuleGraph, actor=None) -> RuleGraph:
+    """기존 그래프 버전을 복제해 같은 계열의 다음 DRAFT 버전을 만든다."""
+    versions = RuleGraph.objects.select_for_update().filter(family_key=graph.family_key)
+    latest = versions.order_by("-version").first()
+    next_version = (latest.version if latest else graph.version) + 1
+    draft = RuleGraph.objects.create(
+        family_key=graph.family_key,
+        name=graph.name,
+        scope=graph.scope,
+        status=RuleGraphStatus.DRAFT,
+        version=next_version,
+        entry_node_key=graph.entry_node_key,
+        source_clause=graph.source_clause,
+    )
+    RuleNode.objects.bulk_create([
+        RuleNode(
+            graph=draft,
+            node_key=node.node_key,
+            condition=node.condition,
+            action=node.action,
+            priority=node.priority,
+        )
+        for node in graph.nodes.all()
+    ])
+    RuleRouting.objects.bulk_create([
+        RuleRouting(
+            graph=draft,
+            from_node_key=route.from_node_key,
+            on_result=route.on_result,
+            to_node_key=route.to_node_key,
+            priority=route.priority,
+        )
+        for route in graph.routings.all()
+    ])
+    AuditLog.objects.create(
+        actor=actor,
+        action="rulegraph.create_version",
+        target=f"rulegraph:{draft.id}",
+        after={"family_key": str(draft.family_key), "version": next_version, "source_graph_id": graph.id},
+    )
+    return draft
+
+
+@db_tx.atomic
+def create_graph_draft(name: str, scope: str, actor=None) -> RuleGraph:
+    """실제 정산 Category 또는 GLOBAL scope로 새 v1 그래프를 만든다."""
+    if scope not in _valid_scopes():
+        raise ValueError("scope는 GLOBAL 또는 정산 비용분류 값이어야 합니다.")
+    graph = RuleGraph.objects.create(name=name.strip(), scope=scope, status=RuleGraphStatus.DRAFT, version=1)
+    AuditLog.objects.create(
+        actor=actor,
+        action="rulegraph.create",
+        target=f"rulegraph:{graph.id}",
+        after={"family_key": str(graph.family_key), "version": 1, "scope": scope},
+    )
+    return graph
 
 
 @db_tx.atomic
@@ -38,7 +101,7 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     graph.approved_by = actor
     graph.save(update_fields=["status", "activated_at", "approved_by"])
 
-    graph.versions.update(is_active=False)
+    RuleGraphVersion.objects.filter(graph__scope=graph.scope).update(is_active=False)
     RuleGraphVersion.objects.update_or_create(
         graph=graph, version=graph.version,
         defaults={"snapshot": snapshot, "approved_by": actor,
@@ -51,17 +114,23 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
 
 @db_tx.atomic
 def rollback(graph: RuleGraph, actor=None) -> RuleGraph:
-    """이전 승인 버전으로 즉시 복원 (FR-RV-05)."""
-    prev = graph.versions.filter(version__lt=graph.version).order_by("-version").first()
+    """같은 그래프 계열의 이전 승인 버전 행을 다시 ACTIVE로 복원 (FR-RV-05)."""
+    family = RuleGraph.objects.select_for_update().filter(family_key=graph.family_key)
+    prev = (
+        family.filter(version__lt=graph.version, versions__approved_at__isnull=False)
+        .order_by("-version")
+        .distinct()
+        .first()
+    )
     if prev is None:
         raise ValueError("롤백할 이전 버전이 없습니다.")
-    graph.versions.update(is_active=False)
-    prev.is_active = True
-    prev.save(update_fields=["is_active"])
-    graph.version = prev.version
-    graph.status = RuleGraphStatus.ACTIVE
-    graph.activated_at = timezone.now()
-    graph.save(update_fields=["version", "status", "activated_at"])
+    RuleGraph.objects.filter(scope=graph.scope, status=RuleGraphStatus.ACTIVE).update(status=RuleGraphStatus.ARCHIVED)
+    RuleGraphVersion.objects.filter(graph__family_key=graph.family_key).update(is_active=False)
+    prev.status = RuleGraphStatus.ACTIVE
+    prev.activated_at = timezone.now()
+    prev.approved_by = actor
+    prev.save(update_fields=["status", "activated_at", "approved_by"])
+    prev.versions.filter(version=prev.version).update(is_active=True)
     AuditLog.objects.create(actor=actor, action="rulegraph.rollback",
-                            target=f"rulegraph:{graph.id}", after={"version": prev.version})
-    return graph
+                            target=f"rulegraph:{prev.id}", after={"version": prev.version})
+    return prev

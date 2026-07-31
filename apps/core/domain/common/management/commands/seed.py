@@ -7,19 +7,18 @@
 - kim(영업팀 1인) '내 지출' 처리 흐름 샘플
 - 영업팀 취합(TEAM_COLLECTING) 정상·증빙누락·고액·공용카드 샘플
 - 검토 워크스페이스(IN_REVIEW) 다양한 내역 샘플
-- 샘플 Rule 그래프(초안/시뮬/활성) — 화면 실제 연동용
+- RULE 명세서의 GLOBAL 게이트(R-002·R-003)
 """
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from domain.accounts.models import Capability, Role, Team
 from domain.cards.models import Card, CardType
-from domain.policies.models import (
-    OnResult, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting,
-)
+from domain.policies.models import RuleGraph
 from domain.risk.models import RiskReview
 from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
 from domain.transactions.models import MerchantCategory, MerchantSource, Receipt, Transaction
@@ -176,32 +175,8 @@ class Command(BaseCommand):
                risk=dict(anomaly_score=sc, reasons=contrib, rag_refs=refs, anomaly_reasons=ar,
                          ai_recommendation=reco, ai_confidence=conf))
 
-        # ── 샘플 Rule 그래프 (초안/시뮬/활성) ─────
-        def graph(name, scope, status, clause, sim, nodes, routings, ver=1, activated=False):
-            g = RuleGraph.objects.create(name=name, scope=scope, status=status, version=ver,
-                                         entry_node_key=nodes[0][0], source_clause=clause,
-                                         sim_result=sim or {}, activated_at=(now if activated else None))
-            for key, cond, act, pr in nodes:
-                RuleNode.objects.create(graph=g, node_key=key, condition=cond, action=act, priority=pr)
-            for f, res, to, pr in routings:
-                RuleRouting.objects.create(graph=g, from_node_key=f, on_result=res, to_node_key=to, priority=pr)
-            return g
-
-        g_active = graph("접대비 한도 검토", "접대", RuleGraphStatus.ACTIVE, "TIGER-REG-2026-003 §12조 2항",
-                         {"matched": 142, "false_positive_rate": 0.031, "review_reduction": 0.28},
-                         [("n_limit", {"expr": "amount > limit"}, {"decision": "REVIEW"}, 0),
-                          ("n_entertain", {"expr": "category == '접대'"}, {"decision": "REJECT"}, 1)],
-                         [("n_limit", OnResult.MATCH, "n_entertain", 0), ("n_limit", OnResult.NO_MATCH, "", 1)],
-                         ver=3, activated=True)
-        RuleGraphVersion.objects.create(graph=g_active, version=3, is_active=True, approved_at=now,
-                                        snapshot={"note": "현재 활성"})
-        graph("식대 30만원 초과 사전승인", "식대", RuleGraphStatus.DRAFT, "법인카드 사용규정 제10조②", {},
-              [("n_meal", {"expr": "category=='식대' and amount>300000"}, {"decision": "REVIEW"}, 0)],
-              [("n_meal", OnResult.MATCH, "", 0)])
-        graph("후정산 증빙 필수 검증", "후정산", RuleGraphStatus.SIMULATED, "법인카드 사용규정 제9조",
-              {"matched": 88, "false_positive_rate": 0.052, "review_reduction": 0.15},
-              [("n_pp", {"expr": "cardType=='POST_PAID' and evidence=='MISSING'"}, {"decision": "RETURN"}, 0)],
-              [("n_pp", OnResult.MATCH, "", 0)])
+        # ── Rule 그래프: RULE 명세서의 GLOBAL 게이트만 별도 멱등 커맨드로 구성 ──
+        call_command("seed_rules")
 
         # ── 팀 예산(TeamBudget) — 한도만 DB 정의, 사용액은 Settlement 집계로 산출 ──
         # category='' 행은 팀 월 총한도. 프론트 teamBudget 셰이프와 정합.
