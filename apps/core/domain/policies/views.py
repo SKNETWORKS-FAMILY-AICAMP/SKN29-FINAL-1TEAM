@@ -53,7 +53,7 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         # Rule ACTIVE 승인/롤백은 룰 활성 권한 보유자만 (Capability RBAC)
-        if self.action in ("activate", "rollback"):
+        if self.action in ("activate", "rollback", "rollback_to"):
             return [CanActivateRule()]
         if self.action in ("create_version", "create_graph", "create_node", "update_node",
                            "discard_draft", "delete_graph", "simulate", "test_cases",
@@ -214,6 +214,43 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"nodeKey": node_key, "saved": True, "revertedToGraphId": active_id})
         return Response({"nodeKey": node.node_key, "saved": True})
 
+
+    @action(detail=True, methods=["get"], url_path="family")
+    def family(self, request, pk=None):
+        """같은 계열(family_key)의 전체 버전 이력 — 버전 이력 모달·롤백 대상 목록."""
+        graph = self.get_object()
+        rows = (
+            RuleGraph.objects.filter(family_key=graph.family_key)
+            .prefetch_related("versions", "nodes")
+            .order_by("-version")
+        )
+        return Response([{
+            "id": str(item.pk),
+            "version": item.version,
+            "name": item.name,
+            "scope": item.scope,
+            "status": item.status,
+            "statusLabel": item.get_status_display(),
+            "nodeCount": item.nodes.count(),
+            "activatedAt": item.activated_at,
+            "activatedBy": getattr(item.approved_by, "first_name", "") or getattr(item.approved_by, "username", ""),
+            "reviewedBy": getattr(item.reviewed_by, "first_name", "") or getattr(item.reviewed_by, "username", ""),
+            "reviewedAt": item.reviewed_at,
+            "reviewComment": item.review_comment,
+            "simResult": item.sim_result or {},
+            "isCurrent": item.status == RuleGraphStatus.ACTIVE,
+            "canRollback": item.status != RuleGraphStatus.ACTIVE
+            and item.versions.filter(approved_at__isnull=False).exists(),
+        } for item in rows])
+
+    @action(detail=True, methods=["post"], url_path="rollback-to")
+    def rollback_to(self, request, pk=None):
+        """이 버전으로 롤백 — 과거 승인 버전을 다시 ACTIVE로 되돌린다."""
+        try:
+            graph = services.rollback_to(self.get_object(), _actor(request))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
+        return Response(RuleGraphSerializer(graph).data)
 
     @action(detail=True, methods=["post"])
     def rollback(self, request, pk=None):

@@ -3,16 +3,15 @@
 //  탭: 초안 그래프(노드 세부설정) / 시뮬레이션(그래프 단위) / Active 그래프(버전관리).
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { graphsByStatus } from './data/ruleConsoleMock'
 import { DraftTab } from './DraftTab'
 import { SimulationTab } from './SimulationTab'
 import { ActiveTab } from './ActiveTab'
 
 type Tab = 'DRAFT' | 'SIMULATION' | 'ACTIVE'
 const TAB_LABEL: Record<Tab, string> = {
-  DRAFT: `초안 그래프 (${graphsByStatus('DRAFT').length})`,
+  DRAFT: '초안 그래프',
   SIMULATION: '시뮬레이션 (그래프 단위)',
-  ACTIVE: 'Active 그래프 (버전관리)',
+  ACTIVE: 'Active 관리',
 }
 
 export function RuleConsole() {

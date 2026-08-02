@@ -65,10 +65,16 @@ class RuleGraphListSerializer(serializers.ModelSerializer):
     nodes = RuleNodeSerializer(many=True, read_only=True)
     routings = RuleRoutingSerializer(many=True, read_only=True)
     versions = RuleGraphVersionSerializer(many=True, read_only=True)
+    reviewedBy = serializers.CharField(source="reviewed_by.first_name", read_only=True, default="")
+    reviewedAt = serializers.DateTimeField(source="reviewed_at", read_only=True)
+    reviewComment = serializers.CharField(source="review_comment", read_only=True)
+    activatedBy = serializers.CharField(source="approved_by.first_name", read_only=True, default="")
 
     class Meta:
         model = RuleGraph
         fields = [
             "id", "familyKey", "name", "scope", "status", "statusLabel", "version",
-            "entryNodeKey", "sourceClause", "simResult", "nodeCount", "nodes", "routings", "versions",
+            "entryNodeKey", "sourceClause", "simResult", "nodeCount", "activated_at",
+            "reviewedBy", "reviewedAt", "reviewComment", "activatedBy",
+            "nodes", "routings", "versions",
         ]

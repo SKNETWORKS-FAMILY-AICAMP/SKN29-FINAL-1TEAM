@@ -20,9 +20,12 @@ export const endpoints = {
     api.post(`/settlements/${id}/review/`, { decision, reason }),
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
-  rules: () => api.get('/rules/'),
+  rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
+  // 버전 이력(같은 family 전체) 조회 · 특정 과거 버전으로 롤백
+  ruleFamily: (id: string) => api.get(`/rules/${id}/family/`),
+  rollbackRuleTo: (id: string) => api.post(`/rules/${id}/rollback-to/`),
   createRuleVersion: (id: string) => api.post(`/rules/${id}/versions/`),
   // 룰 그래프 검증 시뮬레이션 — 검증셋은 그래프(버전)에 저장되고, 실행 결과는 스냅샷과 함께 보존된다.
   ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),

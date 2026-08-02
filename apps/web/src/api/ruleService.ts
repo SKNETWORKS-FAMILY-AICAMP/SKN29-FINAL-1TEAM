@@ -11,8 +11,14 @@ export async function activateRule(id: string): Promise<void> {
   await endpoints.activateRule(id)
 }
 
-/** Tab3: 과거 버전으로 롤백. */
+/** Tab3: 직전 승인 버전으로 롤백. */
 export async function rollbackRule(id: string): Promise<void> {
   if (USE_MOCK) { await mockDelay(); return }
   await endpoints.rollbackRule(id)
+}
+
+/** Tab3: 버전 이력에서 고른 과거 버전으로 롤백. */
+export async function rollbackRuleTo(id: string): Promise<void> {
+  if (USE_MOCK) { await mockDelay(); return }
+  await endpoints.rollbackRuleTo(id)
 }

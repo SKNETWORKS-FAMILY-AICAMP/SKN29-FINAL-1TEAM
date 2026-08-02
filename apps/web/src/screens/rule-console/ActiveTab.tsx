@@ -1,143 +1,297 @@
-// Tab3 — Active 그래프 · 버전 이력 (그래프 단위). 승인대기 버전 승인(ACTIVE 전환) / 과거 버전 롤백.
-import { useState } from 'react'
-import { Lock, RotateCcw } from 'lucide-react'
-import { useRole } from '../../context/RoleContext'
-import { useAuth } from '../../context/AuthContext'
+// Tab3 — Active 관리. 실제 API(/api/rules/) 연동.
+//  ① 승인대기 목록(스코프당 1건) — 펼치면 KPI·검토보고서, 룰 활성 권한자가 ACTIVE 전환
+//  ② 현재 활성 그래프 — 전체 KPI 대시보드 + 스코프별 목록(클릭 시 버전 이력·롤백)
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, History, Lock } from 'lucide-react'
+import { endpoints } from '../../api/client'
+import { activateRule } from '../../api/ruleService'
+import { Markdown } from '../../components/ui/Markdown'
 import { useCan } from '../../lib/capabilities'
-import { ROLE_LABEL } from '../../types/domain'
-import { activateRule, rollbackRule } from '../../api/ruleService'
-import { graphsByStatus, type GraphVersion, type RuleGraph } from './data/ruleConsoleMock'
+import { gradeTone, type Grade, type SimReport } from './data/simulationTypes'
+import { VersionHistoryModal } from './VersionHistoryModal'
 
-const todayKST = () => new Date().toISOString().slice(0, 10)
+interface ApiGraphRow {
+  id: string | number
+  familyKey: string
+  name: string
+  scope: string
+  status: string
+  statusLabel: string
+  version: number
+  nodeCount?: number
+  nodes?: unknown[]
+  sourceClause: string
+  activated_at?: string | null
+  activatedBy?: string
+  reviewedBy?: string
+  reviewedAt?: string | null
+  reviewComment?: string
+  simResult?: {
+    runId?: number
+    ranAt?: string
+    stats?: SimReport['stats']
+    grades?: SimReport['grades']
+  }
+}
+
+const percent = (value?: number) => value === undefined ? '-' : `${(value * 100).toFixed(1)}%`
+const nodeCountOf = (row: ApiGraphRow) => row.nodeCount ?? row.nodes?.length ?? 0
+const dateText = (value?: string | null) => value ? value.slice(0, 16).replace('T', ' ') : '-'
 
 export function ActiveTab() {
-  const graphs = graphsByStatus('ACTIVE')
-  const [graphId, setGraphId] = useState(graphs[0]?.id ?? '')
-  const g = graphs.find((x) => x.id === graphId) ?? graphs[0]
-  if (!g) return <div className="card"><div className="card-body text-meta">활성 상태의 룰그래프가 없습니다.</div></div>
+  const canActivate = useCan()('rule_activate')
+  const [rows, setRows] = useState<ApiGraphRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState('')          // 승인대기 아코디언 — 하나만 펼침
+  const [reports, setReports] = useState<Record<string, SimReport | null>>({})
+  const [busy, setBusy] = useState('')
+  const [historyGraph, setHistoryGraph] = useState<ApiGraphRow | null>(null)
+
+  const load = () => {
+    setLoading(true)
+    endpoints.rules()
+      .then(({ data }) => setRows(data as ApiGraphRow[]))
+      .catch(() => setError('룰 그래프를 불러오지 못했습니다. Core API 연결을 확인해주세요.'))
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const pending = useMemo(() => rows.filter((row) => row.status === 'SIMULATED'), [rows])
+  const active = useMemo(() => rows.filter((row) => row.status === 'ACTIVE'), [rows])
+
+  // 활성 그래프 전체 통계 — 시뮬레이션 이력이 있는 그래프만 평균에 넣는다.
+  const dashboard = useMemo(() => {
+    const rated = active.filter((row) => row.simResult?.stats?.autoRate !== undefined)
+    const sum = (pick: (stats: NonNullable<SimReport['stats']>) => number) =>
+      rated.reduce((total, row) => total + pick(row.simResult!.stats!), 0)
+    return {
+      graphCount: active.length,
+      scopeCount: new Set(active.map((row) => row.scope)).size,
+      nodeCount: active.reduce((total, row) => total + nodeCountOf(row), 0),
+      ratedCount: rated.length,
+      avgAutoRate: rated.length ? sum((stats) => stats.autoRate) / rated.length : undefined,
+      riskCount: sum((stats) => stats.riskCount),
+      unrated: active.length - rated.length,
+    }
+  }, [active])
+
+  const toggle = (row: ApiGraphRow) => {
+    const id = String(row.id)
+    if (expanded === id) { setExpanded(''); return }
+    setExpanded(id)
+    if (reports[id] === undefined) {
+      endpoints.ruleSimulation(id)
+        .then(({ data, status }) => setReports((previous) => ({ ...previous, [id]: status === 200 ? data as SimReport : null })))
+        .catch(() => setReports((previous) => ({ ...previous, [id]: null })))
+    }
+  }
+
+  const approve = async (row: ApiGraphRow) => {
+    if (!window.confirm(`${row.name} v${row.version}을(를) ACTIVE로 전환합니다. 계속할까요?`)) return
+    setBusy(String(row.id))
+    setError('')
+    try {
+      await activateRule(String(row.id))
+      setExpanded('')
+      load()
+    } catch {
+      setError('ACTIVE 전환에 실패했습니다. 구조 검증(사이클·EvalContext 경로)과 권한을 확인해주세요.')
+    } finally {
+      setBusy('')
+    }
+  }
 
   return (
     <>
-      {graphs.length > 1 && (
-        <div className="filter-bar">
-          {graphs.map((x) => (
-            <button key={x.id} className={'btn sm' + (x.id === g.id ? ' primary' : '')} onClick={() => setGraphId(x.id)}>{x.name}</button>
+      {loading && <div className="card"><div className="card-body text-meta">룰 그래프를 불러오는 중입니다.</div></div>}
+      {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 16 }}>{error}</div>}
+
+      {/* ① 승인대기 목록 */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <div>
+            <h3>승인대기 목록</h3>
+            <div className="text-meta">스코프(비용분류)당 1건만 올라올 수 있습니다. 처리해야 다음 요청이 가능합니다.</div>
+          </div>
+          <span className="tag ai">{pending.length}건 대기</span>
+        </div>
+        {!loading && pending.length === 0 && <div className="card-body text-meta">승인대기 중인 그래프가 없습니다.</div>}
+        <div className="stack" style={{ padding: pending.length ? 8 : 0, gap: 8 }}>
+          {pending.map((row) => {
+            const id = String(row.id)
+            const open = expanded === id
+            const report = reports[id]
+            const stats = report?.stats ?? row.simResult?.stats
+            const grades = report?.grades ?? row.simResult?.grades
+            return (
+              <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)' }}>
+                <div className="rule-graph-row" role="button" tabIndex={0} onClick={() => toggle(row)}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(row) } }}>
+                  {open ? <ChevronDown size={14} className="muted" /> : <ChevronRight size={14} className="muted" />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                      <span className="tag">{row.scope}</span>
+                      <b style={{ fontSize: 13 }}>{row.name}</b>
+                      <span className="tag ai">v{row.version} 승인대기</span>
+                      {grades && <span className={'tag ' + (grades.action.level === 'good' ? 'ok' : 'warn')}>권장 {grades.action.label}</span>}
+                    </div>
+                    <div className="text-meta">
+                      노드 {nodeCountOf(row)}개 · 검토자 {row.reviewedBy || '-'} · 요청 {dateText(row.reviewedAt)}
+                      {stats?.autoRate !== undefined && ` · 자동처리율 ${percent(stats.autoRate)}`}
+                    </div>
+                  </div>
+                </div>
+
+                {open && (
+                  <div className="card-body stack" style={{ gap: 16, borderTop: '1px solid var(--border)' }}>
+                    {report === undefined && <div className="text-meta">시뮬레이션 보고서를 불러오는 중입니다.</div>}
+                    {stats && (
+                      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
+                        <div className="kpi">
+                          <div className="label">자동처리율</div><div className="value">{percent(stats.autoRate)}</div>
+                          <div className="text-meta">자동 {stats.autoCount} / 사람 확인 {stats.manualCount}건</div>
+                        </div>
+                        <div className="kpi">
+                          <div className="label">검토 감소량</div>
+                          <div className="value" style={{ fontSize: 'var(--text-value)' }}>
+                            {percent(stats.prevAutoRate)} → {percent(stats.autoRate)}
+                          </div>
+                          <div className="text-meta">{stats.reviewReduction >= 0 ? '+' : ''}{(stats.reviewReduction * 100).toFixed(1)}%p</div>
+                        </div>
+                        <div className={'kpi ' + (stats.testGraded > 0 && stats.testFailed === 0 ? 'ok' : 'warn')}>
+                          <div className="label">테스트 수치</div>
+                          <div className="value">{stats.testPassed}/{stats.testGraded || stats.testTotal}</div>
+                          <div className="text-meta">불일치 {stats.testFailed}건</div>
+                        </div>
+                        <div className={'kpi ' + (stats.nodeCoverage >= 1 ? 'ok' : 'warn')}>
+                          <div className="label">노드 커버리지</div><div className="value">{percent(stats.nodeCoverage)}</div>
+                          <div className="text-meta">위험 {stats.riskCount}건 · 변경 {stats.changedCount}건</div>
+                        </div>
+                      </div>
+                    )}
+                    {grades && (
+                      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                        <GradeTile label="그래프 구조 평가" grade={grades.structure} />
+                        <GradeTile label="실행결과 평가" grade={grades.result} />
+                        <GradeTile label="권장 처리" grade={grades.action} />
+                      </div>
+                    )}
+
+                    <div className="card">
+                      <div className="card-head">
+                        <h3>검토보고서 — {row.reviewedBy || '검토자 미상'}</h3>
+                        <span className="text-meta">요청 {dateText(row.reviewedAt)}</span>
+                      </div>
+                      <div className="card-body">
+                        {row.reviewComment
+                          ? <Markdown source={row.reviewComment} />
+                          : <div className="text-meta">검토자 코멘트가 없습니다.</div>}
+                      </div>
+                    </div>
+
+                    {report && (
+                      <div className="card">
+                        <div className="card-head">
+                          <h3>🤖 Agent 의견</h3>
+                          <span className="text-meta">
+                            실행 #{report.runId} · {report.ranAt}
+                            {report.stale && ' · 실행 이후 그래프 변경됨'}
+                          </span>
+                        </div>
+                        <div className="card-body"><Markdown source={report.agentReport} /></div>
+                      </div>
+                    )}
+                    {report === null && <div className="note">이 그래프의 시뮬레이션 실행 이력이 없습니다.</div>}
+
+                    <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+                      <span className="text-meta">{canActivate ? '룰 활성 권한 보유' : '룰 활성 권한이 없어 승인할 수 없습니다.'}</span>
+                      <button className="btn approve" disabled={!canActivate || busy === id} onClick={() => void approve(row)}>
+                        {!canActivate && <Lock size={12} />} 승인 · ACTIVE 전환 →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ② 현재 활성 그래프 */}
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi">
+          <div className="label">활성 그래프</div><div className="value">{dashboard.graphCount}개</div>
+          <div className="text-meta">{dashboard.scopeCount}개 스코프 커버</div>
+        </div>
+        <div className="kpi">
+          <div className="label">활성 노드 총계</div><div className="value">{dashboard.nodeCount}개</div>
+          <div className="text-meta">활성 그래프의 룰 노드 합계</div>
+        </div>
+        <div className="kpi">
+          <div className="label">평균 자동처리율</div><div className="value">{percent(dashboard.avgAutoRate)}</div>
+          <div className="text-meta">
+            시뮬레이션 이력 {dashboard.ratedCount}개 기준{dashboard.unrated > 0 && ` · 미측정 ${dashboard.unrated}개`}
+          </div>
+        </div>
+        <div className={'kpi ' + (dashboard.riskCount > 0 ? 'warn' : 'ok')}>
+          <div className="label">위험 판정 누계</div><div className="value">{dashboard.riskCount}건</div>
+          <div className="text-meta">최근 시뮬레이션 기준</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <div><h3>현재 활성 그래프</h3><div className="text-meta">그래프를 클릭하면 버전 이력에서 롤백할 수 있습니다.</div></div>
+          <span className="tag ok">{active.length}개 활성</span>
+        </div>
+        {!loading && active.length === 0 && <div className="card-body text-meta">활성 상태의 룰 그래프가 없습니다.</div>}
+        <div className="card-body stack" style={{ gap: 12 }}>
+          {Object.entries(active.reduce<Record<string, ApiGraphRow[]>>((groups, row) => {
+            ;(groups[row.scope] ??= []).push(row)
+            return groups
+          }, {})).map(([scope, scopeRows]) => (
+            <div key={scope}>
+              <div className="text-meta" style={{ fontWeight: 700, marginBottom: 6 }}>{scope}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                {scopeRows.map((row) => (
+                  <div key={String(row.id)} className="rule-node-item" role="button" tabIndex={0}
+                    style={{ border: '1px solid var(--border)', borderLeftWidth: 3, borderLeftColor: 'var(--tone-green)', padding: 12 }}
+                    onClick={() => setHistoryGraph(row)}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setHistoryGraph(row) } }}>
+                    <div className="row" style={{ gap: 6, justifyContent: 'space-between' }}>
+                      <b style={{ fontSize: 12.5 }}>{row.name}</b>
+                      <span className="tag ok">v{row.version}</span>
+                    </div>
+                    <div className="text-meta" style={{ marginTop: 4 }}>
+                      노드 {nodeCountOf(row)}개 · 활성 {dateText(row.activated_at)}
+                      {row.activatedBy && ` · ${row.activatedBy}`}
+                    </div>
+                    <div className="text-meta">
+                      자동처리율 {percent(row.simResult?.stats?.autoRate)} · <History size={11} /> 버전 이력 보기
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
+      </div>
+
+      {historyGraph && (
+        <VersionHistoryModal graphId={String(historyGraph.id)} graphName={historyGraph.name}
+          onClose={() => setHistoryGraph(null)} onChanged={load} />
       )}
-      <ActiveGraphPanel key={g.id} graph={g} />
     </>
   )
 }
 
-function ActiveGraphPanel({ graph }: { graph: RuleGraph }) {
-  const { role } = useRole()
-  const { user } = useAuth()
-  const canApprove = useCan()('rule_activate') // ACTIVE 전환/롤백 권한
-  const approverName = user?.name ?? ROLE_LABEL[role]
-
-  const [versions, setVersions] = useState<GraphVersion[]>(graph.versions)
-  const [busy, setBusy] = useState(false)
-  const current = versions.find((v) => v.status === '현재 활성')
-  const pending = versions.find((v) => v.status === '승인대기')
-  const totalNodes = graph.nodes.length
-
-  const promote = async (label: string) => {
-    setBusy(true)
-    await activateRule(graph.id)
-    setVersions((prev) => prev.map((v) => {
-      if (v.label === label) return { ...v, status: '현재 활성', approvedAt: todayKST(), approver: approverName }
-      if (v.status === '현재 활성') return { ...v, status: '과거' }
-      return v
-    }))
-    setBusy(false)
-  }
-  const rollback = async (label: string) => { await rollbackRule(graph.id); await promote(label) }
-
+function GradeTile({ label, grade }: { label: string; grade: Grade }) {
   return (
-    <>
-      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 15 }}>{graph.name} · 버전 이력</h2>
-          <div className="text-meta">{graph.scope} · {graph.sourceClause}</div>
-        </div>
-        <span className="tag ok">현재 ACTIVE · {current?.label ?? '-'}</span>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-body row" style={{ justifyContent: 'space-between' }}>
-          <div><b>{graph.name}</b><div className="text-meta">노드 {totalNodes}개 · entry {graph.entryNodeKey}</div></div>
-          <div className="row" style={{ gap: 24 }}>
-            <div style={{ textAlign: 'right' }}><div className="text-meta">총 버전</div><b>{versions.length}개</b></div>
-            <div style={{ textAlign: 'right' }}><div className="text-meta">현재 매칭(월)</div><b>{current?.matched ?? '-'}건</b></div>
-            <div style={{ textAlign: 'right' }}><div className="text-meta">현재 오탐율</div><b>{current?.fpRate !== undefined ? (current.fpRate * 100).toFixed(1) + '%' : '-'}</b></div>
-          </div>
-        </div>
-      </div>
-
-      {pending && (
-        <div className="card" style={{ borderColor: 'var(--tone-orange)', marginBottom: 16 }}>
-          <div className="card-head">
-            <h3>{pending.label} (승인 대기) <span className="tag warn" style={{ marginLeft: 8 }}>승인대기</span></h3>
-            {pending.note && <span className="text-meta">{pending.note}</span>}
-          </div>
-          <div className="card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
-              <div className="kpi"><div className="label">매칭 건수</div><div className="value">{pending.matched ?? '-'}건</div></div>
-              <div className="kpi"><div className="label">오탐율</div><div className="value">{pending.fpRate !== undefined ? (pending.fpRate * 100).toFixed(1) + '%' : '-'}</div></div>
-              <div className="kpi"><div className="label">개선폭 (현행 대비)</div><div className="value" style={{ color: 'var(--tone-green)' }}>
-                {(pending.fpRate !== undefined && current?.fpRate !== undefined) ? ((pending.fpRate - current.fpRate) * 100).toFixed(1) + '%p' : '-'}
-              </div></div>
-            </div>
-            <div className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: 12 }}>
-              <div>
-                <b style={{ fontSize: 12.5 }}>ACTIVE 전환 권한: 룰 활성(rule_activate)</b>
-                <div className="text-meta">현재 계정: {ROLE_LABEL[role]} — {canApprove ? '승인 권한 있음' : '승인 권한 없음'}</div>
-              </div>
-              <button className="btn primary" disabled={!canApprove || busy} onClick={() => promote(pending.label)}>
-                {!canApprove && <Lock size={12} />} 승인 (ACTIVE 전환)
-              </button>
-            </div>
-            <p className="text-meta" style={{ marginTop: 8 }}>
-              ※ 승인 즉시 {pending.label}가 그래프의 ACTIVE 버전으로 전환되고, 이전 활성 버전은 과거로 이동합니다(롤백 가능).
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head"><h3>버전별 지표 요약</h3></div>
-        <table className="table">
-          <thead><tr><th>버전</th><th>승인일</th><th>승인자</th><th className="num">매칭 건수</th><th>오탐율</th><th>상태</th><th>처리</th></tr></thead>
-          <tbody>
-            {versions.map((v) => (
-              <tr key={v.label}>
-                <td><b>{v.label}</b></td>
-                <td className="text-meta">{v.approvedAt ?? '-'}</td>
-                <td className="text-meta">{v.approver ?? '-'}</td>
-                <td className="num">{v.matched ?? '-'}건</td>
-                <td>{v.fpRate !== undefined ? (v.fpRate * 100).toFixed(1) + '%' : '-'}</td>
-                <td><span className={'tag' + (v.status === '현재 활성' ? ' ok' : v.status === '승인대기' ? ' ai' : '')}>{v.status}</span></td>
-                <td>{v.status === '과거' && (
-                  <button className="btn sm" disabled={busy || !canApprove} onClick={() => rollback(v.label)}><RotateCcw size={11} /> 롤백</button>
-                )}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="card">
-        <div className="card-head"><h3>현재 활성 버전({current?.label ?? '-'}) 그래프 로직</h3></div>
-        <div className="card-body stack">
-          {graph.nodes.map((n) => (
-            <div key={n.nodeKey}>
-              <div className="text-meta" style={{ marginBottom: 4 }}>{n.nodeKey} · {n.title}</div>
-              <pre style={{ margin: 0, padding: '8px 12px', background: 'var(--sidebar-bg)', color: '#d1fae5', borderRadius: 'var(--radius-control)', fontSize: 12, whiteSpace: 'pre-wrap' }}>{n.conditionExpr}</pre>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
+    <div className={'kpi ' + gradeTone(grade.level)}>
+      <div className="label">{label}</div>
+      <div className="value" style={{ fontSize: 'var(--text-value)' }}>{grade.label}</div>
+      <div className="text-meta">{grade.note}</div>
+    </div>
   )
 }

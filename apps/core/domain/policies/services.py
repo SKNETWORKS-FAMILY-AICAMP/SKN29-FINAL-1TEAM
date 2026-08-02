@@ -99,6 +99,16 @@ def request_activation(graph: RuleGraph, comment: str, actor=None) -> RuleGraph:
     """
     if graph.status == RuleGraphStatus.ACTIVE:
         raise ValueError("이미 활성화된 그래프입니다.")
+    # 승인대기는 스코프당 1건만 — 먼저 올라온 건을 승인/반려해야 다음 건을 올릴 수 있다.
+    conflict = (
+        RuleGraph.objects.filter(scope=graph.scope, status=RuleGraphStatus.SIMULATED)
+        .exclude(pk=graph.pk).first()
+    )
+    if conflict is not None:
+        raise ValueError(
+            f"같은 분류({graph.scope})에 이미 승인대기 그래프가 있습니다: "
+            f"{conflict.name} v{conflict.version}. 해당 건을 처리한 뒤 다시 요청해주세요."
+        )
     graph.status = RuleGraphStatus.SIMULATED
     graph.reviewed_by = actor
     graph.reviewed_at = timezone.now()
@@ -141,6 +151,27 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     AuditLog.objects.create(actor=actor, action="rulegraph.activate",
                             target=f"rulegraph:{graph.id}", after={"version": graph.version})
     return graph
+
+
+@db_tx.atomic
+def rollback_to(target: RuleGraph, actor=None) -> RuleGraph:
+    """지정한 과거 버전을 다시 ACTIVE로 되돌린다 (버전 이력 모달의 롤백)."""
+    if target.status == RuleGraphStatus.ACTIVE:
+        raise ValueError("이미 활성 버전입니다.")
+    if not target.versions.filter(approved_at__isnull=False).exists():
+        raise ValueError("한 번도 승인된 적 없는 버전으로는 롤백할 수 없습니다.")
+    RuleGraph.objects.filter(scope=target.scope, status=RuleGraphStatus.ACTIVE).exclude(pk=target.pk).update(
+        status=RuleGraphStatus.ARCHIVED
+    )
+    RuleGraphVersion.objects.filter(graph__family_key=target.family_key).update(is_active=False)
+    target.status = RuleGraphStatus.ACTIVE
+    target.activated_at = timezone.now()
+    target.approved_by = actor
+    target.save(update_fields=["status", "activated_at", "approved_by"])
+    target.versions.filter(version=target.version).update(is_active=True)
+    AuditLog.objects.create(actor=actor, action="rulegraph.rollback",
+                            target=f"rulegraph:{target.id}", after={"version": target.version})
+    return target
 
 
 @db_tx.atomic

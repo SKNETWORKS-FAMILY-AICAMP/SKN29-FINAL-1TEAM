@@ -42,12 +42,16 @@ export function SimulationTab() {
   const [requesting, setRequesting] = useState(false)
   const [requestError, setRequestError] = useState('')
   const [requested, setRequested] = useState('')
+  const [pendingScopes, setPendingScopes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
     endpoints.rules().then(({ data }) => {
       if (cancelled) return
-      const loaded = (data as ApiGraph[]).map(toGraph).filter(isSimulatable)
+      const all = (data as ApiGraph[]).map(toGraph)
+      // 승인대기는 스코프당 1건 — 이미 대기 중인 스코프는 Active 요청을 막는다.
+      setPendingScopes(new Set(all.filter((item) => item.status === 'SIMULATED').map((item) => item.scope)))
+      const loaded = all.filter(isSimulatable)
       setGraphs(loaded)
       const first = loaded[0]
       if (first) {
@@ -121,8 +125,10 @@ export function SimulationTab() {
       setActivationOpen(false)
       setRequested('Active 요청을 보냈습니다. 그래프가 승인대기로 전환되어 룰 활성 권한자의 최종 승인을 기다립니다.')
       setGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
-    } catch {
-      setRequestError('Active 요청에 실패했습니다. 권한과 시뮬레이션 실행 여부를 확인해주세요.')
+      setPendingScopes((previous) => new Set(previous).add(graph.scope))
+    } catch (failure) {
+      const detail = (failure as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      setRequestError(detail || 'Active 요청에 실패했습니다. 권한과 시뮬레이션 실행 여부를 확인해주세요.')
     } finally {
       setRequesting(false)
     }
@@ -192,8 +198,13 @@ export function SimulationTab() {
           {report && (
             <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
               {report.structureError && <span className="text-meta" style={{ color: 'var(--tone-red)' }}>구조 오류가 있어 Active 요청을 보낼 수 없습니다.</span>}
+              {!report.structureError && pendingScopes.has(graph.scope) && (
+                <span className="text-meta" style={{ color: 'var(--tone-red)' }}>
+                  같은 분류({graph.scope})에 승인대기 그래프가 있어 요청할 수 없습니다. Active 관리 탭에서 먼저 처리하세요.
+                </span>
+              )}
               <button className="btn approve" onClick={() => { setRequestError(''); setActivationOpen(true) }}
-                disabled={!!report.structureError}>Active 요청 →</button>
+                disabled={!!report.structureError || pendingScopes.has(graph.scope)}>Active 요청 →</button>
             </div>
           )}
         </>
