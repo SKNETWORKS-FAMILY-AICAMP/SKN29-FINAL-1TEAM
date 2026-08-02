@@ -61,8 +61,16 @@ class RuleGraph(models.Model):
     status = models.CharField(max_length=12, choices=RuleGraphStatus.choices, default=RuleGraphStatus.DRAFT)
     version = models.PositiveIntegerField(default=1)
     entry_node_key = models.CharField(max_length=64, blank=True)
-    sim_result = models.JSONField(default=dict, blank=True)  # 매칭/오탐율/검토감소량/노드 커버리지
+    sim_result = models.JSONField(default=dict, blank=True)  # 최신 시뮬레이션 요약(통계·등급) 캐시
     source_clause = models.CharField(max_length=200, blank=True)
+    # 검토자(Active 요청자) 추적 — 시뮬레이션 보고서를 확인하고 활성화를 요청한 사람.
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="reviewed_graphs",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_comment = models.TextField(blank=True)  # 검토자 코멘트(보고서 형식, 마크다운)
+    # 활성자 추적 — 실제 ACTIVE 전환을 실행한 사람.
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="approved_graphs")
     activated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -144,6 +152,102 @@ class RuleRouting(models.Model):
                 name="uq_rule_routing_priority",
             )
         ]
+
+
+class RuleTestCase(models.Model):
+    """검증 시뮬레이션용 커스텀 테스트케이스 — 어느 그래프 **버전**의 검증셋인지로 소유된다.
+
+    버전 복제(create_draft_version) 시 함께 복제되어, 각 버전이 자기 검증셋을 갖는다.
+    """
+    graph = models.ForeignKey(RuleGraph, on_delete=models.CASCADE, related_name="test_cases")
+    key = models.CharField(max_length=32)  # 화면에서 쓰는 TC-1 같은 식별자(그래프 내 유일)
+    label = models.CharField(max_length=120, blank=True)
+    merchant = models.CharField(max_length=200, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    category = models.CharField(max_length=20, blank=True)
+    merchant_type = models.CharField(max_length=100, blank=True)
+    payment_method = models.CharField(max_length=30, blank=True)
+    expected = models.CharField(max_length=12, blank=True)  # 기대 판정. 비면 채점하지 않는다.
+    facts = models.JSONField(default=dict, blank=True)      # EvalContext dot-path → 값
+    order = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("graph", "key")
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.graph_id}:{self.key}"
+
+
+class SimulationSource(models.TextChoices):
+    TEST = "TEST", "검증셋"
+    HISTORY = "HISTORY", "실제 내역"
+
+
+class RuleSimulationRun(models.Model):
+    """검증 시뮬레이션 1회 실행 = 보고서 1건.
+
+    "어떤 그래프의 어떤 버전을, 어떤 구조 스냅샷 상태에서" 돌렸는지까지 보존한다.
+    화면에는 최신 실행만 보여주되, 스냅샷 해시가 현재 그래프와 다르면 낡은 결과로 표시한다.
+    """
+    graph = models.ForeignKey(RuleGraph, on_delete=models.CASCADE, related_name="simulation_runs")
+    graph_version = models.PositiveIntegerField(default=1)
+    snapshot = models.JSONField(default=dict, blank=True)   # 실행 시점 노드·라우팅·entry
+    snapshot_hash = models.CharField(max_length=64, db_index=True)
+    period_label = models.CharField(max_length=40, blank=True)
+    structure_error = models.CharField(max_length=300, blank=True)
+    stats = models.JSONField(default=dict, blank=True)
+    grades = models.JSONField(default=dict, blank=True)
+    agent_report = models.TextField(blank=True)
+    ran_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    ran_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-ran_at", "-id"]
+
+    def __str__(self):
+        return f"Sim#{self.pk} {self.graph_id} v{self.graph_version}"
+
+
+class RuleSimulationResult(models.Model):
+    """시뮬레이션 실행의 개별 판정 결과 행(검증셋 케이스 또는 실제 정산 내역)."""
+    run = models.ForeignKey(RuleSimulationRun, on_delete=models.CASCADE, related_name="results")
+    source = models.CharField(max_length=8, choices=SimulationSource.choices)
+    test_case = models.ForeignKey(
+        RuleTestCase, null=True, blank=True, on_delete=models.SET_NULL, related_name="results",
+    )
+    settlement = models.ForeignKey(
+        "settlements.Settlement", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    row_key = models.CharField(max_length=64)
+    label = models.CharField(max_length=200, blank=True)
+    merchant = models.CharField(max_length=200, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    category = models.CharField(max_length=20, blank=True)
+    date_label = models.CharField(max_length=16, blank=True)
+    current_status = models.CharField(max_length=24, blank=True)
+    baseline = models.CharField(max_length=12, blank=True)   # 기존 분류(정산 상태 환산)
+    decision = models.CharField(max_length=12, blank=True)   # 그래프 판정
+    path = models.JSONField(default=list, blank=True)
+    flags = models.JSONField(default=list, blank=True)
+    expected = models.CharField(max_length=12, blank=True)
+    matched_expectation = models.BooleanField(null=True, blank=True)
+    changed = models.BooleanField(default=False)
+    risk = models.BooleanField(default=False)
+    auto = models.BooleanField(default=False)
+    ai_comment = models.TextField(blank=True)
+    comment_verdict = models.CharField(max_length=12, blank=True)  # intended | risk
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
 
 
 class RuleHit(models.Model):

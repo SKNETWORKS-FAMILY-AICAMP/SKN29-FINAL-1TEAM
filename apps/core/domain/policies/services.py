@@ -6,7 +6,9 @@ from domain.common.models import AuditLog
 
 from .engine import validate_graph
 from .eval_context import validate_graph_vars
-from .models import RULE_SCOPE_CHOICES, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting
+from .models import (
+    RULE_SCOPE_CHOICES, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting, RuleTestCase,
+)
 
 
 def _snapshot(graph: RuleGraph) -> dict:
@@ -56,6 +58,15 @@ def create_draft_version(graph: RuleGraph, actor=None) -> RuleGraph:
         )
         for route in graph.routings.all()
     ])
+    # 검증셋도 함께 복제한다 — 새 버전은 자기 검증셋으로 시뮬레이션한다.
+    RuleTestCase.objects.bulk_create([
+        RuleTestCase(
+            graph=draft, key=case.key, label=case.label, merchant=case.merchant, amount=case.amount,
+            category=case.category, merchant_type=case.merchant_type, payment_method=case.payment_method,
+            expected=case.expected, facts=case.facts, order=case.order, created_by=actor,
+        )
+        for case in graph.test_cases.all()
+    ])
     AuditLog.objects.create(
         actor=actor,
         action="rulegraph.create_version",
@@ -76,6 +87,26 @@ def create_graph_draft(name: str, scope: str, actor=None) -> RuleGraph:
         action="rulegraph.create",
         target=f"rulegraph:{graph.id}",
         after={"family_key": str(graph.family_key), "version": 1, "scope": scope},
+    )
+    return graph
+
+
+@db_tx.atomic
+def request_activation(graph: RuleGraph, comment: str, actor=None) -> RuleGraph:
+    """Active 요청 — 검토자 코멘트를 남기고 승인대기(SIMULATED)로 전환한다.
+
+    실제 ACTIVE 전환은 룰 활성 권한자가 ``activate``로 수행한다(자동 승인 금지, FR-RV-04).
+    """
+    if graph.status == RuleGraphStatus.ACTIVE:
+        raise ValueError("이미 활성화된 그래프입니다.")
+    graph.status = RuleGraphStatus.SIMULATED
+    graph.reviewed_by = actor
+    graph.reviewed_at = timezone.now()
+    graph.review_comment = comment
+    graph.save(update_fields=["status", "reviewed_by", "reviewed_at", "review_comment"])
+    AuditLog.objects.create(
+        actor=actor, action="rulegraph.request_activation", target=f"rulegraph:{graph.id}",
+        after={"version": graph.version, "comment": comment[:500]},
     )
     return graph
 

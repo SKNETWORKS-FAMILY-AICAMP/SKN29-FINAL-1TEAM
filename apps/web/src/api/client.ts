@@ -24,6 +24,12 @@ export const endpoints = {
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   createRuleVersion: (id: string) => api.post(`/rules/${id}/versions/`),
+  // 룰 그래프 검증 시뮬레이션 — 검증셋은 그래프(버전)에 저장되고, 실행 결과는 스냅샷과 함께 보존된다.
+  ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),
+  saveRuleTestCases: (id: string, testCases: unknown[]) => api.put(`/rules/${id}/test-cases/`, { testCases }),
+  simulateRule: (id: string, testCases?: unknown[]) => api.post(`/rules/${id}/simulate/`, testCases ? { testCases } : {}),
+  ruleSimulation: (id: string) => api.get(`/rules/${id}/simulation/`),
+  requestRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/request-activation/`, { comment }),
   discardRuleDraft: (id: string) => api.delete(`/rules/${id}/draft/`),
   deleteRuleGraph: (id: string) => api.delete(`/rules/${id}/delete/`),
   createRuleGraph: (name: string, scope: string) => api.post('/rules/drafts/', { name, scope }),

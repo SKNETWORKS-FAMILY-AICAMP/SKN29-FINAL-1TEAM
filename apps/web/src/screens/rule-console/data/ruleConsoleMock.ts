@@ -50,55 +50,7 @@ export const DRAFT_CHAT_SCRIPT: ChatMessage[] = [
   },
 ]
 
-// ── Tab2: 시뮬레이션 검토 (v5 그래프 / v6 트리 — 둘 다 구현, 노드 로스터 공유) ─────
-export interface RuleNode {
-  id: string
-  sub: string
-  status: 'existing' | 'new'
-  category: string
-  graphX: number // 0~100, 자유배치(그래프 뷰)
-  graphY: number // 0~100
-}
-
-export const RULE_CATEGORIES = ['카드/계정 검증', '이상거래 탐지', '비용 한도', '복리후생/경조사']
-
-export const RULE_NODES: RuleNode[] = [
-  { id: 'R-020', sub: '카드 미배정 확인', status: 'existing', category: '카드/계정 검증', graphX: 12, graphY: 30 },
-  { id: 'R-021', sub: '해외결제 플래그', status: 'existing', category: '카드/계정 검증', graphX: 22, graphY: 55 },
-  { id: 'R-025', sub: '심야결제 탐지', status: 'existing', category: '이상거래 탐지', graphX: 40, graphY: 18 },
-  { id: 'R-030', sub: '소액 다건 탐지', status: 'existing', category: '이상거래 탐지', graphX: 48, graphY: 42 },
-  { id: 'R-102', sub: '식대 30만원 초과', status: 'new', category: '이상거래 탐지', graphX: 38, graphY: 68 },
-  { id: 'R-033', sub: '비용 한도 초과', status: 'existing', category: '비용 한도', graphX: 58, graphY: 72 },
-  { id: 'R-040', sub: '회식비 한도', status: 'existing', category: '비용 한도', graphX: 68, graphY: 30 },
-  { id: 'R-045', sub: '접대비 증빙 필수', status: 'existing', category: '비용 한도', graphX: 74, graphY: 55 },
-  { id: 'R-105', sub: '접대비 3만원 초과', status: 'new', category: '비용 한도', graphX: 84, graphY: 62 },
-  { id: 'R-055', sub: '복리후생 한도', status: 'existing', category: '복리후생/경조사', graphX: 88, graphY: 20 },
-  { id: 'R-077', sub: '가맹점 반복 결제', status: 'existing', category: '복리후생/경조사', graphX: 92, graphY: 42 },
-  { id: 'R-103', sub: '경조사비 20만원 초과', status: 'new', category: '복리후생/경조사', graphX: 96, graphY: 78 },
-]
-
-// 교차 분류(다른 카테고리) 충돌 1건 + 같은 분류 내 형제 노드 충돌 1건 — 화면설계서 기준
-export const RULE_CONFLICTS: [string, string][] = [
-  ['R-102', 'R-033'],
-  ['R-105', 'R-045'],
-]
-
-// 그래프 뷰(v5)에서만 쓰는 "느슨한 관련" 엣지(충돌은 아니지만 서로 참조하는 사이)
-export const GRAPH_RELATED_EDGES: [string, string][] = [
-  ['R-020', 'R-021'], ['R-025', 'R-030'], ['R-030', 'R-102'],
-  ['R-040', 'R-045'], ['R-045', 'R-105'], ['R-055', 'R-077'], ['R-077', 'R-103'],
-]
-
-export interface BatchCandidate { id: string; label: string; checked: boolean }
-export const BATCH_CANDIDATES: BatchCandidate[] = [
-  { id: 'R-102', label: '식대 30만원 초과 사전승인', checked: true },
-  { id: 'R-103', label: '경조사비 20만원 초과 소급경고', checked: true },
-  { id: 'R-104', label: '공용카드 실사용자 확인 삽입', checked: false },
-  { id: 'R-105', label: '접대비 3만원 초과 증빙플래그', checked: true },
-  { id: 'R-106', label: '후정산 지출 증빙 필수 검증', checked: false },
-]
-
-export const SIM_KPI = { matched: 356, falsePositiveRate: 0.051, reviewReduction: -0.27 }
+// ── Tab2: 시뮬레이션 검토 — 그래프 구조는 실 API 데이터를 쓰고, 결과 지표만 목업 ─────
 export const SIM_RUN_META = { sampleSize: 12480, ranAt: '2026-07-22 14:03' }
 
 export interface SimDiffRow { rule: string; date: string; merchant: string; amount: number; before: string; after: string; majorDiff: boolean }

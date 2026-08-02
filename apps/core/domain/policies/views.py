@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from domain.common.permissions import CanActivateRule, CanViewRule
 
-from . import services
+from . import services, simulation
 from .models import RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
@@ -55,7 +55,9 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         # Rule ACTIVE 승인/롤백은 룰 활성 권한 보유자만 (Capability RBAC)
         if self.action in ("activate", "rollback"):
             return [CanActivateRule()]
-        if self.action in ("create_version", "create_graph", "create_node", "update_node", "discard_draft", "delete_graph"):
+        if self.action in ("create_version", "create_graph", "create_node", "update_node",
+                           "discard_draft", "delete_graph", "simulate", "test_cases",
+                           "simulation_report", "request_activation"):
             return [CanViewRule()]
         return super().get_permissions()
 
@@ -64,6 +66,52 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         graph = self.get_object()
         try:
             services.activate(graph, _actor(request))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
+        return Response(RuleGraphSerializer(graph).data)
+
+    @action(detail=True, methods=["get", "put"], url_path="test-cases")
+    def test_cases(self, request, pk=None):
+        """그래프(버전)에 귀속된 검증셋 조회/전체 교체."""
+        graph = self.get_object()
+        if request.method == "GET":
+            return Response(simulation.test_cases_of(graph))
+        cases = request.data.get("testCases")
+        if not isinstance(cases, list):
+            return Response({"detail": "testCases는 배열이어야 합니다."}, status=400)
+        return Response(simulation.replace_test_cases(graph, cases, _actor(request)))
+
+    @action(detail=True, methods=["post"], url_path="simulate")
+    def simulate(self, request, pk=None):
+        """검증 시뮬레이션 — 검증셋 + 직전달 내역으로 판정하고 결과를 저장한 뒤 보고서를 돌려준다."""
+        graph = self.get_object()
+        cases = request.data.get("testCases")
+        if cases is not None and not isinstance(cases, list):
+            return Response({"detail": "testCases는 배열이어야 합니다."}, status=400)
+        if cases is not None:
+            simulation.replace_test_cases(graph, cases, _actor(request))
+        run = simulation.run_and_save(graph, simulation.test_cases_of(graph), _actor(request))
+        return Response(simulation.report_from_run(run))
+
+    @action(detail=True, methods=["get"], url_path="simulation")
+    def simulation_report(self, request, pk=None):
+        """최신 시뮬레이션 보고서. 실행 이력이 없으면 204."""
+        run = simulation.latest_run(self.get_object())
+        if run is None:
+            return Response(status=204)
+        return Response(simulation.report_from_run(run))
+
+    @action(detail=True, methods=["post"], url_path="request-activation")
+    def request_activation(self, request, pk=None):
+        """Active 요청 — 검토자 코멘트를 남기고 승인대기(SIMULATED)로 전환한다."""
+        graph = self.get_object()
+        comment = str(request.data.get("comment", "")).strip()
+        if not comment:
+            return Response({"detail": "검토자 코멘트를 입력해주세요."}, status=400)
+        if simulation.latest_run(graph) is None:
+            return Response({"detail": "시뮬레이션을 먼저 실행해야 Active 요청을 할 수 있습니다."}, status=400)
+        try:
+            services.request_activation(graph, comment, _actor(request))
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(RuleGraphSerializer(graph).data)

@@ -4,71 +4,11 @@ import { ChevronDown, ChevronRight, Code2, Plus, Send, Trash2 } from 'lucide-rea
 import { endpoints } from '../../api/client'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
+import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
 import {
   DRAFT_CHAT_SCRIPT, GRAPH_STATUS_LABEL,
-  type ChatMessage, type GraphNode, type GraphStatus, type RuleGraph,
+  type ChatMessage, type GraphNode, type RuleGraph,
 } from './data/ruleConsoleMock'
-
-type ApiNode = {
-  nodeKey: string
-  condition: unknown
-  action: Record<string, unknown>
-  priority: number
-}
-type ApiRouting = { fromNodeKey: string; onResult: 'MATCH' | 'NO_MATCH'; toNodeKey: string; priority: number }
-type ApiGraph = {
-  id: number | string
-  familyKey: string
-  name: string
-  scope: string
-  status: GraphStatus
-  version: number
-  entryNodeKey: string
-  sourceClause: string
-  nodes: ApiNode[]
-  routings: ApiRouting[]
-  versions: { version: number; approved_at?: string; isActive: boolean }[]
-}
-
-const actionText = (action: Record<string, unknown>) =>
-  [action.decision, action.severity, action.flag].filter(Boolean).join(' · ')
-
-const toGraph = (raw: ApiGraph): RuleGraph => ({
-  id: String(raw.id),
-  familyKey: raw.familyKey,
-  version: raw.version,
-  name: raw.name,
-  scope: raw.scope,
-  status: raw.status,
-  sourceClause: raw.sourceClause ?? '',
-  entryNodeKey: raw.entryNodeKey ?? '',
-  nodes: (raw.nodes ?? []).map((node) => ({
-    nodeKey: node.nodeKey,
-    title: String(node.action?.title ?? node.nodeKey),
-    origin: node.action?.origin === 'new' || node.nodeKey.startsWith('R-N') ? 'new' : 'existing',
-    plain: { category: raw.scope === 'GLOBAL' ? undefined : raw.scope, action: actionText(node.action ?? {}) },
-    conditionExpr: JSON.stringify(node.condition ?? {}, null, 2),
-    sourceClause: String(node.action?.source_clause ?? raw.sourceClause ?? ''),
-    aiReason: String(node.action?.ai_reason ?? ''),
-    description: String(node.action?.description ?? ''),
-    actionDetail: {
-      decision: String(node.action?.decision ?? ''), severity: String(node.action?.severity ?? ''),
-      flag: String(node.action?.flag ?? ''), note: String(node.action?.note ?? ''),
-      approver: String(node.action?.approver ?? ''),
-    },
-    priority: node.priority,
-    workflowStatus: String(node.action?.workflow_status ?? (
-      raw.status === 'ACTIVE' ? 'ACTIVE' : raw.status === 'SIMULATED' ? 'VERIFIED' : 'DRAFT'
-    )) as GraphNode['workflowStatus'],
-  })),
-  routings: (raw.routings ?? []).map((route) => ({
-    from: route.fromNodeKey, onResult: route.onResult, to: route.toNodeKey, priority: route.priority,
-  })),
-  versions: (raw.versions ?? []).map((version) => ({
-    version: version.version, label: `v${version.version}`,
-    status: version.isActive ? '현재 활성' : '과거', approvedAt: version.approved_at,
-  })),
-})
 
 const emptyNode = (nodeKey: string): GraphNode => ({
   nodeKey, title: '(제목 미설정)', origin: 'new', description: '',
@@ -299,7 +239,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
                       role="button" tabIndex={0} onClick={() => selectNode(graph.id, node.nodeKey)}
                       onKeyDown={activateOnEnterOrSpace(() => selectNode(graph.id, node.nodeKey))}>
                       <div className="row" style={{ justifyContent: 'flex-start', gap: 6 }}>
-                        <span className={'tag ' + (node.workflowStatus === 'ACTIVE' ? 'ok' : node.workflowStatus === 'WAITING' ? 'ai' : '')}>{nodeStatusLabel(node.workflowStatus)}</span>
+                        <span className={'tag ' + nodeStatusTone(node.workflowStatus)}>{nodeStatusLabel(node.workflowStatus)}</span>
                         <span style={{ fontSize: 12.5 }}>{node.title}</span>
                       </div>
                     </div>
@@ -338,42 +278,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       {newRuleOpen && <NewRuleGraphModal graphs={allGraphs} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />}
     </>
   )
-}
-
-const NODE_STATUS_LABEL = { DRAFT: '초안', WAITING: '대기', VERIFIED: '검증완료', ACTIVE: '활성' } as const
-const nodeStatusLabel = (status?: GraphNode['workflowStatus']) => NODE_STATUS_LABEL[status ?? 'DRAFT']
-
-const PATH_LABELS: Record<string, string> = {
-  'merchant.merchant_type': '가맹점 업종', 'category.item_type': '항목 유형',
-  'tx.payment_method': '결제 수단', 'tx.amount': '결제 금액',
-}
-const literalText = (value: unknown) => typeof value === 'string' ? `“${value}”` : String(value)
-const describeDsl = (value: unknown): string => {
-  if (value === true) return '항상 적용됩니다.'
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return String(value ?? '')
-  const expression = value as Record<string, unknown>
-  const [operator, args] = Object.entries(expression)[0] ?? []
-  if (operator === 'var') return PATH_LABELS[String(args)] ?? String(args)
-  if (operator === 'and' || operator === 'or') {
-    const items = (args as unknown[]).map(describeDsl)
-    return `${operator === 'and' ? '다음 조건을 모두 만족합니다.' : '다음 조건 중 하나를 만족합니다.'}\n• ${items.join('\n• ')}`
-  }
-  if (operator === 'not') return `${describeDsl(args)} 조건이 아닌 경우`
-  if (Array.isArray(args) && args.length === 2) {
-    const left = describeDsl(args[0])
-    if (operator === 'in' && Array.isArray(args[1])) {
-      const choices = args[1].map(literalText)
-      return `${left}이 ${choices.join(' 또는 ')}에 해당합니다.`
-    }
-    const right = typeof args[1] === 'object' ? describeDsl(args[1]) : literalText(args[1])
-    const sentence: Record<string, string> = {
-      '==': `${left}이 ${right}입니다.`, '!=': `${left}이 ${right}이 아닙니다.`,
-      '>': `${left}이 ${right}보다 큽니다.`, '>=': `${left}이 ${right} 이상입니다.`,
-      '<': `${left}이 ${right}보다 작습니다.`, '<=': `${left}이 ${right} 이하입니다.`,
-    }
-    return sentence[operator] ?? `${left} ${operator} ${right}`
-  }
-  return '설정된 DSL 조건에 일치하는 경우'
 }
 
 function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged }: {
@@ -441,7 +345,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
   return <div className="card">
     <div className="card-head">
       <div><h3>{title}</h3><div className="text-meta">{graph.scope} · v{graph.version ?? 1}</div></div>
-      <span className={'tag ' + (workflowStatus === 'ACTIVE' ? 'ok' : workflowStatus === 'WAITING' ? 'ai' : '')}>{nodeStatusLabel(workflowStatus)}</span>
+      <span className={'tag ' + nodeStatusTone(workflowStatus)}>{nodeStatusLabel(workflowStatus)}</span>
     </div>
     <div className="card-body stack">
       <div className="field"><label>제목</label><input value={title} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setTitle(event.target.value); onNodeChanged({ title: event.target.value }); markDirty() }} /></div>

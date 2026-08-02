@@ -154,11 +154,15 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--primary); }
 .kpi.warn::before { background: var(--tone-red); }
+.kpi.ok::before { background: var(--tone-green); }
+.kpi.caution::before { background: var(--tone-amber); }
 .kpi:hover { border-color: var(--border-strong); }
 .kpi .label { color: var(--muted); font-size: var(--text-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .kpi .value { font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .kpi .value small { font-size: var(--text-body); font-weight: 600; color: var(--muted); margin-left: var(--space-1); letter-spacing: normal; }
 .kpi.warn .value { color: var(--tone-red); }
+.kpi.ok .value { color: var(--tone-green); }
+.kpi.caution .value { color: var(--tone-amber); }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
@@ -187,6 +191,54 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .rule-node-item { padding: 8px 10px; border-radius: var(--radius-control); cursor: pointer; border-left: 2px solid var(--border); transition: background-color 150ms; }
 .rule-node-item:hover { background: var(--surface-2); }
 .rule-node-item.selected { background: var(--primary-soft); border-left-color: var(--primary); }
+/* 시뮬레이션 탭 — 그래프 구조(플로우차트) + 노드 상세 읽기 2섹션 */
+.sim-structure-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: var(--space-4); align-items: start; }
+.flow-scroll { overflow: auto; max-height: 560px; border-radius: 0 0 var(--radius) var(--radius); }
+.flow-canvas { position: relative; }
+.flow-edges { position: absolute; top: 0; left: 0; pointer-events: none; }
+.flow-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.6; }
+.flow-edge.match { stroke: var(--tone-green); }
+.flow-edge.nomatch { stroke: var(--tone-gray); stroke-dasharray: 5 4; }
+.flow-edge.back { stroke: var(--tone-red); stroke-width: 2; stroke-dasharray: 6 4; }
+.flow-edge-label {
+  position: absolute; transform: translate(-50%, -50%); padding: 1px 7px; border-radius: var(--radius-pill);
+  font-size: 10.5px; font-weight: 700; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+}
+.flow-edge-label.match { background: var(--tone-green-bg); border-color: #bfe6d1; color: var(--tone-green); }
+.flow-edge-label.back { background: var(--tone-red-bg); border-color: #f3c9c5; color: var(--tone-red); }
+.flow-node {
+  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 10px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface);
+  cursor: pointer; transition: border-color 150ms, background-color 150ms;
+}
+.flow-node:hover { border-color: var(--primary); }
+.flow-node.selected { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
+.flow-node-title { font-size: 12.5px; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.flow-end {
+  position: absolute; display: grid; place-items: center; border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600;
+}
+/* 테스트케이스(커스텀 검증셋) 모달 — 리스트 / 세부 수정 / 대화 Agent */
+.testcase-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; gap: var(--space-3); align-items: start; }
+@media (max-width: 1100px) { .testcase-grid { grid-template-columns: 1fr; } }
+/* 시뮬레이션 — 직전 기간 내역 결과 행 */
+.hist-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
+.hist-row.risk { border-color: #f3c9c5; background: var(--tone-red-bg); }
+.hist-flow { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.hist-comment { padding: 8px 10px; border-radius: var(--radius-control); font-size: var(--text-meta); line-height: 1.6; background: var(--surface-2); border-left: 3px solid var(--border-strong); }
+.hist-comment.risk { background: var(--tone-red-bg); border-left-color: var(--tone-red); color: var(--tone-red); }
+.hist-comment.intended { background: var(--tone-blue-bg); border-left-color: var(--tone-blue); color: var(--tone-blue); }
+/* Agent 보고서 마크다운 */
+.md { font-size: var(--text-body); line-height: 1.75; }
+.md > :first-child { margin-top: 0; }
+.md-h2 { font-size: 13.5px; font-weight: 700; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.md-h3 { font-size: 12.5px; font-weight: 700; margin: 14px 0 4px; }
+.md-p { margin: 6px 0; }
+.md-list { margin: 6px 0; padding-left: 20px; }
+.md-list li { margin: 3px 0; }
+.md-quote { margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--border-strong); background: var(--surface-2); color: var(--muted); font-size: var(--text-meta); border-radius: 0 var(--radius-control) var(--radius-control) 0; }
+.md-hr { margin: 14px 0; border: 0; border-top: 1px solid var(--border); }
+.md-code { padding: 1px 5px; border-radius: var(--radius-chip); background: var(--surface-2); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
 /* 신규 룰 모달 옵션 카드 */
 .newrule-opt { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); cursor: pointer; }
 .newrule-opt.active { border-color: var(--primary); background: var(--primary-soft); }
@@ -381,6 +433,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .split, .review-ws .split { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid > :nth-child(3) { grid-column: auto; }
+  .sim-structure-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
