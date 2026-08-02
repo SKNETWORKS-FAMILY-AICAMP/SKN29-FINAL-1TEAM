@@ -3,7 +3,7 @@
 > **최종 확정(2026-07-30)**: Risk Review MVP의 1차 이상탐지 모델을 **비지도 학습(Isolation Forest)** 로 확정.
 > 본 문서는 확정에 이르기까지의 과정과 근거, 그리고 향후 시스템 통합 방향을 정리한다.
 >
-> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 지도학습 비교 실험(참고용): [`archive/supervised_experiments/pipeline/`](./archive/supervised_experiments/pipeline/) · [`archive/supervised_experiments/models/`](./archive/supervised_experiments/models/)
+> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 비지도 baseline 정량 비교(One-Class SVM/LOF/SGDOneClassSVM, 2026-07-31 추가): [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), 지도학습 비교 실험(참고용): [`archive/supervised_experiments/pipeline/`](./archive/supervised_experiments/pipeline/) · [`archive/supervised_experiments/models/`](./archive/supervised_experiments/models/)
 
 ---
 
@@ -58,31 +58,41 @@ Risk Review를 구현하는 방법은 이론적으로 여러 가지가 있지만
 
 ## 3. 최종 모델 선정 배경 및 확정 논리
 
-### 3-1. 지도학습 대신 비지도 학습을 택한 이유 — 라벨 정의부터
+### 3-1. 지도학습이 원천적으로 불가능한 이유
 
-이상탐지 모델을 만들 때 "정답(라벨)을 학습에 직접 사용하는가"에 따라 지도학습/비지도학습으로 나뉜다. 이 프로젝트에는 두 종류의 서로 다른 라벨이 존재한다.
+지도학습에 쓸 수 있는 정답은 `decision_labels`(이 Risk Review 워크플로 안에서 회계 담당자가 실제로 내린 승인/보완/반려 결정)뿐이다. 이 라벨은 시스템이 실제로 배포되어 운영된 뒤에만 쌓이므로, 데이터가 많은 회사든 적은 회사든 이 시스템을 처음 도입하는 시점에는 예외 없이 0건이다 — 특정 데이터셋의 우연한 속성이 아니라, 신규 시스템 도입 단계 자체에 내재된 콜드스타트다.
 
-| | `이상거래여부` (AI Hub 합성데이터) | `decision_labels` (실제 운영 라벨) |
-|---|---|---|
-| 정체 | 카드사 자체 부정사용 탐지 기준 | 회계 담당자의 실제 승인/보완/반려 결정 |
-| 현재 존재 여부 | 존재함(합성데이터) | **존재하지 않음** — 서비스 미배포 상태라 아직 쌓이지 않음 |
-| 이 프로젝트에서의 용도 | 모델 성능 채점(평가 전용) | 축적만 하고 MVP에서는 재학습에 사용하지 않음 |
-
-`이상거래여부`를 지도학습의 정답으로 그대로 사용하면, 모델은 "카드사가 부정사용으로 규정한 패턴"을 배우게 된다. 하지만 이 시스템이 실제로 걸러야 하는 것은 "회계 담당자가 검토·반려할 만한 거래"이며, 두 기준이 얼마나 일치하는지는 검증된 바 없다(label bias). 회계 담당자의 실제 판단 데이터(`decision_labels`)는 서비스가 배포되어 운영 이력이 쌓여야 확보할 수 있으므로, 콜드스타트 시점인 MVP에서는 이 라벨에 의존하지 않는 비지도 학습이 논리적으로 타당하다.
-
-> 참고: 동일한 데이터로 지도학습 8개 모델(XGBoost·LightGBM·CatBoost 등)을 실험한 결과 `이상거래여부`를 정답으로 직접 학습했을 때의 채점 지표가 비지도 모델보다 높게 나왔으나, 이는 "정답을 직접 학습했으니 당연한 결과"이지 실전 우열을 뜻하지 않는다. 최종 논의에서는 이 성능 격차보다 "ML=1차 필터"라는 역할 자체가 가벼운 성능으로 충분하다는 아키텍처 논리가 우선했다(상세: `archive/supervised_experiments/models/README.md` §0).
+일부 회사가 이미 갖고 있을 법한 "부정사용 이력"(카드사 기준)이나 회계팀이 비정형으로 기록해온 반려 사유는 `decision_labels`와 정의가 다르다. "무엇을 반려할 것인가"의 기준은 회사 내규(예: `TIGER-REG-2026-003`)마다 다르므로, 이런 라벨을 그대로 지도학습 정답으로 옮기면 도메인 시프트가 발생한다. 이 시스템은 한 회사가 아니라 여러 회사에 배포 가능한 제품으로 설계되어야 하므로, 라벨이 전혀 없는 최악의 초기 도입 조건에서도 작동해야 한다는 것이 최소 요구조건이 되고, 비지도 학습이 이를 만족하는 유일한 시작점이다. 특정 회사가 자체 `decision_labels`를 충분히 축적한 뒤에는 그 회사에 한해 지도학습·하이브리드로 전환하는 것이 자연스러운 후속 단계다(§6).
 
 ### 3-2. 비지도 학습 중에서 Isolation Forest를 택한 이유
 
-비지도 이상탐지에는 여러 방식이 있다. 세 가지 대안을 데이터 조건에 비추어 검토했다.
+비지도 이상탐지 중에서도 서로 다른 전제를 요구하는 세 방식을 Isolation Forest와 비교했다.
 
-| 방식 | 이 프로젝트 데이터 조건과의 적합성 |
-|---|---|
-| LOF(Local Outlier Factor) / One-Class SVM | 거리·커널 기반 연산이라 대용량(학습 데이터 148만 행)에서 연산 비용이 급격히 증가 — 부적합 |
-| Autoencoder | 비정형 데이터나 복잡한 패턴에 강점이 있으나, 정형 테이블 데이터를 다루는 MVP 단계에 필요한 것보다 과한 복잡도 |
-| **Isolation Forest** | 트리 기반이라 대용량 정형 데이터에서도 연산이 가볍고, 비지도 방식이며, 하이퍼파라미터가 단순해 결정론적 파이프라인(§4)에 넣기 쉬움 |
+| 방식 | 검토 결과 | 참고문헌 |
+|---|---|---|
+| DBSCAN(밀도 기반 군집) | 어느 군집에도 속하지 않는 점을 이상치로 보는 방식. `eps`(반경)·`minPts`라는 전역 파라미터로 밀도를 정의하는데, 거래 데이터처럼 밀도가 들쭉날쭉한 고차원 데이터에서는 하나의 반경 값으로 전체를 일관되게 나누기 어렵다 | Ester et al. 1996 |
+| PCA 재구성 오차 | 저차원으로 압축·복원했을 때 오차가 큰 점을 이상치로 본다. 선형 구조를 가정하는 방법이라 실제 거래 데이터의 비선형·skewed 이상 패턴을 잘 포착하지 못한다 | Shyu et al. 2003 |
+| Autoencoder(신경망 기반) | 복잡한 비선형 패턴 학습에 강점이 있지만, 정형(표) 형태의 거래 데이터를 다루는 데는 그 정도의 표현력이 필요하지 않다 | Sakurada & Yairi 2014 |
+| **Isolation Forest(최종 채택)** | 밀도 파라미터·분포 가정·신경망 수준 표현력 중 어느 것도 요구하지 않고, 무작위 분할만으로 고립 정도를 판단한다 | Liu, Ting & Zhou 2008 |
 
-즉 "① 비지도(라벨 미의존) · ② 대용량(148만 행) · ③ 정형 데이터"라는 세 조건을 동시에 만족하는 현실적인 선택이 Isolation Forest였다.
+세 방식이 탈락하는 이유는 각각 다르다 — DBSCAN은 밀도 파라미터를 데이터에 맞게 정교히 튜닝해야 하고, PCA는 선형성을 가정하며, Autoencoder는 정형 데이터에 필요 이상의 복잡도를 요구한다. Isolation Forest는 이 세 가정 중 어느 것도 필요로 하지 않는다는 점에서, 비지도 방식 중 가장 적은 전제로 이상치를 판단할 수 있는 방법이다.
+
+> 참고문헌: Ester, M., Kriegel, H.-P., Sander, J., & Xu, X. (1996). *A Density-Based Algorithm for Discovering Clusters in Large Spatial Databases with Noise.* KDD, 226–231. · Shyu, M.-L., Chen, S.-C., Sarinnapakorn, K., & Chang, L. (2003). *A Novel Anomaly Detection Scheme Based on Principal Component Classifier.* IEEE ICDM Workshop on Foundations & New Directions of Data Mining, 172–179. · Sakurada, M., & Yairi, T. (2014). *Anomaly Detection Using Autoencoders with Nonlinear Dimensionality Reduction.* MLSDA 2014, 4–11. · Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). *Isolation Forest.* IEEE ICDM, 413–422.
+
+### 3-2a. 정량적 검증 — One-Class SVM·LOF·SGDOneClassSVM 실측 비교 (2026-07-31 추가)
+
+위 3-2절은 원리 검토에 그쳤으므로, 실무에서 흔히 쓰이는 비지도 baseline 중 One-Class SVM(RBF)·LOF(novelty)·SGDOneClassSVM(선형근사)을 실제 test set(2024년, 469,902건)으로 채점해 수치로도 확인했다. Isolation Forest·SGDOneClassSVM은 train 전체(1,482,969건)로, One-Class SVM·LOF는 §2 효율성 벤치마크에서 확인된 스케일링 한계 때문에 무작위 서브샘플 5만 건으로 학습했다(상세 방법·코드·LOF 부호 진단: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md)).
+
+| 모델 | n_train | fit(초) | predict/469,902건(초) | PR-AUC | recall@top3% |
+|---|---:|---:|---:|---:|---:|
+| **Isolation Forest** | 1,482,969(전체) | 1.94 | 5.38 | **0.648** | 0.591 |
+| One-Class SVM(RBF) | 50,000(서브샘플) | 86.3 | 1,248.3(≈20.8분) | 0.432 | 0.543 |
+| SGDOneClassSVM(선형근사) | 1,482,969(전체) | 3.01 | 0.02 | 0.315 | 0.358 |
+| LOF(novelty, k=20) | 50,000(서브샘플) | 11.5 | 46.1 | 0.037~0.066 | 0.051 |
+
+Isolation Forest가 정확도(PR-AUC)와 연산 효율성(fit/predict 시간) 양쪽 모두에서 4개 모델 중 가장 우수했다. One-Class SVM은 5만 건 서브샘플만으로도 추론에 약 21분이 걸려 전체 규모(148만 건)에서는 현실적으로 운용할 수 없음이 실측으로 재확인됐고, LOF는 원-핫 인코딩된 저정보 이진 피처가 많은 이 피처 공간에서 지역 밀도비 자체가 판별력을 거의 갖지 못했다(기저율 3.49% 대비 우위 없음). SGDOneClassSVM은 유일하게 전체 규모를 그대로 학습할 수 있었으나 선형 경계로는 이상거래의 비선형 구조를 충분히 포착하지 못했다.
+
+**⚠️ 수치 해석 시 주의**: 이번 실행에서 재현한 Isolation Forest의 PR-AUC(0.648)는 §4의 기존 확정치(0.5865)와 다르다. 데이터(행수·기저율)는 동일함을 확인했으며, 차이는 실험 당시 기록되지 않은 scikit-learn 버전 차이로 추정된다(이번 실행: 1.8.0). 4개 모델을 같은 세션에서 실행했으므로 **상대 비교(순위)는 유효**하지만, 0.648을 §4의 0.5865와 나란히 놓고 "성능이 개선됐다"는 식으로 인용하지 않도록 주의할 것 — 자세한 내용은 위 상세 문서 §3 참고. 재발 방지를 위해 `ml/` 실험 환경에 `requirements.txt`(또는 동등한 의존성 고정 파일)를 추가하는 것을 다음 단계로 권고한다.
 
 ### 3-3. ML–RAG 역할 분담의 시너지
 
@@ -163,6 +173,7 @@ Isolation Forest의 점수(0~1)는 이상 정도를 나타내지만 통계적으
 | 경로 | 내용 |
 |---|---|
 | [`mvp_isolation_forest/`](./mvp_isolation_forest/) | 최종 확정 MVP — Isolation Forest 전처리·모델링 원본 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)(§3~§6 수치의 1차 출처) |
+| [`mvp_isolation_forest/비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md) | §3-2a 수치의 1차 출처 — One-Class SVM/LOF/SGDOneClassSVM 실측 비교, LOF 부호 진단, sklearn 버전차 안내. 재현 코드: [`unsupervised_baseline_비교.py`](./mvp_isolation_forest/unsupervised_baseline_비교.py) |
 | [`archive/supervised_experiments/models/README.md`](./archive/supervised_experiments/models/README.md) | 비지도/지도학습 실험 결과 통합 비교, 재검토 경과 |
 | [`archive/supervised_experiments/pipeline/`](./archive/supervised_experiments/pipeline/) | 지도학습 8개 모델 재현 스크립트(참고/비교 실험용, 배포 대상 아님) |
 | [`archive/supervised_experiments/models/`](./archive/supervised_experiments/models/) | 라운드별 모델 산출물(pkl)·결과표·로그 |

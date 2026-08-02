@@ -10,5 +10,7 @@
 | `법인카드_이상거래_모델링_v1_Tier0vs1_비교.ipynb` | 모델링 — 피처셋(Tier0 단독 vs 전체) 비교 실험 |
 | `법인카드_이상거래_모델링_v2_최종test평가.ipynb` | 모델링 — 최종 확정 피처셋으로 학습 후 test 평가(딱 한 번) |
 | `isolation_forest_modeling_결과.md` | 위 실험 전체의 수치·근거 요약 — **가장 먼저 열어볼 문서** |
+| `비지도_baseline_비교_결과.md` | One-Class SVM/LOF/SGDOneClassSVM과의 정량 비교(2026-07-31 추가) — PR-AUC·연산시간 실측, LOF 부호 진단, sklearn 버전차 안내 |
+| `unsupervised_baseline_비교.py` | 위 비교 실험 재현 스크립트(`DATA_DIR`만 맞추면 재실행 가능) |
 
 전체 요약·왜 이 방향으로 확정됐는지는 상위 폴더의 [`ml_final_report.md`](../ml_final_report.md) 참고.

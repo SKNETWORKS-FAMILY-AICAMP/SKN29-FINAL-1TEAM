@@ -10,6 +10,62 @@ MVP 방향이 정해졌고, 그에 맞춰 폴더 구조를 재정리했다(구�
 | [`archive/supervised_experiments/`](./archive/supervised_experiments/) | 참고용 — 지도학습 8개 모델 비교 실험(재현 스크립트 `pipeline/` + 산출물 `models/`). **배포 대상 아님** | 커밋됨(참고용 보관) |
 | [`archive/early_eda_preprocessing/`](./archive/early_eda_preprocessing/) | 참고용 — 초기 EDA 노트북 3개 + 전처리 노트북 + 리뷰 통합본. `mvp_isolation_forest/`가 최신 기준 | 커밋됨(참고용 보관) |
 
+## 전체 파일 트리 (폴더·파일 1~2줄 설명)
+
+
+```
+ml/
+├─ README.md                                            이 파일 — 전체 안내
+├─ ml_final_report.md                                   ★ 최종 보고서 — 목표·모델 선정 논리·전처리 과정·성능·기대효과 총정리
+│
+├─ mvp_isolation_forest/                                 ★ 최종 확정 MVP — Isolation Forest(비지도) 원본 작업
+│  ├─ README.md                                          이 폴더 파일별 설명
+│  ├─ isolation_forest_modeling_결과.md                   실험 전체 수치·근거 요약 — 노트북 다음으로 먼저 볼 문서
+│  ├─ 법인카드_이상거래_전처리_v2_가맹점제외.ipynb          전처리 — 가맹점 관련 피처 제외 버전
+│  ├─ 법인카드_이상거래_전처리_v3_세그먼트플래그.ipynb      전처리 — 재사용/신규 카드 구분 플래그 추가(최신)
+│  ├─ 법인카드_이상거래_모델링_v1_Tier0vs1_비교.ipynb      모델링 — 피처셋(Tier0 단독 vs 전체) 비교 실험
+│  └─ 법인카드_이상거래_모델링_v2_최종test평가.ipynb       모델링 — 최종 피처셋으로 학습 후 test 평가(딱 한 번)
+│
+└─ archive/                                              참고용 보관 — 현재 배포 대상 아님(지우지 않고 남긴 이유는 근거 추적용)
+   ├─ README.md                                          이 폴더 안내
+   │
+   ├─ early_eda_preprocessing/                           참고용 — 초기 EDA·전처리(최신 아님, mvp_isolation_forest가 최신 기준)
+   │  ├─ README.md                                        이 폴더 파일별 설명
+   │  ├─ 법인카드_이상거래_EDA.ipynb                       최초 탐색적 데이터 분석(EDA)
+   │  ├─ 법인카드_이상거래_EDA_v2.ipynb                    EDA 2차 — 추가 탐색
+   │  ├─ 법인카드_이상거래_EDA_v3.ipynb                    EDA 3차 — 추가 탐색
+   │  ├─ 법인카드_이상거래_전처리.ipynb                     초기 전처리(가맹점 피처 제외·시간 기준 분할 반영 전 버전)
+   │  └─ 전처리_노트북_리뷰_통합본.md                       위 전처리 노트북에 대한 리뷰 정리
+   │
+   └─ supervised_experiments/                            참고용 — 지도학습 8개 모델 비교 실험(배포 대상 아님)
+      ├─ pipeline/                                       재현 스크립트 — 반드시 이 폴더 안에서 실행
+      │  ├─ README.md                                     스크립트별 역할·실행법 설명
+      │  ├─ common_features.py                            피처 A(12개) 로딩 공용 로직
+      │  ├─ feature_set_b.py                              피처 B(15개) 로딩 공용 로직
+      │  ├─ model_training.py / .ipynb                    1라운드 — 베이스라인 4개 모델 학습
+      │  ├─ model_tuning.py / .ipynb                       2라운드 — 하이퍼파라미터+임계값 튜닝(8개 모델, ~90분)
+      │  └─ supervised_topk_ranking.py / .ipynb            3라운드 — 상위 K% 랭킹 재평가(8개 모델, 피처 B)
+      │
+      └─ models/                                         위 스크립트들의 산출물(학습된 모델·결과표·로그)
+         ├─ README.md                                     ★ 지도학습 3라운드 결과·수치 총정리
+         ├─ round1_baseline/                               1라운드 산출물
+         │  ├─ {model}.pkl (4개)                            학습된 모델 4개(로지스틱회귀·RF·XGBoost·LightGBM)
+         │  ├─ model_comparison.csv                         모델별 성능 비교표
+         │  └─ model_training_log.txt                       실행 로그
+         ├─ round2_tuned/                                  2라운드 산출물(피처 A, 8개 모델)
+         │  ├─ {model}_tuned.pkl (8개)                      튜닝된 모델 8개
+         │  ├─ tuning_results.csv / .json                   튜닝 결과표
+         │  └─ model_tuning_log.txt                         실행 로그
+         ├─ round3_topk_ranking/                           3라운드 산출물(피처 B, 8개 모델)
+         │  ├─ {model}_topk_ranking.pkl (8개)                재실행된 모델 8개
+         │  ├─ topk_ranking_results.csv / .json             top-K% 랭킹 결과표
+         │  └─ supervised_topk_ranking_log.txt              실행 로그
+         └─ shared/                                        피처 A 재현 정보
+            └─ feature_meta.json / .pkl                     원-핫 인코딩 컬럼 순서 등 메타데이터
+```
+
+`★` 표시는 "먼저 읽을 문서" — 나머지는 필요할 때 세부 근거를 찾아보는 용도다.
+
 ## 결론만 빠르게 보고 싶다면
 
 [`ml_final_report.md`](./ml_final_report.md) 하나만 읽으면 된다 — 왜 ML을 1차 필터로 앞세우는지, 왜 비지도
