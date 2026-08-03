@@ -1,170 +1,87 @@
 # ML 파트 최종 보고서 — 법인카드 이상거래 탐지 (Risk Review 1단계)
 
-> **최종 확정(2026-07-30)**: Risk Review MVP의 1차 이상탐지 모델을 **비지도 학습(Isolation Forest)** 로 확정.
-> 본 문서는 확정에 이르기까지의 과정과 근거, 그리고 향후 시스템 통합 방향을 정리한다.
+> Risk Review MVP의 1차 이상탐지 모델은 **비지도 학습(Isolation Forest)**, 운영 컷오프는 **상위 10%(recall≈79.0%)** 로 확정됐다. 알고리즘·피처셋·컷오프·운영 임계값(score ≥ -0.0123) 모두 확정 완료.
 >
-> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 비지도 baseline 정량 비교(One-Class SVM/LOF/SGDOneClassSVM, 2026-07-31 추가): [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), 지도학습 비교 실험(참고용): [`archive/supervised_experiments/pipeline/`](./archive/supervised_experiments/pipeline/) · [`archive/supervised_experiments/models/`](./archive/supervised_experiments/models/)
+> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 비지도 baseline 정량 비교: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), 지도학습 비교(참고용): [`archive/supervised_experiments/`](./archive/supervised_experiments/)
 
 ---
 
-## 1. 개요 — ML 파트 목표와 전체 요약
+## 1. 결론 요약
 
-법인카드 정산 자동화 플랫폼의 Risk Review는 2단계 구조로 설계되어 있다.
+Risk Review는 **① ML 이상탐지(1차 필터) → ② RAG 내규 검증(2차 정밀 검증) → 회계 담당자 최종 확정** 구조다. ML은 "검토가 필요해 보이는 후보"를 빠르게 추리는 역할만 맡고, 정밀한 규정 위반 판단은 RAG가 담당한다.
 
-```
-① ML 이상탐지 (1차 필터)  →  ② RAG 내규 검증 (2차 정밀 검증)  →  회계 담당자 최종 확정
-   (비지도, anomaly_score)     (이상 후보에 한정해 규정 대조)      (사람)
-```
-
-ML 파트가 맡는 역할은 **전체 거래 중 "검토가 필요해 보이는 후보"를 빠르게 추려내는 1차 필터**다. 정밀한 규정 위반 판단은 2단계 RAG가 담당하므로, ML 단계에는 아래 두 조건만 충족하면 된다.
-
-1. 대용량 거래 데이터를 실시간(동기)으로 처리할 수 있을 것
-2. 이상 거래 후보를 놓치지 않는 방향으로 충분히 넓게(recall 우선) 걸러낼 것
-
-이 문서는 이 역할 정의를 바탕으로 **왜 ML을 1차 필터로 앞세우는 것이 효율적인지(§2)**, **왜 여러 방식 중 비지도 학습·Isolation Forest를 최종 선택했는지(§3)**, **데이터 전처리와 이상탐지 실험이 어떻게 진행되었는지(§4)**, **남은 과제(§5)**, **RAG·Risk Review Agent와의 통합 기대효과(§6)** 순으로 정리한다.
+| 항목 | 확정 내용 |
+|---|---|
+| 알고리즘 | **Isolation Forest**(비지도) — 콜드스타트(라벨 0건)에서도 작동, 대용량·정형데이터에 적합 |
+| 피처셋 | Tier0(14개) + `일시불할부구분코드`(1개) = **15개** |
+| 하이퍼파라미터 | `n_estimators=200`, `max_samples='auto'`, `contamination='auto'`(베이스라인 유지, 튜닝 개선폭 0.26%로 노이즈 수준) |
+| 운영 컷오프 | **상위 10%**(recall≈79.0%, precision≈27.6%, 연간 약 46,990건 RAG 전달) |
+| 고정 임계값(운영용) | anomaly_score ≥ **-0.0123**(train 점수 분포 90번째 백분위수) |
+| test 성능 | PR-AUC **0.5865**(2024년 469,902건, 기저율 3.49%) |
 
 ---
 
-## 2. 왜 ML을 1차 필터로 두는가 — 효율성의 논리적 근거
+## 2. ML을 1차 필터로 두는 이유
 
-### 2-1. 비교 대상 정의
+`mvp_isolation_forest` 평가 데이터(2024년, 469,902건) 기준, 상위 10% 컷오프를 적용하면 RAG(LLM 호출)가 처리할 물량이 하루 평균 약 129건으로, **전수 처리 대비 약 10배 적다.** Isolation Forest 추론은 로컬 트리 순회 연산이라 임베딩·벡터검색·LLM 추론이 필요한 RAG 경로보다 압도적으로 가볍고, 이는 "동기 REST(MVP)" 아키텍처 원칙과도 부합한다.
 
-Risk Review를 구현하는 방법은 이론적으로 여러 가지가 있지만, 여기서는 두 극단을 비교한다.
-
-| | **방식 A: 전수를 RAG/LLM으로 처리** | **방식 B: ML 1차 필터 → RAG 2차 검증(채택안)** |
-|---|---|---|
-| 처리 대상 | 전체 거래 100% | ML이 상위 K%로 추린 후보만 |
-| 1건당 처리 단계 | 임베딩 생성 → 벡터 검색(Chroma) → LLM 추론 | Isolation Forest 추론(트리 순회) |
-| 1건당 상대 비용/시간 | 높음(LLM 토큰 비용 + 네트워크 호출 지연) | 낮음(로컬 연산, 토큰 비용 없음) |
-
-### 2-2. 정량적 근거
-
-`mvp_isolation_forest` 실험의 평가 데이터(2024년 1년치, 469,902건) 기준으로 계산하면:
-
-- 하루 평균 거래량: 약 1,287건(469,902건 ÷ 365일)
-- 현재 잠정 컷오프(상위 3%) 기준 RAG로 넘어가는 건수: 연간 약 15,465건, **하루 평균 약 42건**
-- 즉 ML 1차 필터를 거치면 RAG(LLM 호출)가 처리해야 하는 물량이 **전체의 약 3~4% 수준으로 줄어든다.**
-- §5에서 다루듯 recall을 더 확보하기 위해 컷오프를 상위 10~15%로 넓히더라도, RAG가 처리할 물량은 여전히 전체의 10~15% 수준 — 방식 A(전수 처리) 대비 **6.5~10배** 적다.
-
-### 2-3. 이 격차가 발생하는 구조적 이유
-
-- **연산 성격이 다르다.** Isolation Forest는 각 트리가 무작위 분할 기준으로 데이터를 고립시키는 정도만 계산하는 결정론적 트리 순회 연산이라 O(트리 수 × 데이터 수)로 가볍고, GPU·외부 API 호출 없이 로컬에서 즉시 끝난다. 반면 RAG 경로는 매 건마다 임베딩 생성 + 벡터 검색 + LLM 추론이라는 세 단계의 외부 호출·추론이 필요하다.
-- **아키텍처 제약과도 부합한다.** 본 프로젝트는 "동기 REST(MVP), 무거운 작업은 관리자 온디맨드 배치"를 원칙으로 하는데, 거래 1건당 LLM 추론을 실시간 동기 경로에 그대로 태우면 이 원칙과 충돌한다. ML 필터가 앞단에서 물량을 줄여주기 때문에 RAG 단계도 동기 처리 범위 안에 남을 수 있다.
-- **시스템 부하가 선형이 아니라 병목 지점에서 결정된다.** LLM 호출·벡터 검색은 API rate limit·큐 대기 등 병목이 존재해 처리량이 물량에 비례해 나빠지는 경향이 있다. 물량을 1차 필터에서 줄이는 것은 이 병목 구간의 부하를 직접 줄이는 효과가 있다.
-
-**결론**: ML을 1차 필터로 두는 것은 "정확도를 낮춰서 얻는 절충"이 아니라, **정밀 판단이 필요 없는 대다수의 정상 거래를 값싼 연산으로 조기에 배제하고, 비용이 큰 RAG 연산을 정말 필요한 소수 후보에만 집중시키는 구조적 설계**다. 이 역할 분담이 성립하려면 ML 단계가 완벽할 필요는 없고(정밀 판단은 RAG가 함), 대신 **후보를 놓치지 않는 것(recall)** 이 중요하다 — 이 점이 §3의 모델 선택 논리로 이어진다.
+**결론**: ML 단계는 완벽할 필요가 없고(정밀 판단은 RAG가 함) **recall(후보를 놓치지 않는 것)** 이 중요하다 — §3의 모델·컷오프 선택 기준이 된다.
 
 ---
 
-## 3. 최종 모델 선정 배경 및 확정 논리
+## 3. Isolation Forest를 선택한 이유
 
-### 3-1. 지도학습이 원천적으로 불가능한 이유
+- **지도학습 불가**: 정답(`decision_labels`)은 시스템 운영 후에만 쌓이므로 도입 시점엔 항상 0건(콜드스타트). 카드사 부정사용 라벨(`이상거래여부`)은 정의가 달라(회사 내규 기준 아님) 지도학습 정답으로 대체 불가 — 라벨 없이 작동하는 비지도 학습이 유일한 시작점.
+- **비지도 방식 중 Isolation Forest 채택**: DBSCAN(밀도 파라미터 튜닝 난해)·PCA(선형성 가정)·Autoencoder(정형데이터엔 과한 복잡도) 대비, 분포 가정 없이 무작위 분할만으로 이상치를 판단해 가장 적은 전제를 요구함(Liu, Ting & Zhou 2008 외 참고문헌은 원 문서 §3-2 참고).
+- **실측 검증**: One-Class SVM·LOF·SGDOneClassSVM과 동일 test set(2024년, 469,902건)으로 비교.
 
-지도학습에 쓸 수 있는 정답은 `decision_labels`(이 Risk Review 워크플로 안에서 회계 담당자가 실제로 내린 승인/보완/반려 결정)뿐이다. 이 라벨은 시스템이 실제로 배포되어 운영된 뒤에만 쌓이므로, 데이터가 많은 회사든 적은 회사든 이 시스템을 처음 도입하는 시점에는 예외 없이 0건이다 — 특정 데이터셋의 우연한 속성이 아니라, 신규 시스템 도입 단계 자체에 내재된 콜드스타트다.
-
-일부 회사가 이미 갖고 있을 법한 "부정사용 이력"(카드사 기준)이나 회계팀이 비정형으로 기록해온 반려 사유는 `decision_labels`와 정의가 다르다. "무엇을 반려할 것인가"의 기준은 회사 내규(예: `TIGER-REG-2026-003`)마다 다르므로, 이런 라벨을 그대로 지도학습 정답으로 옮기면 도메인 시프트가 발생한다. 이 시스템은 한 회사가 아니라 여러 회사에 배포 가능한 제품으로 설계되어야 하므로, 라벨이 전혀 없는 최악의 초기 도입 조건에서도 작동해야 한다는 것이 최소 요구조건이 되고, 비지도 학습이 이를 만족하는 유일한 시작점이다. 특정 회사가 자체 `decision_labels`를 충분히 축적한 뒤에는 그 회사에 한해 지도학습·하이브리드로 전환하는 것이 자연스러운 후속 단계다(§6).
-
-### 3-2. 비지도 학습 중에서 Isolation Forest를 택한 이유
-
-비지도 이상탐지 중에서도 서로 다른 전제를 요구하는 세 방식을 Isolation Forest와 비교했다.
-
-| 방식 | 검토 결과 | 참고문헌 |
-|---|---|---|
-| DBSCAN(밀도 기반 군집) | 어느 군집에도 속하지 않는 점을 이상치로 보는 방식. `eps`(반경)·`minPts`라는 전역 파라미터로 밀도를 정의하는데, 거래 데이터처럼 밀도가 들쭉날쭉한 고차원 데이터에서는 하나의 반경 값으로 전체를 일관되게 나누기 어렵다 | Ester et al. 1996 |
-| PCA 재구성 오차 | 저차원으로 압축·복원했을 때 오차가 큰 점을 이상치로 본다. 선형 구조를 가정하는 방법이라 실제 거래 데이터의 비선형·skewed 이상 패턴을 잘 포착하지 못한다 | Shyu et al. 2003 |
-| Autoencoder(신경망 기반) | 복잡한 비선형 패턴 학습에 강점이 있지만, 정형(표) 형태의 거래 데이터를 다루는 데는 그 정도의 표현력이 필요하지 않다 | Sakurada & Yairi 2014 |
-| **Isolation Forest(최종 채택)** | 밀도 파라미터·분포 가정·신경망 수준 표현력 중 어느 것도 요구하지 않고, 무작위 분할만으로 고립 정도를 판단한다 | Liu, Ting & Zhou 2008 |
-
-세 방식이 탈락하는 이유는 각각 다르다 — DBSCAN은 밀도 파라미터를 데이터에 맞게 정교히 튜닝해야 하고, PCA는 선형성을 가정하며, Autoencoder는 정형 데이터에 필요 이상의 복잡도를 요구한다. Isolation Forest는 이 세 가정 중 어느 것도 필요로 하지 않는다는 점에서, 비지도 방식 중 가장 적은 전제로 이상치를 판단할 수 있는 방법이다.
-
-> 참고문헌: Ester, M., Kriegel, H.-P., Sander, J., & Xu, X. (1996). *A Density-Based Algorithm for Discovering Clusters in Large Spatial Databases with Noise.* KDD, 226–231. · Shyu, M.-L., Chen, S.-C., Sarinnapakorn, K., & Chang, L. (2003). *A Novel Anomaly Detection Scheme Based on Principal Component Classifier.* IEEE ICDM Workshop on Foundations & New Directions of Data Mining, 172–179. · Sakurada, M., & Yairi, T. (2014). *Anomaly Detection Using Autoencoders with Nonlinear Dimensionality Reduction.* MLSDA 2014, 4–11. · Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). *Isolation Forest.* IEEE ICDM, 413–422.
-
-### 3-2a. 정량적 검증 — One-Class SVM·LOF·SGDOneClassSVM 실측 비교 (2026-07-31 추가)
-
-위 3-2절은 원리 검토에 그쳤으므로, 실무에서 흔히 쓰이는 비지도 baseline 중 One-Class SVM(RBF)·LOF(novelty)·SGDOneClassSVM(선형근사)을 실제 test set(2024년, 469,902건)으로 채점해 수치로도 확인했다. Isolation Forest·SGDOneClassSVM은 train 전체(1,482,969건)로, One-Class SVM·LOF는 §2 효율성 벤치마크에서 확인된 스케일링 한계 때문에 무작위 서브샘플 5만 건으로 학습했다(상세 방법·코드·LOF 부호 진단: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md)).
-
-| 모델 | n_train | fit(초) | predict/469,902건(초) | PR-AUC | recall@top3% |
+| 모델 | n_train | fit(초) | predict(초) | PR-AUC | recall@top3% |
 |---|---:|---:|---:|---:|---:|
 | **Isolation Forest** | 1,482,969(전체) | 1.94 | 5.38 | **0.648** | 0.591 |
-| One-Class SVM(RBF) | 50,000(서브샘플) | 86.3 | 1,248.3(≈20.8분) | 0.432 | 0.543 |
-| SGDOneClassSVM(선형근사) | 1,482,969(전체) | 3.01 | 0.02 | 0.315 | 0.358 |
+| One-Class SVM(RBF) | 50,000(서브샘플) | 86.3 | 1,248.3 | 0.432 | 0.543 |
+| SGDOneClassSVM | 1,482,969(전체) | 3.01 | 0.02 | 0.315 | 0.358 |
 | LOF(novelty, k=20) | 50,000(서브샘플) | 11.5 | 46.1 | 0.037~0.066 | 0.051 |
 
-Isolation Forest가 정확도(PR-AUC)와 연산 효율성(fit/predict 시간) 양쪽 모두에서 4개 모델 중 가장 우수했다. One-Class SVM은 5만 건 서브샘플만으로도 추론에 약 21분이 걸려 전체 규모(148만 건)에서는 현실적으로 운용할 수 없음이 실측으로 재확인됐고, LOF는 원-핫 인코딩된 저정보 이진 피처가 많은 이 피처 공간에서 지역 밀도비 자체가 판별력을 거의 갖지 못했다(기저율 3.49% 대비 우위 없음). SGDOneClassSVM은 유일하게 전체 규모를 그대로 학습할 수 있었으나 선형 경계로는 이상거래의 비선형 구조를 충분히 포착하지 못했다.
-
-**⚠️ 수치 해석 시 주의**: 이번 실행에서 재현한 Isolation Forest의 PR-AUC(0.648)는 §4의 기존 확정치(0.5865)와 다르다. 데이터(행수·기저율)는 동일함을 확인했으며, 차이는 실험 당시 기록되지 않은 scikit-learn 버전 차이로 추정된다(이번 실행: 1.8.0). 4개 모델을 같은 세션에서 실행했으므로 **상대 비교(순위)는 유효**하지만, 0.648을 §4의 0.5865와 나란히 놓고 "성능이 개선됐다"는 식으로 인용하지 않도록 주의할 것 — 자세한 내용은 위 상세 문서 §3 참고. 재발 방지를 위해 `ml/` 실험 환경에 `requirements.txt`(또는 동등한 의존성 고정 파일)를 추가하는 것을 다음 단계로 권고한다.
-
-### 3-3. ML–RAG 역할 분담의 시너지
-
-§2의 효율성 논리와 §3-1의 라벨 논리를 합치면, ML과 RAG의 역할 분담은 다음과 같이 정리된다.
-
-- **ML(Isolation Forest)**: 라벨 없이 "다수의 정상 패턴에서 얼마나 고립되어 있는가"만으로 anomaly_score를 산출. 정답을 몰라도 되므로 콜드스타트에 강하고, 연산이 가벼워 전수 거래에 실시간 적용 가능.
-- **RAG(내규 검증)**: ML이 추려낸 소수 후보에 한해, `법인카드 사용 규정` 등 실제 내규 문서를 대조해 "왜 이상한지"를 규정 조항 기준으로 설명. 정밀하지만 비용이 큰 연산을 후보군에만 집중.
-
-두 단계가 서로 다른 종류의 정보(통계적 이상치 vs 규정 위반 여부)를 각자 잘하는 방식으로 처리하기 때문에, 한쪽으로 몰아서 처리하는 것보다 정확도와 비용 양쪽에서 유리하다.
+정확도·연산 효율성 양쪽 모두 Isolation Forest가 우위(상세 진단: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md)). 단, 이 표의 PR-AUC(0.648)는 실행 환경(scikit-learn 1.8.0)이 §4 확정치(0.5865, 환경 `final_prj`)와 달라 절대 수치를 직접 비교하면 안 되고 **모델 간 상대 순위만** 유효하다 — 재발 방지로 [`requirements.txt`](./requirements.txt) 고정(scikit-learn 1.5.*, `apps/ai` 서빙 스펙과 일치).
 
 ---
 
-## 4. 데이터 전처리 및 이상 탐지 진행 과정 핵심 요약
+## 4. 전처리·피처·최종 성능
 
-### 4-1. 전처리
+- **Train/Test 분할**: 날짜 기준(2021~2023 train / 2024 test) — look-ahead 누수 구조적 차단.
+- **가맹점 피처 완전 제외**: 카드 공유 구조상 시간축 정합성 문제가 재발해 제외, 관련 신호는 RAG(`case_history`)로 이관.
+- **피처셋 확정(15개)**: Tier0 단독(PR-AUC 0.4711) 대비 Tier1 전체 투입은 저정보 이진 컬럼 희석으로 오히려 -55%. 개별 기여도 검증 결과 `일시불할부구분코드` 1개만 유의미(+7.2%) → 최종 Tier0+1개 조합(0.4946)으로 확정.
 
-- **Train/Test 분할**: 원본 무작위 분할은 같은 모집단에서 뽑혀 시간축 오염 위험이 있어, **날짜 기준 분할**(2021~2023 train / 2024 test)로 전환. test가 항상 train보다 시간상 뒤에 있어 미래 정보 유출이 구조적으로 불가능하도록 설계.
-- **가맹점 피처 제외**: `가맹점평균금액_확장`, `가맹점첫거래여부` 등 가맹점 관련 확장 통계 피처는 여러 카드가 하나의 가맹점을 공유하는 구조상 어떤 분할 방식으로도 시간축 정합성(look-ahead 누수) 문제가 재발함을 확인해 완전히 제외. 가맹점 관련 신호는 RAG(`case_history`) 쪽 역할로 이관.
-- **세그먼트 플래그 추가**: 평가 시 재사용 카드/신규 카드를 구분해 진단할 수 있도록 `카드_train노출여부` 컬럼 추가(재사용 카드 97.0% / 신규 카드 3.0%).
-- **피처 Tier 분류**: Tier0(거래·카드 이력 기반, 14개) / Tier1(11개) / Tier2(0개, 조직 데이터 없음) / Tier3(15개) 총 40개 후보로 정리.
+**최종 test 성능**(train 1,482,969건 학습 → test 469,902건 단 1회 채점):
 
-### 4-2. 피처셋 확정 — 왜 15개인가
+| 지표 | 값 |
+|---|---|
+| PR-AUC | 0.5865 |
+| recall@top1% / precision@top1% | 24.9% / 86.8% |
+| recall@top3% / precision@top3% | 52.6% / 61.1% |
+| recall@top5% / precision@top5% | 66.4% / 46.3% |
+| recall@top10% / precision@top10% | 79.0% / 27.6% |
 
-최종 피처셋(Tier0 14개 + `일시불할부구분코드` 1개 = 15개)은 아래 단계적 검증을 거쳐 확정됐다(5-fold 교차검증, PR-AUC 기준).
+test 성능이 5-fold 평균(0.4946)보다 높은 것은 test 시점 카드의 97%가 이미 3년치 이력을 보유해 확장 통계 피처가 안정된 상태로 평가받기 때문(누수 아님 — pseudo-test로 재확인, 상세: [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)). 신규 카드(이력 없음) 세그먼트도 재사용 카드 대비 성능 저하 없음(top3% recall 57.7% vs 52.6%).
 
-| 단계 | 시도 | 결과(PR-AUC) | 판단 |
-|---|---|---|---|
-| 1 | Tier0 단독 | 0.4711(기준선) | 출발점 |
-| 2 | Tier0 + Tier1 전체(32컬럼, 원-핫 다수) | 0.2101(**-55%**) | 저정보 이진 컬럼이 Isolation Forest의 무작위 피처 선택을 희석시켜 대폭 하락 → 전체 투입은 기각 |
-| 3 | Tier1 10개 개별 기여도 검증(leave-one-in) | 9개는 마이너스, `일시불할부구분코드` 1개만 **+7.2%** | 대부분의 skewed 범주형 변수가 고립 판단을 왜곡함을 확인, 유일하게 긍정적인 피처 1개만 식별 |
-| 4 | Tier0 + `일시불할부구분코드` (최종 검증) | **0.4946(+4.98%)** | 유일하게 채택할 만한 조합으로 최종 확정 |
-
-즉 "일단 다 넣어보고 좋아지면 유지"가 아니라, **전체 투입이 오히려 성능을 낮춘다는 것을 먼저 확인**한 뒤, **개별 피처를 하나씩 넣어 진짜 기여하는 피처만 골라내는** 절차를 거쳐 15개로 좁힌 것이다.
-
-### 4-3. 하이퍼파라미터
-
-`n_estimators` × `max_samples` 그리드 탐색을 수행했으나 개선폭이 0.26%로 노이즈 수준에 그쳐, 베이스라인 값(`n_estimators=200`, `max_samples='auto'`, `contamination='auto'`)을 그대로 채택했다.
-
-### 4-4. 최종 학습·평가
-
-train(2021~2023, 1,482,969건) 전체로 학습한 모델을 test(2024, 469,902건)에 **단 한 번** 채점했다.
-
-| 지표 | 값 | 베이스레이트(3.49%) 대비 |
-|---|---|---|
-| PR-AUC | 0.5865 | fold 평균(0.4946) 대비 개선 |
-| recall@top1% / precision@top1% | 24.9% / 86.8% | 약 25배 lift |
-| recall@top3% / precision@top3% | 52.6% / 61.1% | 약 17.5배 lift |
-| recall@top5% / precision@top5% | 66.4% / 46.3% | — |
-| recall@top10% / precision@top10% | 79.0% / 27.6% | — |
-
-test 성능(0.5865)이 fold 평균(0.4946)보다 높게 나온 것은 성능이 부풀려진 것이 아니라, test 시점(2024)에는 등장 카드의 97%가 이미 train 기간(2021~2023) 이력을 3년치 보유한 상태로 평가받기 때문이다(확장 통계 피처가 이력이 쌓일수록 안정되는 구조). train 내부에서만 시간 기준으로 재현한 pseudo-test(2023-01-01 cutoff)도 PR-AUC 0.5536으로 fold 평균보다 test에 훨씬 가까운 값이 나와, 이 해석이 데이터 누수가 아님을 뒷받침한다.
-
-세그먼트 진단에서는 신규 카드(이력 없음, 4,574건)가 재사용 카드보다 오히려 소폭 높은 성능(top3% recall 57.7% vs 52.6%)을 보여, "모델이 카드 이력을 암기해 신규 카드에 취약할 것"이라는 우려는 기우로 확인됐다(다만 신규 카드 표본 163건은 절대 수치보다 상대적 경향으로 해석).
-
-### 4-5. anomaly_score를 그대로 "확률"로 쓰면 안 되는 이유
-
-Isolation Forest의 점수(0~1)는 이상 정도를 나타내지만 통계적으로 보정된 확률이 아니다 — 정상/이상 그룹의 점수 분포가 0.72대까지 서로 겹친다. 따라서 UI·RAG에 "위험도 N%"로 그대로 노출하지 않고, 점수 구간(백분위)별 **실측 이상거래 비율**을 보정 테이블로 별도 산출해 사용한다(예: 상위 90~100% 구간의 실측 이상거래 비율은 27.58%). 이 테이블은 모델·피처셋이 바뀌면 재계산이 필요하다.
+**anomaly_score는 확률이 아님**: 정상/이상 그룹 점수 분포가 0.72대까지 겹침. UI·RAG 노출 시 "위험도 N%"가 아니라 백분위 구간별 실측 이상거래 비율(상위 90~100%: 27.58%)로 보정해 사용.
 
 ---
 
-## 5. 한계 및 다음 단계
+## 5. 운영 컷오프 및 한계
 
-현재 운영 임계값(상위 3%, 고정값 0.0620)은 test 기준 실제 검토 비율 3.29%로 안정적으로 작동하는 것은 확인됐지만, 이 컷오프에서의 recall은 약 52.6%에 그친다. "이상거래를 놓치지 않는다"는 원칙에 비추어 목표 recall 수준을 어디로 잡을지는 아직 회계팀·PM과 협의가 필요한 상태이며, 협의 결과에 따라 컷오프를 상위 3%보다 넉넉히(예: 10~15%) 조정하는 방향이 유력하다. 이 조정은 §2-2의 효율성 수치(RAG 처리 물량)에도 함께 반영해 재계산할 예정이다.
+**운영 컷오프 = 상위 10%**(recall≈79.0%, precision≈27.6%). 기존 잠정값(상위 3%)은 recall 52.6%로 "이상거래를 놓치지 않는다"는 원칙에 미달 — False Negative(누락)는 RAG·사람 어느 단계에도 닿지 못해 영구 누락되는 반면 False Positive는 사람이 한 번 더 보면 그만인 비대칭 비용 구조라 recall을 우선했다. recall 90% 이상(검토량 32.68%~)은 §2의 효율성 전제가 무너져 채택하지 않음.
+
+**고정 임계값**: 실시간 거래 판정용 고정 threshold score는 **-0.0123**(train 점수 분포 90번째 백분위수)으로 재계산 완료 — test 적용 시 실제 분류 비율 12.79%, recall 85.1%, precision 23.2%(재현 코드·상세: [`고정_임계값_재계산.py`](./mvp_isolation_forest/고정_임계값_재계산.py), [`isolation_forest_modeling_결과.md §5`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)). 알고리즘·피처셋·컷오프·운영 임계값 모두 확정되어 ML 파트는 마무리됐다.
 
 ---
 
-## 6. 향후 시스템 통합(Risk Review Agent 연동) 시 기대 효과
+## 6. 향후 시스템 통합 기대 효과
 
-- **RAG 호출량 절감**: 전체 거래가 아닌 ML이 추린 소수 후보만 RAG로 넘어가므로, LLM 토큰 비용과 Chroma 벡터 검색 부하가 §2-2 수치 기준 전체 대비 3~15% 수준으로 유지된다.
-- **실시간 동기 처리 유지**: Isolation Forest 추론은 로컬 연산으로 지연이 거의 없어, 프로젝트 원칙인 "동기 REST(MVP)" 안에서 1차 필터를 자연스럽게 수행할 수 있다.
-- **설명 가능한 2단계 근거**: anomaly_score(왜 통계적으로 이상한가) + RAG 근거(어떤 내규 조항에 해당하는가)를 함께 제시할 수 있어, 회계 담당자가 최종 확정 시 참고할 근거가 두 겹으로 쌓인다.
-- **점진적 고도화 경로**: 서비스 운영을 통해 `decision_labels`가 쌓이면, 이 문서의 비지도 모델을 유지한 채로 지도학습·하이브리드 스코어링을 post-MVP로 검토할 수 있는 기반이 마련된다(§3-1).
+- **RAG 호출량 절감**: 전체 거래가 아닌 ML이 추린 소수 후보만 RAG로 전달(전체 대비 약 10%).
+- **실시간 동기 처리 유지**: 로컬 연산으로 지연 없어 "동기 REST(MVP)" 원칙 안에서 수행 가능.
+- **설명 가능한 2단계 근거**: anomaly_score(통계적 이상) + RAG 근거(내규 조항)를 함께 제시.
+- **점진적 고도화 경로**: `decision_labels` 축적 후 지도학습·하이브리드 스코어링을 post-MVP로 검토 가능.
 
 ---
 
@@ -172,9 +89,7 @@ Isolation Forest의 점수(0~1)는 이상 정도를 나타내지만 통계적으
 
 | 경로 | 내용 |
 |---|---|
-| [`mvp_isolation_forest/`](./mvp_isolation_forest/) | 최종 확정 MVP — Isolation Forest 전처리·모델링 원본 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)(§3~§6 수치의 1차 출처) |
-| [`mvp_isolation_forest/비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md) | §3-2a 수치의 1차 출처 — One-Class SVM/LOF/SGDOneClassSVM 실측 비교, LOF 부호 진단, sklearn 버전차 안내. 재현 코드: [`unsupervised_baseline_비교.py`](./mvp_isolation_forest/unsupervised_baseline_비교.py) |
-| [`archive/supervised_experiments/models/README.md`](./archive/supervised_experiments/models/README.md) | 비지도/지도학습 실험 결과 통합 비교, 재검토 경과 |
-| [`archive/supervised_experiments/pipeline/`](./archive/supervised_experiments/pipeline/) | 지도학습 8개 모델 재현 스크립트(참고/비교 실험용, 배포 대상 아님) |
-| [`archive/supervised_experiments/models/`](./archive/supervised_experiments/models/) | 라운드별 모델 산출물(pkl)·결과표·로그 |
-| [`archive/early_eda_preprocessing/`](./archive/early_eda_preprocessing/) | 초기 EDA·전처리 노트북(참고용, mvp_isolation_forest가 최신 기준) |
+| [`mvp_isolation_forest/`](./mvp_isolation_forest/) | 최종 확정 MVP — 전처리·모델링 원본 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)(§2~§5 수치의 1차 출처) |
+| [`mvp_isolation_forest/비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md) | §3 실측 비교의 1차 출처. 재현 코드: [`unsupervised_baseline_비교.py`](./mvp_isolation_forest/unsupervised_baseline_비교.py) |
+| [`archive/supervised_experiments/`](./archive/supervised_experiments/) | 지도학습 8개 모델 비교(참고용, 배포 대상 아님) |
+| [`archive/early_eda_preprocessing/`](./archive/early_eda_preprocessing/) | 초기 EDA·전처리 노트북(참고용, `mvp_isolation_forest/`가 최신 기준) |

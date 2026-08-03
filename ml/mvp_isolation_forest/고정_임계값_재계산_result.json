@@ -1,0 +1,18 @@
+{
+  "top3%(기존)": {
+    "threshold_percentile": 97,
+    "fixed_threshold_score": 0.06335296449437265,
+    "flagged_pct": 3.0585100723129504,
+    "flagged_count": 14372,
+    "recall": 0.5954007563742832,
+    "precision": 0.679167826328973
+  },
+  "top10%(신규)": {
+    "threshold_percentile": 90,
+    "fixed_threshold_score": -0.01229636573314605,
+    "flagged_pct": 12.786283097326676,
+    "flagged_count": 60083,
+    "recall": 0.8513480541661583,
+    "precision": 0.23229532480069237
+  }
+}
