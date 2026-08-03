@@ -164,6 +164,9 @@ export function GraphFlowView({ graph, selectedKey, onSelect }: {
         ⚠ 되돌아가는 라우팅(순환)이 있습니다. 순환 그래프는 Active 전환 시 거부됩니다.
       </div>
     )}
+    {/* 프레임이 남은 높이를 차지하고, 스크롤 영역은 그 안에 절대배치 —
+        플로우차트 내용이 카드 높이를 밀어올리지 않아 옆 노드 상세 높이에 맞춰진다. */}
+    <div className="flow-frame">
     <div className="flow-scroll">
       <div className="flow-canvas" style={{ width: flow.width, height: flow.height }}>
         <svg className="flow-edges" width={flow.width} height={flow.height} aria-hidden="true">
@@ -202,6 +205,7 @@ export function GraphFlowView({ graph, selectedKey, onSelect }: {
             </div>
           ))}
       </div>
+    </div>
     </div>
     </>
   )

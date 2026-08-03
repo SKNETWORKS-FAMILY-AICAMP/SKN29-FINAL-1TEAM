@@ -705,7 +705,7 @@ class Command(BaseCommand):
 
     # ── ⑤ TEST 그래프 ───────────────────────────────────────────
     def _seed_test_graph(self):
-        self._upsert(TEST_FAMILY_KEY, 1, name="TEST 그래프 (구조 검증용)", scope="업무활성",
+        self._upsert(TEST_FAMILY_KEY, 1, name="업무활성비 검증 그래프", scope="업무활성",
                      entry="T-00", clause="TEST 픽스처 (규정 근거 없음)",
                      status=RuleGraphStatus.DRAFT, spec=TEST_GRAPH)
         self.stdout.write(self.style.SUCCESS(

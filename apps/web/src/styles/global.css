@@ -192,11 +192,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .rule-node-item:hover { background: var(--surface-2); }
 .rule-node-item.selected { background: var(--primary-soft); border-left-color: var(--primary); }
 /* 시뮬레이션 탭 — 그래프 구조(플로우차트) + 노드 상세 읽기 2섹션 */
-/* 좌(플로우차트)·우(노드 상세) 높이를 서로 맞춘다 — 상세가 길어지면 플로우차트도 같이 늘어난다 */
+/* 그래프 구조 카드는 **노드 상세 카드의 높이를 따라간다**.
+   .flow-frame이 남은 높이를 차지하고 .flow-scroll을 그 안에 절대배치해,
+   플로우차트 내용(px로 계산된 캔버스)이 카드·그리드 행 높이를 밀어올리지 않게 한다. */
 .sim-structure-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: var(--space-4); align-items: stretch; }
-.sim-structure-grid > .card { display: flex; flex-direction: column; min-height: 0; }
+.sim-structure-grid > .card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .sim-structure-grid > .card > .card-body { overflow: auto; }
-.flow-scroll { flex: 1 1 auto; overflow: auto; min-height: 320px; border-radius: 0 0 var(--radius) var(--radius); }
+.flow-frame { position: relative; flex: 1 1 auto; min-height: 320px; }
+.flow-scroll { position: absolute; inset: 0; overflow: auto; border-radius: 0 0 var(--radius) var(--radius); }
 .flow-canvas { position: relative; }
 .flow-edges { position: absolute; top: 0; left: 0; pointer-events: none; }
 .flow-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.6; }
