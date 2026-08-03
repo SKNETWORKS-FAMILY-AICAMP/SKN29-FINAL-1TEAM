@@ -5,10 +5,9 @@ import { endpoints } from '../../api/client'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
-import {
-  DRAFT_CHAT_SCRIPT, GRAPH_STATUS_LABEL,
-  type ChatMessage, type GraphNode, type RuleGraph,
-} from './data/ruleConsoleMock'
+import { GRAPH_STATUS_LABEL, type ChatMessage, type GraphNode, type RuleGraph } from './data/ruleConsoleMock'
+
+type ApiMessage = { role: 'user' | 'ai'; text: string; appliedNote: string }
 
 const emptyNode = (nodeKey: string): GraphNode => ({
   nodeKey, title: '(제목 미설정)', origin: 'new', description: '',
@@ -20,7 +19,6 @@ const emptyNode = (nodeKey: string): GraphNode => ({
 })
 
 export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean; setNewRuleOpen: (b: boolean) => void }) {
-  const [allGraphs, setAllGraphs] = useState<RuleGraph[]>([])
   const [graphs, setGraphs] = useState<RuleGraph[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sel, setSel] = useState<{ graphId: string; nodeKey: string } | null>(null)
@@ -28,7 +26,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [seq, setSeq] = useState(1)
-  const [chat, setChat] = useState<ChatMessage[]>(DRAFT_CHAT_SCRIPT)
+  const [chat, setChat] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [deleteMode, setDeleteMode] = useState(false)
 
@@ -37,9 +35,8 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     endpoints.rules().then(({ data }) => {
       if (cancelled) return
       const loaded = (data as ApiGraph[]).map(toGraph)
-      setAllGraphs(loaded)
       setGraphs(loaded)
-      setExpanded(new Set(loaded.map((graph) => graph.id)))
+      setExpanded(new Set())  // 기본 접힘 — 필요한 그래프만 펼쳐서 본다
       const first = loaded.find((graph) => graph.nodes.length)?.nodes[0]
       const firstGraph = loaded.find((graph) => graph.nodes.length)
       setSel(first && firstGraph ? { graphId: firstGraph.id, nodeKey: first.nodeKey } : null)
@@ -65,29 +62,45 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     next.has(id) ? next.delete(id) : next.add(id)
     return next
   })
-  const selectNode = (graphId: string, nodeKey: string) => { setSel({ graphId, nodeKey }); setChat([]) }
+  const selectNode = (graphId: string, nodeKey: string) => setSel({ graphId, nodeKey })
+
+  // 선택한 노드의 작성 대화 로그를 불러온다 — 누가 무엇을 지시했고 Agent가 무엇을 바꿨는지.
+  useEffect(() => {
+    if (!sel) { setChat([]); return }
+    let cancelled = false
+    endpoints.ruleMessages(sel.graphId, sel.nodeKey).then(({ data }) => {
+      if (cancelled) return
+      setChat((data as ApiMessage[]).map((row) => ({
+        role: row.role, text: row.text, appliedNote: row.appliedNote || undefined,
+      })))
+    }).catch(() => { if (!cancelled) setChat([]) })
+    return () => { cancelled = true }
+  }, [sel?.graphId, sel?.nodeKey])
 
   const send = () => {
     const text = input.trim()
-    if (!text) return
-    setChat((previous) => [...previous, { role: 'user', text }, {
-      role: 'ai', text: '네, 반영했습니다. 가운데 조건·액션·라우팅에서 변경 내용을 확인해주세요.', appliedNote: '노드 설정에 적용됨',
-    }])
+    if (!text || !sel) return
+    const reply: ChatMessage = {
+      role: 'ai', text: '네, 반영했습니다. 가운데 조건·액션·라우팅에서 변경 내용을 확인해주세요.',
+      appliedNote: '노드 설정에 적용됨',
+    }
+    setChat((previous) => [...previous, { role: 'user', text }, reply])
     setInput('')
+    void endpoints.addRuleMessages(sel.graphId, sel.nodeKey, [
+      { role: 'user', text },
+      { role: 'ai', text: reply.text, appliedNote: reply.appliedNote },
+    ]).catch(() => undefined)
   }
 
   const createRule = async (choice: NewRuleChoice) => {
     const key = `R-N${seq}`
     setSeq((value) => value + 1)
     try {
-      const response = choice.kind === 'existing'
-        ? await endpoints.createRuleVersion(choice.graphId)
-        : await endpoints.createRuleGraph(choice.name, choice.scope)
+      const response = await endpoints.createRuleGraph(choice.name, choice.scope)
       const draft = toGraph(response.data as ApiGraph)
       await endpoints.createRuleNode(draft.id, key)
       draft.nodes = [...draft.nodes, emptyNode(key)]
       if (!draft.entryNodeKey) draft.entryNodeKey = key
-      setAllGraphs((previous) => [draft, ...previous])
       setGraphs((previous) => [draft, ...previous])
       setExpanded((previous) => new Set(previous).add(draft.id))
       setSel({ graphId: draft.id, nodeKey: key })
@@ -104,7 +117,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     const response = await endpoints.createRuleVersion(graph.id)
     const draft = toGraph(response.data as ApiGraph)
     setGraphs((previous) => [draft, ...previous])
-    setAllGraphs((previous) => [draft, ...previous])
     return draft
   }
 
@@ -116,7 +128,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       await endpoints.createRuleNode(graph.id, key)
       const node = emptyNode(key)
       setGraphs((previous) => previous.map((item) => item.id === graph.id ? { ...item, nodes: [...item.nodes, node] } : item))
-      setAllGraphs((previous) => previous.map((item) => item.id === graph.id ? { ...item, nodes: [...item.nodes, node] } : item))
       setExpanded((previous) => new Set(previous).add(graph.id))
       setSel({ graphId: graph.id, nodeKey: key })
     } catch {
@@ -152,7 +163,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       if (sameAsActive(graph, nextNodes)) {
         await endpoints.discardRuleDraft(graph.id)
         setGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
-        setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
         const active = graphs.find((candidate) => candidate.familyKey === graph.familyKey && candidate.status === 'ACTIVE')
         setSel(active?.nodes[0] ? { graphId: active.id, nodeKey: active.nodes[0].nodeKey } : null)
       } else {
@@ -166,7 +176,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
 
   const revertToActive = (draft: RuleGraph, activeId: string) => {
     setGraphs((previous) => previous.filter((candidate) => candidate.id !== draft.id))
-    setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== draft.id))
     const active = graphs.find((candidate) => candidate.id === activeId)
     setSel(active?.nodes[0] ? { graphId: active.id, nodeKey: active.nodes[0].nodeKey } : null)
   }
@@ -176,7 +185,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       ...graph, nodes: graph.nodes.map((node) => node.nodeKey === nodeKey ? { ...node, ...patch } : node),
     } : graph)
     setGraphs(apply)
-    setAllGraphs(apply)
   }
 
   const deleteGraph = async (graph: RuleGraph) => {
@@ -188,7 +196,6 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     try {
       await endpoints.deleteRuleGraph(graph.id)
       setGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
-      setAllGraphs((previous) => previous.filter((candidate) => candidate.id !== graph.id))
       if (sel?.graphId === graph.id) setSel(null)
       setDeleteMode(false)
     } catch { setError('그래프를 삭제하지 못했습니다.') }
@@ -275,7 +282,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
         </div>
       </div>
 
-      {newRuleOpen && <NewRuleGraphModal graphs={allGraphs} onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />}
+      {newRuleOpen && <NewRuleGraphModal onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />}
     </>
   )
 }

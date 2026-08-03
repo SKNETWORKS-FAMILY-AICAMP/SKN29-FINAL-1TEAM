@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from domain.common.permissions import CanActivateRule, CanViewRule
 
 from . import services, simulation
-from .models import RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
 
@@ -53,11 +53,11 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         # Rule ACTIVE 승인/롤백은 룰 활성 권한 보유자만 (Capability RBAC)
-        if self.action in ("activate", "rollback", "rollback_to"):
+        if self.action in ("activate", "rollback", "rollback_to", "reject_activation"):
             return [CanActivateRule()]
         if self.action in ("create_version", "create_graph", "create_node", "update_node",
                            "discard_draft", "delete_graph", "simulate", "test_cases",
-                           "simulation_report", "request_activation"):
+                           "simulation_report", "request_activation", "messages"):
             return [CanViewRule()]
         return super().get_permissions()
 
@@ -69,6 +69,39 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(RuleGraphSerializer(graph).data)
+
+    @action(detail=True, methods=["get", "post"], url_path="messages")
+    def messages(self, request, pk=None):
+        """룰 초안 작성 대화 로그 — 조회 / 추가(사용자 지시 + Agent 반영 결과)."""
+        graph = self.get_object()
+        if request.method == "GET":
+            node_key = request.query_params.get("nodeKey")
+            rows = graph.messages.all()
+            if node_key:
+                rows = rows.filter(node_key=node_key)
+            return Response([{
+                "id": row.id, "nodeKey": row.node_key, "role": row.role, "text": row.text,
+                "appliedNote": row.applied_note,
+                "author": getattr(row.author, "first_name", "") or getattr(row.author, "username", ""),
+                "createdAt": row.created_at,
+            } for row in rows])
+
+        entries = request.data.get("messages")
+        if not isinstance(entries, list) or not entries:
+            return Response({"detail": "messages는 비어 있지 않은 배열이어야 합니다."}, status=400)
+        node_key = str(request.data.get("nodeKey", ""))[:64]
+        start = graph.messages.count()
+        created = RuleAuthoringMessage.objects.bulk_create([
+            RuleAuthoringMessage(
+                graph=graph, node_key=node_key,
+                role=RuleAuthoringMessage.Role.AI if entry.get("role") == "ai" else RuleAuthoringMessage.Role.USER,
+                text=str(entry.get("text", "")), applied_note=str(entry.get("appliedNote", ""))[:200],
+                author=_actor(request) if entry.get("role") != "ai" else None,
+                order=start + index,
+            )
+            for index, entry in enumerate(entries)
+        ])
+        return Response({"saved": len(created)}, status=201)
 
     @action(detail=True, methods=["get", "put"], url_path="test-cases")
     def test_cases(self, request, pk=None):
@@ -214,6 +247,18 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"nodeKey": node_key, "saved": True, "revertedToGraphId": active_id})
         return Response({"nodeKey": node.node_key, "saved": True})
 
+
+    @action(detail=True, methods=["post"], url_path="reject-activation")
+    def reject_activation(self, request, pk=None):
+        """Active 요청 반려 — 사유를 남기고 초안(수정중)으로 되돌린다."""
+        comment = str(request.data.get("comment", "")).strip()
+        if not comment:
+            return Response({"detail": "반려 사유를 입력해주세요."}, status=400)
+        try:
+            graph = services.reject_activation(self.get_object(), comment, _actor(request))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
+        return Response(RuleGraphSerializer(graph).data)
 
     @action(detail=True, methods=["get"], url_path="family")
     def family(self, request, pk=None):

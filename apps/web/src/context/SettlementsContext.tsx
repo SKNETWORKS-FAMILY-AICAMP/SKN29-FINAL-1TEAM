@@ -20,6 +20,7 @@ interface SettlementsCtx {
   updateStatus: (id: string, status: SettlementStatus) => void
   findById: (id: string) => Settlement | undefined
   addExpense: (item: Settlement) => void
+  removeExpense: (id: string) => void
   refresh: () => void
 }
 
@@ -62,9 +63,10 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
     reviewItems.find((i) => i.id === id)
 
   const addExpense = (item: Settlement) => setMyExpenses((prev) => [item, ...prev])
+  const removeExpense = (id: string) => setMyExpenses((prev) => prev.filter((e) => e.id !== id))
 
   return (
-    <Ctx.Provider value={{ myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, refresh }}>
+    <Ctx.Provider value={{ myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, removeExpense, refresh }}>
       {children}
     </Ctx.Provider>
   )

@@ -102,6 +102,26 @@ export function ActiveTab() {
     }
   }
 
+  // 반려 — 사유를 남기고 초안(수정중)으로 되돌린다. 작성자가 고쳐 다시 올릴 수 있다.
+  const reject = async (row: ApiGraphRow) => {
+    const comment = window.prompt(
+      `${row.name} v${row.version} 활성화 요청을 반려합니다.\n작성자에게 전달할 사유를 입력하세요.`,
+      '',
+    )
+    if (comment === null || !comment.trim()) return
+    setBusy(String(row.id))
+    setError('')
+    try {
+      await endpoints.rejectRuleActivation(String(row.id), comment.trim())
+      setExpanded('')
+      load()
+    } catch {
+      setError('반려에 실패했습니다. 권한을 확인해주세요.')
+    } finally {
+      setBusy('')
+    }
+  }
+
   return (
     <>
       {loading && <div className="card"><div className="card-body text-meta">룰 그래프를 불러오는 중입니다.</div></div>}
@@ -205,7 +225,10 @@ export function ActiveTab() {
                     {report === null && <div className="note">이 그래프의 시뮬레이션 실행 이력이 없습니다.</div>}
 
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-                      <span className="text-meta">{canActivate ? '룰 활성 권한 보유' : '룰 활성 권한이 없어 승인할 수 없습니다.'}</span>
+                      <span className="text-meta">{canActivate ? '룰 활성 권한 보유' : '룰 활성 권한이 없어 처리할 수 없습니다.'}</span>
+                      <button className="btn reject" disabled={!canActivate || busy === id} onClick={() => void reject(row)}>
+                        {!canActivate && <Lock size={12} />} 반려 (초안으로 되돌리기)
+                      </button>
                       <button className="btn approve" disabled={!canActivate || busy === id} onClick={() => void approve(row)}>
                         {!canActivate && <Lock size={12} />} 승인 · ACTIVE 전환 →
                       </button>
@@ -246,14 +269,15 @@ export function ActiveTab() {
           <span className="tag ok">{active.length}개 활성</span>
         </div>
         {!loading && active.length === 0 && <div className="card-body text-meta">활성 상태의 룰 그래프가 없습니다.</div>}
-        <div className="card-body stack" style={{ gap: 12 }}>
+        {/* 스코프별로 좌우 배치 — 스코프당 활성 그래프는 하나뿐이라 한눈에 비교된다 */}
+        <div className="card-body active-scope-grid">
           {Object.entries(active.reduce<Record<string, ApiGraphRow[]>>((groups, row) => {
             ;(groups[row.scope] ??= []).push(row)
             return groups
           }, {})).map(([scope, scopeRows]) => (
-            <div key={scope}>
+            <div key={scope} className="active-scope">
               <div className="text-meta" style={{ fontWeight: 700, marginBottom: 6 }}>{scope}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+              <div className="stack" style={{ gap: 8 }}>
                 {scopeRows.map((row) => (
                   <div key={String(row.id)} className="rule-node-item" role="button" tabIndex={0}
                     style={{ border: '1px solid var(--border)', borderLeftWidth: 3, borderLeftColor: 'var(--tone-green)', padding: 12 }}

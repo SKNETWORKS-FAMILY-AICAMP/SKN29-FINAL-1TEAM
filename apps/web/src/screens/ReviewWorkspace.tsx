@@ -7,6 +7,7 @@ import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
+import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { reviewSettlement } from '../api/settlementService'
@@ -289,17 +290,26 @@ export function ReviewWorkspace() {
                   </div>
                 </div>
 
-                {/* fact.json — 접이식(상태 이력 토글과 동일 패턴) */}
+                {/* fact.json — 접이식. 판정 시점 EvalContext 스냅샷이 있으면 그 원본을 보여준다 */}
                 <div className="card">
                   <button className="card-head" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowFact((v) => !v)}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {showFact ? <ChevronDown size={15} /> : <ChevronRight size={15} />} fact.json
                     </h3>
-                    <span className="text-meta">규정 판정 입력값</span>
+                    <span className="text-meta">{sel.evalContext ? 'EvalContext 스냅샷 (판정 시점 원본)' : '규정 판정 입력값'}</span>
                   </button>
                   {showFact && (
                     <div className="card-body">
-                      <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.5, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: 12, overflowX: 'auto' }}>{JSON.stringify(fact, null, 2)}</pre>
+                      {sel.evalContext && (
+                        <div className="note" style={{ marginBottom: 10 }}>
+                          룰 엔진이 판정에 사용한 <b>EvalContext</b> 전체 스냅샷입니다. 이 값만으로 판정을 그대로 재현할 수 있어
+                          사후 감사·이의 제기 대응이 가능합니다. (schema v{String(sel.evalContext.meta?.schema_version ?? '-')} ·
+                          builder {String(sel.evalContext.meta?.builder_version ?? '-')})
+                        </div>
+                      )}
+                      <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.5, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: 12, maxHeight: 420, overflow: 'auto' }}>
+                        {JSON.stringify(sel.evalContext ?? fact, null, 2)}
+                      </pre>
                     </div>
                   )}
                 </div>
@@ -349,24 +359,38 @@ export function ReviewWorkspace() {
                     <span className={'tag ' + RECO_LABEL[sel.aiRecommendation].cls}>AI 권장: {RECO_LABEL[sel.aiRecommendation].text} · {pct(sel.aiConfidence)}</span>
                   </div>
                   <div className="card-body">
-                    <p style={{ margin: '0 0 12px' }}>
-                      {sel.ragRefs.length === 0
-                        ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
-                        : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${RECO_LABEL[sel.aiRecommendation].text}을(를) 권장합니다.`}
-                    </p>
+                    {sel.ragReport
+                      ? <Markdown source={sel.ragReport} />
+                      : (
+                        <p style={{ margin: '0 0 12px' }}>
+                          {sel.ragRefs.length === 0
+                            ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
+                            : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${RECO_LABEL[sel.aiRecommendation].text}을(를) 권장합니다.`}
+                        </p>
+                      )}
                     {sel.ragRefs.length > 0 && (
-                      <div className="stack">
+                      <div className="stack" style={{ marginTop: sel.ragReport ? 14 : 0 }}>
+                        <div className="text-meta" style={{ fontWeight: 700 }}>참조 근거 {sel.ragRefs.length}건</div>
                         {sel.ragRefs.map((r) => (
-                          <a key={r.source} className="row" href="#" onClick={(e) => e.preventDefault()}
-                             style={{ justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', background: 'var(--surface-2)' }}>
-                            <span className="row" style={{ gap: 6 }}>
-                              <span className="tag">{r.kind === 'case' ? '사례' : '내규'}</span>
-                              <span className="text-meta">{r.source}</span>
+                          <a key={r.source} href="#" onClick={(e) => e.preventDefault()}
+                             style={{ display: 'block', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', background: 'var(--surface-2)', textDecoration: 'none', color: 'inherit' }}>
+                            <span className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                              <span className="row" style={{ gap: 6, minWidth: 0 }}>
+                                <span className="tag">{r.kind === 'case' ? '사례' : '내규'}</span>
+                                <span className="text-meta">{r.source}</span>
+                                {r.relevance !== undefined && <span className="tag ai">적합도 {Math.round(r.relevance * 100)}%</span>}
+                              </span>
+                              <span className="row" style={{ gap: 4, color: 'var(--primary)', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                                {r.kind === 'case' ? <Paperclip size={12} /> : <ExternalLink size={12} />}
+                                {r.kind === 'case' ? '사례 보기' : '원문 보기'}
+                              </span>
                             </span>
-                            <span className="row" style={{ gap: 4, color: 'var(--primary)', fontSize: 12, fontWeight: 600 }}>
-                              {r.kind === 'case' ? <Paperclip size={12} /> : <ExternalLink size={12} />}
-                              {r.kind === 'case' ? '사례 보기' : '원문 보기'}
-                            </span>
+                            <div style={{ fontSize: 12.5, marginTop: 4 }}>{r.title}</div>
+                            {r.excerpt && (
+                              <div className="text-meta" style={{ marginTop: 4, paddingLeft: 8, borderLeft: '2px solid var(--border-strong)', lineHeight: 1.6 }}>
+                                “{r.excerpt}”
+                              </div>
+                            )}
                           </a>
                         ))}
                       </div>

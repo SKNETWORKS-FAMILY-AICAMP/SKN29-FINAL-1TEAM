@@ -20,7 +20,7 @@ export function NodeDetailRead({ graph, node }: { graph: RuleGraph; node: GraphN
       <div><h3>{node.title}</h3><div className="text-meta">{node.nodeKey} · {graph.scope} · v{graph.version ?? 1}</div></div>
       <span className={'tag ' + nodeStatusTone(node.workflowStatus)}>{nodeStatusLabel(node.workflowStatus)}</span>
     </div>
-    <div className="card-body stack">
+    <div className="card-body stack" style={{ maxHeight: 720 }}>
       <div className="field"><label>제목</label><input value={node.title} readOnly /></div>
       <div className="field"><label>설명</label><textarea rows={3} value={node.description || '등록된 설명이 없습니다.'} readOnly /></div>
 

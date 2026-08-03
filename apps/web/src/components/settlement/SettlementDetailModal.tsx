@@ -7,19 +7,21 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock, Paperclip,
-  Receipt, Sparkles, Upload, X,
+  Receipt, Sparkles, Trash2, Upload, X,
 } from 'lucide-react'
 import {
   CARD_TYPE_LABEL, CATEGORIES,
   type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
-import { won } from '../../lib/format'
 import { anomalyTags } from '../../data/mock'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
 import { useAuth } from '../../context/AuthContext'
-import { createSettlement, decideTeamSettlement, raiseSettlements, reviewSettlement, submitSettlements } from '../../api/settlementService'
+import {
+  createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
+  reviseDraft, submitSettlements, suggestDraft, type DraftSuggestion, type PolicyHint,
+} from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
@@ -35,6 +37,7 @@ export function SettlementDetailModal({
   onClose,
   onStatusChange,
   onCreated,
+  onDeleted,
   context = 'default',
 }: {
   /** null이면 신규 지출 등록(빈 모달). Settlement이면 상세보기·수정. */
@@ -44,17 +47,21 @@ export function SettlementDetailModal({
   onStatusChange?: (id: string, status: SettlementStatus) => void
   /** 신규 생성이 완료됐을 때 — 부모가 목록에 새 건을 추가 */
   onCreated?: (item: Settlement) => void
-  /** 'team'이면 팀 취합 뷰(팀장이 팀원 건을 팀 보완요청/팀 반려) */
-  context?: 'default' | 'team'
+  /** 삭제 완료 시 — 부모가 목록에서 제거 */
+  onDeleted?: (id: string) => void
+  /** 'team'=팀 취합 뷰(팀장이 팀원 건 처리) / 'mine'='내 지출'(본인 건 — 삭제·제출만) */
+  context?: 'default' | 'team' | 'mine'
 }) {
   const can = useCan()
   const { user } = useAuth()
   const nav = useNavigate()
   const isCreate = item === null
-  const canReview = can('accounting_review') // 회계 검토·확정 권한(회계담당·회계팀장 등)
+  // 회계 검토·확정 권한. 단 '내 지출' 화면에서는 본인 건이므로 검토 버튼을 노출하지 않는다.
+  const canReview = can('accounting_review') && context !== 'mine'
 
   // ── 권한/모드 ──
   const isTeamView = context === 'team'
+  const isMineView = context === 'mine'   // '내 지출' — 회계 권한이 있어도 검토 버튼을 띄우지 않는다
   // 개인/검토 화면(default)에선 편집 주체로 보고, 팀 취합 뷰에서만 소유자(이름 일치)로 한정.
   //  (mock 로그인 이름이 데이터 소유자와 달라도 '내 지출' 편집/제출이 막히지 않도록)
   const isOwner = isCreate || !isTeamView || item?.user === user?.name
@@ -75,8 +82,10 @@ export function SettlementDetailModal({
   const [receiptUp, setReceiptUp] = useState(item?.evidence === 'OK')
   const [extraFiles, setExtraFiles] = useState<ExtraFile[]>([])
 
-  // ── AI 코멘트 로그 / fact.json 접힘 ──
+  // ── AI 코멘트 로그 / 규정 힌트 / 지시 입력 / fact.json 접힘 ──
   const [comments, setComments] = useState<AiComment[]>([])
+  const [hints, setHints] = useState<PolicyHint[]>([])
+  const [instruction, setInstruction] = useState('')
   const [factOpen, setFactOpen] = useState(false)
 
   const [pending, setPending] = useState(false)
@@ -85,6 +94,8 @@ export function SettlementDetailModal({
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
   const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
+  // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
+  const canDelete = !isCreate && ['DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED'].includes(item?.status ?? '')
   // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
   const isAnomaly = !isCreate && item ? anomalyTags(item).length > 0 : false
 
@@ -104,18 +115,49 @@ export function SettlementDetailModal({
 
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
-  // 영수증 업로드 → Vision 판독 흉내: 빈 필드 자동 채움 + 코멘트
-  const uploadReceipt = () => {
+  // 영수증 업로드 → 초안 작성 Agent 호출(생성 모드). 실패 시 로컬 mock으로 폴백.
+  const uploadReceipt = async () => {
     setReceiptUp(true)
-    const filled: string[] = []
-    if (!merchant) { setMerchant(MOCK_OCR.merchant); filled.push('가맹점') }
-    if (!amountText) { setAmountText(MOCK_OCR.amount); filled.push('금액') }
-    if (isCreate) { setCategory(MOCK_OCR.category); setAiSuggested(true); filled.push('분류') }
-    pushComment({
-      icon: 'ocr',
-      text: `영수증 판독 완료 — 가맹점 "${merchant || MOCK_OCR.merchant}" · 금액 ${won(numOnly(amountText || MOCK_OCR.amount))}` +
-        (filled.length ? ` 인식. ${filled.join('·')}을(를) 자동 입력했습니다.` : ' 인식.'),
+    setPending(true)
+    const result = await suggestDraft({
+      merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence: 'OK',
     })
+    setPending(false)
+    if (!result) {
+      if (!merchant) setMerchant(MOCK_OCR.merchant)
+      if (!amountText) setAmountText(MOCK_OCR.amount)
+      pushComment({ icon: 'ocr', text: '영수증을 판독했습니다. (오프라인 폴백 — Core API 연결을 확인해주세요)' })
+      return
+    }
+    applyDraft(result)
+  }
+
+  /** Draft Agent 응답을 폼·코멘트·규정 힌트에 반영 */
+  const applyDraft = (result: DraftSuggestion) => {
+    const d = result.draft
+    if (d.merchant) setMerchant(String(d.merchant))
+    if (d.amount) setAmountText(String(d.amount))
+    if (d.category) { setCategory(d.category as Category); setAiSuggested(true) }
+    if (d.purpose) setPurpose(String(d.purpose))
+    if (d.evidence) setReceiptUp(d.evidence === 'OK')
+    setHints(result.policyHints ?? [])
+    result.comments?.forEach((c) => pushComment({ icon: c.icon as AiComment['icon'], text: c.text }))
+  }
+
+  // 자연어 지시로 초안 수정(수정 모드)
+  const askAgent = async () => {
+    const text = instruction.trim()
+    setPending(true)
+    const result = text
+      ? await reviseDraft(text, {
+          merchant, amount: numOnly(amountText), category, aiCategory: category,
+          purpose, evidence, headcount: 0,
+        })
+      : await suggestDraft({ merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence })
+    setPending(false)
+    if (!result) { pushComment({ icon: 'ai', text: 'AI 초안 생성에 실패했습니다. Core API 연결을 확인해주세요.' }); return }
+    applyDraft(result)
+    setInstruction('')
   }
 
   // 추가 증빙 업로드(미리보기 없음) → 파일 칩 추가 + 코멘트
@@ -127,17 +169,6 @@ export function SettlementDetailModal({
   }
   const removeExtra = (id: string) => setExtraFiles((prev) => prev.filter((f) => f.id !== id))
 
-  // AI 버튼 — 사유 수정·분류 변경 후 fact.json/사유 재생성
-  const regenerate = () => {
-    setAiSuggested(true)
-    const suggested = purpose || `${category} 목적 지출 (가맹점 ${merchant || '미상'})`
-    setPurpose(suggested)
-    pushComment({
-      icon: 'ai',
-      text: `분류 "${category}" 기준으로 재생성 — 지출목적을 보정하고 fact.json을 갱신했습니다.` +
-        (evidence === 'MISSING' ? ' (증빙 없이도 자동 유연처리 — AI가 적격증빙 여부 별도 판단)' : ''),
-    })
-  }
 
   const draft = (): Omit<Settlement, 'id' | 'status'> => ({
     date: dateStr,
@@ -157,6 +188,18 @@ export function SettlementDetailModal({
     const created = await createSettlement(draft())
     onCreated?.(created)
     setPending(false)
+    onClose()
+  }
+
+  // '내 지출' 삭제 — 아직 팀·회계로 넘어가지 않은 건만.
+  const remove = async () => {
+    if (!item) return
+    if (!window.confirm(`“${item.merchant}” 지출 건을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`)) return
+    setPending(true)
+    const ok = await deleteSettlement(item.id)
+    setPending(false)
+    if (!ok) { window.alert('이미 팀·회계로 넘어간 건은 삭제할 수 없습니다.'); return }
+    onDeleted?.(item.id)
     onClose()
   }
 
@@ -260,16 +303,30 @@ export function SettlementDetailModal({
         </>
       ) : isOwner ? (
         isDraft ? (
-          <button className="btn primary" onClick={raise} disabled={pending}>팀에 올림</button>
+          <>
+            {isMineView && (
+              <button className="btn reject" onClick={remove} disabled={pending}>
+                <Trash2 size={13} /> 삭제
+              </button>
+            )}
+            <button className="btn primary" onClick={raise} disabled={pending}>팀에 올림</button>
+          </>
         ) : (
-          <button
-            className="btn primary"
-            onClick={submit}
-            disabled={pending || (isTeamView && isAnomaly)}
-            title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
-          >
-            {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
-          </button>
+          <>
+            {isMineView && canDelete && (
+              <button className="btn reject" onClick={remove} disabled={pending}>
+                <Trash2 size={13} /> 삭제
+              </button>
+            )}
+            <button
+              className="btn primary"
+              onClick={submit}
+              disabled={pending || (isTeamView && isAnomaly)}
+              title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
+            >
+              {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
+            </button>
+          </>
         )
       ) : (
         <span className="text-meta row" style={{ gap: 6 }}><Lock size={12} /> 본인 건이 아니어 조회만 가능합니다.</span>
@@ -385,13 +442,24 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head">
               <h3>기본 내역</h3>
-              {!readOnly && (
-                <button className="btn sm" onClick={regenerate} disabled={pending}>
-                  <Sparkles size={13} /> AI로 생성·수정
-                </button>
-              )}
+              {!readOnly && <span className="tag ai"><Sparkles size={11} /> Draft Agent</span>}
             </div>
             <div className="card-body">
+              {!readOnly && (
+                <div className="row" style={{ gap: 6, marginBottom: 12 }}>
+                  <input
+                    value={instruction}
+                    onChange={(e) => setInstruction(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void askAgent() }}
+                    placeholder="AI에게 지시 — 예) 분류는 접대로, 참석 6명, 사유 더 자세히"
+                    style={{ flex: 1 }}
+                    disabled={pending}
+                  />
+                  <button className="btn primary" onClick={() => void askAgent()} disabled={pending}>
+                    <Sparkles size={13} /> {instruction.trim() ? 'AI로 수정' : 'AI로 생성'}
+                  </button>
+                </div>
+              )}
               <div className="field"><label>가맹점</label>
                 <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="가맹점명" disabled={readOnly} />
               </div>
@@ -416,9 +484,31 @@ export function SettlementDetailModal({
                   </select>
                 </div>
               </div>
-              <div className="field"><label>지출 목적 · 사유</label>
+              <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>
                 <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" disabled={readOnly} />
               </div>
+              {/* 제출 전 규정 안내 — 반려를 미리 막는다 */}
+              {hints.length > 0 && (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>제출 전 규정 안내 {hints.filter((h) => h.level === 'warn').length > 0
+                    && <span className="tag warn">확인 {hints.filter((h) => h.level === 'warn').length}건</span>}</label>
+                  <div className="stack" style={{ gap: 6 }}>
+                    {hints.map((hint, index) => (
+                      <div key={index} style={{
+                        padding: '8px 10px', borderRadius: 'var(--radius-control)', fontSize: 12.5, lineHeight: 1.6,
+                        background: hint.level === 'warn' ? 'var(--tone-amber-bg)' : 'var(--surface-2)',
+                        borderLeft: `3px solid ${hint.level === 'warn' ? 'var(--tone-amber)' : 'var(--border-strong)'}`,
+                      }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <span className="tag">{hint.clause}</span>
+                          <b style={{ fontSize: 12 }}>{hint.status}</b>
+                        </div>
+                        <div className="text-meta" style={{ marginTop: 3 }}>{hint.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

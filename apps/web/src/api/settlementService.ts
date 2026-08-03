@@ -71,3 +71,44 @@ export async function decideTeamSettlement(
   const res = await endpoints.teamDecision(id, decision, reason)
   return res.data.status
 }
+
+// ── 초안 작성 Agent (플레이스홀더 API) ───────────────────────────
+export interface PolicyHint { level: 'info' | 'warn'; clause: string; text: string; status: string }
+export interface DraftSuggestion {
+  mode: 'create' | 'revise'
+  draft: Record<string, string | number | boolean>
+  changes?: string[]
+  confidence?: number
+  comments: { icon: string; text: string }[]
+  policyHints: PolicyHint[]
+}
+
+/** F-1: 영수증·거래 정보로 정산 초안을 생성한다(Draft Agent). */
+export async function suggestDraft(input: Record<string, unknown>): Promise<DraftSuggestion | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  try {
+    const res = await endpoints.suggestDraft(input)
+    return res.data as DraftSuggestion
+  } catch { return null }
+}
+
+/** F-1: 자연어 지시로 초안을 수정한다(Draft Agent). */
+export async function reviseDraft(
+  instruction: string,
+  current: Record<string, unknown>,
+): Promise<DraftSuggestion | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  try {
+    const res = await endpoints.suggestDraft({ instruction, current })
+    return res.data as DraftSuggestion
+  } catch { return null }
+}
+
+/** '내 지출': 아직 올리지 않은 건 삭제. 성공 여부를 돌려준다. */
+export async function deleteSettlement(id: string): Promise<boolean> {
+  if (USE_MOCK) { await mockDelay(); return true }
+  try {
+    await endpoints.deleteSettlement(id)
+    return true
+  } catch { return false }
+}

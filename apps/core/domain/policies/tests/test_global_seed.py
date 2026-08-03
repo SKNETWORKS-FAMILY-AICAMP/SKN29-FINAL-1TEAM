@@ -30,12 +30,39 @@ class GlobalRuleSeedTests(SimpleTestCase):
         self.assertEqual(result.decision, "REJECT")
         self.assertEqual(result.path, ["R-002", "R-003"])
 
+    def test_shared_card_without_actual_user_is_returned(self):
+        """v2에서 추가된 공용카드 실사용자 게이트(R-004)."""
+        context = {
+            "merchant": {"merchant_type": "문구점"},
+            "category": {"item_type": "비품"},
+            "tx": {"payment_method": "카드"},
+            "card": {"card_type": "SHARED", "actual_user_recorded": False},
+        }
+        result = run_rule_engine(context, self.graph)
+        self.assertEqual(result.decision, "RETURN")
+        self.assertEqual(result.path, ["R-002", "R-003", "R-004"])
+
+    def test_late_night_personal_use_goes_to_review(self):
+        """v3에서 추가된 심야 사적사용 의심 게이트(R-006)."""
+        context = {
+            "merchant": {"merchant_type": "문구점"},
+            "category": {"item_type": "비품"},
+            "tx": {"payment_method": "카드"},
+            "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
+            "derived": {"is_late_night": True, "personal_use_suspected": True},
+        }
+        result = run_rule_engine(context, self.graph)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertEqual(result.path, ["R-002", "R-003", "R-004", "R-006"])
+
     def test_clean_transaction_passes_global_gate(self):
         context = {
             "merchant": {"merchant_type": "문구점"},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
+            "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
+            "derived": {"is_late_night": False, "personal_use_suspected": False},
         }
         result = run_rule_engine(context, self.graph)
         self.assertEqual(result.decision, "PASS")
-        self.assertEqual(result.path, ["R-002", "R-003", "_GLOBAL_PASS"])
+        self.assertEqual(result.path, ["R-002", "R-003", "R-004", "R-006", "_GLOBAL_PASS"])

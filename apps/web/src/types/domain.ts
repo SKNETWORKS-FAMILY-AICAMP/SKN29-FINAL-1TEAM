@@ -108,10 +108,14 @@ export interface Settlement {
 export interface ReviewItem extends Settlement {
   anomalyScore: number // 0~1 (비지도 이상탐지)
   featureContribs: { feature: string; weight: number }[]
-  ragRefs: { title: string; source: string; kind?: 'policy' | 'case' }[]
+  ragRefs: { title: string; source: string; kind?: 'policy' | 'case'; excerpt?: string; relevance?: number }[]
+  /** RAG 내규 검증 보고서(마크다운). 비면 요약 문장으로 대체 렌더링한다. */
+  ragReport?: string
   aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
   aiConfidence: number // 0~1
   anomalyReasons: string[]
+  /** 판정 시점 EvalContext 스냅샷(rule_hits). 있으면 fact.json이 이 원본을 보여준다. */
+  evalContext?: Record<string, Record<string, unknown>> | null
   dept?: string // 부서
   time?: string // 결제 일시(HH:MM)
   department?: string // (main) 부서 별칭

@@ -97,6 +97,26 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
             <GradeTile label="실행결과 평가" grade={report.grades.result} />
             <GradeTile label="권장 처리" grade={report.grades.action} />
           </div>
+          {report.quality && (
+            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 16 }}>
+              <div className={'kpi ' + (report.quality.stability.score >= 0.85 ? 'ok' : report.quality.stability.score >= 0.6 ? 'caution' : 'warn')}>
+                <div className="label">안정성 — 켰을 때 사고 여지</div>
+                <div className="value">{percent(report.quality.stability.score)}</div>
+                <div className="text-meta">
+                  자동 반려 노드 {report.quality.stability.autoRejectNodes.length}개 · 안전 폴백 {report.quality.stability.fallbackCount}건
+                  · 도달 불가 {report.quality.stability.unreachableCount}개
+                </div>
+              </div>
+              <div className={'kpi ' + (report.quality.reviewability.score >= 0.85 ? 'ok' : report.quality.reviewability.score >= 0.6 ? 'caution' : 'warn')}>
+                <div className="label">검토 용이성 — 사람에게 남는 일</div>
+                <div className="value">{percent(report.quality.reviewability.score)}</div>
+                <div className="text-meta">
+                  사람 확인 {report.quality.reviewability.humanQueue}건({percent(report.quality.reviewability.humanRate)})
+                  · 근거 부착률 {percent(report.quality.reviewability.flaggedRate)}
+                </div>
+              </div>
+            </div>
+          )}
           <Markdown source={report.agentReport} />
         </div>
       </div>
@@ -157,7 +177,12 @@ function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResu
                 <span className="tag">{row.baseline ? decisionText(row.baseline) : '미처리'}</span>
                 <ArrowRight size={13} className="muted" />
                 <span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span>
-                {row.changed && <span className="tag ai">변경</span>}
+                {row.changed && (
+                  <span className={'tag ' + (row.commentVerdict === 'risk' ? 'warn' : 'ok')}>
+                    {row.commentVerdict === 'risk' ? '⚠ 위험 변경' : '✅ 정상 변경'}
+                  </span>
+                )}
+                {!row.changed && row.risk && <span className="tag warn">⚠ 위험</span>}
               </div>
             </div>
             {row.aiComment && (

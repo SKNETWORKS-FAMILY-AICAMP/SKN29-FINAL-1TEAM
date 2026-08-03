@@ -14,7 +14,8 @@ class RiskReview(models.Model):
     anomaly_score = models.FloatField(default=0.0)          # 1차 비지도 이상탐지
     reasons = models.JSONField(default=list, blank=True)    # 피처 기여도 [{feature, weight}]
     anomaly_reasons = models.JSONField(default=list, blank=True)  # 요약 사유 문구(리스트)
-    rag_refs = models.JSONField(default=list, blank=True)   # 2차 RAG 근거(출처 포함)
+    rag_refs = models.JSONField(default=list, blank=True)   # 2차 RAG 근거(출처·조문·발췌 포함)
+    rag_report = models.TextField(blank=True)               # 2차 RAG 내규 검증 보고서(마크다운)
     ai_recommendation = models.CharField(max_length=10, blank=True)  # APPROVE/RETURN/REJECT
     ai_confidence = models.FloatField(default=0.0)
     review_prob = models.FloatField(null=True, blank=True)  # post-MVP 지도학습

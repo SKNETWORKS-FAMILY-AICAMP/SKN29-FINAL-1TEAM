@@ -13,6 +13,9 @@ export const endpoints = {
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
   settlement: (id: string) => api.get(`/settlements/${id}/`),
   createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
+  deleteSettlement: (id: string) => api.delete(`/settlements/${id}/`), // '내 지출' 미제출 건 삭제
+  // F-1 초안 작성 Agent — instruction이 있으면 수정, 없으면 생성(플레이스홀더)
+  suggestDraft: (data: Record<string, unknown>) => api.post('/settlements/draft-suggest/', data),
   raise: (ids: string[]) => api.post('/settlements/raise/', { ids }), // 개인 올림 DRAFT→TEAM_COLLECTING
   submit: (ids: string[]) => api.post('/settlements/submit/', { ids }), // 팀 제출 TEAM_COLLECTING→SUBMITTED / 재제출
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정
@@ -28,11 +31,17 @@ export const endpoints = {
   rollbackRuleTo: (id: string) => api.post(`/rules/${id}/rollback-to/`),
   createRuleVersion: (id: string) => api.post(`/rules/${id}/versions/`),
   // 룰 그래프 검증 시뮬레이션 — 검증셋은 그래프(버전)에 저장되고, 실행 결과는 스냅샷과 함께 보존된다.
+  // 룰 초안 작성 대화 로그 (Rule Agent 지시·반영 이력)
+  ruleMessages: (id: string, nodeKey?: string) =>
+    api.get(`/rules/${id}/messages/`, { params: nodeKey ? { nodeKey } : undefined }),
+  addRuleMessages: (id: string, nodeKey: string, messages: unknown[]) =>
+    api.post(`/rules/${id}/messages/`, { nodeKey, messages }),
   ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),
   saveRuleTestCases: (id: string, testCases: unknown[]) => api.put(`/rules/${id}/test-cases/`, { testCases }),
   simulateRule: (id: string, testCases?: unknown[]) => api.post(`/rules/${id}/simulate/`, testCases ? { testCases } : {}),
   ruleSimulation: (id: string) => api.get(`/rules/${id}/simulation/`),
   requestRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/request-activation/`, { comment }),
+  rejectRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/reject-activation/`, { comment }),
   discardRuleDraft: (id: string) => api.delete(`/rules/${id}/draft/`),
   deleteRuleGraph: (id: string) => api.delete(`/rules/${id}/delete/`),
   createRuleGraph: (name: string, scope: string) => api.post('/rules/drafts/', { name, scope }),

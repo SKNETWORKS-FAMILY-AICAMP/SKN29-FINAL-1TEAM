@@ -14,9 +14,12 @@ from domain.cards.models import Card
 from domain.common.permissions import CanAccountingReview, CanTeamAggregate
 from domain.transactions.models import Receipt, Transaction
 
-from . import services
+from . import draft_agent, services
 from .models import Settlement, TeamBudget
 from .serializers import SettlementDetailSerializer, SettlementSerializer
+
+# 본인이 직접 지울 수 있는 상태 — 아직 팀·회계로 넘어가기 전 단계만.
+DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
 
 
 def _actor(request):
@@ -35,7 +38,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
         "transaction", "transaction__card", "submitted_by"
     ).prefetch_related("events", "risk_reviews", "rule_hits__graph", "transaction__receipts")
     serializer_class = SettlementSerializer
-    http_method_names = ["get", "patch", "post", "head", "options"]
+    http_method_names = ["get", "patch", "post", "delete", "head", "options"]
 
     def get_serializer_class(self):
         return SettlementDetailSerializer if self.action == "retrieve" else SettlementSerializer
@@ -71,6 +74,38 @@ class SettlementViewSet(viewsets.ModelViewSet):
             team=getattr(actor, "team", None), status="DRAFT",
         )
         return Response(self.get_serializer(s).data, status=201)
+
+    # DELETE /api/settlements/{id}/  — '내 지출'에서 아직 올리지 않은 건만 본인이 삭제
+    def destroy(self, request, *args, **kwargs):
+        settlement = self.get_object()
+        if settlement.status not in DELETABLE_STATUSES:
+            return Response(
+                {"detail": "이미 팀·회계로 넘어간 건은 삭제할 수 없습니다. 보완요청·반려 절차를 따라주세요."},
+                status=400,
+            )
+        actor = _actor(request)
+        if actor and settlement.submitted_by_id and settlement.submitted_by_id != actor.id:
+            return Response({"detail": "본인이 등록한 건만 삭제할 수 있습니다."}, status=403)
+        transaction = settlement.transaction
+        settlement.delete()
+        # 정산이 사라진 거래는 남겨둘 이유가 없다(다른 정산이 참조 중이면 유지).
+        if transaction and not transaction.settlements.exists():
+            transaction.receipts.all().delete()
+            transaction.delete()
+        return Response(status=204)
+
+    # POST /api/settlements/draft-suggest/  — 초안 작성 Agent(플레이스홀더)
+    @action(detail=False, methods=["post"], url_path="draft-suggest")
+    def draft_suggest(self, request):
+        """영수증·거래로 초안 생성, 또는 자연어 지시로 초안 수정.
+
+        `instruction`이 있으면 수정 모드, 없으면 생성 모드. 실제 LLM/비전 연동 시 이 액션이
+        FastAPI Draft Agent 호출로 교체된다(응답 셰이프 유지).
+        """
+        data = request.data if isinstance(request.data, dict) else {}
+        if str(data.get("instruction", "")).strip():
+            return Response(draft_agent.revise_draft(data))
+        return Response(draft_agent.suggest_draft(data))
 
     def get_queryset(self):
         qs = super().get_queryset()

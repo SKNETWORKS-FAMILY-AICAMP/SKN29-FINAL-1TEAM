@@ -1,83 +1,58 @@
-// 신규 룰 생성 모달 — ① 기존 룰그래프 버전에 노드 추가 or ② 빈 룰그래프 생성.
-//  확정 시 빈 룰노드가 만들어져 상세에 올라오고, 이후 대화/직접입력으로 세부 설정한다.
+// 신규 그래프 생성 모달 — 빈 룰그래프(v1 초안) + 첫 빈 노드를 만든다.
+//  기존 그래프의 새 버전은 여기서 만들지 않는다(그래프를 열어 노드를 수정하면 자동으로 다음 버전 초안이 생성됨).
 import { useState } from 'react'
-import { FilePlus2, GitBranch } from 'lucide-react'
+import { FilePlus2 } from 'lucide-react'
 import { Modal } from '../../components/ui/Modal'
-import type { RuleGraph } from './data/ruleConsoleMock'
-import { GRAPH_STATUS_LABEL, workingVersion } from './data/ruleConsoleMock'
 
 const RULE_SCOPES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
 
-export type NewRuleChoice =
-  | { kind: 'existing'; graphId: string }
-  | { kind: 'new'; name: string; scope: string }
+export type NewRuleChoice = { kind: 'new'; name: string; scope: string }
 
 export function NewRuleGraphModal({
-  graphs, onClose, onConfirm,
+  onClose, onConfirm,
 }: {
-  /** 새 버전을 만들 수 있는 기존 그래프 목록 */
-  graphs: RuleGraph[]
   onClose: () => void
   onConfirm: (choice: NewRuleChoice) => void
 }) {
-  const [mode, setMode] = useState<'existing' | 'new'>(graphs.length ? 'existing' : 'new')
-  const [graphId, setGraphId] = useState(graphs[0]?.id ?? '')
   const [name, setName] = useState('')
   const [scope, setScope] = useState('')
 
-  const canConfirm = mode === 'existing' ? !!graphId : name.trim() !== '' && scope.trim() !== ''
+  const canConfirm = name.trim() !== '' && scope.trim() !== ''
   const confirm = () => {
-    if (!canConfirm) return
-    onConfirm(mode === 'existing' ? { kind: 'existing', graphId } : { kind: 'new', name: name.trim(), scope: scope.trim() })
+    if (canConfirm) onConfirm({ kind: 'new', name: name.trim(), scope: scope.trim() })
   }
 
   const footer = (
     <>
       <button className="btn" onClick={onClose}>취소</button>
-      <button className="btn primary" onClick={confirm} disabled={!canConfirm}>빈 룰 노드 생성 →</button>
+      <button className="btn primary" onClick={confirm} disabled={!canConfirm}>그래프 생성 →</button>
     </>
   )
 
   return (
-    <Modal title="신규 룰 생성" onClose={onClose} footer={footer} maxWidth={620}>
+    <Modal title="신규 그래프 생성" onClose={onClose} footer={footer} maxWidth={560}>
       <p className="text-meta" style={{ marginBottom: 16 }}>
-        룰은 <b>그래프 단위</b>로 관리됩니다. 기존 룰그래프의 새 버전(초안)에 노드를 추가하거나, 빈 룰그래프를 새로 만든 뒤
-        <b> 빈 룰 노드</b>를 생성합니다. 세부 조건·액션은 다음 단계(상세)에서 대화·직접입력으로 설정합니다.
+        룰은 <b>그래프 단위</b>로 관리됩니다. 비어 있는 룰그래프(v1 초안)와 첫 빈 노드를 만들고,
+        세부 조건·액션은 다음 단계(노드 상세)에서 대화 또는 직접 입력으로 설정합니다.
       </p>
 
-      <div className="stack" style={{ gap: 10 }}>
-        {/* ① 기존 그래프 버전에 추가 */}
-        <label className={'newrule-opt' + (mode === 'existing' ? ' active' : '')}>
-          <input type="radio" checked={mode === 'existing'} onChange={() => setMode('existing')} disabled={!graphs.length} />
-          <div style={{ flex: 1 }}>
-            <div className="row" style={{ gap: 6 }}><GitBranch size={14} /> <b>기존 룰그래프 수정</b></div>
-            <div className="text-meta" style={{ margin: '2px 0 8px' }}>선택한 버전을 복제해 다음 버전(v2, v3…) 초안을 만들고 빈 노드를 추가합니다.</div>
-            <select value={graphId} onChange={(e) => setGraphId(e.target.value)} disabled={mode !== 'existing' || !graphs.length} style={{ width: '100%' }}>
-              {graphs.length === 0 && <option value="">추가 가능한 초안 그래프가 없습니다</option>}
-              {graphs.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name} · {g.scope} · {workingVersion(g)?.label} {GRAPH_STATUS_LABEL[g.status]}
-                </option>
-              ))}
+      <div className="newrule-opt active" style={{ cursor: 'default' }}>
+        <FilePlus2 size={16} style={{ marginTop: 2 }} />
+        <div style={{ flex: 1 }}>
+          <b>빈 룰그래프</b>
+          <div className="text-meta" style={{ margin: '2px 0 10px' }}>
+            같은 비용분류(scope)에는 활성 그래프가 하나만 존재할 수 있습니다.
+          </div>
+          <div className="field"><label>그래프 이름</label>
+            <input placeholder="예) 출장 여비 검증 그래프" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}><label>비용분류 (scope)</label>
+            <select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <option value="">비용분류 선택</option>
+              {RULE_SCOPES.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
-        </label>
-
-        {/* ② 빈 그래프 생성 */}
-        <label className={'newrule-opt' + (mode === 'new' ? ' active' : '')}>
-          <input type="radio" checked={mode === 'new'} onChange={() => setMode('new')} />
-          <div style={{ flex: 1 }}>
-            <div className="row" style={{ gap: 6 }}><FilePlus2 size={14} /> <b>빈 룰그래프 생성</b></div>
-            <div className="text-meta" style={{ margin: '2px 0 8px' }}>새 그래프(v1 초안)를 만들고 첫 빈 노드를 생성합니다.</div>
-            <div className="grid-2" style={{ gap: 8 }}>
-              <input placeholder="그래프 이름 (예: 출장 여비 검증)" value={name} onChange={(e) => setName(e.target.value)} disabled={mode !== 'new'} />
-              <select value={scope} onChange={(e) => setScope(e.target.value)} disabled={mode !== 'new'}>
-                <option value="">비용분류 선택</option>
-                {RULE_SCOPES.map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </div>
-          </div>
-        </label>
+        </div>
       </div>
     </Modal>
   )

@@ -154,6 +154,28 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
 
 
 @db_tx.atomic
+def reject_activation(graph: RuleGraph, comment: str, actor=None) -> RuleGraph:
+    """Active 요청 반려 — 승인대기(SIMULATED) 그래프를 초안으로 되돌린다.
+
+    작성자가 코멘트를 보고 고쳐서 다시 올릴 수 있도록 반려 사유를 검토 코멘트에 남긴다.
+    """
+    if graph.status != RuleGraphStatus.SIMULATED:
+        raise ValueError("승인대기 상태의 그래프만 반려할 수 있습니다.")
+    graph.status = RuleGraphStatus.DRAFT
+    graph.review_comment = (
+        f"### ⛔ 반려됨 ({timezone.localtime().strftime('%Y-%m-%d %H:%M')})\n\n{comment}\n\n"
+        f"---\n\n{graph.review_comment}"
+    ).strip()
+    graph.reviewed_at = timezone.now()
+    graph.save(update_fields=["status", "review_comment", "reviewed_at"])
+    AuditLog.objects.create(
+        actor=actor, action="rulegraph.reject_activation", target=f"rulegraph:{graph.id}",
+        after={"version": graph.version, "comment": comment[:500]},
+    )
+    return graph
+
+
+@db_tx.atomic
 def rollback_to(target: RuleGraph, actor=None) -> RuleGraph:
     """지정한 과거 버전을 다시 ACTIVE로 되돌린다 (버전 이력 모달의 롤백)."""
     if target.status == RuleGraphStatus.ACTIVE:

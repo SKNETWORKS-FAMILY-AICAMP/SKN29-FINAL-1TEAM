@@ -27,7 +27,7 @@ function priorityOf(s: SettlementStatus): number {
 type ViewFilter = 'ACTIVE' | 'RETURNED' | 'REJECT' | 'DRAFT' | 'PROCESSING' | 'DONE' | 'ALL'
 
 export function MyExpenses() {
-  const { myExpenses: expenses, updateStatus, addExpense } = useSettlements()
+  const { myExpenses: expenses, updateStatus, addExpense, removeExpense } = useSettlements()
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [creating, setCreating] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -174,6 +174,8 @@ export function MyExpenses() {
           item={selected}
           onClose={() => setSelected(null)}
           onStatusChange={updateStatus}
+          onDeleted={removeExpense}
+          context="mine"
         />
       )}
       {creating && (

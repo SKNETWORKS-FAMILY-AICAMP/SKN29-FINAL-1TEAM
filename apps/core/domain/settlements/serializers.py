@@ -13,12 +13,13 @@ class RiskReviewSerializer(serializers.ModelSerializer):
     anomalyScore = serializers.FloatField(source="anomaly_score", read_only=True)
     featureContribs = serializers.JSONField(source="reasons", read_only=True)
     ragRefs = serializers.JSONField(source="rag_refs", read_only=True)
+    ragReport = serializers.CharField(source="rag_report", read_only=True)
     aiRecommendation = serializers.CharField(source="ai_recommendation", read_only=True)
     aiConfidence = serializers.FloatField(source="ai_confidence", read_only=True)
 
     class Meta:
         model = RiskReview
-        fields = ["anomalyScore", "featureContribs", "ragRefs", "aiRecommendation", "aiConfidence"]
+        fields = ["anomalyScore", "featureContribs", "ragRefs", "ragReport", "aiRecommendation", "aiConfidence"]
 
 
 class SettlementEventSerializer(serializers.ModelSerializer):
@@ -57,7 +58,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
     ragRefs = serializers.SerializerMethodField()
+    ragReport = serializers.SerializerMethodField()
     anomalyReasons = serializers.SerializerMethodField()
+    # 판정 시점 EvalContext 스냅샷(rule_hits) — 있으면 검토 화면의 fact.json이 이걸 보여준다.
+    evalContext = serializers.SerializerMethodField()
 
     class Meta:
         model = Settlement
@@ -66,7 +70,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "purpose",
             "evidence", "status", "statusLabel", "user", "dept",
             "anomalyScore", "aiRecommendation", "aiConfidence",
-            "featureContribs", "ragRefs", "anomalyReasons",
+            "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "evalContext",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -112,9 +116,17 @@ class SettlementSerializer(serializers.ModelSerializer):
         r = self._risk(obj)
         return r.rag_refs if r else []
 
+    def get_ragReport(self, obj):
+        r = self._risk(obj)
+        return r.rag_report if r else ""
+
     def get_anomalyReasons(self, obj):
         r = self._risk(obj)
         return r.anomaly_reasons if r else []
+
+    def get_evalContext(self, obj):
+        hits = list(obj.rule_hits.all())
+        return hits[0].eval_context if hits and hits[0].eval_context else None
 
 
 class SettlementDetailSerializer(SettlementSerializer):

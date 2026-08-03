@@ -192,8 +192,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .rule-node-item:hover { background: var(--surface-2); }
 .rule-node-item.selected { background: var(--primary-soft); border-left-color: var(--primary); }
 /* 시뮬레이션 탭 — 그래프 구조(플로우차트) + 노드 상세 읽기 2섹션 */
-.sim-structure-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: var(--space-4); align-items: start; }
-.flow-scroll { overflow: auto; max-height: 560px; border-radius: 0 0 var(--radius) var(--radius); }
+/* 좌(플로우차트)·우(노드 상세) 높이를 서로 맞춘다 — 상세가 길어지면 플로우차트도 같이 늘어난다 */
+.sim-structure-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: var(--space-4); align-items: stretch; }
+.sim-structure-grid > .card { display: flex; flex-direction: column; min-height: 0; }
+.sim-structure-grid > .card > .card-body { overflow: auto; }
+.flow-scroll { flex: 1 1 auto; overflow: auto; min-height: 320px; border-radius: 0 0 var(--radius) var(--radius); }
 .flow-canvas { position: relative; }
 .flow-edges { position: absolute; top: 0; left: 0; pointer-events: none; }
 .flow-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.6; }
@@ -221,6 +224,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* 테스트케이스(커스텀 검증셋) 모달 — 리스트 / 세부 수정 / 대화 Agent */
 .testcase-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; gap: var(--space-3); align-items: start; }
 @media (max-width: 1100px) { .testcase-grid { grid-template-columns: 1fr; } }
+/* Active 관리 — 현재 활성 그래프를 스코프별로 좌우 배치 */
+.active-scope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); align-items: start; }
+.active-scope { min-width: 0; }
 /* 시뮬레이션 — 직전 기간 내역 결과 행 */
 .hist-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
 .hist-row.risk { border-color: #f3c9c5; background: var(--tone-red-bg); }

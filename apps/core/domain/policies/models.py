@@ -184,6 +184,31 @@ class RuleTestCase(models.Model):
         return f"{self.graph_id}:{self.key}"
 
 
+class RuleAuthoringMessage(models.Model):
+    """룰 초안 작성 대화 로그 — 회계 담당자 지시와 Rule Agent의 반영 결과.
+
+    "누가 무엇을 지시했고, Agent가 그래프의 어느 필드를 어떻게 바꿨는지"를 남겨
+    비개발자가 만든 룰도 변경 이력을 추적할 수 있게 한다.
+    """
+    class Role(models.TextChoices):
+        USER = "user", "사용자"
+        AI = "ai", "Rule Agent"
+
+    graph = models.ForeignKey(RuleGraph, on_delete=models.CASCADE, related_name="messages")
+    node_key = models.CharField(max_length=64, blank=True)  # 비면 그래프 전체 대상 지시
+    role = models.CharField(max_length=8, choices=Role.choices)
+    text = models.TextField()
+    applied_note = models.CharField(max_length=200, blank=True)  # "조건·액션에 적용됨" 같은 반영 요약
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+
 class SimulationSource(models.TextChoices):
     TEST = "TEST", "검증셋"
     HISTORY = "HISTORY", "실제 내역"

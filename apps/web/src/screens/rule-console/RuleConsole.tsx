@@ -28,7 +28,7 @@ export function RuleConsole() {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <button className="btn primary" onClick={() => { setTab('DRAFT'); setNewRuleOpen(true) }}>
-            <Plus size={14} /> 신규 룰 생성
+            <Plus size={14} /> 신규 그래프 생성
           </button>
         </div>
       </div>
