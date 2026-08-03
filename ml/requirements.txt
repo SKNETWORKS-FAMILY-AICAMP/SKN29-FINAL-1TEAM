@@ -1,0 +1,10 @@
+# ml/ 실험(전처리·모델링 노트북, unsupervised_baseline_비교.py) 재현용 의존성 고정.
+#
+# 주의: mvp_isolation_forest/의 원본 노트북(법인카드_이상거래_모델링_v2_최종test평가.ipynb 등)은
+# 팀원이 별도 환경(커널명 final_prj, Python 3.11.15)에서 실행해 결과(PR-AUC 0.5865 등)를 만든 뒤
+# git에 커밋한 것이라, 그 환경의 정확한 패키지 버전은 이 파일로 재구성한 것이 아니다.
+# 이 파일은 apps/ai/requirements.txt(scikit-learn==1.5.*, numpy>=1.26,<3.0)의 서빙 스펙과
+# 맞춰 "앞으로 ml/에서 재현·재실행할 때 쓸 고정 버전"을 새로 정한 것이다.
+scikit-learn==1.5.1
+numpy==1.26.4
+pandas==2.3.3

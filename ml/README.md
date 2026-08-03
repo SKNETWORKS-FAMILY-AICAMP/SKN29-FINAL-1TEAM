@@ -17,6 +17,7 @@ MVP 방향이 정해졌고, 그에 맞춰 폴더 구조를 재정리했다(구�
 ml/
 ├─ README.md                                            이 파일 — 전체 안내
 ├─ ml_final_report.md                                   ★ 최종 보고서 — 목표·모델 선정 논리·전처리 과정·성능·기대효과 총정리
+├─ requirements.txt                                      ml/ 재현용 의존성 고정(scikit-learn 1.5.1 등, apps/ai 서빙 스펙에 맞춤)
 │
 ├─ mvp_isolation_forest/                                 ★ 최종 확정 MVP — Isolation Forest(비지도) 원본 작업
 │  ├─ README.md                                          이 폴더 파일별 설명

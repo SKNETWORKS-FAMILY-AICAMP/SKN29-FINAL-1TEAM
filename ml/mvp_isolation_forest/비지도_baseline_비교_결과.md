@@ -31,7 +31,7 @@
 
 - 데이터는 동일함을 확인했다: train 1,482,969건 / test 469,902건 / 이상거래 16,394건 / 기저율 3.49% 모두 기존 문서와 정확히 일치.
 - 피처 엔지니어링 코드·하이퍼파라미터(`n_estimators=200`, `max_samples='auto'`, `contamination='auto'`, `random_state=42`)도 동일 노트북 셀을 그대로 복사해 사용.
-- 그럼에도 값이 다른 이유는 **scikit-learn 버전 차이**로 추정된다 — 이번 실행 환경은 scikit-learn 1.8.0인데, `isolation_forest_modeling_결과.md`를 작성할 당시 사용한 버전은 기록되어 있지 않다(`ml/` 실험 전반에 의존성을 고정하는 `requirements.txt`/`environment.yml`이 없다는 것도 이번에 함께 확인됨 — 재현성 개선을 위해 추가를 권고한다). `IsolationForest`는 `random_state`가 같아도 내부 구현이 버전마다 바뀌면 완전히 동일한 트리가 만들어진다는 보장이 없다.
+- 그럼에도 값이 다른 이유는 **scikit-learn 버전 차이**로 추정된다 — 이번 실행 환경은 scikit-learn 1.8.0. `isolation_forest_modeling_결과.md`(§4 원본 노트북)는 팀원이 별도 환경(커널명 `final_prj`, Python 3.11.15)에서 실행한 것으로 확인됐으나, 그 환경 자체가 남아있지 않아 정확한 scikit-learn 버전은 사후 재구성이 불가능하다. `IsolationForest`는 `random_state`가 같아도 내부 구현이 버전마다 바뀌면 완전히 동일한 트리가 만들어진다는 보장이 없다. 재발 방지를 위해 [`../requirements.txt`](../requirements.txt)를 추가해 앞으로 `ml/`을 재실행할 때는 버전을 고정한다(`apps/ai/requirements.txt`의 서빙 스펙 `scikit-learn==1.5.*`에 맞춤 — scikit-learn 1.5.1 / numpy 1.26.4 / pandas 2.3.3).
 - 이 비교 실험의 목적은 "Isolation Forest 대비 다른 비지도 모델이 상대적으로 얼마나 밀리는가"이므로, **4개 모델을 전부 같은 세션·같은 라이브러리 버전으로 실행**해 상대 순위 자체는 유효하다. 다만 절대 수치 0.648을 기존 문서의 0.5865와 나란히 인용하거나 "성능이 개선됐다"는 식으로 서술하지 않도록 주의가 필요하다 — 두 수치는 서로 다른 실행 환경의 결과다.
 
 ## 4. LOF 스코어 진단 (왜 이렇게 낮은가)
