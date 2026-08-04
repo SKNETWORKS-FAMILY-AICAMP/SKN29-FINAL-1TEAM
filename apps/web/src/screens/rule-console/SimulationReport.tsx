@@ -97,32 +97,11 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
             <GradeTile label="실행결과 평가" grade={report.grades.result} />
             <GradeTile label="권장 처리" grade={report.grades.action} />
           </div>
-          {report.quality && (
-            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 16 }}>
-              <div className={'kpi ' + (report.quality.stability.score >= 0.85 ? 'ok' : report.quality.stability.score >= 0.6 ? 'caution' : 'warn')}>
-                <div className="label">안정성 — 켰을 때 사고 여지</div>
-                <div className="value">{percent(report.quality.stability.score)}</div>
-                <div className="text-meta">
-                  자동 반려 노드 {report.quality.stability.autoRejectNodes.length}개 · 안전 폴백 {report.quality.stability.fallbackCount}건
-                  · 도달 불가 {report.quality.stability.unreachableCount}개
-                </div>
-              </div>
-              <div className={'kpi ' + (report.quality.reviewability.score >= 0.85 ? 'ok' : report.quality.reviewability.score >= 0.6 ? 'caution' : 'warn')}>
-                <div className="label">검토 용이성 — 사람에게 남는 일</div>
-                <div className="value">{percent(report.quality.reviewability.score)}</div>
-                <div className="text-meta">
-                  사람 확인 {report.quality.reviewability.humanQueue}건({percent(report.quality.reviewability.humanRate)})
-                  · 근거 부착률 {percent(report.quality.reviewability.flaggedRate)}
-                </div>
-              </div>
-            </div>
-          )}
           <Markdown source={report.agentReport} />
         </div>
       </div>
 
-      <ResultList title="테스트셋 결과" rows={report.testResults}
-        emptyText="검증셋이 비어 있습니다. ‘검증셋 수정’에서 케이스를 추가하세요." showExpected />
+      <TestResultList rows={report.testResults} stats={stats} />
       <HistoryList periodLabel={report.periodLabel} rows={report.historyResults} />
     </>
   )
@@ -138,33 +117,40 @@ function GradeTile({ label, grade }: { label: string; grade: Grade }) {
   )
 }
 
-/** 직전 기간 내역 — 핵심 미리보기 + 기존→현재 분류 + 변경건 AI 코멘트. */
+/** 직전 기간 내역 — 위험건(위험 변경) / 정상변경건 / 전체. 변경건에만 AI 코멘트가 붙는다. */
 function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResultRow[] }) {
-  const [filter, setFilter] = useState<'risk' | 'changed' | 'all'>('risk')
-  const risky = rows.filter((row) => row.risk)
-  const changed = rows.filter((row) => row.changed)
-  const visible = filter === 'all' ? rows : filter === 'changed' ? changed : risky
+  const [filter, setFilter] = useState<'risk' | 'intended' | 'all'>('risk')
+  // 위험건 = 변경건 중 AI가 위험하다고 판단한 건 / 정상변경건 = 의도된 변경으로 판단한 건
+  const risky = rows.filter((row) => row.changed && row.commentVerdict === 'risk')
+  const intended = rows.filter((row) => row.changed && row.commentVerdict === 'intended')
+  const visible = filter === 'all' ? rows : filter === 'intended' ? intended : risky
+  const emptyText = filter === 'risk'
+    ? '위험으로 판단된 변경건이 없습니다. 기존 처리와 달라진 건은 모두 의도된 변경으로 분류됐습니다.'
+    : '의도된 변경으로 분류된 건이 없습니다.'
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div className="card-head">
         <div>
           <h3>{periodLabel} 내역 결과</h3>
-          <div className="text-meta">전체 {rows.length}건 · 위험 {risky.length}건 · 분류 변경 {changed.length}건</div>
+          <div className="text-meta">
+            전체 {rows.length}건 · 변경 {risky.length + intended.length}건
+            (위험 {risky.length} / 정상 {intended.length})
+          </div>
         </div>
         <div className="seg-toggle">
-          <button className={filter === 'risk' ? 'active' : ''} onClick={() => setFilter('risk')}>위험건</button>
-          <button className={filter === 'changed' ? 'active' : ''} onClick={() => setFilter('changed')}>변경건</button>
+          <button className={filter === 'risk' ? 'active' : ''} onClick={() => setFilter('risk')}>위험건 {risky.length}</button>
+          <button className={filter === 'intended' ? 'active' : ''} onClick={() => setFilter('intended')}>정상변경건 {intended.length}</button>
           <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>전체</button>
         </div>
       </div>
       <div className="card-body stack" style={{ gap: 10 }}>
         {rows.length === 0 && <div className="text-meta">해당 기간의 정산 내역이 없습니다.</div>}
         {rows.length > 0 && visible.length === 0 && (
-          <div className="text-meta">이 조건에 해당하는 건이 없습니다. ‘전체’로 {rows.length}건을 모두 볼 수 있습니다.</div>
+          <div className="text-meta">{emptyText} ‘전체’로 {rows.length}건을 모두 볼 수 있습니다.</div>
         )}
         {visible.map((row) => (
-          <div key={row.id} className={'hist-row' + (row.risk ? ' risk' : '')}>
+          <div key={row.id} className={'hist-row' + (row.changed && row.commentVerdict === 'risk' ? ' risk' : '')}>
             <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
@@ -177,12 +163,11 @@ function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResu
                 <span className="tag">{row.baseline ? decisionText(row.baseline) : '미처리'}</span>
                 <ArrowRight size={13} className="muted" />
                 <span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span>
-                {row.changed && (
-                  <span className={'tag ' + (row.commentVerdict === 'risk' ? 'warn' : 'ok')}>
-                    {row.commentVerdict === 'risk' ? '⚠ 위험 변경' : '✅ 정상 변경'}
-                  </span>
-                )}
-                {!row.changed && row.risk && <span className="tag warn">⚠ 위험</span>}
+                {row.changed
+                  ? <span className={'tag ' + (row.commentVerdict === 'risk' ? 'warn' : 'ok')}>
+                      {row.commentVerdict === 'risk' ? '⚠ 위험 변경' : '✅ 정상 변경'}
+                    </span>
+                  : <span className="tag">변경 없음</span>}
               </div>
             </div>
             {row.aiComment && (
@@ -202,49 +187,67 @@ function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResu
   )
 }
 
-function ResultList({ title, rows, emptyText, showExpected }: {
-  title: string; rows: SimResultRow[]; emptyText: string; showExpected?: boolean
-}) {
-  const [showAll, setShowAll] = useState(false)
-  const risky = rows.filter((row) => row.risk)
-  const visible = showAll ? rows : risky
+/** 테스트셋 결과 — KPI(테스트 수치)와 같은 기준으로 불일치(위험)·일치(정상)를 표시한다. */
+function TestResultList({ rows, stats }: { rows: SimResultRow[]; stats: SimReport['stats'] }) {
+  const [filter, setFilter] = useState<'fail' | 'pass' | 'all'>('fail')
+  const failed = rows.filter((row) => row.matchedExpectation === false)
+  const passed = rows.filter((row) => row.matchedExpectation === true)
+  const visible = filter === 'all' ? rows : filter === 'pass' ? passed : failed
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div className="card-head">
-        <div><h3>{title}</h3><div className="text-meta">전체 {rows.length}건 · 위험건 {risky.length}건</div></div>
+        <div>
+          <h3>테스트셋 결과</h3>
+          <div className="text-meta">
+            검증셋 {rows.length}건 · 채점 {stats.testGraded}건 —
+            <b style={{ color: 'var(--tone-green)' }}> 일치 {stats.testPassed}</b> /
+            <b style={{ color: 'var(--tone-red)' }}> 불일치 {stats.testFailed}</b>
+            {rows.length - stats.testGraded > 0 && ` · 채점 제외 ${rows.length - stats.testGraded}건`}
+          </div>
+        </div>
         <div className="seg-toggle">
-          <button className={showAll ? '' : 'active'} onClick={() => setShowAll(false)}>위험건만</button>
-          <button className={showAll ? 'active' : ''} onClick={() => setShowAll(true)}>전체 펼치기</button>
+          <button className={filter === 'fail' ? 'active' : ''} onClick={() => setFilter('fail')}>불일치 {failed.length}</button>
+          <button className={filter === 'pass' ? 'active' : ''} onClick={() => setFilter('pass')}>정상 {passed.length}</button>
+          <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>전체</button>
         </div>
       </div>
-      {rows.length === 0 && <div className="card-body text-meta">{emptyText}</div>}
+      {rows.length === 0 && (
+        <div className="card-body text-meta">검증셋이 비어 있습니다. ‘검증셋 수정’에서 케이스를 추가하세요.</div>
+      )}
       {rows.length > 0 && visible.length === 0 && (
-        <div className="card-body text-meta">위험으로 분류된 건이 없습니다. ‘전체 펼치기’로 {rows.length}건을 모두 볼 수 있습니다.</div>
+        <div className="card-body text-meta">
+          {filter === 'fail'
+            ? '기대 판정과 어긋난 케이스가 없습니다 — 검증셋 전건이 의도대로 판정됐습니다.'
+            : '기대 판정이 지정된 케이스가 없습니다.'}
+          {' '}‘전체’로 {rows.length}건을 모두 볼 수 있습니다.
+        </div>
       )}
       {visible.length > 0 && (
         <table className="table">
           <thead><tr>
-            <th>내역</th><th className="num">금액</th><th>분류</th>
-            {showExpected && <th>기대</th>}
-            <th>판정</th><th>평가 경로</th>
+            <th>결과</th><th>케이스</th><th className="num">금액</th><th>분류</th>
+            <th>기대</th><th>판정</th><th>평가 경로</th>
           </tr></thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.id} className={row.risk ? 'anomaly-row' : undefined}>
+              <tr key={row.id} className={row.matchedExpectation === false ? 'anomaly-row' : undefined}>
+                <td>
+                  {row.matchedExpectation === null
+                    ? <span className="tag">채점 안 함</span>
+                    : row.matchedExpectation
+                      ? <span className="tag ok">✅ 정상</span>
+                      : <span className="tag warn">⚠ 불일치</span>}
+                </td>
                 <td>
                   <b style={{ fontSize: 12.5 }}>{row.label}</b>
-                  <div className="text-meta">{row.merchant}{row.currentStatus ? ` · 현재 ${row.currentStatus}` : ''}</div>
+                  <div className="text-meta">{row.merchant}</div>
                 </td>
                 <td className="num">{won(row.amount)}</td>
                 <td className="text-meta">{row.category || '-'}</td>
-                {showExpected && <td>
-                  {row.expected
-                    ? <span className={'tag ' + (row.matchedExpectation ? 'ok' : 'warn')}>
-                        {decisionText(row.expected)}{row.matchedExpectation ? '' : ' 불일치'}
-                      </span>
-                    : <span className="text-meta">채점 안 함</span>}
-                </td>}
+                <td>{row.expected
+                  ? <span className="tag">{decisionText(row.expected)}</span>
+                  : <span className="text-meta">-</span>}</td>
                 <td><span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span></td>
                 <td className="text-meta" style={{ fontSize: 11 }}>
                   {row.path.join(' → ') || '-'}

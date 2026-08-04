@@ -11,6 +11,8 @@ export interface AuthUser {
   name: string
   role: Role
   dept: string
+  /** 실 모드: 팀 예산 조회에 쓰는 팀 PK */
+  teamId?: number
   position: string
   /** 실 모드: 서버가 준 유효 능력(역할기본 ∪ 개인부여). mock 모드는 useCapabilities가 역할 기본값을 사용. */
   capabilities?: Capability[]
@@ -43,7 +45,7 @@ const Ctx = createContext<AuthCtx>({
 function toUser(me: MeResponse): AuthUser {
   const role = (me.role as Role) ?? 'EMPLOYEE'
   return {
-    name: me.username ?? '사용자', role, dept: me.dept ?? '-', position: ROLE_LABEL[role],
+    name: me.username ?? '사용자', role, dept: me.dept ?? '-', teamId: me.teamId ?? undefined, position: ROLE_LABEL[role],
     capabilities: (me.capabilities ?? []) as Capability[],
   }
 }

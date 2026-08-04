@@ -6,6 +6,7 @@ export interface MeResponse {
   username?: string
   role?: string
   dept?: string | null
+  teamId?: number | null
   capabilities?: string[]
   isSuperuser?: boolean
 }

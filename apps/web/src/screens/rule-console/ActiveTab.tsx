@@ -71,7 +71,7 @@ export function ActiveTab() {
       nodeCount: active.reduce((total, row) => total + nodeCountOf(row), 0),
       ratedCount: rated.length,
       avgAutoRate: rated.length ? sum((stats) => stats.autoRate) / rated.length : undefined,
-      riskCount: sum((stats) => stats.riskCount),
+      riskCount: sum((stats) => stats.riskChangedCount ?? 0),
       unrated: active.length - rated.length,
     }
   }, [active])
@@ -186,7 +186,7 @@ export function ActiveTab() {
                         </div>
                         <div className={'kpi ' + (stats.nodeCoverage >= 1 ? 'ok' : 'warn')}>
                           <div className="label">노드 커버리지</div><div className="value">{percent(stats.nodeCoverage)}</div>
-                          <div className="text-meta">위험 {stats.riskCount}건 · 변경 {stats.changedCount}건</div>
+                          <div className="text-meta">위험 변경 {stats.riskChangedCount ?? 0}건 · 정상 변경 {stats.intendedChangedCount ?? 0}건</div>
                         </div>
                       </div>
                     )}
@@ -258,7 +258,7 @@ export function ActiveTab() {
           </div>
         </div>
         <div className={'kpi ' + (dashboard.riskCount > 0 ? 'warn' : 'ok')}>
-          <div className="label">위험 판정 누계</div><div className="value">{dashboard.riskCount}건</div>
+          <div className="label">위험 변경 누계</div><div className="value">{dashboard.riskCount}건</div>
           <div className="text-meta">최근 시뮬레이션 기준</div>
         </div>
       </div>

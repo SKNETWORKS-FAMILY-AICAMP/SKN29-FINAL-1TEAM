@@ -99,21 +99,11 @@ export interface SimReport {
     testFailed: number
     nodeCoverage: number
     visitedNodes: number
-    stabilityScore?: number
-    reviewabilityScore?: number
+    /** 변경건 중 AI가 위험하다고 본 건 / 의도된 정상 변경으로 본 건 */
+    riskChangedCount: number
+    intendedChangedCount: number
   }
   grades: { structure: Grade; result: Grade; action: Grade }
-  /** 승인 전 점검 축 — 안정성(사고 여지) / 검토 용이성(사람에게 남는 일) */
-  quality?: {
-    stability: {
-      score: number; autoRejectNodes: string[]; fallbackCount: number
-      rejectCount: number; unreachableCount: number; terminalCount: number; notes: string[]
-    }
-    reviewability: {
-      score: number; humanQueue: number; humanRate: number
-      flaggedRate: number; avgPathLength: number; notes: string[]
-    }
-  }
   structure: { nodeCount: number; routingCount: number; maxDepth: number; unreachable: string[]; terminals: string[]; entry: string }
   agentReport: string
   testResults: SimResultRow[]

@@ -17,8 +17,9 @@ export async function fetchSettlementsData(currentUser?: string): Promise<Settle
   const myExpenses = currentUser ? all.filter((s) => s.user === currentUser) : all
   const reviewItems = all.filter((s) => s.status === 'IN_REVIEW') as ReviewItem[]
 
-  // S-02는 팀장이 실제로 취합 처리할 TEAM_COLLECTING 건만 노출한다.
-  const teamCollecting = all.filter((s) => s.status === 'TEAM_COLLECTING')
+  // S-02는 팀 단계(TEAM_*)에 머물러 있는 건을 노출한다 — 취합 대기 + 팀 보완요청·팀 반려 결과.
+  //  회계로 제출(SUBMITTED)된 건은 팀 화면에서 빠진다.
+  const teamCollecting = all.filter((s) => s.status.startsWith('TEAM_'))
   const byUser = new Map<string, Settlement[]>()
   for (const s of teamCollecting) {
     const key = s.user ?? '미지정'

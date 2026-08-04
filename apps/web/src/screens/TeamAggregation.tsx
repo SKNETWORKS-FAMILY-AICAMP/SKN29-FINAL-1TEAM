@@ -1,5 +1,5 @@
 // S-02 팀 취합·제출 — 팀장. FR-UI-02, FR-DA-07~08, FR-DB-03
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { anomalyTags, teamBudget } from '../data/mock'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
@@ -7,6 +7,8 @@ import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
 import { decideTeamSettlement, submitSettlements } from '../api/settlementService'
+import { endpoints } from '../api/client'
+import { USE_MOCK } from '../api/config'
 import { useSettlements } from '../context/SettlementsContext'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/capabilities'
@@ -23,25 +25,37 @@ export function TeamAggregation() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
-  const all = teamMembers.flatMap((m) => m.items)
-  const filteredMembers = memberFilter.size === 0 ? teamMembers : teamMembers.filter((m) => memberFilter.has(m.name))
+  // 팀 화면에는 아직 팀 단계에 있는 건만 남긴다 — 제출(SUBMITTED)하면 즉시 사라진다.
+  const inTeamStage = (item: Settlement) => item.status.startsWith('TEAM_')
+  const members = useMemo(
+    () => teamMembers.map((m) => ({ ...m, items: m.items.filter(inTeamStage) })).filter((m) => m.items.length > 0),
+    [teamMembers],
+  )
+  const all = members.flatMap((m) => m.items)
+  const filteredMembers = memberFilter.size === 0 ? members : members.filter((m) => memberFilter.has(m.name))
   const visibleAll = filteredMembers.flatMap((m) => m.items)
-  const budget = useMemo(() => {
-    const categories = teamBudget.categories.map((category) => ({
-      ...category,
-      used: all.filter((item) => item.aiCategory === category.label).reduce((sum, item) => sum + item.amount, 0),
-    }))
-    return { categories, total: categories.reduce((sum, c) => sum + c.limit, 0), used: categories.reduce((sum, c) => sum + c.used, 0) }
-  }, [all])
+  const collecting = all.filter((i) => i.status === 'TEAM_COLLECTING')
+
+  // 팀 예산 — 사용액은 서버 집계(상태 무관, 최종 반려만 제외). 팀 화면 목록과 무관하게 유지된다.
+  const [budget, setBudget] = useState(teamBudget)
+  useEffect(() => {
+    if (USE_MOCK || !user?.teamId) return
+    let cancelled = false
+    endpoints.teamBudget(user.teamId, new Date().toISOString().slice(0, 7))
+      .then(({ data }) => { if (!cancelled && data?.categories?.length) setBudget(data) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [user?.teamId, teamMembers])
+
   const stats = useMemo(() => {
-    const anomalous = all.filter((i) => anomalyTags(i).length > 0).length
+    const anomalous = collecting.filter((i) => anomalyTags(i).length > 0).length
     return {
-      members: teamMembers.length,
+      members: members.length,
       total: all.reduce((s, i) => s + i.amount, 0),
       anomalous,
-      normal: all.length - anomalous,
+      normal: collecting.length - anomalous,
     }
-  }, [all, teamMembers.length])
+  }, [all, collecting, members.length])
 
   const toggleMember = (name: string) => {
     const next = new Set(expanded)
@@ -159,7 +173,7 @@ export function TeamAggregation() {
         <details className="multi-select">
           <summary>사람별 보기 {memberFilter.size > 0 ? `(${memberFilter.size}명)` : '(전체)'}</summary>
           <div className="multi-select-menu">
-            {teamMembers.map((member) => <label key={member.name}><input type="checkbox" checked={memberFilter.has(member.name)} onChange={() => setMemberFilter((current) => { const next = new Set(current); next.has(member.name) ? next.delete(member.name) : next.add(member.name); return next })} />{member.name}</label>)}
+            {members.map((member) => <label key={member.name}><input type="checkbox" checked={memberFilter.has(member.name)} onChange={() => setMemberFilter((current) => { const next = new Set(current); next.has(member.name) ? next.delete(member.name) : next.add(member.name); return next })} />{member.name}</label>)}
             {memberFilter.size > 0 && <button className="btn sm" onClick={() => setMemberFilter(new Set())}>전체 보기</button>}
           </div>
         </details>

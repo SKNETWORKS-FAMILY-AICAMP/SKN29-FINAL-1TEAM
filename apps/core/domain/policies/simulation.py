@@ -271,13 +271,9 @@ def simulate(graph: RuleGraph, test_cases: list[dict[str, Any]] | None = None) -
     shape = _graph_shape(graph)
     previous_auto_rate, previous_label = _previous_auto_rate(graph)
     stats = _stats(test_rows, history_rows, shape, previous_auto_rate, previous_label)
-    quality = _quality(shape, snapshot, test_rows + history_rows, structure_error)
-    stats["stabilityScore"] = quality["stability"]["score"]
-    stats["reviewabilityScore"] = quality["reviewability"]["score"]
-    grades = _grades(shape, stats, structure_error, quality)
+    grades = _grades(shape, stats, structure_error)
     return {
         "grades": grades,
-        "quality": quality,
         "graphId": str(graph.pk),
         "graphName": graph.name,
         "graphVersion": graph.version,
@@ -288,7 +284,7 @@ def simulate(graph: RuleGraph, test_cases: list[dict[str, Any]] | None = None) -
         "stats": stats,
         "structure": shape,
         "snapshot": snapshot,
-        "agentReport": _agent_report(graph, shape, stats, grades, quality, test_rows, history_rows,
+        "agentReport": _agent_report(graph, shape, stats, grades, test_rows, history_rows,
                                      structure_error, period_label),
         "testResults": test_rows,
         "historyResults": history_rows,
@@ -348,8 +344,7 @@ def run_and_save(graph: RuleGraph, test_cases: list[dict[str, Any]] | None, acto
         period_label=report["periodLabel"],
         structure_error=report["structureError"][:300],
         stats=report["stats"],
-        # 등급과 함께 안정성·검토 용이성 원자료도 보존한다(조회 시 그대로 복원).
-        grades={**report["grades"], "_quality": report["quality"]},
+        grades=report["grades"],
         agent_report=report["agentReport"],
         ran_by=actor,
     )
@@ -411,7 +406,6 @@ def report_from_run(run: RuleSimulationRun) -> dict[str, Any]:
         "structureError": run.structure_error,
         "stats": run.stats,
         "grades": run.grades,
-        "quality": (run.grades or {}).get("_quality", {}),
         "structure": {  # 현재 그래프 기준 구조 지표(카운트 표시에만 사용)
             **_graph_shape(graph),
         },
@@ -448,7 +442,12 @@ def _stats(test_rows: list[dict], history_rows: list[dict], shape: dict,
         "historyTotal": history_total,
         "reviewCount": review_count,
         "riskCount": sum(1 for row in history_rows if row["risk"]),
+        # 변경건을 두 갈래로 — 위험 변경(AI가 위험하다고 본 건) / 정상 변경(의도된 변경)
         "changedCount": sum(1 for row in history_rows if row["changed"]),
+        "riskChangedCount": sum(1 for row in history_rows if row["changed"] and row["commentVerdict"] == "risk"),
+        "intendedChangedCount": sum(
+            1 for row in history_rows if row["changed"] and row["commentVerdict"] == "intended"
+        ),
         "testTotal": len(test_rows),
         "testGraded": len(graded),
         "testPassed": sum(1 for row in graded if row["matchedExpectation"]),
@@ -458,127 +457,32 @@ def _stats(test_rows: list[dict], history_rows: list[dict], shape: dict,
     }
 
 
-def _quality(shape: dict, snapshot: dict, rows: list[dict], structure_error: str) -> dict[str, Any]:
-    """승인 전 그래프를 두 축으로 점검한다 — **안정성**과 **검토 용이성**.
-
-    - 안정성: 이 규칙을 켰을 때 사고가 날 여지가 있는가(자동 반려·미결 경로·구조 결함·폴백).
-    - 검토 용이성: 사람에게 남는 일이 감당 가능한가, 그리고 그 일에 근거가 붙어 있는가.
-    """
-    nodes = {str(item["node_key"]): (item.get("action") or {}) for item in snapshot.get("nodes", [])}
-    routings = snapshot.get("routings", [])
-    total = len(rows) or 1
-
-    # ── 안정성 ──
-    auto_reject_nodes = sorted(
-        key for key, action in nodes.items()
-        if action.get("decision") == "REJECT" and not any(
-            r.get("from_node_key") == key and r.get("to_node_key") for r in routings)
-    )
-    fallback_rows = [row for row in rows if "INVALID_RULE_GRAPH" in row["flags"] or "NO_TERMINAL_DECISION" in row["flags"]]
-    reject_rows = [row for row in rows if row["decision"] == "REJECT"]
-    stability_notes: list[str] = []
-    stability = 1.0
-    if structure_error:
-        stability -= 0.6
-        stability_notes.append(f"구조 오류로 실행 자체가 거부됩니다 — {structure_error}")
-    if shape["unreachable"]:
-        stability -= 0.15
-        stability_notes.append(f"도달 불가 노드 {len(shape['unreachable'])}개는 켜도 절대 평가되지 않습니다.")
-    if auto_reject_nodes:
-        stability -= 0.2
-        stability_notes.append(
-            f"사람 확인 없이 **자동 반려**로 끝나는 노드가 {len(auto_reject_nodes)}개 있습니다 "
-            f"(`{'`, `'.join(auto_reject_nodes)}`). 오탐 시 되돌리기 비용이 큽니다."
-        )
-    else:
-        stability_notes.append("자동 반려로 끝나는 경로가 없어, 잘못 켜도 되돌릴 수 없는 처리는 발생하지 않습니다.")
-    if fallback_rows:
-        stability -= 0.25
-        stability_notes.append(f"판정이 안전 폴백(REVIEW)으로 빠진 건이 {len(fallback_rows)}건 있습니다.")
-    if not shape["terminals"]:
-        stability -= 0.1
-        stability_notes.append("종결 노드가 없어 판정이 끝나지 않을 수 있습니다.")
-
-    # ── 검토 용이성 ──
-    human_rows = [row for row in rows if row["decision"] in RISK_DECISIONS]
-    flagged = sum(1 for row in human_rows if row["flags"])
-    path_lengths = [len(row["path"]) for row in rows if row["path"]]
-    avg_path = round(sum(path_lengths) / len(path_lengths), 1) if path_lengths else 0.0
-    human_rate = len(human_rows) / total
-    flag_rate = (flagged / len(human_rows)) if human_rows else 1.0
-    reviewability = 1.0
-    review_notes: list[str] = []
-    if human_rate > 0.6:
-        reviewability -= 0.35
-        review_notes.append(f"사람이 봐야 하는 건이 {human_rate * 100:.0f}%로 많습니다. 자동화 효과가 제한적입니다.")
-    elif human_rate > 0.3:
-        reviewability -= 0.15
-        review_notes.append(f"사람이 봐야 하는 건이 {human_rate * 100:.0f}%입니다. 임계값 조정 여지를 확인하세요.")
-    else:
-        review_notes.append(f"사람이 봐야 하는 건은 {len(human_rows)}건({human_rate * 100:.0f}%)으로, 검토 큐가 감당 가능한 수준입니다.")
-    if flag_rate < 0.8:
-        reviewability -= 0.25
-        review_notes.append(
-            f"검토로 넘어간 건 중 **근거 플래그가 없는 건이 {len(human_rows) - flagged}건**입니다. "
-            "담당자가 왜 올라왔는지 알 수 없으니 해당 노드에 플래그·처리 안내를 채워주세요."
-        )
-    else:
-        review_notes.append("검토 대상 건에는 모두 근거 플래그가 붙어 있어, 담당자가 사유를 바로 확인할 수 있습니다.")
-    if avg_path > 6:
-        reviewability -= 0.1
-        review_notes.append(f"평균 평가 경로가 {avg_path}단계로 길어 판정 설명이 복잡합니다.")
-
-    return {
-        "stability": {
-            "score": round(max(0.0, min(1.0, stability)), 2),
-            "autoRejectNodes": auto_reject_nodes,
-            "fallbackCount": len(fallback_rows),
-            "rejectCount": len(reject_rows),
-            "unreachableCount": len(shape["unreachable"]),
-            "terminalCount": len(shape["terminals"]),
-            "notes": stability_notes,
-        },
-        "reviewability": {
-            "score": round(max(0.0, min(1.0, reviewability)), 2),
-            "humanQueue": len(human_rows),
-            "humanRate": round(human_rate, 4),
-            "flaggedRate": round(flag_rate, 4),
-            "avgPathLength": avg_path,
-            "notes": review_notes,
-        },
-    }
-
-
 GRADE_LABEL = {"poor": "미흡", "warn": "주의", "good": "우수"}
 ACTION_LABEL = {"poor": "수정", "warn": "재검토", "good": "활성화"}
 
 
-def _grades(shape: dict, stats: dict, structure_error: str, quality: dict) -> dict[str, Any]:
+def _grades(shape: dict, stats: dict, structure_error: str) -> dict[str, Any]:
     """Agent 의견 상단 3단계 등급 — 구조 / 실행결과 / 권장처리."""
-    stability = quality["stability"]["score"]
-    reviewability = quality["reviewability"]["score"]
     if structure_error:
         structure = ("poor", "실행 계약 위반 — Active 전환 불가")
-    elif shape["unreachable"] or stability < 0.6:
-        structure = ("poor", f"안정성 {stability * 100:.0f}% · 도달 불가 {len(shape['unreachable'])}개")
-    elif stats["nodeCoverage"] < 0.8 or stability < 0.85:
-        structure = ("warn", f"안정성 {stability * 100:.0f}% · 커버리지 {stats['nodeCoverage'] * 100:.0f}%")
+    elif shape["unreachable"]:
+        structure = ("poor", f"도달 불가 노드 {len(shape['unreachable'])}개 — 켜도 평가되지 않습니다")
+    elif stats["nodeCoverage"] < 0.8:
+        structure = ("warn", f"노드 커버리지 {stats['nodeCoverage'] * 100:.0f}% — 검증되지 않은 노드가 있습니다")
     else:
-        structure = ("good", f"노드 {shape['nodeCount']}개 · 깊이 {shape['maxDepth']}단계 · 안정성 {stability * 100:.0f}%")
+        structure = ("good", f"노드 {shape['nodeCount']}개 · 깊이 {shape['maxDepth']}단계 · 전 노드 검증됨")
 
     graded = stats["testGraded"]
     fail_ratio = (stats["testFailed"] / graded) if graded else 0.0
-    risk_ratio = (stats["riskCount"] / stats["historyTotal"]) if stats["historyTotal"] else 0.0
-    if fail_ratio > 0.3 or risk_ratio > 0.5 or reviewability < 0.5:
-        result = ("poor", f"기대 불일치 {stats['testFailed']}건 · 위험 {stats['riskCount']}건 "
-                          f"· 검토 용이성 {reviewability * 100:.0f}%")
-    elif stats["testFailed"] or risk_ratio > 0.2 or reviewability < 0.8:
-        result = ("warn", f"기대 불일치 {stats['testFailed']}건 · 위험 {stats['riskCount']}건 "
-                          f"· 검토 용이성 {reviewability * 100:.0f}%")
+    risk_ratio = (stats["riskChangedCount"] / stats["historyTotal"]) if stats["historyTotal"] else 0.0
+    if fail_ratio > 0.3 or risk_ratio > 0.4:
+        result = ("poor", f"기대 불일치 {stats['testFailed']}건 · 위험 변경 {stats['riskChangedCount']}건")
+    elif stats["testFailed"] or risk_ratio > 0.15:
+        result = ("warn", f"기대 불일치 {stats['testFailed']}건 · 위험 변경 {stats['riskChangedCount']}건")
     elif not graded:
         result = ("warn", "채점 가능한 테스트 케이스가 없음")
     else:
-        result = ("good", f"테스트 {stats['testPassed']}/{graded} 통과 · 검토 용이성 {reviewability * 100:.0f}%")
+        result = ("good", f"테스트 {stats['testPassed']}/{graded} 통과 · 위험 변경 0건")
 
     worst = "poor" if "poor" in (structure[0], result[0]) else "warn" if "warn" in (structure[0], result[0]) else "good"
     action_note = {
@@ -600,103 +504,120 @@ def _decision_mix(rows: list[dict]) -> str:
     return ", ".join(f"{key} {value}건" for key, value in sorted(counts.items())) or "판정 없음"
 
 
-def _agent_report(graph, shape, stats, grades, quality, test_rows, history_rows,
+def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
                   structure_error, period_label) -> str:
-    """구조·통계 기반 자연어(마크다운) 보고. LLM 연동 시 이 함수를 교체한다."""
-    percent = lambda value: f"{value * 100:.1f}%"  # noqa: E731
-    checks: list[str] = []
-    fixes: list[str] = []
+    """구조·통계 기반 자연어(마크다운) 보고. LLM 연동 시 이 함수를 교체한다.
 
+    구성: 개요(이유·권장처리) → 그래프 구성 평가 → 실행결과 → 주의깊게 볼 부분.
+    """
+    percent = lambda value: f"{value * 100:.1f}%"  # noqa: E731
+    watch: list[str] = []   # 주의깊게 살펴봐야 할 부분
+    reasons: list[str] = [] # 권장처리 판단의 근거
+
+    # ── 판단 근거 수집 ──
     if structure_error:
-        fixes.append(f"**구조 오류** — {structure_error} 이 상태로는 Active 전환이 거부됩니다.")
+        reasons.append(f"구조 오류로 실행 계약을 위반합니다 — {structure_error}")
     if shape["unreachable"]:
-        fixes.append(
+        reasons.append(
+            f"진입 노드에서 도달할 수 없는 노드가 {len(shape['unreachable'])}개 있습니다"
+            f"(`{'`, `'.join(shape['unreachable'])}`)"
+        )
+    if stats["testFailed"]:
+        reasons.append(f"테스트 케이스 {stats['testGraded']}건 중 {stats['testFailed']}건이 기대 판정과 다르게 나왔습니다")
+    if stats["riskChangedCount"]:
+        reasons.append(f"기존 처리와 달라진 건 중 {stats['riskChangedCount']}건을 위험 변경으로 판단했습니다")
+    if not reasons:
+        reasons.append("구조·테스트·실제 내역 판정 모두에서 특이사항이 발견되지 않았습니다")
+
+    verdict = {
+        "poor": "🚫 **수정 필요** — 아래 사유를 해결한 뒤 다시 시뮬레이션하세요.",
+        "warn": "⚠️ **재검토 후 판단** — 아래 확인 사항을 검토한 뒤 승인 여부를 결정하세요.",
+        "good": "✅ **활성화 권장** — 확인된 문제가 없습니다.",
+    }[grades["action"]["level"]]
+
+    # ── 주의깊게 살펴볼 부분 ──
+    if structure_error:
+        watch.append(f"**구조 오류** — {structure_error} 이 상태로는 Active 전환이 거부됩니다.")
+    if shape["unreachable"]:
+        watch.append(
             f"**도달 불가 노드 {len(shape['unreachable'])}개** (`{'`, `'.join(shape['unreachable'])}`) — "
-            "진입 노드에서 이어지는 라우팅이 없습니다. 라우팅을 연결하거나 노드를 삭제하세요."
+            "진입 노드에서 이어지는 라우팅이 없어 켜도 절대 평가되지 않습니다. 라우팅을 연결하거나 노드를 삭제하세요."
+        )
+    if stats["testFailed"]:
+        watch.append(
+            f"**기대 판정 불일치 {stats['testFailed']}건** — 아래 «테스트셋 결과»에서 불일치 건의 "
+            "조건·임계값을 확인하세요. 기대값이 틀린 것인지, 규칙이 틀린 것인지부터 가려야 합니다."
+        )
+    if stats["riskChangedCount"]:
+        watch.append(
+            f"**위험 변경 {stats['riskChangedCount']}건** — 기존에 통과되던 건이 막히거나, 반대로 "
+            "막히던 건이 통과된 경우입니다. 아래 «최근 내역 결과 → 위험건»에서 각 건의 근거를 확인하세요."
         )
     if stats["visitedNodes"] < shape["nodeCount"]:
         never = shape["nodeCount"] - stats["visitedNodes"]
-        checks.append(
-            f"이번 실행에서 한 번도 평가되지 않은 노드가 {never}개 있습니다. "
+        watch.append(
+            f"**미검증 노드 {never}개** — 이번 실행에서 한 번도 평가되지 않았습니다. "
             "해당 조건을 만족하는 테스트 케이스를 추가해 검증 범위를 넓히는 것을 권장합니다."
         )
-    if stats["testFailed"]:
-        fixes.append(
-            f"**기대 판정 불일치 {stats['testFailed']}건** — 테스트셋에서 기대한 결과와 다르게 판정됐습니다. "
-            "아래 테스트셋 결과에서 불일치 건의 조건·임계값을 확인하세요."
-        )
-    if stats["riskCount"]:
-        checks.append(
-            f"직전 기간({period_label}) 내역 {stats['historyTotal']}건 중 {stats['riskCount']}건이 "
-            "반려·보완요청·검토로 판정됐습니다. 실제 처리 이력과 비교해 과탐 여부를 확인하세요."
-        )
     if stats["autoRate"] < 0.5 and stats["historyTotal"]:
-        checks.append(
-            f"자동처리율이 {percent(stats['autoRate'])}로 낮습니다. 검토(REVIEW)로 빠지는 노드의 "
-            "임계값이 과도하게 촘촘하지 않은지 살펴보세요."
-        )
-    if stats["changedCount"]:
-        checks.append(
-            f"기존 처리와 판정이 달라진 건이 {stats['changedCount']}건입니다. "
-            "아래 내역 결과의 «변경건» 탭에서 각 건의 AI 코멘트를 확인하세요."
+        watch.append(
+            f"**낮은 자동처리율({percent(stats['autoRate'])})** — 검토(REVIEW)로 빠지는 노드의 "
+            "임계값이 과도하게 촘촘하지 않은지 살펴보세요. 자동화 효과가 제한적입니다."
         )
 
-    verdict = {
-        "poor": "🚫 **수정 필요** — 구조·결과 문제를 해결한 뒤 다시 시뮬레이션하세요.",
-        "warn": "⚠️ **재검토 후 판단** — 아래 확인 사항을 검토한 뒤 승인 여부를 결정하세요.",
-        "good": "✅ **활성화 권장** — 구조·판정 모두 특이사항이 없습니다.",
-    }[grades["action"]["level"]]
-
-    reduction = percent(stats["reviewReduction"])
     compare = (
         f"직전 버전({stats['prevVersionLabel']}) {percent(stats['prevAutoRate'])} → {percent(stats['autoRate'])}"
         if stats["hasPrevVersion"] else
         f"직전 버전 시뮬레이션 이력이 없어 0.0% → {percent(stats['autoRate'])}로 계산"
     )
+    graded = stats["testGraded"] or stats["testTotal"]
+
     lines = [
-        "## 종합 개요",
+        "## 개요",
         f"`{graph.name}` v{graph.version}을(를) 테스트셋 {stats['testTotal']}건과 "
-        f"{period_label} 내역 {stats['historyTotal']}건으로 시뮬레이션했습니다. "
-        f"자동처리율은 {percent(stats['autoRate'])}(자동 {stats['autoCount']}건 / 사람 확인 {stats['manualCount']}건)이고, "
-        f"검토 감소량은 {reduction}p입니다({compare}).",
-        f"- 구조 평가 **{grades['structure']['label']}** · 실행결과 평가 **{grades['result']['label']}** · "
-        f"권장 처리 **{grades['action']['label']}**",
+        f"{period_label} 실제 내역 {stats['historyTotal']}건으로 시뮬레이션했습니다.",
+        "",
+        "**판단 근거**",
+        *[f"- {text}" for text in reasons],
+        "",
+        f"**권장 처리 — {grades['action']['label']}**",
+        verdict,
         "",
         "## 그래프 구성 평가",
         f"- 노드 {shape['nodeCount']}개 · 라우팅 {shape['routingCount']}개 · 최대 깊이 {shape['maxDepth']}단계",
-        f"- 진입 노드: `{shape['entry'] or '미지정'}` · 종결 노드 {len(shape['terminals'])}개",
-        f"- 이번 실행에서 평가된 노드: {stats['visitedNodes']}/{shape['nodeCount']}",
-        f"- 판정 분포(직전 기간): {_decision_mix(history_rows)}",
-        f"- 판정 분포(테스트셋): {_decision_mix(test_rows)}",
+        f"- 진입 노드 `{shape['entry'] or '미지정'}` · 종결 노드 {len(shape['terminals'])}개 "
+        f"· 도달 불가 노드 {len(shape['unreachable'])}개",
+        f"- 구조 평가: **{grades['structure']['label']}** ({grades['structure']['note']})",
         "",
-        f"## 안정성 점검 — {percent(quality['stability']['score'])}",
-        "> 이 규칙을 켰을 때 **되돌리기 어려운 처리**가 발생할 여지가 있는지 봅니다.",
-        f"- 자동 반려로 끝나는 노드: {len(quality['stability']['autoRejectNodes'])}개"
-        + (f" (`{'`, `'.join(quality['stability']['autoRejectNodes'])}`)"
-           if quality["stability"]["autoRejectNodes"] else ""),
-        f"- 안전 폴백(REVIEW)으로 빠진 판정: {quality['stability']['fallbackCount']}건 · "
-        f"반려 판정 {quality['stability']['rejectCount']}건",
-        f"- 종결 노드 {quality['stability']['terminalCount']}개 · 도달 불가 노드 {quality['stability']['unreachableCount']}개",
-        *[f"- {text}" for text in quality["stability"]["notes"]],
+        "## 실행결과",
         "",
-        f"## 검토 용이성 — {percent(quality['reviewability']['score'])}",
-        "> 사람에게 남는 일이 **감당 가능한 양인지**, 그 일에 **근거가 붙어 있는지** 봅니다.",
-        f"- 사람이 봐야 하는 건: {quality['reviewability']['humanQueue']}건 "
-        f"({percent(quality['reviewability']['humanRate'])})",
-        f"- 근거 플래그가 붙은 비율: {percent(quality['reviewability']['flaggedRate'])} · "
-        f"평균 평가 경로 {quality['reviewability']['avgPathLength']}단계",
-        *[f"- {text}" for text in quality["reviewability"]["notes"]],
+        "**테스트케이스 구성 및 결과**",
+        f"- 검증셋 {stats['testTotal']}건 중 기대 판정이 지정된 건 {stats['testGraded']}건 "
+        f"→ **일치 {stats['testPassed']}건 / 불일치 {stats['testFailed']}건**",
+        f"- 판정 분포: {_decision_mix(test_rows)}",
         "",
-        "## 적용 전 직접 검토할 부분",
+        f"**{period_label} 실제 내역 결과 요약**",
+        f"- 대상 {stats['historyTotal']}건 · 판정 분포: {_decision_mix(history_rows)}",
+        f"- 자동처리 {stats['autoCount']}건 / 사람 확인 {stats['manualCount']}건 "
+        f"→ 자동처리율 **{percent(stats['autoRate'])}**",
+        f"- 검토 감소량 **{percent(stats['reviewReduction'])}p** ({compare})",
+        f"- 기존 처리와 달라진 건 {stats['changedCount']}건 "
+        f"→ **위험 변경 {stats['riskChangedCount']}건 / 정상 변경 {stats['intendedChangedCount']}건**",
+        "",
+        "**노드 커버리지**",
+        f"- 이번 실행에서 평가된 노드 {stats['visitedNodes']}/{shape['nodeCount']}개 "
+        f"(**{percent(stats['nodeCoverage'])}**)",
+        f"- 실행결과 평가: **{grades['result']['label']}** ({grades['result']['note']})",
+        "",
+        "## 주의깊게 살펴봐야 할 부분",
     ]
-    if checks:
-        lines += [f"{index}. {text}" for index, text in enumerate(checks, start=1)]
+    if watch:
+        lines += [f"{index}. {text}" for index, text in enumerate(watch, start=1)]
     else:
-        lines.append("- 별도로 확인이 필요한 항목은 발견되지 않았습니다.")
-    lines += ["", "## 권장 처리", verdict, ""]
-    if fixes:
-        lines += ["**수정 권장 사항**", *[f"- {text}" for text in fixes], ""]
+        lines.append("- 별도로 확인이 필요한 항목은 발견되지 않았습니다. 테스트 {}건이 모두 기대대로 판정됐고, "
+                     "기존 처리와 달라진 건 중 위험 판단도 없습니다.".format(graded))
     lines += [
+        "",
         "> 이 보고서는 플레이스홀더입니다. 판정은 실제 룰 엔진 결과이지만, "
         "EvalContext는 정산·거래에서 조립한 일부 필드만 채워져 있습니다. "
         "사람 확인 없이 자동 승인하지 마세요.",

@@ -191,8 +191,9 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(s).data)
 
 
-# 반려 상태는 예산 사용액에서 제외
-_BUDGET_EXCLUDE = ["REJECT", "TEAM_REJECTED"]
+# 팀 사용액은 진행 상태와 무관하게 "이미 쓴 돈"으로 잡는다.
+#  카드는 이미 결제됐으므로 제출·검토 단계가 어디든 사용액이다. 최종 반려(REJECT)만 제외한다.
+_BUDGET_EXCLUDE = ["REJECT"]
 
 
 class TeamBudgetView(APIView):

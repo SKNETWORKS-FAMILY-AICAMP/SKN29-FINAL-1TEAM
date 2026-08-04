@@ -76,9 +76,10 @@ export function ActivationRequestModal({ report, graphName, onClose, onSubmit, s
           </div>
         </div>
 
-        {stats.riskCount > 0 && (
+        {stats.riskChangedCount > 0 && (
           <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)' }}>
-            ⚠ 위험 {stats.riskCount}건 · 분류 변경 {stats.changedCount}건이 감지됐습니다. 코멘트에 확인 결과를 남겨주세요.
+            ⚠ 위험 변경 {stats.riskChangedCount}건 · 정상 변경 {stats.intendedChangedCount}건이 감지됐습니다.
+            코멘트에 위험 변경 확인 결과를 남겨주세요.
           </div>
         )}
 
