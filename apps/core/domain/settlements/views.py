@@ -231,7 +231,14 @@ class TeamBudgetView(APIView):
                 total_limit = b.limit_amount
             else:
                 categories.append({"label": b.category, "limit": b.limit_amount, "used": used_by_cat.get(b.category, 0)})
+
+        # 예산 행이 없는 과목(또는 분류 미지정)의 지출 — 총 사용액에는 들어가지만 항목별 카드엔 없다.
+        # 그대로 두면 "항목 합 ≠ 총 사용액"이 되어 대시보드가 어긋나 보이므로 따로 내려준다.
+        budgeted_labels = {c["label"] for c in categories}
+        unbudgeted = {k: v for k, v in used_by_cat.items() if k not in budgeted_labels and v}
         return Response({
             "team": int(team_id) if team_id else None, "month": month,
             "total": total_limit, "used": sum(used_by_cat.values()), "categories": categories,
+            # {계정과목(또는 ''): 금액} — 비어 있으면 항목 합 == 총 사용액이라는 뜻.
+            "unbudgeted": unbudgeted, "unbudgetedUsed": sum(unbudgeted.values()),
         })

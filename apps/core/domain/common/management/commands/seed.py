@@ -10,10 +10,14 @@
 - 재무회계팀 자체 지출(결산·세무·감사 대응) — 회계팀도 지출 주체라는 점을 보여줌
 - 영업팀 취합(TEAM_*) 샘플
 - 검토 워크스페이스(IN_REVIEW) 30건 — 위험도·패턴·권장처리를 폭넓게 분포
+- 검토 '이전 처리' 10건 — 이번 달에 승인·보완요청·반려로 끝난 건(이상탐지 결과 포함)
 - 그중 시연 하이라이트 3건: RAG 내규 검증 보고서(마크다운) + 실제 EvalContext 스냅샷(rule_hits)
+
+모든 거래일자는 **이번 달 1일~30일** 사이에 배치된다(팀 통계·검토 이력의 '이번 달' 필터와 정합).
 - 룰 그래프는 `seed_rules` 커맨드가 담당(GLOBAL v3·기업업무추진비 v2·회식비 v1+초안·출장비 승인대기)
 """
-from datetime import timedelta
+import calendar
+from collections import defaultdict
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -49,8 +53,16 @@ class Command(BaseCommand):
 
         now = timezone.now()
 
+        # 시연 데이터는 전부 **이번 달 1일~30일** 안에 놓는다.
+        #  팀 통계 대시보드(팀·이번 달)와 검토 '이전 처리'(이번 달)가 같은 달을 보기 때문에,
+        #  '며칠 전' 방식으로 두면 지난달로 넘어간 건이 화면에서 통째로 빠진다.
+        #  각 호출부의 ``days``는 "얼마나 오래된 건인가"의 상대 순서만 뜻한다 — 클수록 월초 쪽.
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_day = min(30, calendar.monthrange(now.year, now.month)[1])
+
         def at(days, hour=12, minute=0):
-            return (now - timedelta(days=days)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+            day = last_day - (days % last_day)  # days=1 → 29일, days=25 → 5일 (항상 1~30일)
+            return month_start.replace(day=day, hour=hour, minute=minute)
 
         # ── 팀 3개 ────────────────────────────────
         sales = Team.objects.create(name="영업팀", bu="영업본부")
@@ -61,13 +73,15 @@ class Command(BaseCommand):
         # 인가는 기능 단위(Capability) — 역할 기본값 ∪ extra_capabilities. (accounts.ROLE_DEFAULT_CAPABILITIES)
         #  kim=일반 사원(능력 없음)
         #  acc=회계작업·룰콘솔열람(역할기본) + 팀취합(추가부여)
-        #  acclead=회계작업·룰콘솔열람·룰활성(역할기본)
+        #  acclead=회계작업·룰콘솔열람·룰활성(역할기본) + 거버넌스열람(추가부여)
+        #        — 회계팀장은 룰 활성화 판단에 지표가 필요해 거버넌스 대시보드도 본다.
         kim = User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE, team=sales, first_name="김영업")
         User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD, team=sales, first_name="이팀장")
         acc = User.objects.create_user("acc", password="pass1234", role=Role.ACCOUNTANT, team=fin, first_name="박회계",
                                        extra_capabilities=[Capability.TEAM_AGGREGATE.value])
         acclead = User.objects.create_user("acclead", password="pass1234", role=Role.ACCOUNTANT_LEAD, team=fin,
-                                           first_name="정회계팀장")
+                                           first_name="정회계팀장",
+                                           extra_capabilities=[Capability.GOVERNANCE_VIEW.value])
         User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영")
 
         def emp(name, team):
@@ -310,6 +324,52 @@ class Command(BaseCommand):
                                       ai_recommendation=reco, ai_confidence=conf))
             review_rows[m] = settlement
 
+        # ── 검토 '이전 처리' 이력 — 이번 달에 회계 담당자가 이미 결정한 건 ──
+        # S-03의 "이전 처리" 탭은 이번 달 승인·보완요청·반려 건을 보여준다. 이상탐지 결과를 함께
+        # 남겨야 위험도·사유가 그대로 조회되므로, 처리 완료 상태 + RiskReview를 짝지어 시드한다.
+        #  status: PENDING_CONFIRM/CONFIRMED/ERP_VOUCHER_DRAFTED=승인 · RETURNED=보완요청 · REJECT=반려
+        processed_reviews = [
+            (u["이영희"], "더현대 서울", 512000, shared_card, C.ENTERTAIN, S.REJECT, "MISSING", 18, 21,
+             "거래처 선물 구매", "백화점", 0.9,
+             F(("고액 단건", 0.42), ("적격증빙 미첨부", 0.31), ("업무 관련성 불명확", 0.17)),
+             ["고액·증빙 누락·업무 관련성 불명확"], "REJECT", 0.87),
+            (u["이도윤"], "노래타운 강남", 176000, sales_shared_card, C.ENTERTAIN, S.REJECT, "OK", 16, 23,
+             "거래처 접대 2차", "노래연습장", 0.93,
+             F(("금지업종 결제", 0.5), ("심야 시간대 결제", 0.28)),
+             ["금지업종·심야 결제"], "REJECT", 0.94),
+            (u["최지우"], "쿠팡 이츠", 132000, devai_team_card, C.MEAL, S.RETURNED, "MISSING", 15, 21,
+             "야근 식대 - 증빙 보완 필요", "음식점", 0.66,
+             F(("증빙 미첨부", 0.36), ("1인당 한도 근접", 0.2)),
+             ["증빙 누락·한도 근접"], "RETURN", 0.68),
+            (u["박민수"], "인터컨티넨탈 서울", 264000, postpaid, C.TRIP, S.RETURNED, "OK", 14, 22,
+             "출장 숙박 - 한도 초과분 소명 필요", "숙박", 0.71,
+             F(("1박 숙박 한도 초과", 0.4), ("주말 연박", 0.16)),
+             ["숙박 한도 초과"], "RETURN", 0.73),
+            (u["오세진"], "다나와 사무기기", 96000, fin_team_card, C.SUPPLIES, S.RETURNED, "OK", 12, 14,
+             "결산용 라벨 프린터 - 사용 목적 보완", "전자상거래", 0.55,
+             F(("사용 목적 형식적", 0.29), ("분류 신뢰도 낮음", 0.14)),
+             ["사용 목적 불명확"], "RETURN", 0.56),
+            (u["한지민"], "SRT 수서-동대구", 84600, postpaid, C.TRIP, S.PENDING_CONFIRM, "OK", 11, 8,
+             "지방사업장 재고실사 이동", "철도", 0.34,
+             F(("출장 신청 임박 제출", 0.18)), ["출장 신청 지연(경미)"], "APPROVE", 0.82),
+            (u["김철수"], "GitHub Copilot", 42000, devai_team_card, C.OPERATION, S.PENDING_CONFIRM, "OK", 10, 9,
+             "개발 도구 월 구독", "소프트웨어", 0.27,
+             F(("정기 결제", 0.11)), ["특이사항 없음"], "APPROVE", 0.9),
+            (u["정하늘"], "미스터피자 코엑스", 78000, sales_team_card, C.MEAL, S.CONFIRMED, "OK", 9, 12,
+             "제안 마감 주말 근무 식대", "음식점", 0.41,
+             F(("주말 결제", 0.19)), ["주말 결제"], "APPROVE", 0.84),
+            (u["서지훈"], "알파문구", 23400, sales_team_card, C.SUPPLIES, S.CONFIRMED, "OK", 8, 16,
+             "전시 부스 소모품", "생활용품", 0.19,
+             F(("소액 결제", 0.08)), ["특이사항 없음"], "APPROVE", 0.93),
+            (u["한도현"], "카카오T 벤티", 28900, devai_team_card, C.TRIP, S.ERP_VOUCHER_DRAFTED, "OK", 7, 18,
+             "협력사 데모 장비 이동", "운수", 0.23,
+             F(("정상 패턴", 0.09)), ["특이사항 없음"], "APPROVE", 0.92),
+        ]
+        for (o, m, amt, card, cat, st, ev, d, h, pp, ind, sc, contrib, ar, reco, conf) in processed_reviews:
+            mk(o, m, amt, card, cat, True, st, ev, d, h, pp, ind,
+               risk=dict(anomaly_score=sc, reasons=contrib, rag_refs=[], anomaly_reasons=ar,
+                         ai_recommendation=reco, ai_confidence=conf))
+
         # ── 룰 그래프 시드(GLOBAL v3 · 기업업무추진비 v2 · 회식비 v1+초안 · 출장비 승인대기) ──
         call_command("seed_rules")
 
@@ -317,16 +377,36 @@ class Command(BaseCommand):
         self._enrich_demo_cases(review_rows, now)
 
         # ── 팀 예산(TeamBudget) — 한도만 DB 정의, 사용액은 Settlement 집계로 산출 ──
-        # category='' 행은 팀 월 총한도. 프론트 teamBudget 셰이프와 정합.
+        # 한도를 손으로 박아두면 시드 내역이 바뀔 때마다 대시보드가 어긋난다. 실제로 이번 달에
+        # 시드된 사용액에서 역산해 한도를 만든다 — 내역이 바뀌어도 비율이 유지된다.
+        #  ① **6개 계정과목 전부** 예산 행을 만든다. (기존엔 '업무활성'이 빠져 있어 그 지출이
+        #     총 사용액에는 잡히는데 항목별 카드에는 안 보였다 → 항목 합 ≠ 총액)
+        #  ② 팀 총한도(category='' 행) = **과목 한도의 합**. "전체 예산"과 "항목별 예산"을 일치시킨다.
+        #  ③ 팀별로 한 과목만 한도를 넘기게 만들어(OVER_BUDGET_DEMO) 초과 경고 톤을 시연한다.
         this_month = now.strftime("%Y-%m")
-        budget_plan = {
-            sales: {"": 5000000, C.MEAL: 1000000, C.TRIP: 1200000, C.ENTERTAIN: 1000000, C.SUPPLIES: 800000, C.MEETING: 500000},
-            devai: {"": 4000000, C.MEAL: 800000, C.TRIP: 1000000, C.ENTERTAIN: 900000, C.SUPPLIES: 900000, C.MEETING: 400000},
-            fin: {"": 3000000, C.MEAL: 600000, C.TRIP: 700000, C.ENTERTAIN: 500000, C.SUPPLIES: 500000, C.MEETING: 300000},
-        }
-        for team, plan in budget_plan.items():
-            for cat, lim in plan.items():
+        BASE_USAGE_RATE = 0.65      # 일반 과목 목표 소진율 — 팀 전체는 70~75%대로 떨어진다
+        OVER_BUDGET_RATE = 1.15     # 초과 시연 과목: 한도 < 사용액
+        MIN_CATEGORY_LIMIT = 300_000  # 사용액이 적거나 0인 과목의 하한(0 나누기·빈 막대 방지)
+        OVER_BUDGET_DEMO = {sales.id: C.ENTERTAIN, devai.id: C.MEETING, fin.id: C.TRIP}
+
+        def round_up(value, unit=10_000):
+            return int(-(-int(value) // unit) * unit)
+
+        used_by_team_cat = defaultdict(int)
+        for s in Settlement.objects.exclude(status=S.REJECT).select_related("transaction"):
+            if s.team_id and s.transaction.ts.strftime("%Y-%m") == this_month:
+                used_by_team_cat[(s.team_id, s.category)] += int(s.transaction.amount)
+
+        for team in (sales, devai, fin):
+            limits = {}
+            for cat in C.values:
+                used = used_by_team_cat.get((team.id, cat), 0)
+                rate = OVER_BUDGET_RATE if OVER_BUDGET_DEMO.get(team.id) == cat else BASE_USAGE_RATE
+                limits[cat] = max(MIN_CATEGORY_LIMIT, round_up(used / rate)) if used else MIN_CATEGORY_LIMIT
+            for cat, lim in limits.items():
                 TeamBudget.objects.create(team=team, year_month=this_month, category=cat, limit_amount=lim)
+            TeamBudget.objects.create(team=team, year_month=this_month, category="",
+                                      limit_amount=sum(limits.values()))
 
         self.stdout.write(self.style.SUCCESS(
             f"시드 완료 - 팀 {Team.objects.count()} / 사용자 {User.objects.count()} / 카드 {Card.objects.count()} / "

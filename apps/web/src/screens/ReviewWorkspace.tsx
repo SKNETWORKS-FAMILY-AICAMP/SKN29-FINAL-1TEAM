@@ -11,9 +11,11 @@ import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { reviewSettlement } from '../api/settlementService'
+import { REVIEW_DECIDED_STATUSES } from '../api/settlements'
 import { useSettlements } from '../context/SettlementsContext'
 import { useCan } from '../lib/capabilities'
 import { activateOnEnterOrSpace } from '../lib/a11y'
+import { currentMonth, isInMonth, monthLabel } from '../lib/period'
 
 type Reco = ReviewItem['aiRecommendation']
 const RECO_LABEL: Record<Reco, { text: string; abbr: string; cls: string }> = {
@@ -30,6 +32,13 @@ const riskColor = (score: number) => (score >= 60 ? 'var(--tone-red)' : score >=
 const CAT_ABBR: Partial<Record<Category, string>> = { 업무활성: '업무' }
 const catAbbr = (c: string) => CAT_ABBR[c as Category] ?? c.slice(0, 2)
 
+// 이미 처리된 건의 "실제 결과" — 이전 처리 탭은 AI 권장이 아니라 이 값으로 세고·거르고·표시한다.
+const OUTCOME_BY_STATUS: Partial<Record<ReviewItem['status'], Reco>> = {
+  PENDING_CONFIRM: 'APPROVE', CONFIRMED: 'APPROVE', ERP_VOUCHER_DRAFTED: 'APPROVE',
+  RETURNED: 'RETURN', REJECT: 'REJECT',
+}
+const outcomeOf = (item: ReviewItem): Reco => OUTCOME_BY_STATUS[item.status] ?? item.aiRecommendation
+
 export function ReviewWorkspace() {
   const { reviewItems: items, updateStatus } = useSettlements()
   const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
@@ -42,18 +51,25 @@ export function ReviewWorkspace() {
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<'PENDING' | 'HISTORY'>('PENDING')
   const isHistory = view === 'HISTORY'
+  const month = currentMonth()
 
-  // 검토 대기 = 아직 사람이 결정하지 않은 IN_REVIEW 건. 이전 처리 = 그 외(이미 결정된) 건. anomaly_score 내림차순 (FR-RL-01, FR-RR-04)
+  // 검토 대기 = 아직 사람이 결정하지 않은 IN_REVIEW 건. anomaly_score 내림차순 (FR-RL-01, FR-RR-04)
   const pending = [...items].filter((i) => i.status === 'IN_REVIEW').sort((a, b) => b.anomalyScore - a.anomalyScore)
-  const processed = [...items].filter((i) => i.status !== 'IN_REVIEW').sort((a, b) => b.anomalyScore - a.anomalyScore)
+  // 이전 처리 = 이번 달에 승인·보완요청·반려로 결정된 건. 최근 거래일순.
+  //  (예전에는 "IN_REVIEW가 아닌 것"이라 서버가 IN_REVIEW만 내려주는 동안엔 이번 세션 처리분만 보였다.)
+  const processed = [...items]
+    .filter((i) => REVIEW_DECIDED_STATUSES.includes(i.status) && isInMonth(i.date, month))
+    .sort((a, b) => (a.date === b.date ? b.anomalyScore - a.anomalyScore : b.date.localeCompare(a.date)))
   const source = isHistory ? processed : pending
+  // 검토 대기는 AI 권장 기준, 이전 처리는 실제 처리 결과 기준으로 세고 거른다.
+  const bucketOf = (item: ReviewItem): Reco => (isHistory ? outcomeOf(item) : item.aiRecommendation)
   const counts: Record<Filter, number> = {
     ALL: source.length,
-    APPROVE: source.filter((i) => i.aiRecommendation === 'APPROVE').length,
-    RETURN: source.filter((i) => i.aiRecommendation === 'RETURN').length,
-    REJECT: source.filter((i) => i.aiRecommendation === 'REJECT').length,
+    APPROVE: source.filter((i) => bucketOf(i) === 'APPROVE').length,
+    RETURN: source.filter((i) => bucketOf(i) === 'RETURN').length,
+    REJECT: source.filter((i) => bucketOf(i) === 'REJECT').length,
   }
-  const listed = filter === 'ALL' ? source : source.filter((i) => i.aiRecommendation === filter)
+  const listed = filter === 'ALL' ? source : source.filter((i) => bucketOf(i) === filter)
   const sel = source.find((i) => i.id === selId) ?? listed[0] ?? source[0]
   // fact.json — 정산 상세 모달과 동일한 "규정 판정 입력값" 스냅샷(읽기 전용 요약)
   const fact = sel && {
@@ -72,7 +88,7 @@ export function ReviewWorkspace() {
   const pickFilter = (f: Filter) => {
     setFilter(f)
     // 추천 필터 선택 시 해당 건 전체 자동 선택 (S-03 Review 목업) — 이전 처리 뷰에선 일괄처리 없음
-    setChecked(f === 'ALL' || isHistory ? new Set() : new Set(source.filter((i) => i.aiRecommendation === f).map((i) => i.id)))
+    setChecked(f === 'ALL' || isHistory ? new Set() : new Set(source.filter((i) => bucketOf(i) === f).map((i) => i.id)))
   }
 
   // 검토 대기 ↔ 이전 처리 내역 전환 — 선택·필터 초기화(같은 UI, 이전 처리 뷰는 처리 버튼 비활성)
@@ -152,7 +168,9 @@ export function ReviewWorkspace() {
               <button type="button" className={isHistory ? 'active' : ''} onClick={() => switchView('HISTORY')}>이전 처리</button>
             </div>
           </div>
-          <div className="card-body text-meta">{isHistory ? '이전 처리 내역이 없습니다.' : '검토 대기 중인 건이 없습니다.'}</div>
+          <div className="card-body text-meta">
+            {isHistory ? `${monthLabel(month)}에 승인·보완요청·반려된 내역이 없습니다.` : '검토 대기 중인 건이 없습니다.'}
+          </div>
         </div>
       ) : (
         <div className="split">
@@ -168,13 +186,15 @@ export function ReviewWorkspace() {
             </div>
             <div className="text-meta" style={{ padding: '8px 16px 0' }}>
               {isHistory
-                ? `처리 완료 ${source.length}건 · 조회 전용`
+                ? `${monthLabel(month)} 처리 완료 ${source.length}건 · 조회 전용`
                 : `고위험 ${source.filter((i) => i.anomalyScore >= 0.7).length}건 · anomaly_score 순`}
             </div>
             {/* AI 권장 기준 필터 칩 */}
             <div className="row" style={{ gap: 6, padding: '10px 16px 0', flexWrap: 'wrap' }}>
               {(['ALL', 'APPROVE', 'RETURN', 'REJECT'] as Filter[]).map((f) => (
-                <button key={f} className={'tag' + (filter === f ? ' ai' : '')} style={{ cursor: 'pointer' }} onClick={() => pickFilter(f)}>
+                <button key={f} className={'tag' + (filter === f ? ' ai' : '')} style={{ cursor: 'pointer' }}
+                  title={f === 'ALL' ? undefined : isHistory ? `${RECO_LABEL[f].text}으로 처리된 건` : `AI 권장이 ${RECO_LABEL[f].text}인 건`}
+                  onClick={() => pickFilter(f)}>
                   {f === 'ALL' ? '전체' : RECO_LABEL[f].text} {counts[f]}
                 </button>
               ))}
@@ -218,17 +238,26 @@ export function ReviewWorkspace() {
                           <span className="name">{i.user}</span>
                         </div>
                         <span className="tag cat" title={i.aiCategory}>{catAbbr(i.aiCategory)}</span>
-                        <button
-                          type="button"
-                          className={'tag reco-btn ' + reco.cls}
-                          disabled={busy || isHistory || !canReview}
-                          title={isHistory ? '이미 처리된 건입니다' : `클릭하여 ${reco.text} 처리`}
-                          onClick={(e) => { e.stopPropagation(); decideItem(i, i.aiRecommendation) }}
-                        >
-                          {reco.abbr}
-                        </button>
+                        {/* 이전 처리 뷰는 AI 권장이 아니라 실제 처리 결과 상태를 보여준다. */}
+                        {isHistory ? (
+                          <StatusBadge status={i.status} />
+                        ) : (
+                          <button
+                            type="button"
+                            className={'tag reco-btn ' + reco.cls}
+                            disabled={busy || !canReview}
+                            title={`클릭하여 ${reco.text} 처리`}
+                            onClick={(e) => { e.stopPropagation(); decideItem(i, i.aiRecommendation) }}
+                          >
+                            {reco.abbr}
+                          </button>
+                        )}
                       </div>
-                      <div className="review-item-reason">{i.anomalyReasons.join(', ')}</div>
+                      <div className="review-item-reason">
+                        {isHistory
+                          ? `${i.date} · ${won(i.amount)} · ${i.merchant}`
+                          : i.anomalyReasons.join(', ')}
+                      </div>
                     </div>
                   </li>
                 )

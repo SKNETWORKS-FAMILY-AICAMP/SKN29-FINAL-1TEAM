@@ -110,19 +110,26 @@ export function TestCaseModal({ cases, onClose, onSave }: {
       <div className="testcase-grid">
         {/* ① 내역 리스트 미리보기 */}
         <div className="card">
-          <div className="card-head"><h3>내역 리스트</h3><span className="text-meta">{draft.length}건</span></div>
+          <div className="card-head">
+            <div><h3>내역 리스트</h3><div className="text-meta">제목 · 정답(기대) 판정</div></div>
+            <span className="tag">{draft.length}건</span>
+          </div>
           <div className="stack" style={{ padding: 8, gap: 4, maxHeight: 460, overflowY: 'auto' }}>
             {draft.length === 0 && <div className="text-meta" style={{ padding: 8 }}>케이스가 없습니다. 아래에서 추가하세요.</div>}
             {draft.map((item) => (
-              <div key={item.id} className={'review-item' + (item.id === selected?.id ? ' selected' : '')}
+              <div key={item.id} className={'testcase-item' + (item.id === selected?.id ? ' selected' : '')}
                 role="button" tabIndex={0} onClick={() => setSelectedId(item.id)}
-                onKeyDown={activateOnEnterOrSpace(() => setSelectedId(item.id))}
-                style={{ padding: '8px 10px', borderRadius: 'var(--radius-control)', cursor: 'pointer' }}>
-                <div className="row" style={{ justifyContent: 'space-between', gap: 6 }}>
-                  <b style={{ fontSize: 12.5 }}>{item.label}</b>
-                  {item.expected && <span className={'tag ' + decisionTone(item.expected)}>{DECISION_LABEL[item.expected]}</span>}
+                onKeyDown={activateOnEnterOrSpace(() => setSelectedId(item.id))}>
+                <div className="testcase-item-top">
+                  <span className="name" title={item.label}>{item.label}</span>
+                  {/* 정답(기대) 판정 — 비어 있어도 자리를 비우지 않고 '채점 안 함'으로 표시해 열을 맞춘다. */}
+                  {item.expected
+                    ? <span className={'tag ' + decisionTone(item.expected)}>{DECISION_LABEL[item.expected]}</span>
+                    : <span className="tag" title="기대 판정이 없어 채점에서 제외됩니다">채점 안 함</span>}
                 </div>
-                <div className="text-meta">{item.merchant || '가맹점 미입력'} · {won(item.amount)} · {item.category || '분류 없음'}</div>
+                <div className="testcase-item-meta">
+                  {item.merchant || '가맹점 미입력'} · {won(item.amount)} · {item.category || '분류 없음'}
+                </div>
               </div>
             ))}
           </div>

@@ -54,7 +54,9 @@ daily_scrum/  주차별 진행 보고
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
 | 룰 그래프(트리) 도메인 | ✅ 1차 완료 | scope별 버전·DRAFT 복제/원복·노드 삭제·자동 저장·**DSL 쉽게보기(`RuleNode.condition_text`)** 에 더해 **검증 시뮬레이션 도메인**(`RuleTestCase`/`RuleSimulationRun`/`RuleSimulationResult` — 실행 스냅샷+해시 보존, 낡은 결과 표시)과 **승인 흐름**(Active 요청 시 검토자 코멘트·스코프당 승인대기 1건 제한, 활성자/검토자 추적, 버전 이력 롤백) 구현. 구조 시각화는 위→아래 스크롤 플로우차트(순환 감지 포함) |
 | 화면 임시 비활성화 | ⏸ 규정 문서 관리(S-?/`/policy-docs`) | 실 API 미연동(mock 전용)이라 사이드바 메뉴·라우트를 주석 처리. 화면 파일(`PolicyDocuments.tsx`)은 그대로 두었고, `App.tsx` import·라우트와 `Sidebar.tsx` MENU 한 줄만 되살리면 복구 |
-| 시연 시드 데이터 | ✅ 완료 | 룰 그래프 4계열(GLOBAL v1~v3·기업업무추진비 v1~v2·회식비 활성+초안·출장비 승인대기) + 작성 대화 로그, 정산 74건(회계팀 자체 지출 포함)·검토 30건, 하이라이트 3건은 RAG 검증 보고서(마크다운)+실제 EvalContext 스냅샷(`rule_hits`) |
+| 시연 시드 데이터 | ✅ 완료 | 룰 그래프 4계열(GLOBAL v1~v3·기업업무추진비 v1~v2·회식비 활성+초안·출장비 승인대기) + 작성 대화 로그, 정산 84건(회계팀 자체 지출 포함)·검토 대기 30건·검토 이전처리 10건, 하이라이트 3건은 RAG 검증 보고서(마크다운)+실제 EvalContext 스냅샷(`rule_hits`). **모든 거래일자는 이번 달 1~30일 안에 배치**(`seed.at()`) — 팀 통계·검토 이력의 "이번 달" 필터와 정합 |
+| 화면 데이터 스코프 규약 | ✅ 정리 완료 | "이번 달" 경계는 `web/src/lib/period.ts`에서만 정의(하드코딩 월 상수 제거). **S-01 내 지출**=오늘이 속한 달(단순 월 기준, 일자 무관). **S-02 팀 통계 대시보드**(KPI·예산)=팀·이번달·`REJECT` 제외 **전 상태** / **S-02 취합 목록**=팀·이번달·`TEAM_*`만. **S-03 이전 처리**=이번 달 회계 결정 완료 건(`api/settlements.ts:REVIEW_DECIDED_STATUSES`) |
+| 팀 예산(TeamBudget) 정합 | ✅ 수정 완료 | 한도만 DB, 사용액은 팀·월·`REJECT` 제외 Settlement 집계(`TeamBudgetView`). **불변식 2개**: ① 팀 총한도(`category=''`) = 과목 한도 합 ② 과목 사용 합 = 총 사용액. 시드는 실제 집계에서 한도를 역산(`seed.py` BASE_USAGE_RATE)해 내역이 바뀌어도 어긋나지 않게 하고, **6개 과목 전부** 예산 행을 만든다(과거 `업무활성` 누락으로 항목 합 ≠ 총액이었음). 예산 행 없는 과목 지출은 API `unbudgetedUsed`로 노출 |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 
 다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.

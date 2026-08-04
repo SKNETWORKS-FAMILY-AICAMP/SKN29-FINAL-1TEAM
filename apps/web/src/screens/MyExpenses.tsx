@@ -9,8 +9,8 @@ import { SettlementDetailModal } from '../components/settlement/SettlementDetail
 import { raiseSettlements } from '../api/settlementService'
 import { useSettlements } from '../context/SettlementsContext'
 import { activateOnEnterOrSpace } from '../lib/a11y'
+import { currentMonth, isInMonth, monthLabel } from '../lib/period'
 
-const THIS_MONTH = '2026-07' // 데모 기준 '이번 달'
 const DONE: SettlementStatus[] = ['CONFIRMED', 'ERP_VOUCHER_DRAFTED']
 const PROCESSING: SettlementStatus[] = ['SUBMITTED', 'RPA_JUDGED', 'PENDING_CONFIRM', 'IN_REVIEW', 'TEAM_COLLECTING', 'TEAM_RETURNED', 'TEAM_REJECTED']
 const SUBMITTABLE: SettlementStatus[] = ['DRAFT'] // 올림 가능 = 작성중(개인 → 팀 취합)
@@ -34,21 +34,23 @@ export function MyExpenses() {
   const [submitting, setSubmitting] = useState(false)
   const [period, setPeriod] = useState<'MONTH' | 'ALL'>('MONTH')
   const [view, setView] = useState<ViewFilter>('ACTIVE')
+  // "이번 달" = 오늘이 속한 달(단순 월 기준). 일자는 보지 않으므로 같은 달이면 미래 일자도 포함된다.
+  const month = currentMonth()
 
   // 이번 달 지표(KPI)
   const stats = useMemo(() => {
-    const m = expenses.filter((e) => e.date.startsWith(THIS_MONTH))
+    const m = expenses.filter((e) => isInMonth(e.date, month))
     return {
       total: m.reduce((s, e) => s + e.amount, 0),
       draft: m.filter((e) => e.status === 'DRAFT').length,
       returned: m.filter((e) => e.status === 'RETURNED').length,
       rejected: m.filter((e) => e.status === 'REJECT').length,
     }
-  }, [expenses])
+  }, [expenses, month])
 
   // 기간 + 상태 필터 → 우선순위 정렬
   const list = useMemo(() => {
-    let l = expenses.filter((e) => period === 'ALL' || e.date.startsWith(THIS_MONTH))
+    let l = expenses.filter((e) => period === 'ALL' || isInMonth(e.date, month))
     l = l.filter((e) => {
       switch (view) {
         case 'ACTIVE': return !DONE.includes(e.status) // 진행중(완료 제외)
@@ -59,7 +61,7 @@ export function MyExpenses() {
       }
     })
     return [...l].sort((a, b) => priorityOf(a.status) - priorityOf(b.status) || b.date.localeCompare(a.date))
-  }, [expenses, period, view])
+  }, [expenses, period, view, month])
 
   const toggle = (id: string) => {
     const next = new Set(checked)
@@ -90,7 +92,7 @@ export function MyExpenses() {
       </div>
 
       <div className="kpi-grid">
-        <KpiCard label="이번달 사용액" value={won(stats.total)} />
+        <KpiCard label={`${monthLabel(month)} 사용액`} value={won(stats.total)} />
         <KpiCard label="작성중(올림 가능)" value={stats.draft} unit="건" />
         <KpiCard label="보완요청" value={stats.returned} unit="건" warn={stats.returned > 0} />
         <KpiCard label="반려" value={stats.rejected} unit="건" warn={stats.rejected > 0} />

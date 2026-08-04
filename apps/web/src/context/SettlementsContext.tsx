@@ -13,6 +13,8 @@ import { useAuth } from './AuthContext'
 interface TeamMember { name: string; items: Settlement[] }
 
 interface SettlementsCtx {
+  /** 화면별 스코프(팀·월·상태)를 직접 걸어야 하는 화면용 원본 전체 목록. */
+  all: Settlement[]
   myExpenses: Settlement[]
   teamMembers: TeamMember[]
   reviewItems: ReviewItem[]
@@ -26,8 +28,18 @@ interface SettlementsCtx {
 
 const Ctx = createContext<SettlementsCtx | null>(null)
 
+/** mock 모드 초기 전체 목록 — 3개 mock 배열의 합집합(id 중복 제거). */
+function mockAll(): Settlement[] {
+  const byId = new Map<string, Settlement>()
+  for (const item of [...initialMyExpenses, ...initialTeamMembers.flatMap((m) => m.items), ...initialReviewItems]) {
+    if (!byId.has(item.id)) byId.set(item.id, item)
+  }
+  return [...byId.values()]
+}
+
 export function SettlementsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const [all, setAll] = useState<Settlement[]>(USE_MOCK ? mockAll : [])
   const [myExpenses, setMyExpenses] = useState<Settlement[]>(USE_MOCK ? initialMyExpenses : [])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(USE_MOCK ? initialTeamMembers : [])
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>(USE_MOCK ? initialReviewItems : [])
@@ -38,6 +50,7 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     fetchSettlementsData(user?.name)
       .then((d) => {
+        setAll(d.all)
         setMyExpenses(d.myExpenses)
         setTeamMembers(d.teamMembers)
         setReviewItems(d.reviewItems)
@@ -52,6 +65,7 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
   }, [user?.name])
 
   const updateStatus = (id: string, status: SettlementStatus) => {
+    setAll((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)))
     setMyExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)))
     setTeamMembers((prev) => prev.map((m) => ({ ...m, items: m.items.map((i) => (i.id === id ? { ...i, status } : i)) })))
     setReviewItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)))
@@ -62,11 +76,17 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
     teamMembers.flatMap((m) => m.items).find((i) => i.id === id) ??
     reviewItems.find((i) => i.id === id)
 
-  const addExpense = (item: Settlement) => setMyExpenses((prev) => [item, ...prev])
-  const removeExpense = (id: string) => setMyExpenses((prev) => prev.filter((e) => e.id !== id))
+  const addExpense = (item: Settlement) => {
+    setAll((prev) => [item, ...prev])
+    setMyExpenses((prev) => [item, ...prev])
+  }
+  const removeExpense = (id: string) => {
+    setAll((prev) => prev.filter((e) => e.id !== id))
+    setMyExpenses((prev) => prev.filter((e) => e.id !== id))
+  }
 
   return (
-    <Ctx.Provider value={{ myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, removeExpense, refresh }}>
+    <Ctx.Provider value={{ all, myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, removeExpense, refresh }}>
       {children}
     </Ctx.Provider>
   )

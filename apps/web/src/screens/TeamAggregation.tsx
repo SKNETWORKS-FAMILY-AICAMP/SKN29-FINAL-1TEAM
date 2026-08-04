@@ -13,49 +13,93 @@ import { useSettlements } from '../context/SettlementsContext'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/capabilities'
 import { activateOnEnterOrSpace } from '../lib/a11y'
+import { currentMonth, isInMonth, monthLabel } from '../lib/period'
+
+// 이 화면의 두 스코프 — 섞이면 숫자가 어긋난다.
+//  ① 팀 통계 대시보드(KPI·예산): 해당 팀 · 해당 월 · 최종반려(REJECT) 제외 **모든 상태**
+//  ② 취합 목록: 해당 팀 팀원들의 이번 달 **팀 단계(TEAM_*)** 건만
+const inTeamStage = (item: Settlement) => item.status.startsWith('TEAM_')
+// 사용액은 진행 상태와 무관하게 "이미 쓴 돈"으로 잡는다(카드는 이미 결제됨). 최종 반려만 뺀다.
+//  백엔드 TeamBudgetView._BUDGET_EXCLUDE와 같은 규칙.
+const countsTowardStats = (item: Settlement) => item.status !== 'REJECT'
+// mock 데이터에는 dept가 없다 — 그 경우 팀 필터를 건너뛴다(실 모드에선 항상 채워진다).
+const inTeam = (item: Settlement, teamName: string) => !item.dept || item.dept === teamName
+
+/** GET /api/team-budget/ 응답. `unbudgetedUsed`는 예산 행이 없는 과목의 지출(항목 합과 총액의 차이). */
+interface TeamBudgetView {
+  total: number
+  used: number
+  categories: { label: string; limit: number; used: number }[]
+  unbudgetedUsed?: number
+}
 
 export function TeamAggregation() {
-  const { teamMembers, updateStatus } = useSettlements()
+  const { all, teamMembers, updateStatus } = useSettlements()
   const { user } = useAuth()
   const teamName = user?.dept ?? '내 팀' // 로그인 사용자의 소속 팀(재무회계팀 / AI·개발팀 등)
   const canManage = useCan()('team_aggregate') // 팀 취합 권한 보유자만 개별 건 조회·처리
+  const month = currentMonth()
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
   const [memberFilter, setMemberFilter] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
-  // 팀 화면에는 아직 팀 단계에 있는 건만 남긴다 — 제출(SUBMITTED)하면 즉시 사라진다.
-  const inTeamStage = (item: Settlement) => item.status.startsWith('TEAM_')
+  // ② 취합 목록 — 우리 팀 · 이번 달 · 팀 단계(TEAM_*)만. 제출(SUBMITTED)하면 즉시 사라진다.
   const members = useMemo(
-    () => teamMembers.map((m) => ({ ...m, items: m.items.filter(inTeamStage) })).filter((m) => m.items.length > 0),
-    [teamMembers],
+    () => teamMembers
+      .map((m) => ({
+        ...m,
+        items: m.items.filter((i) => inTeamStage(i) && inTeam(i, teamName) && isInMonth(i.date, month)),
+      }))
+      .filter((m) => m.items.length > 0),
+    [teamMembers, teamName, month],
   )
-  const all = members.flatMap((m) => m.items)
+  const listedAll = members.flatMap((m) => m.items)
   const filteredMembers = memberFilter.size === 0 ? members : members.filter((m) => memberFilter.has(m.name))
   const visibleAll = filteredMembers.flatMap((m) => m.items)
-  const collecting = all.filter((i) => i.status === 'TEAM_COLLECTING')
+  const collecting = listedAll.filter((i) => i.status === 'TEAM_COLLECTING')
 
-  // 팀 예산 — 사용액은 서버 집계(상태 무관, 최종 반려만 제외). 팀 화면 목록과 무관하게 유지된다.
-  const [budget, setBudget] = useState(teamBudget)
+  // ① 팀 통계 대시보드 — 우리 팀 · 이번 달 · 최종반려 제외 전체 내역(상태 무관).
+  const teamMonthly = useMemo(
+    () => all.filter((i) => inTeam(i, teamName) && isInMonth(i.date, month) && countsTowardStats(i)),
+    [all, teamName, month],
+  )
+
+  // 팀 예산 — 한도는 DB(TeamBudget), 사용액은 서버 집계(상태 무관·최종반려만 제외).
+  //  서버 집계 규칙은 위 ①(countsTowardStats)과 같아야 KPI 총 사용액과 예산 카드가 맞아떨어진다.
+  const [budget, setBudget] = useState<TeamBudgetView>(teamBudget)
+  const [budgetLive, setBudgetLive] = useState(USE_MOCK) // 실 모드에서 서버 응답을 받았는지
   useEffect(() => {
     if (USE_MOCK || !user?.teamId) return
     let cancelled = false
-    endpoints.teamBudget(user.teamId, new Date().toISOString().slice(0, 7))
-      .then(({ data }) => { if (!cancelled && data?.categories?.length) setBudget(data) })
+    endpoints.teamBudget(user.teamId, month)
+      .then(({ data }) => {
+        if (cancelled || !data?.categories?.length) return
+        setBudget(data)
+        setBudgetLive(true)
+      })
       .catch(() => undefined)
     return () => { cancelled = true }
-  }, [user?.teamId, teamMembers])
+  }, [user?.teamId, month, teamMembers])
 
+  // ① 대시보드 지표 — teamMonthly(팀·월·최종반려 제외 전체) 기준.
   const stats = useMemo(() => {
-    const anomalous = collecting.filter((i) => anomalyTags(i).length > 0).length
+    const anomalous = teamMonthly.filter((i) => anomalyTags(i).length > 0).length
     return {
-      members: members.length,
-      total: all.reduce((s, i) => s + i.amount, 0),
+      members: new Set(teamMonthly.map((i) => i.user)).size,
+      total: teamMonthly.reduce((s, i) => s + i.amount, 0),
+      count: teamMonthly.length,
       anomalous,
-      normal: collecting.length - anomalous,
+      normal: teamMonthly.length - anomalous,
     }
-  }, [all, collecting, members.length])
+  }, [teamMonthly])
+
+  // ② 취합 처리 버튼용 — 지금 취합 대기(TEAM_COLLECTING) 중인 건만.
+  const collectingStats = useMemo(() => {
+    const anomalous = collecting.filter((i) => anomalyTags(i).length > 0).length
+    return { anomalous, normal: collecting.length - anomalous }
+  }, [collecting])
 
   const toggleMember = (name: string) => {
     const next = new Set(expanded)
@@ -92,9 +136,13 @@ export function TeamAggregation() {
     (onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items).length > 0
   )
   const budgetRemaining = budget.total - budget.used
-  const budgetRemainingRate = budgetRemaining / budget.total
+  // 한도가 0이면 나눗셈이 Infinity/NaN이 되어 막대·퍼센트가 깨진다 — 0으로 떨어뜨린다.
+  const budgetRemainingRate = budget.total > 0 ? budgetRemaining / budget.total : 0
   const budgetTone = budgetRemainingRate <= 0.2 ? 'var(--tone-red)' : budgetRemainingRate <= 0.5 ? 'var(--tone-amber)' : 'var(--tone-green)'
-  const budgetRateLabel = budgetRemainingRate < 0 ? `초과 ${pct(budgetRemainingRate)}` : `잔여 ${pct(budgetRemainingRate)}`
+  const budgetRateLabel = budget.total <= 0 ? '한도 미설정'
+    : budgetRemainingRate < 0 ? `초과 ${pct(budgetRemainingRate)}` : `잔여 ${pct(budgetRemainingRate)}`
+  // 예산 행이 없는 과목의 지출 — 있으면 "항목 합 ≠ 총 사용액"이므로 숨기지 않고 알린다.
+  const unbudgetedUsed = budget.unbudgetedUsed ?? 0
 
   return (
     <>
@@ -107,19 +155,28 @@ export function TeamAggregation() {
         <span className="tag warn">마감 D-2</span>
       </div>
 
+      {/* ① 팀 통계 대시보드 — 취합 목록과 스코프가 다르다(전 상태 집계). */}
+      <div className="text-meta" style={{ margin: '0 0 8px' }}>
+        팀 통계 · {monthLabel(month)} · {teamName} — 최종반려를 제외한 이번 달 전체 내역 {stats.count}건 기준
+      </div>
       <div className="kpi-grid">
-        <KpiCard label="팀원 수" value={stats.members} unit="명" />
-        <KpiCard label="총 취합액" value={won(stats.total)} />
+        <KpiCard label="지출 등록 인원" value={stats.members} unit="명" />
+        <KpiCard label="이번 달 총 사용액" value={won(stats.total)} />
         <KpiCard label="이상 건" value={stats.anomalous} unit="건" warn={stats.anomalous > 0} />
         <KpiCard label="정상 건" value={stats.normal} unit="건" />
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
-          <h3>팀 예산 현황 · 2026년 7월</h3>
+          <h3>팀 예산 현황 · {monthLabel(month)}</h3>
           <span className="tag" style={{ color: budgetTone, borderColor: budgetTone }}>{budgetRateLabel}</span>
         </div>
         <div className="card-body">
+          {!budgetLive && (
+            <div className="note" style={{ marginBottom: 12 }}>
+              ⚠ 팀 예산을 서버에서 불러오지 못했습니다. 아래 숫자는 <b>샘플 값</b>이며 실제 사용액이 아닙니다.
+            </div>
+          )}
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
             <span className="text-meta">잔여 예산</span>
             <span className="text-meta">총 {won(budget.total)}원 중 {won(budget.used)}원 사용</span>
@@ -131,11 +188,19 @@ export function TeamAggregation() {
             <div style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), height: '100%', background: budgetTone }} />
           </div>
 
-          <div className="text-meta" style={{ marginBottom: 12, fontWeight: 600 }}>항목별 잔여 예산</div>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+            <span className="text-meta" style={{ fontWeight: 600 }}>항목별 잔여 예산</span>
+            {/* 항목 합이 총 사용액과 어긋나면 그 차이를 숨기지 않고 밝힌다. */}
+            {unbudgetedUsed > 0 && (
+              <span className="text-meta" title="예산 항목이 배정되지 않은 계정과목의 지출입니다">
+                ⚠ 예산 미배정 항목 사용 {won(unbudgetedUsed)}
+              </span>
+            )}
+          </div>
           <div className="team-budget-grid">
             {budget.categories.slice(0, 10).map((c) => {
               const remaining = c.limit - c.used
-              const remainingRate = remaining / c.limit
+              const remainingRate = c.limit > 0 ? remaining / c.limit : 0
               const tone = remainingRate <= 0.2 ? 'danger' : remainingRate <= 0.5 ? 'caution' : 'safe'
               const barColor = tone === 'danger' ? 'var(--tone-red)' : tone === 'caution' ? 'var(--tone-amber)' : 'var(--tone-green)'
               return (
@@ -169,6 +234,10 @@ export function TeamAggregation() {
       )}
 
       {canManage && (<>
+      {/* ② 취합 목록 — 대시보드와 달리 팀 단계(TEAM_*) 건만 보인다. */}
+      <div className="text-meta" style={{ margin: '0 0 8px' }}>
+        취합 대상 · {monthLabel(month)} — 팀원이 팀에 올린 건({listedAll.length}건)만 표시합니다. 회계로 제출하면 목록에서 사라집니다.
+      </div>
       <div className="filter-bar">
         <details className="multi-select">
           <summary>사람별 보기 {memberFilter.size > 0 ? `(${memberFilter.size}명)` : '(전체)'}</summary>
@@ -182,15 +251,19 @@ export function TeamAggregation() {
           이상건만 보기
         </label>
         <div className="spacer" />
-        <button className="btn return" disabled={busy || stats.anomalous === 0} onClick={requestAnomalyCorrections}>이상건 자동 보완요청</button>
-        <button className="btn primary" disabled={busy || stats.normal === 0} onClick={submitNormalOnly}>
-          이상건 제외 일괄제출 ({stats.normal}건)
+        <button className="btn return" disabled={busy || collectingStats.anomalous === 0} onClick={requestAnomalyCorrections}>이상건 자동 보완요청</button>
+        <button className="btn primary" disabled={busy || collectingStats.normal === 0} onClick={submitNormalOnly}>
+          이상건 제외 일괄제출 ({collectingStats.normal}건)
         </button>
       </div>
 
       {!hasVisibleMember && (
         <div className="card">
-          <div className="card-body text-meta">이상 건이 없습니다.</div>
+          <div className="card-body text-meta">
+            {listedAll.length === 0
+              ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
+              : '이상 건이 없습니다.'}
+          </div>
         </div>
       )}
 

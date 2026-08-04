@@ -2,19 +2,19 @@
 import type { PolicyDocument, ReviewItem, Settlement } from '../types/domain'
 
 export const myExpenses: Settlement[] = [
-  // ── 이번 달(2026-07) ──
-  { id: 'S-1004', date: '2026-07-16', merchant: '교보문고', amount: 46500, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'RETURNED', user: '김민규' },
-  { id: 'S-1007', date: '2026-07-13', merchant: '갤러리아 백화점', amount: 210000, cardType: 'PERSONAL', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'REJECT', user: '김민규' },
-  { id: 'S-1001', date: '2026-07-18', merchant: '스타벅스 강남점', amount: 28000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '김민규' },
-  { id: 'S-1002', date: '2026-07-18', merchant: '카카오T', amount: 14300, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '김민규' },
-  { id: 'S-1003', date: '2026-07-17', merchant: '더본코리아', amount: 132000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'SUBMITTED', user: '김민규' },
-  { id: 'S-1008', date: '2026-07-16', merchant: 'GS25 역삼점', amount: 8800, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'PENDING_CONFIRM', user: '김민규' },
-  { id: 'S-1005', date: '2026-07-15', merchant: '롯데호텔', amount: 380000, cardType: 'POST_PAID', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '김민규' },
-  { id: 'S-1006', date: '2026-07-14', merchant: '쿠팡', amount: 89000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
-  // ── 지난 달(2026-06) 처리 완료 — 기본 숨김, 필터로 조회 ──
-  { id: 'S-0927', date: '2026-06-27', merchant: '이디야커피 역삼', amount: 15000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
-  { id: 'S-0920', date: '2026-06-20', merchant: 'SRT 수서', amount: 96000, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: true, evidence: 'OK', status: 'ERP_VOUCHER_DRAFTED', user: '김민규' },
-  { id: 'S-0911', date: '2026-06-11', merchant: '올리브영', amount: 34000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
+  // ── 이번 달(2026-08) ──
+  { id: 'S-1004', date: '2026-08-16', merchant: '교보문고', amount: 46500, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'RETURNED', user: '김민규' },
+  { id: 'S-1007', date: '2026-08-13', merchant: '갤러리아 백화점', amount: 210000, cardType: 'PERSONAL', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'REJECT', user: '김민규' },
+  { id: 'S-1001', date: '2026-08-18', merchant: '스타벅스 강남점', amount: 28000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: true, evidence: 'OK', status: 'DRAFT', user: '김민규' },
+  { id: 'S-1002', date: '2026-08-18', merchant: '카카오T', amount: 14300, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '김민규' },
+  { id: 'S-1003', date: '2026-08-17', merchant: '더본코리아', amount: 132000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'SUBMITTED', user: '김민규' },
+  { id: 'S-1008', date: '2026-08-16', merchant: 'GS25 역삼점', amount: 8800, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'PENDING_CONFIRM', user: '김민규' },
+  { id: 'S-1005', date: '2026-08-15', merchant: '롯데호텔', amount: 380000, cardType: 'POST_PAID', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '김민규' },
+  { id: 'S-1006', date: '2026-08-14', merchant: '쿠팡', amount: 89000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
+  // ── 지난 달(2026-07) 처리 완료 — 기본 숨김, 필터로 조회 ──
+  { id: 'S-0927', date: '2026-07-27', merchant: '이디야커피 역삼', amount: 15000, cardType: 'PERSONAL', aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
+  { id: 'S-0920', date: '2026-07-20', merchant: 'SRT 수서', amount: 96000, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: true, evidence: 'OK', status: 'ERP_VOUCHER_DRAFTED', user: '김민규' },
+  { id: 'S-0911', date: '2026-07-11', merchant: '올리브영', amount: 34000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'CONFIRMED', user: '김민규' },
 ]
 
 // S-02 팀 취합 — 팀원별 정산 건. 상태(TEAM_*)를 다양하게 구성해 취합 단계 흐름을 시연한다.
@@ -23,25 +23,25 @@ export const teamMembers: { name: string; items: Settlement[] }[] = [
   {
     name: '이서준',
     items: [
-      { id: 'S-2001', date: '2026-07-18', merchant: 'GS25 삼성점', amount: 8200, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '이서준', purpose: '야근 간식' },
-      { id: 'S-2002', date: '2026-07-17', merchant: '신라스테이', amount: 450000, cardType: 'POST_PAID', aiCategory: '출장', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '이서준', purpose: '지방 출장 숙박' },
-      { id: 'S-2006', date: '2026-07-14', merchant: '카카오T', amount: 12600, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '이서준', purpose: '고객사 방문 이동' },
+      { id: 'S-2001', date: '2026-08-18', merchant: 'GS25 삼성점', amount: 8200, cardType: 'PERSONAL', aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '이서준', purpose: '야근 간식' },
+      { id: 'S-2002', date: '2026-08-17', merchant: '신라스테이', amount: 450000, cardType: 'POST_PAID', aiCategory: '출장', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '이서준', purpose: '지방 출장 숙박' },
+      { id: 'S-2006', date: '2026-08-14', merchant: '카카오T', amount: 12600, cardType: 'PERSONAL', aiCategory: '출장', aiSuggested: false, evidence: 'OK', status: 'DRAFT', user: '이서준', purpose: '고객사 방문 이동' },
     ],
   },
   {
     name: '박도윤',
     items: [
-      { id: 'S-2003', date: '2026-07-18', merchant: '배달의민족', amount: 96000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤', purpose: '팀 야근 식대' },
-      { id: 'S-2004', date: '2026-07-16', merchant: '이마트 성수', amount: 49000, cardType: 'TEAM', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'TEAM_RETURNED', user: '박도윤', purpose: '팀 비품 — 사용목적 보완 필요' },
-      { id: 'S-2005', date: '2026-07-15', merchant: '한우명가', amount: 298000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤', purpose: '거래처 접대 (실사용자 지정 필요)' },
+      { id: 'S-2003', date: '2026-08-18', merchant: '배달의민족', amount: 96000, cardType: 'TEAM', aiCategory: '식대', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤', purpose: '팀 야근 식대' },
+      { id: 'S-2004', date: '2026-08-16', merchant: '이마트 성수', amount: 49000, cardType: 'TEAM', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'TEAM_RETURNED', user: '박도윤', purpose: '팀 비품 — 사용목적 보완 필요' },
+      { id: 'S-2005', date: '2026-08-15', merchant: '한우명가', amount: 298000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'TEAM_COLLECTING', user: '박도윤', purpose: '거래처 접대 (실사용자 지정 필요)' },
     ],
   },
   {
     name: '최유진',
     items: [
-      { id: 'S-2007', date: '2026-07-17', merchant: '롯데시네마 건대', amount: 132000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'TEAM_REJECTED', user: '최유진', purpose: '접대 성격 불명확 — 팀 반려' },
-      { id: 'S-2008', date: '2026-07-16', merchant: '스타벅스 코엑스', amount: 26000, cardType: 'TEAM', aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '최유진', purpose: '주간 회의 다과' },
-      { id: 'S-2009', date: '2026-07-12', merchant: '교보문고', amount: 54000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'SUBMITTED', user: '최유진', purpose: '기술서적 구입' },
+      { id: 'S-2007', date: '2026-08-17', merchant: '롯데시네마 건대', amount: 132000, cardType: 'SHARED', aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'TEAM_REJECTED', user: '최유진', purpose: '접대 성격 불명확 — 팀 반려' },
+      { id: 'S-2008', date: '2026-08-16', merchant: '스타벅스 코엑스', amount: 26000, cardType: 'TEAM', aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'TEAM_COLLECTING', user: '최유진', purpose: '주간 회의 다과' },
+      { id: 'S-2009', date: '2026-08-12', merchant: '교보문고', amount: 54000, cardType: 'PERSONAL', aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'SUBMITTED', user: '최유진', purpose: '기술서적 구입' },
     ],
   },
 ]
@@ -70,7 +70,7 @@ export function anomalyTags(s: Settlement): string[] {
 
 export const reviewItems: ReviewItem[] = [
   {
-    id: 'S-3001', date: '2026-07-18', time: '19:20', merchant: '강남한식당', amount: 452000, cardType: 'SHARED',
+    id: 'S-3001', date: '2026-08-18', time: '19:20', merchant: '강남한식당', amount: 452000, cardType: 'SHARED',
     aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '이영희', dept: 'AI플랫폼부',
     purpose: '거래처 A사 계약 논의 접대',
     anomalyScore: 0.92,
@@ -87,7 +87,7 @@ export const reviewItems: ReviewItem[] = [
     anomalyReasons: ['접대비·심야결제·적격증빙 확인'],
   },
   {
-    id: 'S-3002', date: '2026-07-17', time: '21:05', merchant: '신라스테이', amount: 310000, cardType: 'POST_PAID',
+    id: 'S-3002', date: '2026-08-17', time: '21:05', merchant: '신라스테이', amount: 310000, cardType: 'POST_PAID',
     aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '박민수', dept: '영업본부',
     purpose: '거래처 접대 후 숙박',
     anomalyScore: 0.78,
@@ -102,7 +102,7 @@ export const reviewItems: ReviewItem[] = [
     anomalyReasons: ['건당한도 근접·유사사례 있음'],
   },
   {
-    id: 'S-3003', date: '2026-07-16', time: '14:30', merchant: '메가커피 x 12건', amount: 128000, cardType: 'TEAM',
+    id: 'S-3003', date: '2026-08-16', time: '14:30', merchant: '메가커피 x 12건', amount: 128000, cardType: 'TEAM',
     aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '최지우', dept: '데이터부',
     purpose: '팀 회의 다과',
     anomalyScore: 0.65,
@@ -117,7 +117,7 @@ export const reviewItems: ReviewItem[] = [
     anomalyReasons: ['가맹점 반복·소액 다건'],
   },
   {
-    id: 'S-3004', date: '2026-07-15', time: '11:10', merchant: '쿠팡', amount: 95000, cardType: 'PERSONAL',
+    id: 'S-3004', date: '2026-08-15', time: '11:10', merchant: '쿠팡', amount: 95000, cardType: 'PERSONAL',
     aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '김철수', dept: '클라우드부',
     purpose: '사무용품 구매',
     anomalyScore: 0.51,
@@ -127,7 +127,7 @@ export const reviewItems: ReviewItem[] = [
     anomalyReasons: ['분류 신뢰도 낮음'],
   },
   {
-    id: 'S-3005', date: '2026-07-13', time: '13:40', merchant: '김밥천국', amount: 60000, cardType: 'PERSONAL',
+    id: 'S-3005', date: '2026-08-13', time: '13:40', merchant: '김밥천국', amount: 60000, cardType: 'PERSONAL',
     aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '정하늘', dept: '전략기획부',
     purpose: '주말 근무 식대',
     anomalyScore: 0.43,
@@ -137,7 +137,7 @@ export const reviewItems: ReviewItem[] = [
     anomalyReasons: ['주말 결제·소액'],
   },
   {
-    id: 'S-3006', date: '2026-07-12', time: '12:15', merchant: '백반집', amount: 42000, cardType: 'PERSONAL',
+    id: 'S-3006', date: '2026-08-12', time: '12:15', merchant: '백반집', amount: 42000, cardType: 'PERSONAL',
     aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '이도윤', dept: '공공사업부',
     purpose: '업무 오찬',
     anomalyScore: 0.30,

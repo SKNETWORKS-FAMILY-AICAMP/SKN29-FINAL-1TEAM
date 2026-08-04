@@ -225,8 +225,26 @@ textarea:focus-visible, [tabindex]:focus-visible {
   border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600;
 }
 /* 테스트케이스(커스텀 검증셋) 모달 — 리스트 / 세부 수정 / 대화 Agent */
-.testcase-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; gap: var(--space-3); align-items: start; }
+.testcase-grid { display: grid; grid-template-columns: 288px minmax(0, 1fr) 340px; gap: var(--space-3); align-items: start; }
 @media (max-width: 1100px) { .testcase-grid { grid-template-columns: 1fr; } }
+
+/* 테스트케이스 내역 리스트 — 제목 한 줄 + 정답(기대) 판정 배지, 그 아래 요약 한 줄.
+   Review List(.review-item)는 가로 flex라 여기에 재사용하면 두 줄이 좌우로 붙는다. */
+.testcase-item {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: var(--space-2) 10px; border: 1px solid transparent; border-radius: var(--radius-control);
+  cursor: pointer; transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.testcase-item:hover { background: var(--surface-2); }
+.testcase-item.selected { background: var(--primary-soft); border-color: var(--primary); }
+.testcase-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.testcase-item-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.testcase-item-top .name {
+  flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.testcase-item-top .tag { flex-shrink: 0; }
+.testcase-item-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Active 관리 — 현재 활성 그래프를 스코프별로 좌우 배치 */
 .active-scope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); align-items: start; }
 .active-scope { min-width: 0; }
@@ -385,11 +403,13 @@ textarea:focus-visible, [tabindex]:focus-visible {
 @keyframes modal-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(16,24,40,0.45); display: flex; align-items: flex-start; justify-content: center;
+  position: fixed; inset: 0; background: rgba(16,24,40,0.45); display: flex; justify-content: center;
   padding: 40px var(--space-4); z-index: 50; overflow: auto; animation: modal-backdrop-in 160ms cubic-bezier(0.23,1,0.32,1);
 }
+/* 세로 가운데 정렬은 align-items가 아니라 자식의 margin:auto로 잡는다.
+   align-items:center는 내용이 화면보다 길어지면 위쪽이 잘려 스크롤이 닿지 않는다. */
 .modal {
-  background: var(--surface); border-radius: var(--radius-overlay); width: 100%; max-width: 880px;
+  background: var(--surface); border-radius: var(--radius-overlay); width: 100%; max-width: 880px; margin: auto;
   box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: modal-in 180ms cubic-bezier(0.23,1,0.32,1);
 }
 .modal-head { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
