@@ -10,10 +10,12 @@ export function NodeDetailRead({ graph, node }: { graph: RuleGraph; node: GraphN
   const action = node.actionDetail ?? {}
   const titleOf = (nodeKey: string) => graph.nodes.find((candidate) => candidate.nodeKey === nodeKey)?.title ?? nodeKey
 
+  // 쉽게보기 = Agent가 저장해 둔 문장(conditionText). 없는 노드만 DSL 기계 번역으로 폴백한다.
   const naturalCondition = useMemo(() => {
+    if (node.conditionText?.trim()) return node.conditionText
     try { return node.conditionExpr.trim() ? describeDsl(JSON.parse(node.conditionExpr)) : '조건이 아직 설정되지 않았습니다.' }
     catch { return node.conditionExpr }
-  }, [node.conditionExpr])
+  }, [node.conditionText, node.conditionExpr])
 
   return <div className="card">
     <div className="card-head">

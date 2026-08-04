@@ -13,7 +13,7 @@ from .models import (
 
 def _snapshot(graph: RuleGraph) -> dict:
     return {
-        "nodes": list(graph.nodes.values("node_key", "condition", "action", "priority")),
+        "nodes": list(graph.nodes.values("node_key", "condition", "condition_text", "action", "priority")),
         "routings": list(graph.routings.values("from_node_key", "on_result", "to_node_key", "priority")),
         "entry_node_key": graph.entry_node_key,
     }
@@ -43,6 +43,7 @@ def create_draft_version(graph: RuleGraph, actor=None) -> RuleGraph:
             graph=draft,
             node_key=node.node_key,
             condition=node.condition,
+            condition_text=node.condition_text,
             action=node.action,
             priority=node.priority,
         )

@@ -20,7 +20,10 @@
 
 ### 2.2 타깃 모델 (`apps/core/domain/policies/models.py` — 전부 실제 스키마, 스텁 아님)
 - **`RuleGraph`**: 한 행이 한 버전. `family_key · name · scope · status · version · entry_node_key ...`; `(family_key, version)` 유일, scope당 ACTIVE 하나.
-- **`RuleNode`**: `graph FK · node_key · condition(JSON) · action(JSON) · priority`. `unique(graph, node_key)`, `ordering=priority`.
+- **`RuleNode`**: `graph FK · node_key · condition(JSON) · condition_text(TEXT) · action(JSON) · priority`. `unique(graph, node_key)`, `ordering=priority`.
+  `condition_text` = **"이 Rule이 하는 일" 쉽게보기 문장**. Rule Agent가 조건·액션을 만들 때 함께 생성해 저장하며,
+  화면은 DSL을 파싱하지 않고 이 값을 그대로 노출한다(비면 프론트 `describeDsl` 기계 번역으로 폴백).
+  형식은 `언제 걸리나요? / 걸리면 어떻게 되나요?` 두 덩어리 — 시드는 `seed_rules.plain_text(when, then)`으로 만든다.
 - **`RuleRouting`**: `graph FK · from_node_key · on_result(MATCH/NO_MATCH/PASS/REJECT/REVIEW) · to_node_key(공백=종단) · priority`. **노드→노드 FK가 아니라 key 문자열 평면 저장**.
 - **`RuleGraphVersion`**: `graph FK · version · snapshot(JSON) · approved_at · is_active`. `unique(graph, version)`.
 - **`RuleHit`**: 평가 로그(`path · decision · confidence`) — 시드 대상 아님(런타임 산출물).
@@ -41,6 +44,7 @@
 | 액션·심각도 | `action` | `{"decision": <§3.2>, "severity": <CRITICAL/HIGH/MEDIUM/LOW/INFO>, "flag": "<FLAG>", "title": "<제목>"}` |
 | 권장처리·확인주체 | `action.decision` + `action.approver` | §3.2 매핑 + 확인주체 문자열 |
 | 심각도 | `action.severity` + `priority` | CRITICAL=0 … INFO=4 (오름차순 정렬용) |
+| 조건(자연어) + 권장처리 | `condition_text` | 비개발자용 쉽게보기 문장. `plain_text(when, then)` — 전문용어·DSL 경로·영문 판정코드 금지 |
 
 ### 3.2 권장처리 → `decision` 매핑 (명세 §3 기준, 룰별 override 허용)
 - 자동 반려 후보 / 반려 권고 → **`REJECT`**

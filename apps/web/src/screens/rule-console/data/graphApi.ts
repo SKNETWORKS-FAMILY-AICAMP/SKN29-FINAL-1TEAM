@@ -5,6 +5,8 @@ import type { GraphNode, GraphStatus, RuleGraph } from './ruleConsoleMock'
 export type ApiNode = {
   nodeKey: string
   condition: unknown
+  /** "이 Rule이 하는 일" — 백엔드 RuleNode.condition_text(Agent 생성 문장). 비면 describeDsl로 폴백. */
+  conditionText?: string
   action: Record<string, unknown>
   priority: number
 }
@@ -41,6 +43,7 @@ export const toGraph = (raw: ApiGraph): RuleGraph => ({
     origin: node.action?.origin === 'new' || node.nodeKey.startsWith('R-N') ? 'new' : 'existing',
     plain: { category: raw.scope === 'GLOBAL' ? undefined : raw.scope, action: actionText(node.action ?? {}) },
     conditionExpr: JSON.stringify(node.condition ?? {}, null, 2),
+    conditionText: node.conditionText ?? '',
     sourceClause: String(node.action?.source_clause ?? raw.sourceClause ?? ''),
     aiReason: String(node.action?.ai_reason ?? ''),
     description: String(node.action?.description ?? ''),
@@ -72,7 +75,9 @@ export const nodeStatusTone = (status?: GraphNode['workflowStatus']) =>
 export const isSimulatable = (graph: RuleGraph) =>
   graph.nodes.length > 0 && graph.nodes.every((node) => node.workflowStatus === 'WAITING')
 
-// ── 조건 DSL → 비개발자용 자연어 ────────────────────────
+// ── 조건 DSL → 비개발자용 자연어 (폴백 전용) ────────────────────────
+//  쉽게보기 본문은 백엔드가 내려주는 RuleNode.conditionText(Agent 생성 문장)를 그대로 쓴다.
+//  아래 기계 번역은 그 값이 아직 없는 노드(신규 생성 직후·구버전 데이터)에만 쓰인다.
 const PATH_LABELS: Record<string, string> = {
   'merchant.merchant_type': '가맹점 업종', 'category.item_type': '항목 유형',
   'tx.payment_method': '결제 수단', 'tx.amount': '결제 금액',

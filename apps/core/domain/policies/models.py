@@ -118,6 +118,9 @@ class RuleNode(models.Model):
     node_key = models.CharField(max_length=64)
     condition = models.JSONField(default=dict, blank=True)  # DSL/JSON
     action = models.JSONField(default=dict, blank=True)     # {decision: PASS/REJECT/REVIEW, ...}
+    # "이 Rule이 하는 일" — 비개발자용 설명 문장. Rule Agent가 조건·액션을 만들 때 함께 생성해 저장한다.
+    # 프론트에서 DSL을 파싱해 만들지 않고 이 값을 그대로 노출한다(비면 프론트의 기계 번역으로 폴백).
+    condition_text = models.TextField(blank=True)
     priority = models.IntegerField(default=0)
 
     class Meta:

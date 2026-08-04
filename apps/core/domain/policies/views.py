@@ -28,7 +28,7 @@ def _graph_content(graph):
     return {
         "entry": graph.entry_node_key,
         "nodes": [
-            (node.node_key, node.condition, clean_action(node.action), node.priority)
+            (node.node_key, node.condition, node.condition_text, clean_action(node.action), node.priority)
             for node in graph.nodes.order_by("priority", "node_key")
         ],
         "routings": [
@@ -195,6 +195,7 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             node_key=node_key,
             defaults={
                 "condition": {},
+                "condition_text": "",
                 "action": {"title": "(제목 미설정)", "origin": "new", "workflow_status": "DRAFT"},
                 "priority": graph.nodes.count(),
             },
@@ -223,9 +224,12 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(status=204)
         if "condition" in request.data:
             node.condition = request.data["condition"]
+        # conditionText는 Rule Agent가 조건과 함께 갱신하는 설명 문장이다(사람이 직접 쓰지 않는다).
+        if "conditionText" in request.data:
+            node.condition_text = str(request.data["conditionText"] or "")
         if "action" in request.data:
             node.action = request.data["action"]
-        node.save(update_fields=["condition", "action"])
+        node.save(update_fields=["condition", "condition_text", "action"])
         if "routings" in request.data:
             graph.routings.filter(from_node_key=node.node_key).delete()
             RuleRouting.objects.bulk_create([

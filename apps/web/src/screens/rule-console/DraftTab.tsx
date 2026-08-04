@@ -300,6 +300,8 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
   const [action, setAction] = useState(node.actionDetail ?? {})
   const [workflowStatus, setWorkflowStatus] = useState<GraphNode['workflowStatus']>(node.workflowStatus ?? 'DRAFT')
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved')
+  // 쉽게보기 문장은 Agent가 조건과 함께 써 둔 값이라, DSL을 손으로 고치면 설명이 뒤처진다(마운트 시점 원문과 비교).
+  const openedConditionExpr = useRef(node.conditionExpr)
   const dirty = useRef(false)
   const saveRef = useRef<() => Promise<void>>(async () => undefined)
 
@@ -330,10 +332,13 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
     return () => { window.clearInterval(interval); if (dirty.current) void saveRef.current() }
   }, [editable])
 
+  // 쉽게보기 = Agent가 저장해 둔 문장(node.conditionText). 없는 노드만 DSL 기계 번역으로 폴백한다.
   const naturalCondition = useMemo(() => {
+    if (node.conditionText?.trim()) return node.conditionText
     try { return conditionText.trim() ? describeDsl(JSON.parse(conditionText)) : '조건이 아직 설정되지 않았습니다.' }
     catch { return 'DSL 형식을 확인해주세요.' }
-  }, [conditionText])
+  }, [node.conditionText, conditionText])
+  const conditionTextStale = Boolean(node.conditionText?.trim()) && conditionText !== openedConditionExpr.current
   const markDirty = () => { dirty.current = true; setSaveState('saved') }
   const addRoute = () => {
     const next = [...routes, { from: node.nodeKey, onResult: 'MATCH' as const, to: '' }]
@@ -361,6 +366,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       <div className="field">
         <label>이 Rule이 하는 일</label>
         <div className="note" style={{ lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{naturalCondition}</div>
+        {conditionTextStale && <div className="text-meta" style={{ marginTop: 6 }}>⚠ DSL 코드를 직접 수정했습니다. 위 설명은 수정 전 기준이며, Rule Agent가 다시 생성할 때 갱신됩니다.</div>}
         <div className="dsl-disclosure" role="button" tabIndex={0} onClick={() => setShowCode((value) => !value)}><Code2 size={13} /> DSL 코드 {showCode ? '접기' : '펼치기'} <span>{showCode ? '⌃' : '⌄'}</span></div>
         {showCode && <textarea rows={7} value={conditionText} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setConditionText(event.target.value); onNodeChanged({ conditionExpr: event.target.value }); markDirty() }} placeholder="JSON DSL 조건" style={{ fontFamily: 'monospace' }} />}
       </div>

@@ -260,23 +260,24 @@ export function ReviewWorkspace() {
                   <div className="card-body">
                     <div className="field">
                       <label>가맹점 <span className="tag ai">AI 판독 ✓</span></label>
-                      <input defaultValue={sel.merchant} readOnly />
+                      <input value={sel.merchant} readOnly />
                     </div>
                     <div className="grid-2" style={{ gap: 10 }}>
                       <div className="field"><label>일시</label>
-                        <input defaultValue={`${sel.date} ${sel.time ?? ''}`} readOnly />
+                        <input value={`${sel.date} ${sel.time ?? ''}`} readOnly />
                       </div>
                       <div className="field"><label>금액</label>
-                        <input defaultValue={won(sel.amount)} readOnly />
+                        <input value={won(sel.amount)} readOnly />
                       </div>
                     </div>
                     <div className="grid-2" style={{ gap: 10 }}>
                       <div className="field"><label>카드구분</label>
-                        <input defaultValue={CARD_TYPE_LABEL[sel.cardType] + (sel.cardType === 'SHARED' ? ' → 실사용자 입력 필요' : '')} readOnly />
+                        <input value={CARD_TYPE_LABEL[sel.cardType] + (sel.cardType === 'SHARED' ? ' → 실사용자 입력 필요' : '')} readOnly />
                       </div>
                       <div className="field">
                         <label>비용분류 <span className="tag ai">● AI 제안</span></label>
-                        <select defaultValue={sel.aiCategory}>
+                        {/* key: 선택 건이 바뀌면 remount해 AI 제안값으로 되돌린다(비제어 select) */}
+                        <select key={sel.id} defaultValue={sel.aiCategory}>
                           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
@@ -284,7 +285,7 @@ export function ReviewWorkspace() {
                     {sel.purpose && (
                       <div className="field" style={{ marginBottom: 0 }}>
                         <label>지출 목적 / 사유</label>
-                        <input defaultValue={sel.purpose} readOnly />
+                        <input value={sel.purpose} readOnly />
                       </div>
                     )}
                   </div>

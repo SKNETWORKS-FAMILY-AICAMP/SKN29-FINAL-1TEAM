@@ -38,7 +38,7 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-03_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-04_
 
 작업 진행/추적용. **의미 있는 진척마다 이 섹션을 갱신**한다.
 
@@ -52,7 +52,8 @@ daily_scrum/  주차별 진행 보고
 | 프론트 ↔ 백엔드 연동 | 🚧 진행 중 | **S-04 Rule 콘솔 3개 탭 전 구간 실 API 연동 완료**(초안 편집·저장, 검증셋·시뮬레이션 실행/보고서, Active 승인·버전이력·롤백, 작성 대화 로그). S-03 검토 화면은 RAG 보고서·EvalContext 스냅샷 연동. 나머지 화면 순차 진행 |
 | 이상탐지 실학습/RAG upsert | 🔲 미착수 | IsolationForest 래퍼·Chroma heartbeat까지만 |
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
-| 룰 그래프(트리) 도메인 | ✅ 1차 완료 | scope별 버전·DRAFT 복제/원복·노드 삭제·자동 저장·DSL 자연어 표시에 더해 **검증 시뮬레이션 도메인**(`RuleTestCase`/`RuleSimulationRun`/`RuleSimulationResult` — 실행 스냅샷+해시 보존, 낡은 결과 표시)과 **승인 흐름**(Active 요청 시 검토자 코멘트·스코프당 승인대기 1건 제한, 활성자/검토자 추적, 버전 이력 롤백) 구현. 구조 시각화는 위→아래 스크롤 플로우차트(순환 감지 포함) |
+| 룰 그래프(트리) 도메인 | ✅ 1차 완료 | scope별 버전·DRAFT 복제/원복·노드 삭제·자동 저장·**DSL 쉽게보기(`RuleNode.condition_text`)** 에 더해 **검증 시뮬레이션 도메인**(`RuleTestCase`/`RuleSimulationRun`/`RuleSimulationResult` — 실행 스냅샷+해시 보존, 낡은 결과 표시)과 **승인 흐름**(Active 요청 시 검토자 코멘트·스코프당 승인대기 1건 제한, 활성자/검토자 추적, 버전 이력 롤백) 구현. 구조 시각화는 위→아래 스크롤 플로우차트(순환 감지 포함) |
+| 화면 임시 비활성화 | ⏸ 규정 문서 관리(S-?/`/policy-docs`) | 실 API 미연동(mock 전용)이라 사이드바 메뉴·라우트를 주석 처리. 화면 파일(`PolicyDocuments.tsx`)은 그대로 두었고, `App.tsx` import·라우트와 `Sidebar.tsx` MENU 한 줄만 되살리면 복구 |
 | 시연 시드 데이터 | ✅ 완료 | 룰 그래프 4계열(GLOBAL v1~v3·기업업무추진비 v1~v2·회식비 활성+초안·출장비 승인대기) + 작성 대화 로그, 정산 74건(회계팀 자체 지출 포함)·검토 30건, 하이라이트 3건은 RAG 검증 보고서(마크다운)+실제 EvalContext 스냅샷(`rule_hits`) |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 

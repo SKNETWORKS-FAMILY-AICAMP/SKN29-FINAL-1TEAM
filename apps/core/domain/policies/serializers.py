@@ -5,10 +5,12 @@ from .models import RuleGraph, RuleGraphVersion, RuleNode, RuleRouting
 
 class RuleNodeSerializer(serializers.ModelSerializer):
     nodeKey = serializers.CharField(source="node_key", read_only=True)
+    # 비개발자용 "이 Rule이 하는 일" 문장 — 저장된 값을 그대로 내려준다(프론트 DSL 파싱 대체).
+    conditionText = serializers.CharField(source="condition_text", read_only=True)
 
     class Meta:
         model = RuleNode
-        fields = ["id", "nodeKey", "condition", "action", "priority"]
+        fields = ["id", "nodeKey", "condition", "conditionText", "action", "priority"]
 
 
 class RuleRoutingSerializer(serializers.ModelSerializer):

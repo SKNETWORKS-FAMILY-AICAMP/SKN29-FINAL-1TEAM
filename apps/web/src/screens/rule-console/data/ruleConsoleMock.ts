@@ -137,6 +137,8 @@ export interface GraphNode {
   plain: NodePlain
   /** 개발자용 조건 DSL 원문(백엔드 condition.expr) */
   conditionExpr: string
+  /** "이 Rule이 하는 일" — Rule Agent가 조건과 함께 생성해 저장한 문장(백엔드 conditionText). */
+  conditionText?: string
   sourceClause: string
   aiReason?: string
   description?: string
