@@ -6,7 +6,8 @@ MVP 방향이 정해졌고, 그에 맞춰 폴더 구조를 재정리했다(구�
 | 폴더/파일 | 내용 | 상태 |
 |---|---|---|
 | [`ml_final_report.md`](./ml_final_report.md) | **여기부터 읽을 것** — ML 파트 목표·모델 선정 논리·전처리 과정·향후 통합 기대효과를 정리한 최종 보고서 | 완료 |
-| [`mvp_isolation_forest/`](./mvp_isolation_forest/) | **최종 확정 MVP** — Isolation Forest(비지도) 전처리·모델링 원본 노트북 4개 + 결과 요약 md (구 `ML_0728/`) | 커밋됨 |
+| [`mvp_isolation_forest/`](./mvp_isolation_forest/) | **최종 확정 MVP** — Isolation Forest(비지도) 전처리·모델링 원본 노트북 4개 + 결과 요약 md·재현 스크립트 (구 `ML_0728/`) | 커밋됨 |
+| [`비지도학습 정리/`](./비지도학습%20정리/) | ECOD·COPOD 등 비지도 대안 7종 추가 비교(2026-08-04) + paired t-test — `ml_final_report.md §3` 근거 | 커밋됨 |
 | [`archive/supervised_experiments/`](./archive/supervised_experiments/) | 참고용 — 지도학습 8개 모델 비교 실험(재현 스크립트 `pipeline/` + 산출물 `models/`). **배포 대상 아님** | 커밋됨(참고용 보관) |
 | [`archive/early_eda_preprocessing/`](./archive/early_eda_preprocessing/) | 참고용 — 초기 EDA 노트북 3개 + 전처리 노트북 + 리뷰 통합본. `mvp_isolation_forest/`가 최신 기준 | 커밋됨(참고용 보관) |
 
@@ -21,11 +22,18 @@ ml/
 │
 ├─ mvp_isolation_forest/                                 ★ 최종 확정 MVP — Isolation Forest(비지도) 원본 작업
 │  ├─ README.md                                          이 폴더 파일별 설명
-│  ├─ isolation_forest_modeling_결과.md                   실험 전체 수치·근거 요약 — 노트북 다음으로 먼저 볼 문서
+│  ├─ isolation_forest_modeling_결과.md                   실험 전체 수치·근거(운영 컷오프·임계값·fold4 조사 포함) — 노트북 다음으로 먼저 볼 문서
 │  ├─ 법인카드_이상거래_전처리_v2_가맹점제외.ipynb          전처리 — 가맹점 관련 피처 제외 버전
 │  ├─ 법인카드_이상거래_전처리_v3_세그먼트플래그.ipynb      전처리 — 재사용/신규 카드 구분 플래그 추가(최신)
 │  ├─ 법인카드_이상거래_모델링_v1_Tier0vs1_비교.ipynb      모델링 — 피처셋(Tier0 단독 vs 전체) 비교 실험
-│  └─ 법인카드_이상거래_모델링_v2_최종test평가.ipynb       모델링 — 최종 피처셋으로 학습 후 test 평가(딱 한 번)
+│  ├─ 법인카드_이상거래_모델링_v2_최종test평가.ipynb       모델링 — 최종 피처셋으로 학습 후 test 평가(딱 한 번)
+│  ├─ 비지도_baseline_비교_결과.md                        One-Class SVM·SGD·LOF 실측 비교(2026-07-31)
+│  ├─ unsupervised_baseline_비교.py                       위 비교 실험 재현 스크립트
+│  ├─ 고정_임계값_재계산.py / _result.json                 운영 임계값(-0.0123) 산정 재현 스크립트·결과
+│  └─ fold4_원인조사.py / _result.json                     fold4 변동성이 버그가 아님을 검증한 재현 스크립트·결과
+│
+├─ 비지도학습 정리/                                        추가 비지도 모델 비교(2026-08-04)
+│  └─ 법인카드_이상거래_ECOD_COPOD_비교실험.ipynb           ECOD·COPOD·INNE·LODA·GMM·CBLOF·PCA 7종 + paired t-test
 │
 └─ archive/                                              참고용 보관 — 현재 배포 대상 아님(지우지 않고 남긴 이유는 근거 추적용)
    ├─ README.md                                          이 폴더 안내
@@ -82,6 +90,8 @@ MVP 배포 대상이 아니라 "나중에 라벨이 쌓이면 얼마나 더 잘�
 
 ## 코드를 재현/재실행하고 싶다면
 
-- **Isolation Forest(최종 MVP)**: `mvp_isolation_forest/`의 노트북 4개가 기준. 별도 재현 스크립트는 없다.
+- **Isolation Forest(최종 MVP)**: `mvp_isolation_forest/`의 노트북 4개가 기준. 비지도 baseline 비교·임계값 재계산·fold4
+  조사는 같은 폴더의 `.py` 스크립트(`unsupervised_baseline_비교.py`, `고정_임계값_재계산.py`, `fold4_원인조사.py`)로 재현 가능.
+- **추가 비지도 모델 비교(ECOD/COPOD 등)**: `비지도학습 정리/법인카드_이상거래_ECOD_COPOD_비교실험.ipynb`.
 - **지도학습 8개(참고용)**: `archive/supervised_experiments/pipeline/`의 스크립트를 그 폴더 안에서 실행한다
   (예: `cd ml/archive/supervised_experiments/pipeline && python model_training.py`).

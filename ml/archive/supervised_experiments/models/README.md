@@ -251,11 +251,11 @@ ml/
          │   ├─ model_comparison.csv
          │   └─ model_training_log.txt
          ├─ round2_tuned/           §3-2 튜닝 — pipeline/model_tuning.py, 피처 A(12개)
-         │   ├─ {model}_tuned.pkl         8개
+         │   ├─ {model}_tuned.pkl         5개(2026-08-06: random_forest·balanced_random_forest·extra_trees 3개는 용량 절감을 위해 삭제 — 수치는 tuning_results.csv/.json에 그대로 보존)
          │   ├─ tuning_results.csv / .json
          │   └─ model_tuning_log.txt
          ├─ round3_topk_ranking/    §3-3 top-K% 랭킹 재실행 — pipeline/supervised_topk_ranking.py, 피처 B(15개)
-         │   ├─ {model}_topk_ranking.pkl   8개
+         │   ├─ {model}_topk_ranking.pkl   5개(2026-08-06: random_forest·balanced_random_forest·extra_trees 3개는 용량 절감을 위해 삭제 — 수치는 topk_ranking_results.csv/.json에 그대로 보존)
          │   ├─ topk_ranking_results.csv / .json
          │   └─ supervised_topk_ranking_log.txt
          └─ shared/                 피처 A 재현 정보(원-핫 컬럼 순서 등) — pipeline/model_training.py 산출

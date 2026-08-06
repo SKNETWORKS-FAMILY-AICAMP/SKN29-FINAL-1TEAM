@@ -7,8 +7,13 @@ import pickle
 from app.config import settings
 from app.ml.anomaly import AnomalyModel
 
-_MODEL_PATH = os.path.join(settings.model_dir, "anomaly.pkl")
 _cache: AnomalyModel | None = None
+
+
+def _model_path() -> str:
+    # settings.model_dir을 호출 시점마다 다시 읽는다 — 모듈 import 시점에 상수로
+    # 고정해두면(과거 버전의 버그) 이후 settings.model_dir을 바꿔도 반영되지 않는다.
+    return os.path.join(settings.model_dir, "anomaly.pkl")
 
 
 def get_active_model() -> AnomalyModel | None:
@@ -16,18 +21,23 @@ def get_active_model() -> AnomalyModel | None:
     global _cache
     if _cache is not None:
         return _cache
-    if os.path.exists(_MODEL_PATH):
-        with open(_MODEL_PATH, "rb") as f:
+    path = _model_path()
+    if os.path.exists(path):
+        with open(path, "rb") as f:
             _cache = pickle.load(f)
     return _cache
 
 
-def train_and_register(X) -> AnomalyModel:
-    """비지도 이상탐지 학습 후 레지스트리에 저장."""
+def register_model(model: AnomalyModel) -> AnomalyModel:
+    """이미 학습된 모델을 레지스트리에 저장(오프라인 배치 학습 스크립트 app/ml/train.py 등에서 사용)."""
     global _cache
-    model = AnomalyModel().fit(X)
     os.makedirs(settings.model_dir, exist_ok=True)
-    with open(_MODEL_PATH, "wb") as f:
+    with open(_model_path(), "wb") as f:
         pickle.dump(model, f)
     _cache = model
     return model
+
+
+def train_and_register(X) -> AnomalyModel:
+    """비지도 이상탐지 학습 후 레지스트리에 저장(threshold·calibration 없는 레거시 경로)."""
+    return register_model(AnomalyModel().fit(X))

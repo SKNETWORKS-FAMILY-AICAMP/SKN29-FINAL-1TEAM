@@ -2,7 +2,7 @@
 
 > Risk Review MVP의 1차 이상탐지 모델은 **비지도 학습(Isolation Forest)**, 운영 컷오프는 **상위 10%(recall≈79.0%)** 로 확정됐다. 알고리즘·피처셋·컷오프·운영 임계값(score ≥ -0.0123) 모두 확정 완료.
 >
-> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 비지도 baseline 정량 비교: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), 지도학습 비교(참고용): [`archive/supervised_experiments/`](./archive/supervised_experiments/)
+> 원본 실험 자료: [`mvp_isolation_forest/`](./mvp_isolation_forest/)(전처리·모델링 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)), 비지도 baseline 정량 비교: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), 추가 비지도 모델 7종 비교(2026-08-04): [`ECOD_COPOD_비교실험.ipynb`](<./비지도학습 정리/법인카드_이상거래_ECOD_COPOD_비교실험.ipynb>), 지도학습 비교(참고용): [`archive/supervised_experiments/`](./archive/supervised_experiments/)
 
 ---
 
@@ -31,18 +31,23 @@ Risk Review는 **① ML 이상탐지(1차 필터) → ② RAG 내규 검증(2차
 
 ## 3. Isolation Forest를 선택한 이유
 
-- **지도학습 불가**: 정답(`decision_labels`)은 시스템 운영 후에만 쌓이므로 도입 시점엔 항상 0건(콜드스타트). 카드사 부정사용 라벨(`이상거래여부`)은 정의가 달라(회사 내규 기준 아님) 지도학습 정답으로 대체 불가 — 라벨 없이 작동하는 비지도 학습이 유일한 시작점.
-- **비지도 방식 중 Isolation Forest 채택**: DBSCAN(밀도 파라미터 튜닝 난해)·PCA(선형성 가정)·Autoencoder(정형데이터엔 과한 복잡도) 대비, 분포 가정 없이 무작위 분할만으로 이상치를 판단해 가장 적은 전제를 요구함(Liu, Ting & Zhou 2008 외 참고문헌은 원 문서 §3-2 참고).
-- **실측 검증**: One-Class SVM·LOF·SGDOneClassSVM과 동일 test set(2024년, 469,902건)으로 비교.
+서비스 배포 전에는 회계 담당자의 실제 승인/반려 기록(`decision_labels`)이 0건이라(콜드스타트) 지도학습 자체가 불가능했다. 카드사 부정사용 라벨(`이상거래여부`)도 정의가 달라(회사 내규 기준 아님) 정답으로 쓸 수 없다 — 그래서 라벨 없이 작동하는 **비지도 학습**을 택했다. 그중 Isolation Forest는 분포 가정 없이 무작위 분할만으로 이상치를 판단해 대용량·정형데이터에 가장 적은 전제를 요구하며(DBSCAN·PCA·Autoencoder 대비, Liu, Ting & Zhou 2008), 아래처럼 비지도 대안 10종과 실측 비교해도 가장 우수했다.
 
-| 모델 | n_train | fit(초) | predict(초) | PR-AUC | recall@top3% |
-|---|---:|---:|---:|---:|---:|
-| **Isolation Forest** | 1,482,969(전체) | 1.94 | 5.38 | **0.648** | 0.591 |
-| One-Class SVM(RBF) | 50,000(서브샘플) | 86.3 | 1,248.3 | 0.432 | 0.543 |
-| SGDOneClassSVM | 1,482,969(전체) | 3.01 | 0.02 | 0.315 | 0.358 |
-| LOF(novelty, k=20) | 50,000(서브샘플) | 11.5 | 46.1 | 0.037~0.066 | 0.051 |
+| 모델 | PR-AUC | recall@top3% | 비고 |
+|---|---:|---:|---|
+| **Isolation Forest** | **0.5865** | 52.6% | §4 확정 test 성능 |
+| COPOD | 0.5330 | 48.0% | 완전 결정론적, 튜닝 불필요 |
+| One-Class SVM(RBF) | 0.432 | 54.3% | 서브샘플 5만 건, predict 1,248초(≈21분) — 정확도 근접해도 속도 열위 |
+| ECOD | 0.4294 | 40.0% | 완전 결정론적, 튜닝 불필요 |
+| CBLOF | 0.3858 | 44.2% | 클러스터 기반(`n_clusters=8`) |
+| PCA | 0.3833 | 43.9% | 재구성 오차 기반 |
+| INNE | 0.3762 | 39.3% | |
+| GMM(`n_components=5`) | 0.3418 | 43.0% | |
+| SGDOneClassSVM | 0.315 | 35.8% | 선형 경계 — 비선형 이상패턴 포착 부족 |
+| LOF(novelty, k=20) | 0.037~0.066 | 5.1% | 서브샘플 5만 건, 저정보 원-핫 컬럼에서 거리기반 판별력 거의 없음 |
+| LODA | 0.0283 | 1.6% | 기저율(3.49%) 대비 판별력 사실상 없음 |
 
-정확도·연산 효율성 양쪽 모두 Isolation Forest가 우위(상세 진단: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md)). 단, 이 표의 PR-AUC(0.648)는 실행 환경(scikit-learn 1.8.0)이 §4 확정치(0.5865, 환경 `final_prj`)와 달라 절대 수치를 직접 비교하면 안 되고 **모델 간 상대 순위만** 유효하다 — 재발 방지로 [`requirements.txt`](./requirements.txt) 고정(scikit-learn 1.5.*, `apps/ai` 서빙 스펙과 일치).
+10개 대안 모두 Isolation Forest보다 낮았고, 최근접 경쟁모델 COPOD와는 5-fold paired t-test로 유의성까지 확인했다(t=4.929, **p=0.0079** < 0.05). 상세 비교 근거: [`비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md), [`ECOD_COPOD_비교실험.ipynb`](<./비지도학습 정리/법인카드_이상거래_ECOD_COPOD_비교실험.ipynb>)
 
 ---
 
@@ -62,17 +67,15 @@ Risk Review는 **① ML 이상탐지(1차 필터) → ② RAG 내규 검증(2차
 | recall@top5% / precision@top5% | 66.4% / 46.3% |
 | recall@top10% / precision@top10% | 79.0% / 27.6% |
 
-test 성능이 5-fold 평균(0.4946)보다 높은 것은 test 시점 카드의 97%가 이미 3년치 이력을 보유해 확장 통계 피처가 안정된 상태로 평가받기 때문(누수 아님 — pseudo-test로 재확인, 상세: [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)). 신규 카드(이력 없음) 세그먼트도 재사용 카드 대비 성능 저하 없음(top3% recall 57.7% vs 52.6%).
+test 성능이 5-fold 평균(0.4946)보다 높은 이유·신규 카드 세그먼트 분석은 [`isolation_forest_modeling_결과.md §4`](./mvp_isolation_forest/isolation_forest_modeling_결과.md) 참고(요약: test 시점 카드의 97%가 이미 3년치 이력을 보유해 누수가 아니며, 신규 카드도 성능 저하 없음).
 
-**anomaly_score는 확률이 아님**: 정상/이상 그룹 점수 분포가 0.72대까지 겹침. UI·RAG 노출 시 "위험도 N%"가 아니라 백분위 구간별 실측 이상거래 비율(상위 90~100%: 27.58%)로 보정해 사용.
+**anomaly_score는 확률이 아님**: 정상/이상 그룹 점수 분포가 0.72대까지 겹친다. UI·RAG에는 raw score를 그대로 노출하지 않고 백분위 구간별 실측 이상거래 비율(상위 90~100%: 27.58%)로 보정해 사용한다 — 보정표 전체는 [`isolation_forest_modeling_결과.md §4`](./mvp_isolation_forest/isolation_forest_modeling_결과.md) 참고.
 
 ---
 
 ## 5. 운영 컷오프 및 한계
 
-**운영 컷오프 = 상위 10%**(recall≈79.0%, precision≈27.6%). 기존 잠정값(상위 3%)은 recall 52.6%로 "이상거래를 놓치지 않는다"는 원칙에 미달 — False Negative(누락)는 RAG·사람 어느 단계에도 닿지 못해 영구 누락되는 반면 False Positive는 사람이 한 번 더 보면 그만인 비대칭 비용 구조라 recall을 우선했다. recall 90% 이상(검토량 32.68%~)은 §2의 효율성 전제가 무너져 채택하지 않음.
-
-**고정 임계값**: 실시간 거래 판정용 고정 threshold score는 **-0.0123**(train 점수 분포 90번째 백분위수)으로 재계산 완료 — test 적용 시 실제 분류 비율 12.79%, recall 85.1%, precision 23.2%(재현 코드·상세: [`고정_임계값_재계산.py`](./mvp_isolation_forest/고정_임계값_재계산.py), [`isolation_forest_modeling_결과.md §5`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)). 알고리즘·피처셋·컷오프·운영 임계값 모두 확정되어 ML 파트는 마무리됐다.
+**운영 컷오프 = 상위 10%**(recall≈79.0%, precision≈27.6%), **고정 임계값 = anomaly_score ≥ -0.0123**(train 점수 분포 90번째 백분위수). recall을 precision보다 우선한 이유(False Negative의 비대칭 비용), 컷오프를 3%→10%로 올린 근거, recall 목표별 필요 검토 비율, fold4 변동성 조사까지의 전체 도출 과정은 [`isolation_forest_modeling_결과.md §5·§7`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)에 정리돼 있다. 알고리즘·피처셋·컷오프·운영 임계값 모두 확정되어 ML 파트는 마무리됐다.
 
 ---
 
@@ -90,6 +93,7 @@ test 성능이 5-fold 평균(0.4946)보다 높은 것은 test 시점 카드의 9
 | 경로 | 내용 |
 |---|---|
 | [`mvp_isolation_forest/`](./mvp_isolation_forest/) | 최종 확정 MVP — 전처리·모델링 원본 노트북 4개 + [`isolation_forest_modeling_결과.md`](./mvp_isolation_forest/isolation_forest_modeling_결과.md)(§2~§5 수치의 1차 출처) |
-| [`mvp_isolation_forest/비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md) | §3 실측 비교의 1차 출처. 재현 코드: [`unsupervised_baseline_비교.py`](./mvp_isolation_forest/unsupervised_baseline_비교.py) |
+| [`mvp_isolation_forest/비지도_baseline_비교_결과.md`](./mvp_isolation_forest/비지도_baseline_비교_결과.md) | §3 실측 비교 중 One-Class SVM·SGD·LOF의 1차 출처(2026-07-31). 재현 코드: [`unsupervised_baseline_비교.py`](./mvp_isolation_forest/unsupervised_baseline_비교.py) |
+| [`비지도학습 정리/법인카드_이상거래_ECOD_COPOD_비교실험.ipynb`](<./비지도학습 정리/법인카드_이상거래_ECOD_COPOD_비교실험.ipynb>) | §3 실측 비교 중 ECOD·COPOD·INNE·LODA·GMM·CBLOF·PCA 7종 + COPOD paired t-test(p=0.0079)의 1차 출처(2026-08-04) |
 | [`archive/supervised_experiments/`](./archive/supervised_experiments/) | 지도학습 8개 모델 비교(참고용, 배포 대상 아님) |
 | [`archive/early_eda_preprocessing/`](./archive/early_eda_preprocessing/) | 초기 EDA·전처리 노트북(참고용, `mvp_isolation_forest/`가 최신 기준) |

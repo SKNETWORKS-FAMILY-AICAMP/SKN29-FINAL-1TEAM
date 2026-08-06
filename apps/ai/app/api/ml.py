@@ -21,5 +21,11 @@ def infer(req: Features):
 
 @router.post("/train")
 def train():
-    """온디맨드 배치 학습(관리자 트리거). TODO: core 거래 로드 → feature → IsolationForest fit."""
-    return {"status": "stub", "detail": "비지도 이상탐지 배치 학습 자리표시자"}
+    """학습은 이 API가 아니라 오프라인 배치 스크립트로 수행한다(관리자 CLI 실행).
+
+    docker compose exec ai python -m app.ml.train --train-csv <경로> --test-csv <경로>
+    """
+    return {
+        "status": "not_available_via_api",
+        "detail": "학습은 `python -m app.ml.train` 스크립트로 수행합니다(app/ml/train.py 참고).",
+    }
