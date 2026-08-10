@@ -8,3 +8,8 @@ scikit-learn==1.5.*
 numpy>=1.26,<3.0
 pandas==2.3.*
 openai>=1.40,<2.0
+# RAG PDF 파싱 (llm_wiki/_context/pdf_parsing_strategy.md §3.2)
+pymupdf==1.28.*        # 텍스트·span(font/size/bbox)·임베디드 TOC
+pdfplumber==0.11.*     # 표 추출 (lines 전략 + rows>=2 & cols>=2 필터)
+# --- Type B(스캔)/D(복잡 레이아웃) 유입 시에만 활성 (기본 미설치) ---
+# pytesseract, pdf2image   # OCR 경로

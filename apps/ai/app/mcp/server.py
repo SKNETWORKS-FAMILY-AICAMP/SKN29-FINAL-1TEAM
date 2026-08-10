@@ -18,5 +18,6 @@ for _fn in (
     tools.run_rule_engine,
     tools.get_tx_features,
     tools.ml_infer,
+    tools.chunk_pdf,
 ):
     mcp.tool(_fn)
