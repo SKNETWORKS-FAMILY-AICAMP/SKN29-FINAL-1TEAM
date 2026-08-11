@@ -32,7 +32,7 @@
 ### 2.3 구현 전제
 - `dsl.py`와 `engine.py`가 구현되어 조건은 EvalContext dot-path를 참조하는 JSON-Logic 부분집합으로 저장한다.
 - ACTIVE 전환과 시드는 DSL·그래프 구조·EvalContext 참조 경로를 정적으로 검증한다.
-- 실제 `build_rule_context` ORM 조립과 전체 오케스트레이션은 아직 후속 범위다.
+- ✅ **`build_rule_context` 조립 구현 완료**(2026-08-11, `policies/context_builder.py`). 남은 후속 범위는 `orchestrator.py`(GLOBAL→scope 선택·`RuleHit` 기록)다.
 
 ## 3. 매핑 설계
 
@@ -68,7 +68,7 @@
 - **배타 그룹(§8)**: 금액구간 룰(R-102~105·R-201·R-312·R-313)은 상호배타 → `graph.sim_result`나 노드 `action.exclusive_group`에 메타로 기록(엔진 겹침검사용). 우선순위(R-105>R-102, R-313>R-312>R-301)도 `action.precedence` 메타로만.
 
 ### 3.4 참조 테이블(§2-1) 처리
-`daily_limit_table` / `kickback_limit_table` / `lodging_limit_table` / `pre_approval_threshold_table` 는 별표 조회값. DSL은 동적 테이블 조회를 하지 않고, 향후 `build_rule_context`가 `policy.*` 스칼라로 선해소한다.
+`daily_limit_table` / `kickback_limit_table` / `lodging_limit_table` / `pre_approval_threshold_table` 는 별표 조회값. DSL은 동적 테이블 조회를 하지 않고, **`build_rule_context`가 `policy.*` 스칼라로 선해소한다(구현 완료)**. 별표 저장은 `PolicyTable` 모델 → `_context/policy-domain.md`.
 
 ## 4. 시드 산출물 형태 (1차 구현)
 - 위치: `domain/common/management/commands/seed_rules.py`; 일반 `seed`에서도 호출한다.
@@ -84,11 +84,11 @@
 5. **후속 시드 및 실제 context 조립 후 통합 검증**.
 
 ## 6. 오픈 이슈 · 리스크
-- **조립기 미구현**: DSL·순회 엔진은 있으나 실제 ORM facts/별표/업종을 만드는 `build_rule_context`가 없어 DB 정산 end-to-end 판정은 아직 불가하다.
+- ~~**조립기 미구현**~~ → ✅ **해소(2026-08-11)**: `context_builder.build_rule_context`가 정산·거래·첨부·별표를 조립한다. 시뮬레이션의 실 내역 경로도 같은 조립기를 탄다. 남은 결손은 **판정 사실의 원천**(참석 인원·2차 여부·청탁 대상 등)이며 등급표는 `_context/eval-context-sourcing.md`.
 - **decision enum 확장**: `RETURN`·`severity`·`flag`·`monitoring`을 `action` JSON에 넣을지, `OnResult`에 `RETURN`을 정식 추가할지 합의 필요.
 - **GLOBAL→카테고리 선택**: GLOBAL 그래프 자체 순회는 구현됐으나 두 그래프를 순서대로 선택하는 orchestrator는 후속이다.
 - **프론트 정합**: `ruleConsoleMock.ts`는 flat UI 셰이프라 백엔드 graph 스키마와 미연동. 시드가 API로 노출돼도 FE가 소비하려면 rule-console 화면의 실연동 작업이 선행/병행돼야 함.
-- **나머지 표현식 변환**: 명세의 `table[key]`·서수비교는 EvalContext 선해소 필드로 변환해야 하므로 56개 카테고리/공통 RULE 시드 시 별도 검증이 필요하다.
+- **나머지 표현식 변환**: 명세의 `table[key]`·서수비교는 EvalContext 선해소 필드로 변환해야 한다. 단 **RULE 명세서 58종은 «참고용 예시»로 확정**됐고(제품 기본 제공은 `DEFAULT GATE` 1개, 세부 룰은 문서 업로드 시 생성) 전량 시드가 목표가 아니다. EvalContext도 v4(46필드)로 축소돼 명세서 필드와 의도된 간극이 있다.
 
 ## 7. 부록 — 매핑 참조
 - 심각도→기본 권장처리(§3): CRITICAL=자동반려후보 · HIGH=반려권고/에스컬레이션 · MEDIUM=보완요청/승인보류 · LOW=승인대기확인 · INFO=모니터링(개별건 무영향).

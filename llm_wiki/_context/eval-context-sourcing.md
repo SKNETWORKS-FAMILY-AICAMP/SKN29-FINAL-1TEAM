@@ -301,6 +301,10 @@ ACTIVE 3그래프 × 실 정산 120행 기준. 괄호는 등급(§2).
 
 ### 값싼 대안 — **MVP 코어 프로파일 선언**
 
+> **후속(2026-08-11)**: 아래 제안 대신 **스키마 자체를 46필드로 줄이는 쪽을 택했다**(§12).
+> 남은 필드가 곧 코어 프로파일 역할을 하므로 별도 `MVP_CORE_PATHS` 선언은 두지 않았다.
+> 아래는 그 결정에 이른 비교 근거로 남긴다.
+
 스키마는 그대로 두고, **"이번 MVP에서 실제로 소싱하기로 한 경로 집합"** 을 선언한 뒤
 ACTIVE 전환 게이트에서 검증한다.
 
@@ -310,7 +314,7 @@ MVP_CORE_PATHS = frozenset({
     "tx.amount", "tx.payment_time", "tx.per_person_amount",
     "card.card_type", "user.is_working_hours",
     "merchant.merchant_type", "merchant.forbidden",
-    "category.value", "evidence.has_valid_receipt", "evidence.purpose_missing",
+    "category.value", "evidence.has_valid_receipt", "evidence.expense_purpose_missing",
     "approval.pre_approval_obtained", "participants.participant_count",
     "derived.is_late_night", "derived.is_weekend", "derived.business_days_since_expense",
     "history.daily_cumulative_amount", "history.same_vendor_count",
@@ -510,10 +514,10 @@ C(AI 판정 대기)·D(원천 없음)가 **사라졌다.** 이제 막고 있는 
 | 4 | **`user.position` 원천** — `role`(권한)과 직책은 다르다 | 조직 데이터(`tiger_inc/직급체계.md`)로 시드 vs 입력 | 미결. 지금은 별표가 전부 `"*"` 폴백 |
 | 5 | **첨부 종류(`Receipt.kind`)** — 영수증·회의록·사전승인서 구분 | `Receipt.kind` 추가 vs `Attachment` 모델 분리 | 미결 (§9) |
 | 6 | **삭제한 38종의 복귀 기준** | 원천(모델/추출) 확보 → 필드 추가 → 룰 조건 복원 **순서 고정** | 규약만 정함 |
-| 7 | **58 RULE 명세서와의 간극** — 명세서는 삭제된 필드를 여전히 참조 | 명세서에 "MVP 미구현" 표기 vs 명세서 개정 | 미반영 (권위 문서라 별도 합의 필요) |
+| ~~7~~ | ~~58 RULE 명세서와의 간극~~ | — | ✅ **해소(2026-08-11)**: 명세서 최상단에 «참고용 예시» 배너 추가 — 제품 기본 제공은 `DEFAULT GATE` 1개, 세부 룰은 문서 업로드 시 생성. 필드 간극도 의도된 것으로 명기 |
 | 8 | **`tx.payment_method` 하드코딩** — 조립기가 `"법인카드"` 고정 | `Card.card_type` 기반 산출 |
 | 9 | **동순위 충돌에 신뢰도를 쓸지** (§12a) — 지금은 보수적으로 버려 `REVIEW`로 보낸다 | (a) 현행 유지 (b) `field_confidence`가 높은 쪽 채택 + 충돌 기록. (b)는 편하지만 저신뢰 오추출이 자동 통과를 만들 수 있다 |
-| 10 | **`evidence.expense_purpose_missing`의 의미** — 현재는 **지출 목적/사유 미기재**(`Settlement.purpose`)다. "영수증 미첨부에 대한 소명 사유 없음"은 **별개 개념**이며 지금 스키마에 없다 | 필요하면 `evidence.missing_receipt_reason_absent`를 신설(원천: 사유 입력칸 또는 소명 문서 추출) | A등급, 미적용 |
+| 10 | **`evidence.expense_purpose_missing`의 의미** — 현재는 **지출 목적/사유 미기재**(`Settlement.purpose`)다. "영수증 미첨부에 대한 소명 사유 없음"은 **별개 개념**이며 지금 스키마에 없다 | 필요하면 `evidence.missing_receipt_reason_absent`를 신설(원천: 사유 입력칸 또는 소명 문서 추출) |
 
 > 특히 **#7**: `법인카드_사용규정_기반_RULE_명세서.md`는 룰 시드의 SoT인데 삭제한 필드를 그대로
 > 쓰고 있다. 코드는 "구현 가능한 것"으로 좁혔고 명세서는 "규정이 요구하는 것"을 담고 있어
