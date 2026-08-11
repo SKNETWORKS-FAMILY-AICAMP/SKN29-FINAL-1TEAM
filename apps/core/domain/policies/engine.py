@@ -5,10 +5,20 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from .dsl import evaluate, validate_expr
+from .dsl import DSLValidationError, evaluate, extract_vars, resolve_path, validate_expr
 
 
 DECISIONS = {"PASS", "REJECT", "REVIEW", "RETURN"}
+
+# ── 미해소 정책값 가드 (policy-domain.md §6)
+# 조립기가 별표를 스칼라로 해소하지 못하면 `policy.*`가 None으로 남고, DSL은 None 비교를
+# 안전하게 False로 흡수한다(dsl.py). 그 결과 한도 룰이 **에러 없이 미발동**하고 판정은
+# PASS로 보인다. 순회 경로에서 실제로 참조된 policy.* 중 미해소가 있으면 판정을 신뢰할 수
+# 없으므로 REVIEW로 강등하고 플래그를 남긴다.
+POLICY_PREFIX = "policy."
+UNRESOLVED_FLAG = "UNRESOLVED_POLICY_VAR"
+# 강등 스위치. False로 두면 플래그만 남기고 판정은 그대로 둔다(시연 중 임시 완화용 — PLAN R1).
+DEMOTE_ON_UNRESOLVED_POLICY = True
 
 
 class GraphValidationError(ValueError):
@@ -73,6 +83,31 @@ def validate_graph(graph: dict[str, Any]) -> None:
         visit(key)
 
 
+def policy_vars_by_node(nodes: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    """노드별로 조건식이 참조하는 ``policy.*`` 경로를 미리 뽑아둔다(순회 중 재파싱 방지)."""
+    out: dict[str, tuple[str, ...]] = {}
+    for key, node in nodes.items():
+        try:
+            refs = extract_vars(node.get("condition", {}))
+        except DSLValidationError:
+            continue
+        policy_refs = tuple(sorted(r for r in refs if r.startswith(POLICY_PREFIX)))
+        if policy_refs:
+            out[key] = policy_refs
+    return out
+
+
+def _finalize(decision: str, path: list[str], flags: list[str], confidence: float,
+              unresolved: list[str]) -> RuleResult:
+    """미해소 정책값이 있으면 판정을 신뢰할 수 없다 — REVIEW로 강등하고 사유를 남긴다."""
+    if not unresolved:
+        return RuleResult(decision, path, flags, confidence)
+    flags = [*flags, *(f"{UNRESOLVED_FLAG}:{p[len(POLICY_PREFIX):]}" for p in sorted(set(unresolved)))]
+    if not DEMOTE_ON_UNRESOLVED_POLICY:
+        return RuleResult(decision, path, flags, confidence)
+    return RuleResult("REVIEW", path, flags, 0.0)
+
+
 def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
     """스냅샷 그래프를 순회한다. 구조 오류는 보수적으로 REVIEW 처리한다."""
     try:
@@ -81,6 +116,8 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         return RuleResult("REVIEW", [], ["INVALID_RULE_GRAPH"], 0.0)
 
     nodes, routings, current = _parts(graph)
+    policy_vars = policy_vars_by_node(nodes)
+    unresolved: list[str] = []
     path: list[str] = []
     flags: list[str] = []
     visited: set[str] = set()
@@ -90,6 +127,8 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         visited.add(current)
         path.append(current)
         node = nodes[current]
+        # 이 노드가 실제로 참조한 정책값만 본다 — 도달하지 않은 노드 때문에 과잉 강등하지 않는다.
+        unresolved.extend(p for p in policy_vars.get(current, ()) if resolve_path(ctx, p) is None)
         matched = evaluate(node["condition"], ctx)
         if matched:
             flag = node.get("action", {}).get("flag")
@@ -106,5 +145,5 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         decision = node.get("action", {}).get("decision", "REVIEW")
         if decision == "PASS_THROUGH":
             decision = "PASS" if not candidates else "REVIEW"
-        return RuleResult(decision, path, flags, 1.0)
-    return RuleResult("REVIEW", path, flags + ["NO_TERMINAL_DECISION"], 0.0)
+        return _finalize(decision, path, flags, 1.0, unresolved)
+    return _finalize("REVIEW", path, flags + ["NO_TERMINAL_DECISION"], 0.0, unresolved)

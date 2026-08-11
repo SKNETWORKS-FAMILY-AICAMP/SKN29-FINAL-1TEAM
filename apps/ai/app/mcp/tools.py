@@ -52,6 +52,15 @@ def fetch_historical_tx(period: str, filters: dict | None = None) -> dict:
     return {"period": period, "tx": []}
 
 
+def build_rule_context(settlement_id: int) -> dict:
+    """판정용 EvalContext(facts 스냅샷) 조립 (Django 경유, `RuleContextView`). Rule(적용).
+
+    별표 룩업·ORM 조회는 Django의 조립기가 전부 끝낸다. `unresolved_policy_fields`가
+    비어 있지 않으면 그 필드를 참조하는 룰은 판정을 신뢰할 수 없다(엔진이 REVIEW로 강등).
+    """
+    return core_client.build_rule_context(settlement_id)
+
+
 def run_rule_engine(tx: dict, ruleset: str | None = None) -> dict:
     """결정론적 Rule 엔진 실행. Rule 적용(RPA 1차판정)."""
     return {"decision": None, "confidence": 0.0, "hits": []}

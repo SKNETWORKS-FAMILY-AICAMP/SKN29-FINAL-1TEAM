@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import (
-    Policy, PolicyDoc, RuleGraph, RuleGraphVersion, RuleHit, RuleNode, RuleRouting,
+    PolicyDoc, PolicyTable, RuleGraph, RuleGraphVersion, RuleHit, RuleNode, RuleRouting,
 )
 
 
@@ -22,7 +22,18 @@ class RuleGraphAdmin(admin.ModelAdmin):
     inlines = [RuleNodeInline, RuleRoutingInline]
 
 
-admin.site.register(Policy)
+@admin.register(PolicyTable)
+class PolicyTableAdmin(admin.ModelAdmin):
+    """규정 별표를 회계 담당자가 직접 확인·개정하는 창구.
+
+    개정은 기존 행 수정이 아니라 **새 effective_date 행 추가**로 한다(구행에 superseded_date).
+    `source_clause`를 반드시 채워 "이 숫자가 규정 어디서 왔는지"를 남긴다.
+    """
+    list_display = ("key", "title", "effective_date", "superseded_date", "source_clause")
+    list_filter = ("key", "effective_date")
+    search_fields = ("key", "title", "source_clause")
+
+
 admin.site.register(PolicyDoc)
 admin.site.register(RuleGraphVersion)
 admin.site.register(RuleHit)

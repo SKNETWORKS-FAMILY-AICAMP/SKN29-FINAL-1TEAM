@@ -9,10 +9,19 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 
-EVAL_CONTEXT_SCHEMA_VERSION = 1
-BUILDER_VERSION = "1.0"
+EVAL_CONTEXT_SCHEMA_VERSION = 2
+BUILDER_VERSION = "2.0"
 
 # rule-engine-design.md §2.3의 정적 카탈로그. ACTIVE 전환 게이트가 사용한다.
+#
+# v2 (policy-domain.md §4) — 규정 임계값 도메인 재설계 반영:
+#  · `policy.gift_type` 제거 — 정책값이 아니라 `kickback_limit`의 룩업 키였다. 키는
+#    `category.item_type`(경조사/선물/상품권…)을 그대로 쓴다.
+#  · 누락 임계값 6종 승격 — DSL 리터럴·필드명에 박혀 있던 상수를 정책값으로 끌어올린다.
+#  · **필드명에 상수를 넣지 않는다.** `biz_days_over_7`·`*_3m`처럼 숫자가 이름에 새겨지면
+#    규정 개정이 스키마 변경이 되고, 저장된 rule_hits 스냅샷·ACTIVE 그래프가 함께 깨진다.
+#    "무엇을 재는가"만 필드명에 남기고 "얼마인가"는 policy.*에만 둔다.
+#  ※ 기존 스냅샷은 v1이다. 소급 수정하지 않고 `rule_hits.eval_context_schema_version`으로 구분한다.
 _SCHEMA_FIELDS = {
     "tx": ("amount", "per_person_amount", "payment_time", "day_of_week", "is_holiday", "payment_method", "service_charge_ratio"),
     "card": ("card_type", "actual_user_recorded"),
@@ -24,9 +33,16 @@ _SCHEMA_FIELDS = {
     "participants": ("participant_count", "external_participant_count", "contractor_participant_count", "contractor_regular_communication_purpose", "has_kickback_law_target", "kickback_law_category", "kickback_law_target_status_missing", "participant_includes_former_employee", "family_or_personal_gathering_suspected"),
     "trip": ("trip_type", "region_grade", "lodging_amount_per_night", "flight_class", "flight_duration_hours", "booking_to_trip_gap_months", "during_business_trip", "itinerary_mismatch", "work_end_time", "expense_type", "trip_request_submitted_days_before", "emergency_trip"),
     "dining": ("includes_alcohol", "is_secondary_venue", "same_event_multiple_merchants", "event_scale_payment_method"),
-    "history": ("same_vendor_count_3m", "user_post_approval_count_3m", "late_settlement_count_no_reason_3m", "daily_cumulative_amount", "monthly_cumulative_amount"),
-    "policy": ("preapproval_threshold", "position_daily_limit", "position_monthly_limit", "kickback_limit", "lodging_limit", "position_required_level", "gift_type", "approver_daily_limit"),
-    "derived": ("personal_use_suspected", "business_days_since_expense", "business_days_since_trip_end", "biz_days_over_7", "is_late_night", "is_weekend", "category_specific_deadline_applies", "category_specific_preapproval_rule_exists"),
+    # 집계 윈도우는 필드명이 아니라 policy.history_window_months가 정한다.
+    "history": ("same_vendor_count", "user_post_approval_count", "late_settlement_count_no_reason", "daily_cumulative_amount", "monthly_cumulative_amount"),
+    # 별표 선해소 스칼라 13종 — DSL이 실제 비교하는 값(policy-domain.md §4).
+    "policy": (
+        "preapproval_threshold", "position_daily_limit", "position_monthly_limit",
+        "kickback_limit", "lodging_limit", "position_required_level", "approver_daily_limit",
+        "evidence_threshold", "dining_per_person_limit", "settlement_deadline_days",
+        "history_window_months", "night_meal_limit", "business_class_min_hours",
+    ),
+    "derived": ("personal_use_suspected", "business_days_since_expense", "business_days_since_trip_end", "is_late_night", "is_weekend", "category_specific_deadline_applies", "category_specific_preapproval_rule_exists"),
     "tables": ("daily_limit_table", "monthly_limit_table", "kickback_limit_table", "lodging_limit_table", "pre_approval_threshold_table"),
     "meta": ("tx_id", "settlement_id", "schema_version", "builder_version", "built_at"),
 }

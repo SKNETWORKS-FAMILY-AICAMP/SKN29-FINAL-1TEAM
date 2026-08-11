@@ -21,8 +21,9 @@ from django.utils import timezone
 
 from domain.settlements.models import Settlement, SettlementStatus
 
+from .context_builder import apply_facts, load_tables, resolve_policy
 from .engine import GraphValidationError, run_rule_engine, validate_graph
-from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS, empty_eval_context
+from .eval_context import empty_eval_context
 from .models import (
     RuleGraph, RuleSimulationResult, RuleSimulationRun, RuleTestCase, SimulationSource,
 )
@@ -48,27 +49,20 @@ BASELINE_BY_STATUS = {
 DECISION_KO = {"PASS": "통과", "REVIEW": "검토 필요", "RETURN": "보완요청", "REJECT": "반려", "": "미처리"}
 
 
-# ── EvalContext 조립 (얕은 플레이스홀더) ─────────────────────────
-def apply_facts(context: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
-    """``{"tx.amount": 500000}`` 형태의 dot-path facts를 컨텍스트에 얹는다.
+# ── EvalContext 조립 ─────────────────────────────────────────────
+def context_from_case(case: dict[str, Any], tables: dict[str, Any] | None = None) -> dict[str, Any]:
+    """테스트 케이스(화면 입력) → EvalContext.
 
-    스키마에 없는 경로는 조용히 버린다(화면이 임의 키를 보내도 판정이 깨지지 않도록).
+    별표는 `context_builder.resolve_policy`가 `ctx.policy.*` 스칼라로 선해소한다.
+    화면 facts는 **선해소 이후** 얹혀 상위로 이긴다 — "만약 한도가 X라면"을 시험할 수 있어야 한다.
     """
-    for path, value in (facts or {}).items():
-        if path not in EVAL_CONTEXT_SCHEMA_PATHS:
-            continue
-        section, field = path.split(".", 1)
-        context[section][field] = value
-    return context
-
-
-def context_from_case(case: dict[str, Any]) -> dict[str, Any]:
-    """테스트 케이스(화면 입력) → EvalContext."""
     context = empty_eval_context()
     context["tx"]["amount"] = _number(case.get("amount"))
     context["tx"]["payment_method"] = case.get("paymentMethod") or "법인카드"
     context["category"]["value"] = case.get("category") or None
+    context["category"]["item_type"] = case.get("itemType") or None
     context["merchant"]["merchant_type"] = case.get("merchantType") or None
+    resolve_policy(context, tables if tables is not None else load_tables())
     return apply_facts(context, case.get("facts") or {})
 
 
@@ -112,9 +106,10 @@ def _run_rows(snapshot: dict, cases: list[dict[str, Any]], source: str) -> list[
         str(item.get("node_key")): str((item.get("action") or {}).get("title", ""))
         for item in snapshot.get("nodes", [])
     }
+    tables = load_tables()          # 실행당 1회 로드 후 메모리 룩업 (N+1 방지)
     rows: list[dict[str, Any]] = []
     for index, case in enumerate(cases):
-        result = run_rule_engine(context_from_case(case), snapshot)
+        result = run_rule_engine(context_from_case(case, tables), snapshot)
         expected = (case.get("expected") or "").strip().upper()
         status = case.get("currentStatus") or ""
         baseline = BASELINE_BY_STATUS.get(status, "")

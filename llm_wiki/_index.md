@@ -20,7 +20,7 @@
 - **정산 상태머신(4단계)**: 개인 보유(`DRAFT`) → 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`). 팀 수준(`TEAM_*`)과 회계 수준(`RETURNED`/`REJECT`) 구분. — 요구사항 §4.4·§5.6 / 기술 §3.3
 - **Risk Review = MVP 2단계**(이상탐지→RAG 내규검증), 지도학습은 post-MVP. — 요구사항 §6
 - **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. **룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL**. — 기술 §4.2 / `_context/rule-engine.md`
-- **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` **고정 카탈로그**(DSL 계약·ACTIVE 검증 게이트·룰 편집 UI가 의존하므로 자유화 금지). 초기 `Policy` 모델은 폐기. ⚠️ **조립기 미구현 → 실 정산 경로에서 한도 룰 전량 미발동 중.** — `_context/policy-domain.md` / 기술 §3.3-4 / 요구사항 Open #16·#17
+- **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` **고정 카탈로그**(DSL 계약·ACTIVE 검증 게이트·룰 편집 UI가 의존하므로 자유화 금지). 초기 `Policy` 모델은 폐기. 조립기(`context_builder.build_rule_context`)·미해소 가드(`UNRESOLVED_POLICY_VAR` → REVIEW 강등) 구현 완료, EvalContext 스키마 v2. — `_context/policy-domain.md` / 기술 §3.3-4 / 요구사항 Open #16·#17
 - **가맹점 업종 구분**(캐시→카카오→웹), 비용분류 보조 힌트(세무 아님), MCC는 post-MVP. — 기술 §7-1
 - **인가 = 기능 단위(Capability) RBAC**: `team_aggregate`/`accounting_review`/`rule_activate`/`governance_view` 4종. 유효능력 = 역할 기본 ∪ 개인 추가부여(`extra_capabilities`). 역할은 라벨·기본값용. 백엔드 강제(리뷰/확정·팀취합·룰활성·거버넌스) + 프론트 `useCan()` 게이트 전환 완료(mock=역할기본, 실=`/api/me`). — 기술 §3.1a
 
@@ -31,8 +31,8 @@
 | `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루 | 2026-07-28 |
 | `_context/rule-engine-design.md` | 룰엔진 **엔지니어링 설계·구현 추적** — EvalContext 필드 카탈로그·DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. 로드맵 1·2·4 완료, 3·5 진행 | 2026-07-31 |
 | `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. GLOBAL R-002·R-003 v1 구현 완료, 카테고리 RULE 후속 | 2026-07-31 |
-| `_context/policy-domain.md` | **규정 임계값(policy) 도메인 캐논** — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그 13종)/해소 규약 2층 구조, 8개 항목 검토·누락 6종, 필드명 상수 금지 규칙, 미해소 가드 | 2026-08-10 · **설계 확정, 구현 미착수** |
-| `_context/policy-domain-plan.md` | 위 캐논의 **구현 PLAN** — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화. 인수조건·리스크 등록부 포함 | 2026-08-10 · **승인 대기(미착수)** |
+| `_context/policy-domain.md` | **규정 임계값(policy) 도메인 캐논** — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그 13종)/해소 규약 2층 구조, 8개 항목 검토·누락 6종, 필드명 상수 금지 규칙, 미해소 가드 | 2026-08-11 · **구현 완료** (`policies/context_builder.py`·`tiger_tables.py`, EvalContext v2) |
+| `_context/policy-domain-plan.md` | 위 캐논의 **구현 PLAN + 인수 결과** — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화 | 2026-08-11 · **STEP 1~5 완료, 인수조건 5개 실측 통과** |
 | `_context/pdf_parsing_strategy.md` | **PDF RAG 파싱·청킹 전략**(실측 기반) — 페이지 단위 하이브리드 파이프라인·CDM·전처리 조건부 게이트·조(條) 단위 청킹·메타 스키마·품질 지표 | 2026-08-10 · **파싱→청킹 구현 완료** (`apps/ai/app/rag/parsing/`, MCP `chunk_pdf`). 임베딩·Chroma upsert(§13.1⑪⑫)는 미착수 |
 | `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 **역할 분담·로드맵** — 계약(입출력) 고정, v0(@김정민)/v1(@이지현) 작업 분해. **B-1~B-6 전체 완료**(2026-08-10). ⚠️ 정책 조회는 현재 구 `Policy` 모델 사용 — 위 `policy-domain.md` 체계 구현 시 재연동 필요(§7) | 2026-08-10 |
 | `_context/draft-agent-v0.2.md` | Draft Agent **코드 수준 구현 설계서** — pydantic 스키마·정책 조회·프롬프트·에러 폴백. as-is stub 실태 포함 | 2026-08-10 |

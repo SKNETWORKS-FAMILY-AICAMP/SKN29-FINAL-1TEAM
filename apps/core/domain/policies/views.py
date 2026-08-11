@@ -7,7 +7,9 @@ from rest_framework.views import APIView
 from domain.common.permissions import CanActivateRule, CanViewRule
 
 from . import services, simulation
-from .models import Policy, RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .context_builder import load_tables, lookup
+from .eval_context import empty_eval_context
+from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
 
@@ -16,22 +18,59 @@ class PolicyLookupView(APIView):
 
     관계형 데이터는 Django를 경유해야 한다는 원칙(CLAUDE.md §1)에 따라, FastAPI(ai)의
     get_policy 도구가 Postgres를 직접 조회하지 않고 이 API를 거친다.
+
+    출처는 `PolicyTable`(별표)이다 — 구 `Policy` 모델(분류당 한도 1개)은 2키 별표를 담을 수
+    없어 폐기했다(`_context/policy-domain.md`). **응답 계약은 그대로 유지**한다.
     """
     permission_classes = [AllowAny]
 
     def get(self, request, category):
-        policy = Policy.objects.filter(category=category).first()
-        if not policy:
-            return Response({
-                "category": category, "limit_amount": None,
-                "required_evidence": [], "tax_note": "", "refs": [],
-            })
+        tables = load_tables()
+        ctx = empty_eval_context()
+        ctx["category"]["value"] = category
+
+        limit_table = tables.get("evidence_threshold_table")
+        evidence_table = tables.get("required_evidence_table")
+        limit = lookup(limit_table, ctx) if limit_table else None
+        evidence = lookup(evidence_table, ctx) if evidence_table else None
+        refs = [t.source_clause for t in (limit_table, evidence_table) if t and t.source_clause]
+
         return Response({
-            "category": policy.category,
-            "limit_amount": policy.limit_amount,
-            "required_evidence": policy.required_evidence,
-            "tax_note": policy.tax_note,
-            "refs": policy.refs,
+            "category": category,
+            "limit_amount": limit,
+            "required_evidence": evidence if isinstance(evidence, list) else [],
+            # 세무 판단은 RAG(tax_refs)에 위임한다 — 별표는 숫자만 갖는다(FR-DA-03c).
+            "tax_note": "",
+            "refs": refs,
+        })
+
+
+class RuleContextView(APIView):
+    """GET /api/internal/rule-context/<settlement_id>/ — 판정용 EvalContext 조립(FR-RA-08).
+
+    별표 룩업·ORM 조회는 전부 여기서 끝난다. FastAPI(ai)는 조립된 facts 스냅샷만 받아
+    순수 엔진에 넘긴다(`run_rule_engine`). 미해소 정책값은 숨기지 않고 함께 반환한다 —
+    조용한 결측이 이 도메인의 원인 결함이었다(`_context/policy-domain.md` §6).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, settlement_id):
+        from domain.settlements.models import Settlement
+
+        from .context_builder import build_rule_context
+
+        settlement = (
+            Settlement.objects.select_related("transaction")
+            .filter(pk=settlement_id).first()
+        )
+        if settlement is None:
+            return Response({"detail": "정산을 찾을 수 없습니다."}, status=404)
+
+        ctx, unresolved = build_rule_context(settlement=settlement)
+        return Response({
+            "settlement_id": settlement.pk,
+            "eval_context": ctx,
+            "unresolved_policy_fields": unresolved,
         })
 
 

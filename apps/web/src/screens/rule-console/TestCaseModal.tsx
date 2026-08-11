@@ -38,7 +38,13 @@ function interpret(text: string, target: TestCase): { patch: Partial<TestCase>; 
   if (/목적/.test(text)) toggle('evidence.purpose_missing', /없|누락|비어/.test(text), '사용 목적 누락')
   if (/심야|새벽/.test(text)) toggle('derived.is_late_night', !/아니|제외/.test(text), '심야 결제')
   if (/주말|토요일|일요일/.test(text)) toggle('derived.is_weekend', !/아니|제외/.test(text), '주말 결제')
-  if (/지연|늦게/.test(text)) toggle('derived.biz_days_over_7', !/아니/.test(text), '정산 지연')
+  // 정산 지연은 "경과 영업일 > policy.settlement_deadline_days" 비교로 판정한다.
+  // 지연 언급이 있으면 기한을 넉넉히 넘긴 경과일을 넣어 룰이 발동하는지 확인할 수 있게 한다.
+  if (/지연|늦게/.test(text)) {
+    const late = !/아니/.test(text)
+    facts['derived.business_days_since_expense'] = late ? 10 : 1
+    notes.push(`결제 후 경과 영업일 → ${late ? 10 : 1}일`)
+  }
 
   const people = /참석(?:자|\s*인원)?\s*([\d]+)\s*명/.exec(text)
   if (people) { facts['participants.participant_count'] = Number(people[1]); notes.push(`참석 인원 → ${people[1]}명`) }

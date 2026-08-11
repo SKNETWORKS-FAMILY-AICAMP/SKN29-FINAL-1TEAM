@@ -49,6 +49,42 @@ class EngineTests(SimpleTestCase):
         self.assertEqual(run_rule_engine({}, snapshot).decision, "REVIEW")
         self.assertEqual(run_rule_engine({}, snapshot).flags, ["INVALID_RULE_GRAPH"])
 
+    def test_unresolved_policy_var_demotes_to_review(self):
+        """조립기가 별표를 해소하지 못하면 한도 룰이 조용히 미발동한다 — 가드가 이를 드러낸다."""
+        snapshot = graph(
+            [
+                {"node_key": "first",
+                 "condition": {">": [{"var": "tx.amount"}, {"var": "policy.preapproval_threshold"}]},
+                 "action": {"decision": "PASS"}},
+            ],
+            [],
+        )
+        unresolved = run_rule_engine({"tx": {"amount": 620_000}, "policy": {}}, snapshot)
+        self.assertEqual(unresolved.decision, "REVIEW")
+        self.assertEqual(unresolved.flags, ["UNRESOLVED_POLICY_VAR:preapproval_threshold"])
+        self.assertEqual(unresolved.confidence, 0.0)
+
+        resolved = run_rule_engine(
+            {"tx": {"amount": 620_000}, "policy": {"preapproval_threshold": 500_000}}, snapshot
+        )
+        self.assertEqual(resolved.decision, "PASS")
+        self.assertEqual(resolved.flags, [])
+
+    def test_unresolved_guard_ignores_unvisited_nodes(self):
+        """도달하지 않은 노드의 정책값 결측으로 과잉 강등하지 않는다."""
+        snapshot = graph(
+            [
+                {"node_key": "first", "condition": True, "action": {"decision": "PASS"}},
+                {"node_key": "never",
+                 "condition": {">": [{"var": "tx.amount"}, {"var": "policy.lodging_limit"}]},
+                 "action": {"decision": "REVIEW"}},
+            ],
+            [],
+        )
+        result = run_rule_engine({"tx": {"amount": 1}, "policy": {}}, snapshot)
+        self.assertEqual(result.decision, "PASS")
+        self.assertEqual(result.flags, [])
+
     def test_unknown_eval_context_var_is_reported(self):
         snapshot = graph(
             [{"node_key": "first", "condition": {"var": "tx.not_defined"}, "action": {"decision": "PASS"}}],

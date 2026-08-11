@@ -28,7 +28,8 @@ from domain.accounts.models import Capability, Role, Team
 from domain.cards.models import Card, CardType
 from domain.policies.engine import run_rule_engine
 from domain.policies.eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION, empty_eval_context
-from domain.policies.models import Policy, RuleGraph, RuleGraphStatus, RuleHit
+from domain.policies.models import PolicyTable, RuleGraph, RuleGraphStatus, RuleHit
+from domain.policies.tiger_tables import DEMO_POLICY, upsert_all as upsert_policy_tables
 from domain.risk.models import RiskReview
 from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
 from domain.transactions.models import MerchantCategory, MerchantSource, Receipt, Transaction
@@ -45,7 +46,7 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if opts["fresh"]:
             # RuleHit은 정산·거래에 SET_NULL이라 함께 지우지 않으면 고아 로그가 남는다.
-            for m in (RuleHit, Settlement, Transaction, Card, RuleGraph, MerchantCategory, Policy):
+            for m in (RuleHit, Settlement, Transaction, Card, RuleGraph, MerchantCategory, PolicyTable):
                 m.objects.all().delete()
             User.objects.filter(is_superuser=False).delete()
             Team.objects.all().delete()
@@ -408,20 +409,16 @@ class Command(BaseCommand):
             TeamBudget.objects.create(team=team, year_month=this_month, category="",
                                       limit_amount=sum(limits.values()))
 
-        # ── 분류별 정책 한도(Policy) — Draft Agent get_policy 실연동(B-3)용 최소 시드 ──
-        #  값은 Django 플레이스홀더(draft_agent.py THRESHOLDS)와 동일한 임시 기준(영수증 3만원)이며,
-        #  TIGER-REG-2026-003 원문 대조는 별도 오픈이슈(_context/draft-agent-plan.md §7).
-        if not Policy.objects.exists():
-            for cat in C.values:
-                Policy.objects.create(
-                    category=cat, limit_amount=30_000, required_evidence=["영수증"],
-                    tax_note="임시 기준값 — 규정 원문 대조 전", refs=[],
-                )
+        # ── 규정 별표(PolicyTable) — 임계값의 단일 출처 ──
+        #  Draft Agent(get_policy)·룰 엔진 조립기가 모두 이 표를 읽는다. 값 정의는
+        #  `domain/policies/tiger_tables.py` 한 곳뿐이다(_context/policy-domain.md §2).
+        #  ⚠️ TIGER-REG-2026-003 별표 원문 대조는 아직 미완(해당 모듈 docstring 참조).
+        upsert_policy_tables()
 
         self.stdout.write(self.style.SUCCESS(
             f"시드 완료 - 팀 {Team.objects.count()} / 사용자 {User.objects.count()} / 카드 {Card.objects.count()} / "
             f"정산 {Settlement.objects.count()}(검토 {RiskReview.objects.count()}) / 룰그래프 {RuleGraph.objects.count()} / "
-            f"판정로그 {RuleHit.objects.count()} / 예산 {TeamBudget.objects.count()} / 정책 {Policy.objects.count()}"
+            f"판정로그 {RuleHit.objects.count()} / 예산 {TeamBudget.objects.count()} / 별표 {PolicyTable.objects.count()}"
         ))
 
     # ════════════════════════════════════════════════════════════
@@ -497,15 +494,14 @@ class Command(BaseCommand):
                                     "family_or_personal_gathering_suspected": False})
         ctx["dining"].update({"includes_alcohol": True, "is_secondary_venue": False,
                               "same_event_multiple_merchants": False, "event_scale_payment_method": "일시불"})
-        ctx["history"].update({"same_vendor_count_3m": 2, "user_post_approval_count_3m": 1,
-                               "late_settlement_count_no_reason_3m": 0,
+        ctx["history"].update({"same_vendor_count": 2, "user_post_approval_count": 1,
+                               "late_settlement_count_no_reason": 0,
                                "daily_cumulative_amount": 452000, "monthly_cumulative_amount": 1284000})
-        ctx["policy"].update({"preapproval_threshold": 500000, "position_daily_limit": 600000,
-                              "position_monthly_limit": 3000000, "kickback_limit": 30000,
-                              "position_required_level": "본부장", "gift_type": None,
+        ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 600000,
+                              "position_monthly_limit": 3000000, "position_required_level": "본부장",
                               "approver_daily_limit": 1000000})
         ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 1,
-                               "biz_days_over_7": False, "is_late_night": True, "is_weekend": False,
+                               "is_late_night": True, "is_weekend": False,
                                "category_specific_deadline_applies": True,
                                "category_specific_preapproval_rule_exists": True})
         ctx["tables"].update({"pre_approval_threshold_table": "REG-2026-003-T3",
@@ -536,12 +532,12 @@ class Command(BaseCommand):
                             "itinerary_mismatch": True, "work_end_time": "18:30",
                             "expense_type": "숙박", "trip_request_submitted_days_before": 4,
                             "emergency_trip": False})
-        ctx["history"].update({"same_vendor_count_3m": 1, "daily_cumulative_amount": 386000,
+        ctx["history"].update({"same_vendor_count": 1, "daily_cumulative_amount": 386000,
                                "monthly_cumulative_amount": 947600})
-        ctx["policy"].update({"lodging_limit": 120000, "position_daily_limit": 400000,
-                              "position_monthly_limit": 2000000, "preapproval_threshold": 500000})
+        ctx["policy"].update({**DEMO_POLICY, "lodging_limit": 120000, "position_daily_limit": 400000,
+                              "position_monthly_limit": 2000000})
         ctx["derived"].update({"personal_use_suspected": True, "business_days_since_expense": 2,
-                               "biz_days_over_7": False, "is_late_night": True, "is_weekend": True})
+                               "is_late_night": True, "is_weekend": True})
         ctx["tables"].update({"lodging_limit_table": "REG-2026-003-T7"})
         ctx["meta"].update({"tx_id": "TX-DEMO-TRIP-002", "settlement_id": "ST-DEMO-TRIP-002",
                             "schema_version": EVAL_CONTEXT_SCHEMA_VERSION, "builder_version": BUILDER_VERSION,
@@ -564,11 +560,11 @@ class Command(BaseCommand):
         ctx["participants"].update({"participant_count": 12, "external_participant_count": 0})
         ctx["dining"].update({"includes_alcohol": False, "is_secondary_venue": False,
                               "same_event_multiple_merchants": True, "event_scale_payment_method": "분할"})
-        ctx["history"].update({"same_vendor_count_3m": 12, "user_post_approval_count_3m": 3,
+        ctx["history"].update({"same_vendor_count": 12, "user_post_approval_count": 3,
                                "daily_cumulative_amount": 128000, "monthly_cumulative_amount": 612000})
-        ctx["policy"].update({"position_daily_limit": 300000, "preapproval_threshold": 500000})
+        ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 300000})
         ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 3,
-                               "biz_days_over_7": False, "is_late_night": False, "is_weekend": False})
+                               "is_late_night": False, "is_weekend": False})
         ctx["meta"].update({"tx_id": "TX-DEMO-DINE-003", "settlement_id": "ST-DEMO-DINE-003",
                             "schema_version": EVAL_CONTEXT_SCHEMA_VERSION, "builder_version": BUILDER_VERSION,
                             "built_at": now.isoformat(timespec="seconds")})

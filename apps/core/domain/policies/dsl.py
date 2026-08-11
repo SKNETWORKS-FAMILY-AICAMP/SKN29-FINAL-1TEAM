@@ -79,13 +79,17 @@ def extract_vars(expr: Any) -> set[str]:
     return found
 
 
-def _resolve(ctx: Mapping[str, Any], path: str) -> Any:
+def resolve_path(ctx: Mapping[str, Any], path: str) -> Any:
+    """dot-path로 컨텍스트 값을 읽는다. 없으면 ``None``(엔진의 미해소 판정이 이 값을 본다)."""
     value: Any = ctx
     for part in path.split("."):
         if not isinstance(value, Mapping) or part not in value:
             return None
         value = value[part]
     return value
+
+
+_resolve = resolve_path
 
 
 def _same_comparable_type(left: Any, right: Any) -> bool:

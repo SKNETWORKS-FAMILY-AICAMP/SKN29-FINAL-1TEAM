@@ -15,6 +15,7 @@ for _fn in (
     tools.search_policy,
     tools.search_cases,
     tools.fetch_historical_tx,
+    tools.build_rule_context,
     tools.run_rule_engine,
     tools.get_tx_features,
     tools.ml_infer,
