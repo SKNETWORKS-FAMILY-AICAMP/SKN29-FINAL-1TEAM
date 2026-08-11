@@ -18,6 +18,23 @@ class Category(models.TextChoices):
     SUPPLIES = "비품", "비품"
 
 
+class ItemType(models.TextChoices):
+    """지출 세부유형 — 청탁금지 한도 룩업 키(`kickback_limit_table`)를 겸한다.
+
+    구 `policy.gift_type`이 여기로 이관됐다(정책값이 아니라 룩업 키였다 —
+    `_context/policy-domain.md` §4.1).
+    """
+    MEAL = "식사", "식사·다과"
+    GIFT = "선물", "선물"
+    CONDOLENCE = "경조사", "경조사비"
+    VOUCHER = "상품권", "상품권·유가증권"
+    EVENT = "행사성", "행사성"
+    LODGING = "숙박", "숙박"
+    TRANSPORT = "교통", "교통"
+    SUPPLY = "소모품", "소모품·비품"
+    OTHER = "기타", "기타"
+
+
 class SettlementStatus(models.TextChoices):
     DRAFT = "DRAFT", "개인 보유중"
     # ② 팀 취합 단계
@@ -56,6 +73,37 @@ class Settlement(models.Model):
         "accounts.Team", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="settlements",
     )
+    # ── 판정 입력 필드 (EvalContext 원자 사실) ─────────────────────
+    #  룰 엔진이 비교할 '사실'을 저장한다. 조립기(`policies/context_builder`)가 그대로 읽는다.
+    #
+    #  **전부 null 허용이다. `None`은 "거짓"이 아니라 "모름"을 뜻한다**
+    #  (`_context/eval-context-sourcing.md` §0 계약). 사용자가 확인해 "아니오"를 고르면 False를
+    #  저장하고, 아예 묻지 않았거나 비워두면 None으로 남긴다. None이면 그 필드를 참조하는 룰은
+    #  미해소 가드가 REVIEW로 강등한다 — 모르는 채로 통과시키지 않기 위해서다.
+    #
+    #  값의 출처는 두 갈래다: 화면 입력, 그리고 첨부 문서 추출(`Attachment.extracted`).
+    headcount = models.PositiveIntegerField(
+        "참석 인원", null=True, blank=True,
+        help_text="0 = 참석자 기록 없음(=명단 누락). 비우면 '모름'.",
+    )
+    external_headcount = models.PositiveIntegerField("외부 참석 인원", null=True, blank=True)
+    pre_approved = models.BooleanField("사전승인 받음", null=True, blank=True)
+    actual_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, verbose_name="카드 실사용자",
+        on_delete=models.SET_NULL, related_name="used_settlements",
+    )
+    actual_user_recorded = models.BooleanField(
+        "실사용자 기록 여부", null=True, blank=True,
+        help_text="공용·팀 카드에서만 의미 있다. 개인카드는 조립기가 True로 채운다.",
+    )
+    item_type = models.CharField(
+        "지출 세부유형", max_length=20, choices=ItemType.choices, blank=True,
+        help_text="청탁금지 한도(kickback_limit_table) 룩업 키로도 쓰인다.",
+    )
+    kickback_target = models.BooleanField("청탁금지법 대상자 참석", null=True, blank=True)
+    is_secondary_venue = models.BooleanField("2차 성격 지출", null=True, blank=True)
+    includes_alcohol = models.BooleanField("주류 포함", null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -64,6 +112,14 @@ class Settlement(models.Model):
 
     def __str__(self):
         return f"Settlement#{self.pk} ({self.status})"
+
+    @property
+    def per_person_amount(self):
+        """1인당 환산 금액. 인원을 모르거나 0명이면 계산하지 않는다(None = 모름)."""
+        if not self.headcount:
+            return None
+        amount = getattr(self.transaction, "amount", None)
+        return int(amount) // self.headcount if amount is not None else None
 
 
 class TeamBudget(models.Model):
@@ -100,3 +156,7 @@ class SettlementEvent(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+
+# 추가 증빙 첨부 + 추출 결과는 별도 모듈에 둔다(모델 등록을 위해 여기서 재노출).
+from .attachments import Attachment, AttachmentKind, ExtractionStatus  # noqa: E402,F401

@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from domain.settlements.models import Settlement, SettlementStatus
 
-from .context_builder import apply_facts, load_tables, resolve_policy
+from .context_builder import apply_facts, build_rule_context, load_tables, resolve_policy
 from .engine import GraphValidationError, run_rule_engine, validate_graph
 from .eval_context import empty_eval_context
 from .models import (
@@ -51,18 +51,27 @@ DECISION_KO = {"PASS": "통과", "REVIEW": "검토 필요", "RETURN": "보완요
 
 # ── EvalContext 조립 ─────────────────────────────────────────────
 def context_from_case(case: dict[str, Any], tables: dict[str, Any] | None = None) -> dict[str, Any]:
-    """테스트 케이스(화면 입력) → EvalContext.
+    """검증 케이스 → EvalContext.
 
-    별표는 `context_builder.resolve_policy`가 `ctx.policy.*` 스칼라로 선해소한다.
-    화면 facts는 **선해소 이후** 얹혀 상위로 이긴다 — "만약 한도가 X라면"을 시험할 수 있어야 한다.
+    실 정산에서 온 케이스(`_settlement`)는 **운영과 같은 조립기**를 탄다 — 시뮬레이션 결과가
+    실제 판정과 어긋나지 않게 하기 위해서다. 화면에서 만든 가상 케이스만 얕게 조립한다.
+
+    별표는 `resolve_policy`가 `ctx.policy.*` 스칼라로 선해소하고, 화면 facts는 **그 이후** 얹혀
+    상위로 이긴다 — "만약 한도가 X라면"을 시험할 수 있어야 한다.
     """
+    tables = tables if tables is not None else load_tables()
+    settlement = case.get("_settlement")
+    if settlement is not None:
+        context, _ = build_rule_context(settlement=settlement, tables=tables)
+        return apply_facts(context, case.get("facts") or {})
+
     context = empty_eval_context()
     context["tx"]["amount"] = _number(case.get("amount"))
     context["tx"]["payment_method"] = case.get("paymentMethod") or "법인카드"
     context["category"]["value"] = case.get("category") or None
     context["category"]["item_type"] = case.get("itemType") or None
     context["merchant"]["merchant_type"] = case.get("merchantType") or None
-    resolve_policy(context, tables if tables is not None else load_tables())
+    resolve_policy(context, tables)
     return apply_facts(context, case.get("facts") or {})
 
 
@@ -74,6 +83,8 @@ def case_from_settlement(settlement: Settlement) -> dict[str, Any]:
     return {
         "id": f"S-{settlement.pk}",
         "settlementId": settlement.pk,
+        # 조립기에 넘길 원본. 보고서 행에는 담기지 않는다(`_run_rows`가 새 dict를 만든다).
+        "_settlement": settlement,
         "label": settlement.purpose or (tx.merchant if tx else f"정산 #{settlement.pk}"),
         "merchant": tx.merchant if tx else "",
         "amount": int(tx.amount) if tx else 0,

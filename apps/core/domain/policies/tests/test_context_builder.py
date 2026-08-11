@@ -2,8 +2,11 @@
 from datetime import date
 
 from django.test import TestCase
+from django.utils import timezone
 
-from domain.policies.context_builder import RESOLVERS, load_tables, lookup, resolve_policy
+from domain.policies.context_builder import (
+    RESOLVERS, build_rule_context, load_tables, lookup, resolve_policy,
+)
 from domain.policies.engine import run_rule_engine
 from domain.policies.eval_context import EVAL_CONTEXT_SCHEMA_PATHS, empty_eval_context
 from domain.policies.models import PolicyTable
@@ -85,7 +88,7 @@ class SeededTablesTests(TestCase):
             self.assertIn(f"policy.{field}", EVAL_CONTEXT_SCHEMA_PATHS)
 
     def test_seeded_tables_resolve_every_policy_field(self):
-        """시드 별표만으로 policy.* 13종이 전부 해소된다 → 미해소 플래그 0."""
+        """시드 별표만으로 policy.* 전 종이 해소된다 → 미해소 플래그 0."""
         ctx = empty_eval_context()
         unresolved = resolve_policy(ctx, load_tables())
         self.assertEqual(unresolved, [])
@@ -136,3 +139,63 @@ class SeededTablesTests(TestCase):
         self.assertEqual(body["limit_amount"], 30_000)
         self.assertEqual(body["required_evidence"], ["영수증"])
         self.assertTrue(body["refs"])
+
+
+class AttachmentExtractionTests(TestCase):
+    """첨부 문서 추출 → EvalContext 반영 (`_context/evidence-extraction-agent.md`)."""
+
+    def setUp(self):
+        upsert_all()
+        from django.contrib.auth import get_user_model
+        from domain.cards.models import Card, CardType
+        from domain.settlements.models import Attachment, Settlement
+        from domain.transactions.models import Transaction
+
+        user = get_user_model().objects.create(username="tester")
+        card = Card.objects.create(card_type=CardType.PERSONAL, name="개인", owner=user)
+        tx = Transaction.objects.create(card=card, merchant="한우명가", amount=300_000,
+                                        ts=timezone.now())
+        self.settlement = Settlement.objects.create(
+            transaction=tx, category="접대", purpose="거래처 미팅", submitted_by=user,
+        )
+        self.Attachment = Attachment
+
+    def _attach(self, kind, extracted, **kwargs):
+        return self.Attachment.objects.create(
+            settlement=self.settlement, kind=kind, extraction_status="DONE",
+            extracted=extracted, extracted_at=timezone.now(), **kwargs,
+        )
+
+    def test_extracted_facts_land_in_context(self):
+        self._attach("MEETING_MINUTES", {"participants.participant_count": 4})
+        ctx, _ = build_rule_context(settlement=self.settlement)
+        self.assertEqual(ctx["participants"]["participant_count"], 4)
+
+    def test_user_input_beats_extraction(self):
+        """사람이 확정한 컬럼값이 추출값을 이긴다."""
+        self._attach("MEETING_MINUTES", {"participants.participant_count": 4})
+        self.settlement.headcount = 6
+        self.settlement.save(update_fields=["headcount"])
+        ctx, _ = build_rule_context(settlement=self.settlement)
+        self.assertEqual(ctx["participants"]["participant_count"], 6)
+
+    def test_empty_column_does_not_erase_extraction(self):
+        """컬럼이 비어 있어도(모름) 추출값을 지우지 않는다."""
+        self._attach("PRE_APPROVAL", {"approval.pre_approval_obtained": True})
+        self.assertIsNone(self.settlement.pre_approved)
+        ctx, _ = build_rule_context(settlement=self.settlement)
+        self.assertIs(ctx["approval"]["pre_approval_obtained"], True)
+
+    def test_unknown_path_from_extractor_is_ignored(self):
+        """추출기가 스키마에 없는 경로를 보내도 판정이 깨지지 않는다."""
+        self._attach("TRIP_PLAN", {"trip.flight_class": "BUSINESS",
+                                   "trip.trip_type": "국내"})
+        ctx, _ = build_rule_context(settlement=self.settlement)
+        self.assertEqual(ctx["trip"]["trip_type"], "국내")
+        self.assertNotIn("flight_class", ctx["trip"])
+
+    def test_pending_extraction_is_not_applied(self):
+        self._attach("MEETING_MINUTES", {"participants.participant_count": 9})
+        self.Attachment.objects.update(extraction_status="PENDING")
+        ctx, _ = build_rule_context(settlement=self.settlement)
+        self.assertIsNone(ctx["participants"]["participant_count"])

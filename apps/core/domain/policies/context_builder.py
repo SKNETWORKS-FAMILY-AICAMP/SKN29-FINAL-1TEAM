@@ -145,6 +145,8 @@ def build_rule_context(
     """
     ctx = base if base is not None else empty_eval_context()
     if settlement is not None:
+        # 우선순위: 첨부 추출 < 화면 입력(정산 컬럼). 사람이 확정한 값이 추출값을 이긴다.
+        apply_facts(ctx, facts_from_attachments(settlement))
         _fill_from_settlement(ctx, settlement)
         as_of = as_of or _expense_date(settlement)
 
@@ -183,26 +185,62 @@ def _expense_date(settlement) -> date | None:
     return timezone.localtime(ts).date() if ts else None
 
 
+SHARED_CARD_TYPES = ("SHARED", "TEAM")
+
+
+def _set_known(section: dict[str, Any], field: str, value: Any) -> None:
+    """값을 알 때만 쓴다. ``None``(모름)으로는 기존 값을 덮지 않는다."""
+    if value is not None:
+        section[field] = value
+
+
 def _fill_from_settlement(ctx: dict[str, Any], settlement) -> None:
-    """정산·거래에서 확보 가능한 사실만 채운다. 나머지는 None으로 남긴다(널 안전 계약)."""
+    """정산·거래에서 확보 가능한 사실만 채운다. 나머지는 None으로 남긴다(모름 계약).
+
+    **거짓을 아는 것과 모르는 것을 구분한다** — 판단 가능한 항목은 반드시 명시값(False 포함)을
+    쓰고, 원천이 없는 항목만 None으로 남겨 미해소 가드가 잡게 한다.
+    """
     tx = getattr(settlement, "transaction", None)
     ts = timezone.localtime(tx.ts) if tx is not None and tx.ts else None
+    card = getattr(tx, "card", None) if tx is not None else None
 
     ctx["tx"].update({
         "amount": int(tx.amount) if tx is not None else None,
         "payment_time": ts.strftime("%H:%M") if ts else None,
-        "day_of_week": ts.strftime("%a").upper() if ts else None,
         "payment_method": "법인카드",
+        "per_person_amount": settlement.per_person_amount,
     })
+    if card is not None:
+        ctx["card"]["card_type"] = card.card_type or None
+        # 개인카드는 사용자가 곧 소유자라 실사용자 기록이 늘 성립한다(공용·팀 카드에서만 물어본다).
+        ctx["card"]["actual_user_recorded"] = (
+            settlement.actual_user_recorded
+            if card.card_type in SHARED_CARD_TYPES
+            else True
+        )
     ctx["category"].update({
         "value": settlement.category or None,
         "confidence": 0.5 if settlement.ai_suggested else 0.95,
+        "item_type": settlement.item_type or None,
     })
-    ctx["merchant"]["merchant_type"] = settlement.merchant_industry or None
+    industry = settlement.merchant_industry or None
+    ctx["merchant"].update({
+        "merchant_type": industry,
+        "merchant_info_resolved": bool(industry),   # 업종을 못 밝혔으면 False(관측 결과)
+    })
     ctx["evidence"].update({
         "has_valid_receipt": bool(tx is not None and tx.receipts.exclude(status="MISSING").exists()),
         "purpose_missing": not bool(settlement.purpose),
+        "has_supporting_evidence": settlement.attachments.exclude(kind="RECEIPT").exists(),
     })
+    # 아래는 사용자가 비워둘 수 있는 입력 컬럼이다. 비었으면(None) **덮어쓰지 않는다** —
+    # 첨부 문서에서 추출한 값이 이미 얹혀 있을 수 있고, "모름"으로 그걸 지우면 안 된다.
+    _set_known(ctx["approval"], "pre_approval_obtained", settlement.pre_approved)
+    _set_known(ctx["participants"], "participant_count", settlement.headcount)
+    _set_known(ctx["participants"], "external_participant_count", settlement.external_headcount)
+    _set_known(ctx["participants"], "has_kickback_law_target", settlement.kickback_target)
+    _set_known(ctx["dining"], "is_secondary_venue", settlement.is_secondary_venue)
+    _set_known(ctx["dining"], "includes_alcohol", settlement.includes_alcohol)
     ctx["derived"].update({
         "is_late_night": bool(ts and (ts.hour >= 22 or ts.hour < 6)),
         "is_weekend": bool(ts and ts.weekday() >= 5),
@@ -211,3 +249,19 @@ def _fill_from_settlement(ctx: dict[str, Any], settlement) -> None:
         "settlement_id": settlement.pk,
         "tx_id": tx.pk if tx is not None else None,
     })
+
+
+def facts_from_attachments(settlement) -> dict[str, Any]:
+    """첨부 문서에서 추출된 사실을 dot-path dict로 모은다.
+
+    추출 Agent가 채운 `Attachment.extracted`를 합친다. 같은 경로가 여러 문서에서 나오면
+    **더 최근에 추출된 값**이 이긴다(재추출이 이전 추출을 대체한다).
+    화면 입력(`Settlement.*` 컬럼)은 사람이 확정한 값이므로 추출값보다 우선한다 —
+    호출부가 추출 facts를 먼저 얹고 그 위에 컬럼값을 덮는다.
+    """
+    merged: dict[str, Any] = {}
+    ordered = settlement.attachments.filter(extraction_status="DONE").order_by("extracted_at", "id")
+    for attachment in ordered:
+        for path, value in (attachment.extracted or {}).items():
+            merged[path] = value
+    return merged

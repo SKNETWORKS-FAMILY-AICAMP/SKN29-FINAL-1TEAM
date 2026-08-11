@@ -116,14 +116,34 @@ class Command(BaseCommand):
                 normalized_name=nm, defaults=dict(industry_code=code, industry_label=label,
                                                   source=MerchantSource.KAKAO, confidence=0.95))
 
+        # 분류 → 지출 세부유형(청탁금지 한도 룩업 키를 겸한다).
+        ITEM_TYPE = {C.MEAL: "식사", C.MEETING: "식사", C.ENTERTAIN: "식사",
+                     C.TRIP: "교통", C.SUPPLIES: "소모품", C.OPERATION: "기타"}
+
         def mk(owner, merchant, amount, card, cat, ai, status, ev, days, hour, purpose="", industry="", risk=None):
             tx = Transaction.objects.create(card=card, merchant=merchant, amount=amount, ts=at(days, hour))
             if ev == "OK":
                 Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
+            # ── 판정 입력 사실. 결정론적으로 채워 시연 판정이 재현되게 한다.
+            #    비워두면 "모름"이 되어 미해소 가드가 REVIEW로 강등한다(그게 계약이다).
+            shared = card.card_type in ("SHARED", "TEAM")
+            group = cat in (C.MEAL, C.MEETING, C.ENTERTAIN)
             s = Settlement.objects.create(
                 transaction=tx, category=cat, ai_category=cat, ai_suggested=ai,
                 merchant_industry=industry, purpose=purpose, status=status,
-                submitted_by=owner, team=owner.team)
+                submitted_by=owner, team=owner.team,
+                item_type=ITEM_TYPE.get(cat, "기타"),
+                # 공용·팀 카드는 목적이 적혀 있어야 실사용자가 식별된 것으로 본다.
+                actual_user_recorded=(bool(purpose) if shared else None),
+                actual_user=(owner if shared and purpose else None),
+                # 참석 인원은 함께 쓰는 성격의 지출에만 의미가 있다(그 외는 '모름'이 아니라 미참조).
+                headcount=(max(2, min(12, amount // 40000)) if group else None),
+                external_headcount=(1 if cat == C.ENTERTAIN else (0 if group else None)),
+                kickback_target=(False if group else None),
+                pre_approved=(amount <= 500_000),
+                is_secondary_venue=(False if group else None),
+                includes_alcohol=(amount >= 200_000 if group else None),
+            )
             if risk:
                 RiskReview.objects.create(settlement=s, **risk)
             return s
