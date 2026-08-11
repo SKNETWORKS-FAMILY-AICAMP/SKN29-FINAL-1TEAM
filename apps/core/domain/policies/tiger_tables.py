@@ -64,18 +64,17 @@ TABLES: list[dict] = [
         "source_clause": f"{REG} 제17조② · 별표2",
     },
     {
-        "key": "position_required_level_table",
-        "title": "별표1. 금액구간별 요구 결재단계",
-        "key_axes": ["user.position"],
-        "payload": {"*": "본부장"},
-        "source_clause": f"{REG} 별표1",
-    },
-    {
-        "key": "approver_daily_limit_table",
-        "title": "회식 별표1. 승인권자 1일 한도",
-        "key_axes": ["user.position"],
-        "payload": {"*": 1_000_000},
-        "source_clause": f"{REG} 제14조 · 회식 별표1",
+        # 금지업종 목록 — merchant.forbidden 불린으로 선해소한다.
+        # DSL의 `in`은 리터럴 리스트만 받으므로 목록을 룰에 박으면 규정 개정을 못 따라간다.
+        "key": "forbidden_merchant_table",
+        "title": "제9조② 사용 금지 업종",
+        "key_axes": ["merchant.merchant_type"],
+        "payload": {
+            "*": False,
+            "유흥주점": True, "단란주점": True, "노래연습장": True, "사행성업종": True,
+            "카지노": True, "경마장": True, "이용업": True, "미용업": True,
+        },
+        "source_clause": f"{REG} 제9조②",
     },
     # ── 분류(Category) 축 표 — 구 `Policy` 모델이 담던 "분류별 한도·필요증빙"의 이전 대상.
     #    Draft Agent(`PolicyLookupView` → `get_policy`)가 이 두 표를 읽는다.
@@ -109,25 +108,12 @@ TABLES: list[dict] = [
     },
     # ── 축 없는 전역 임계값
     {
+        # ctx.policy에는 넣지 않는다(DSL 비교 대상이 아님). 조립기가 history 집계에 쓴다.
         "key": "history_window_table",
         "title": "이력 집계 윈도우(개월)",
         "key_axes": [],
         "payload": _scalar(3),
         "source_clause": f"{REG} 제8조 운영기준",
-    },
-    {
-        "key": "night_meal_limit_table",
-        "title": "야근 식대 1인 한도",
-        "key_axes": [],
-        "payload": _scalar(20_000),
-        "source_clause": f"{REG} 제15조①",
-    },
-    {
-        "key": "business_class_min_hours_table",
-        "title": "비즈니스석 허용 최소 비행시간",
-        "key_axes": [],
-        "payload": _scalar(6),
-        "source_clause": f"{REG} 제17조④",
     },
 ]
 
@@ -160,12 +146,10 @@ DEMO_POLICY: dict[str, object] = {
     "position_monthly_limit": 3_000_000,
     "kickback_limit": 30_000,
     "lodging_limit": 120_000,
-    "position_required_level": "본부장",
-    "approver_daily_limit": 1_000_000,
     "evidence_threshold": 30_000,
     "dining_per_person_limit": 50_000,
     "settlement_deadline_days": 7,
-    "history_window_months": 3,
-    "night_meal_limit": 20_000,
-    "business_class_min_hours": 6,
 }
+
+# ctx.policy에 넣지 않고 조립기가 직접 쓰는 파라미터(DSL 비교 대상이 아닌 값).
+HISTORY_WINDOW_TABLE = "history_window_table"

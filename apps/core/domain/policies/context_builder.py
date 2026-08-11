@@ -33,14 +33,15 @@ RESOLVERS: dict[str, str] = {
     "position_monthly_limit": "monthly_limit_table",
     "kickback_limit": "kickback_limit_table",
     "lodging_limit": "lodging_limit_table",
-    "position_required_level": "position_required_level_table",
-    "approver_daily_limit": "approver_daily_limit_table",
     "evidence_threshold": "evidence_threshold_table",
     "dining_per_person_limit": "dining_per_person_limit_table",
     "settlement_deadline_days": "settlement_deadline_table",
-    "history_window_months": "history_window_table",
-    "night_meal_limit": "night_meal_limit_table",
-    "business_class_min_hours": "business_class_min_hours_table",
+}
+
+# 별표에서 오지만 `ctx.policy`가 아닌 자리에 들어가는 선해소 값.
+# (금지업종 "목록"을 DSL의 `in` 리터럴로 박으면 규정 개정을 못 따라간다 → 불린으로 선해소)
+DERIVED_FROM_TABLE: dict[str, str] = {
+    "merchant.forbidden": "forbidden_merchant_table",
 }
 
 
@@ -94,17 +95,31 @@ def resolve_policy(ctx: dict[str, Any], tables: dict[str, PolicyTable]) -> list[
     실제 참조된 것만 보므로, 여기서 못 채워도 그 필드를 안 쓰는 그래프는 영향받지 않는다.
     """
     unresolved: list[str] = []
-    for field, table_key in RESOLVERS.items():
+
+    def _resolve(table_key: str) -> Any:
         table = tables.get(table_key)
         if table is None:
-            unresolved.append(field)
-            continue
+            return None
         value = lookup(table, ctx)
+        if value is not None:
+            ctx["tables"][table_key] = table.payload   # 감사용 원본 (DSL 미참조)
+        return value
+
+    for field, table_key in RESOLVERS.items():
+        value = _resolve(table_key)
         if value is None:
             unresolved.append(field)
-            continue
-        ctx["policy"][field] = value
-        ctx["tables"][table_key] = table.payload      # 감사용 원본 (DSL 미참조)
+        else:
+            ctx["policy"][field] = value
+
+    # policy 밖에 들어가는 선해소 값(예: merchant.forbidden)
+    for path, table_key in DERIVED_FROM_TABLE.items():
+        value = _resolve(table_key)
+        if value is None:
+            unresolved.append(path)
+        else:
+            section, name = path.split(".", 1)
+            ctx[section][name] = value
     return unresolved
 
 

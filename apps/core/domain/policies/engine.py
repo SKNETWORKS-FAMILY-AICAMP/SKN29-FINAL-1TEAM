@@ -10,13 +10,24 @@ from .dsl import DSLValidationError, evaluate, extract_vars, resolve_path, valid
 
 DECISIONS = {"PASS", "REJECT", "REVIEW", "RETURN"}
 
-# ── 미해소 정책값 가드 (policy-domain.md §6)
-# 조립기가 별표를 스칼라로 해소하지 못하면 `policy.*`가 None으로 남고, DSL은 None 비교를
-# 안전하게 False로 흡수한다(dsl.py). 그 결과 한도 룰이 **에러 없이 미발동**하고 판정은
-# PASS로 보인다. 순회 경로에서 실제로 참조된 policy.* 중 미해소가 있으면 판정을 신뢰할 수
-# 없으므로 REVIEW로 강등하고 플래그를 남긴다.
+# ── 미해소 사실 가드 (policy-domain.md §6, eval-context-sourcing.md)
+#
+# DSL은 None 비교를 안전하게 False로 흡수한다(dsl.py). 그래서 조립기가 채우지 못한 사실을
+# 참조하는 룰은 **에러 없이 미발동**하고 판정은 PASS로 보인다. 이 "조용한 False"가 이 도메인의
+# 원인 결함이었다.
+#
+# **계약: `None`은 "거짓"이 아니라 "모름"이다.**
+#   조립기가 판단할 수 있는 사실은 반드시 명시값을 쓴다(거짓이면 `False`를 쓴다).
+#   `None`이 남았다면 그건 원천 데이터가 없다는 뜻이고, 그 룰의 판정은 신뢰할 수 없다.
+#
+# 순회 경로에서 실제로 참조된 경로 중 `None`이 있으면 REVIEW로 강등하고 사유를 남긴다.
+# 플래그를 둘로 나누는 이유는 고치는 방법이 다르기 때문이다:
+#   · UNRESOLVED_POLICY_VAR — 별표(policy_tables) 미적재·룩업 실패 → 표를 채우면 해결
+#   · UNRESOLVED_FACT       — SoR에 원천 데이터가 없음 → 모델·입력 화면이 필요
 POLICY_PREFIX = "policy."
-UNRESOLVED_FLAG = "UNRESOLVED_POLICY_VAR"
+UNRESOLVED_POLICY_FLAG = "UNRESOLVED_POLICY_VAR"
+UNRESOLVED_FACT_FLAG = "UNRESOLVED_FACT"
+UNRESOLVED_FLAG = UNRESOLVED_POLICY_FLAG      # 하위 호환 별칭
 # 강등 스위치. False로 두면 플래그만 남기고 판정은 그대로 둔다(시연 중 임시 완화용 — PLAN R1).
 DEMOTE_ON_UNRESOLVED_POLICY = True
 
@@ -83,26 +94,43 @@ def validate_graph(graph: dict[str, Any]) -> None:
         visit(key)
 
 
-def policy_vars_by_node(nodes: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
-    """노드별로 조건식이 참조하는 ``policy.*`` 경로를 미리 뽑아둔다(순회 중 재파싱 방지)."""
+def referenced_vars_by_node(nodes: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    """노드별로 조건식이 참조하는 **모든** EvalContext 경로를 미리 뽑아둔다.
+
+    순회 중 재파싱을 피하려고 미리 계산한다. 조건이 리터럴뿐인 노드는 목록에 없다.
+    """
     out: dict[str, tuple[str, ...]] = {}
     for key, node in nodes.items():
         try:
             refs = extract_vars(node.get("condition", {}))
         except DSLValidationError:
             continue
-        policy_refs = tuple(sorted(r for r in refs if r.startswith(POLICY_PREFIX)))
-        if policy_refs:
-            out[key] = policy_refs
+        if refs:
+            out[key] = tuple(sorted(refs))
     return out
+
+
+# 하위 호환 별칭 — 기존 호출부는 policy.* 만 보던 이름을 썼다.
+def policy_vars_by_node(nodes: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    return {
+        key: tuple(r for r in refs if r.startswith(POLICY_PREFIX))
+        for key, refs in referenced_vars_by_node(nodes).items()
+        if any(r.startswith(POLICY_PREFIX) for r in refs)
+    }
+
+
+def _unresolved_flag(path: str) -> str:
+    if path.startswith(POLICY_PREFIX):
+        return f"{UNRESOLVED_POLICY_FLAG}:{path[len(POLICY_PREFIX):]}"
+    return f"{UNRESOLVED_FACT_FLAG}:{path}"
 
 
 def _finalize(decision: str, path: list[str], flags: list[str], confidence: float,
               unresolved: list[str]) -> RuleResult:
-    """미해소 정책값이 있으면 판정을 신뢰할 수 없다 — REVIEW로 강등하고 사유를 남긴다."""
+    """참조한 사실 중 모르는 값이 있으면 판정을 신뢰할 수 없다 — REVIEW로 강등한다."""
     if not unresolved:
         return RuleResult(decision, path, flags, confidence)
-    flags = [*flags, *(f"{UNRESOLVED_FLAG}:{p[len(POLICY_PREFIX):]}" for p in sorted(set(unresolved)))]
+    flags = [*flags, *(_unresolved_flag(p) for p in sorted(set(unresolved)))]
     if not DEMOTE_ON_UNRESOLVED_POLICY:
         return RuleResult(decision, path, flags, confidence)
     return RuleResult("REVIEW", path, flags, 0.0)
@@ -116,7 +144,7 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         return RuleResult("REVIEW", [], ["INVALID_RULE_GRAPH"], 0.0)
 
     nodes, routings, current = _parts(graph)
-    policy_vars = policy_vars_by_node(nodes)
+    referenced = referenced_vars_by_node(nodes)
     unresolved: list[str] = []
     path: list[str] = []
     flags: list[str] = []
@@ -127,8 +155,8 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         visited.add(current)
         path.append(current)
         node = nodes[current]
-        # 이 노드가 실제로 참조한 정책값만 본다 — 도달하지 않은 노드 때문에 과잉 강등하지 않는다.
-        unresolved.extend(p for p in policy_vars.get(current, ()) if resolve_path(ctx, p) is None)
+        # 이 노드가 실제로 참조한 경로만 본다 — 도달하지 않은 노드 때문에 과잉 강등하지 않는다.
+        unresolved.extend(p for p in referenced.get(current, ()) if resolve_path(ctx, p) is None)
         matched = evaluate(node["condition"], ctx)
         if matched:
             flag = node.get("action", {}).get("flag")

@@ -466,44 +466,23 @@ class Command(BaseCommand):
     def _ctx_entertain(self, now):
         ctx = empty_eval_context()
         ctx["tx"].update({"amount": 452000, "per_person_amount": 113000,
-                          "payment_time": "22:41", "day_of_week": "FRI", "is_holiday": False,
-                          "payment_method": "법인카드", "service_charge_ratio": 0.12})
+                          "payment_time": "22:41", "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "SHARED", "actual_user_recorded": True})
-        ctx["user"].update({"position": "차장", "dept": "AI·개발팀",
-                            "finance_dept_is_spender": False, "is_working_hours": False})
-        ctx["merchant"].update({"merchant_type": "한식", "merchant_grade": "A",
-                                "merchant_info_resolved": True, "forbidden": False})
-        ctx["category"].update({"value": "접대", "confidence": 0.91, "item_type": "식사",
-                                "entertainment_type": "거래처 접대", "meal_type": "만찬",
-                                "event_type": "계약 협의", "scope": "접대"})
+        ctx["user"].update({"position": "차장", "finance_dept_is_spender": False, "is_working_hours": False})
+        ctx["merchant"].update({"merchant_type": "한식", "merchant_info_resolved": True, "forbidden": False})
+        ctx["category"].update({"value": "접대", "confidence": 0.91, "item_type": "식사"})
         ctx["evidence"].update({"has_valid_receipt": False, "has_supporting_evidence": True,
-                                "event_plan_attached": False, "confirmation_doc_submitted": False,
-                                "purpose_missing": False, "purpose_is_generic": False,
-                                "participant_list_missing": False, "vendor_info_missing": False,
-                                "venue_datetime_missing": False, "project_name_missing": True,
-                                "participant_record_missing": False})
-        ctx["approval"].update({"pre_approval_obtained": False, "pre_approval_level": None,
-                                "post_approval_within_1biz_day": False, "approver_is_spender_self": False,
-                                "escalated_approval_confirmed": False, "spender_attended": True})
+                                "purpose_missing": False})
+        ctx["approval"].update({"pre_approval_obtained": False})
         ctx["participants"].update({"participant_count": 4, "external_participant_count": 2,
-                                    "contractor_participant_count": 0,
-                                    "contractor_regular_communication_purpose": False,
-                                    "has_kickback_law_target": False, "kickback_law_category": None,
-                                    "kickback_law_target_status_missing": False,
-                                    "participant_includes_former_employee": False,
-                                    "family_or_personal_gathering_suspected": False})
-        ctx["dining"].update({"includes_alcohol": True, "is_secondary_venue": False,
-                              "same_event_multiple_merchants": False, "event_scale_payment_method": "일시불"})
-        ctx["history"].update({"same_vendor_count": 2, "user_post_approval_count": 1,
-                               "late_settlement_count_no_reason": 0,
-                               "daily_cumulative_amount": 452000, "monthly_cumulative_amount": 1284000})
+                                    "has_kickback_law_target": False})
+        ctx["dining"].update({"includes_alcohol": True, "is_secondary_venue": False})
+        ctx["history"].update({"same_vendor_count": 2, "daily_cumulative_amount": 452000, "monthly_cumulative_amount": 1284000})
         ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 600000,
                               "position_monthly_limit": 3000000, "position_required_level": "본부장",
                               "approver_daily_limit": 1000000})
         ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 1,
-                               "is_late_night": True, "is_weekend": False,
-                               "category_specific_deadline_applies": True,
-                               "category_specific_preapproval_rule_exists": True})
+                               "is_late_night": True, "is_weekend": False})
         ctx["tables"].update({"pre_approval_threshold_table": "REG-2026-003-T3",
                               "kickback_limit_table": "ACRC-2026-T1"})
         ctx["meta"].update({"tx_id": "TX-DEMO-ENT-001", "settlement_id": "ST-DEMO-ENT-001",
@@ -513,25 +492,15 @@ class Command(BaseCommand):
 
     def _ctx_trip(self, now):
         ctx = empty_eval_context()
-        ctx["tx"].update({"amount": 386000, "payment_time": "23:12", "day_of_week": "SAT",
-                          "is_holiday": True, "payment_method": "법인카드"})
+        ctx["tx"].update({"amount": 386000, "payment_time": "23:12", "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "POST_PAID", "actual_user_recorded": True})
-        ctx["user"].update({"position": "대리", "dept": "재무회계팀",
-                            "finance_dept_is_spender": True, "is_working_hours": False})
-        ctx["merchant"].update({"merchant_type": "숙박", "merchant_grade": "A",
-                                "merchant_info_resolved": True, "forbidden": False})
-        ctx["category"].update({"value": "출장", "confidence": 0.96, "item_type": "숙박", "scope": "출장"})
+        ctx["user"].update({"position": "대리", "finance_dept_is_spender": True, "is_working_hours": False})
+        ctx["merchant"].update({"merchant_type": "숙박", "merchant_info_resolved": True, "forbidden": False})
+        ctx["category"].update({"value": "출장", "confidence": 0.96, "item_type": "숙박"})
         ctx["evidence"].update({"has_valid_receipt": True, "has_supporting_evidence": True,
-                                "purpose_missing": False, "purpose_is_generic": False,
-                                "venue_datetime_missing": False, "project_name_missing": False})
-        ctx["approval"].update({"pre_approval_obtained": True, "pre_approval_level": "팀장",
-                                "post_approval_within_1biz_day": True, "approver_is_spender_self": False})
-        ctx["trip"].update({"trip_type": "국내", "region_grade": "B", "lodging_amount_per_night": 193000,
-                            "flight_class": None, "flight_duration_hours": None,
-                            "booking_to_trip_gap_months": 0.2, "during_business_trip": True,
-                            "itinerary_mismatch": True, "work_end_time": "18:30",
-                            "expense_type": "숙박", "trip_request_submitted_days_before": 4,
-                            "emergency_trip": False})
+                                "purpose_missing": False})
+        ctx["approval"].update({"pre_approval_obtained": True})
+        ctx["trip"].update({"trip_type": "국내", "region_grade": "B", "lodging_amount_per_night": 193000})
         ctx["history"].update({"same_vendor_count": 1, "daily_cumulative_amount": 386000,
                                "monthly_cumulative_amount": 947600})
         ctx["policy"].update({**DEMO_POLICY, "lodging_limit": 120000, "position_daily_limit": 400000,
@@ -547,21 +516,16 @@ class Command(BaseCommand):
     def _ctx_dining(self, now):
         ctx = empty_eval_context()
         ctx["tx"].update({"amount": 128000, "per_person_amount": 10667, "payment_time": "14:22",
-                          "day_of_week": "WED", "is_holiday": False, "payment_method": "법인카드"})
+                          "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "SHARED", "actual_user_recorded": True})
-        ctx["user"].update({"position": "과장", "dept": "AI·개발팀", "is_working_hours": True})
-        ctx["merchant"].update({"merchant_type": "카페", "merchant_grade": "B",
-                                "merchant_info_resolved": True, "forbidden": False})
-        ctx["category"].update({"value": "식대", "confidence": 0.88, "item_type": "음료",
-                                "meal_type": "다과", "event_type": "팀 회의", "scope": "식대"})
-        ctx["evidence"].update({"has_valid_receipt": True, "purpose_missing": False,
-                                "purpose_is_generic": True, "participant_list_missing": False})
-        ctx["approval"].update({"pre_approval_obtained": False, "approver_is_spender_self": True})
+        ctx["user"].update({"position": "과장", "is_working_hours": True})
+        ctx["merchant"].update({"merchant_type": "카페", "merchant_info_resolved": True, "forbidden": False})
+        ctx["category"].update({"value": "식대", "confidence": 0.88, "item_type": "음료"})
+        ctx["evidence"].update({"has_valid_receipt": True, "purpose_missing": False})
+        ctx["approval"].update({"pre_approval_obtained": False})
         ctx["participants"].update({"participant_count": 12, "external_participant_count": 0})
-        ctx["dining"].update({"includes_alcohol": False, "is_secondary_venue": False,
-                              "same_event_multiple_merchants": True, "event_scale_payment_method": "분할"})
-        ctx["history"].update({"same_vendor_count": 12, "user_post_approval_count": 3,
-                               "daily_cumulative_amount": 128000, "monthly_cumulative_amount": 612000})
+        ctx["dining"].update({"includes_alcohol": False, "is_secondary_venue": False})
+        ctx["history"].update({"same_vendor_count": 12, "daily_cumulative_amount": 128000, "monthly_cumulative_amount": 612000})
         ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 300000})
         ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 3,
                                "is_late_night": False, "is_weekend": False})

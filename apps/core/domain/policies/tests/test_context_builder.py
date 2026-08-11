@@ -100,7 +100,9 @@ class SeededTablesTests(TestCase):
             self.assertEqual(ctx["policy"][field], expected, field)
 
     def test_original_table_is_kept_for_audit(self):
+        """tables는 고정 목록이 아니라 조립기가 실제 사용한 별표만 동적으로 담는다."""
         ctx = empty_eval_context()
+        self.assertEqual(ctx["tables"], {})
         resolve_policy(ctx, load_tables())
         self.assertEqual(ctx["tables"]["lodging_limit_table"], {"*": {"*": 120_000},
                                                                 "국내": {"*": 120_000, "B": 120_000}})
