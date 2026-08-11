@@ -1,0 +1,377 @@
+{
+  "index": 2,
+  "page": 7,
+  "caption": "별표 1. 직책별 법인카드 사용 한도 개정 v1.1",
+  "num_rows": 6,
+  "num_cols": 4,
+  "num_cells": 24,
+  "header_rows": [
+    0
+  ],
+  "num_column_header_cells": 4,
+  "num_row_header_cells": 0,
+  "num_merged_cells": 0,
+  "num_empty_cells": 0,
+  "cells": [
+    {
+      "text": "직책 ",
+      "row": [
+        0,
+        1
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false
+    },
+    {
+      "text": "1일 한도 ",
+      "row": [
+        0,
+        1
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false
+    },
+    {
+      "text": "월 한도 ",
+      "row": [
+        0,
+        1
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false
+    },
+    {
+      "text": "건당 사전승인 기준",
+      "row": [
+        0,
+        1
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false
+    },
+    {
+      "text": "대표이사 ",
+      "row": [
+        1,
+        2
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "300만원 ",
+      "row": [
+        1,
+        2
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "1,000만원 ",
+      "row": [
+        1,
+        2
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "100만원 초과",
+      "row": [
+        1,
+        2
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "본부장 ",
+      "row": [
+        2,
+        3
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "250만원 ",
+      "row": [
+        2,
+        3
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "800만원 ",
+      "row": [
+        2,
+        3
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "80만원 초과",
+      "row": [
+        2,
+        3
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "부서장 ",
+      "row": [
+        3,
+        4
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "150만원 ",
+      "row": [
+        3,
+        4
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "500만원 ",
+      "row": [
+        3,
+        4
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "60만원 초과",
+      "row": [
+        3,
+        4
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "팀장 ",
+      "row": [
+        4,
+        5
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "100만원 ",
+      "row": [
+        4,
+        5
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "400만원 ",
+      "row": [
+        4,
+        5
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "50만원 초과",
+      "row": [
+        4,
+        5
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "비직책자(공용카드) ",
+      "row": [
+        5,
+        6
+      ],
+      "col": [
+        0,
+        1
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "50만원 ",
+      "row": [
+        5,
+        6
+      ],
+      "col": [
+        1,
+        2
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "200만원 ",
+      "row": [
+        5,
+        6
+      ],
+      "col": [
+        2,
+        3
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    },
+    {
+      "text": "30만원 초과",
+      "row": [
+        5,
+        6
+      ],
+      "col": [
+        3,
+        4
+      ],
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false
+    }
+  ]
+}

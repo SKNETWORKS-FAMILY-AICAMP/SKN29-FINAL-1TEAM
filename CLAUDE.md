@@ -38,7 +38,7 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-05_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-11_
 
 작업 진행/추적용. **의미 있는 진척마다 이 섹션을 갱신**한다.
 
@@ -50,6 +50,7 @@ daily_scrum/  주차별 진행 보고
 | Django 도메인 모델 | ✅ 구현 완료 | 8개 도메인 18개 테이블(실 필드·FK·제약·마이그레이션). `RuleHit.eval_context/flags/schema_version/builder_version` + `0002` 마이그레이션 반영. 설계 문서 `.personal/데이터베이스_저장소_설계문서.md` |
 | FastAPI Agent 로직 | 🔲 stub | `apps/ai/app/agents/*`·`mcp/tools.py` 대부분 자리표시자 |
 | 프론트 ↔ 백엔드 연동 | 🚧 진행 중 | **S-04 Rule 콘솔 3개 탭 전 구간 실 API 연동 완료**(초안 편집·저장, 검증셋·시뮬레이션 실행/보고서, Active 승인·버전이력·롤백, 작성 대화 로그). S-03 검토 화면은 RAG 보고서·EvalContext 스냅샷 연동. 나머지 화면 순차 진행 |
+| RAG 문서 파싱(docling) | 🚧 PoC 완료 | `docling_eval/` — 파싱 검증 노트북 + `postprocess.py`(결함 6종 교정: 리딩오더·목록 마커·문단 분할/병합·CJK 줄바꿈 재결합·자간). tiger_inc 규정 4종 실측 **요소 완전일치 29~54% → 77~96%**. CJK 줄바꿈만 원리상 완전 복원 불가(양끝맞춤이라 어절 내/간 간격이 동일)라 어휘 사전 기반 추정 + md 원본 대조 채점. **문서 유형별 가드**: 페이지 끝 고아 목록 마커 유무로 규정형/법령형을 갈라, 법령(`law/` 3종)은 `steps={"R1","R4","R5"}`로 R2·R3·R6를 끈다(그 결함이 없어 R3가 별개 조문·목을 오병합 — 법인세법 412건·여신법 126건). 정답지(md) 없는 문서는 `review.py`가 판정 전수를 `output/review/<문서>/`에 시트로 떨궈 사람이 검수(weak 비율: 법인세 28%·부가세 27%·여신 44%). 도해 위주 문서(조직도·조직설계)는 후처리 적용 시 회귀(80%→53%)라 제외. Chroma upsert는 미착수 |
 | 이상탐지 실학습/RAG upsert | 🚧 이상탐지 1차 완료 / RAG 미착수 | `apps/ai/app/ml/`에 확정 하이퍼파라미터·15개 피처 파이프라인(`features.py`)·decile 보정표·고정 임계값(`calibration.py`) 이식 + 오프라인 배치 학습 스크립트(`train.py`, 관리자 CLI 실행) 연결 완료. `registry.py`가 학습된 모델·threshold·calibration_table을 pickle로 저장/로드. RAG upsert는 그대로 미착수 |
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
 | 룰 그래프(트리) 도메인 | ✅ 1차 완료 | scope별 버전·DRAFT 복제/원복·노드 삭제·자동 저장·**DSL 쉽게보기(`RuleNode.condition_text`)** 에 더해 **검증 시뮬레이션 도메인**(`RuleTestCase`/`RuleSimulationRun`/`RuleSimulationResult` — 실행 스냅샷+해시 보존, 낡은 결과 표시)과 **승인 흐름**(Active 요청 시 검토자 코멘트·스코프당 승인대기 1건 제한, 활성자/검토자 추적, 버전 이력 롤백) 구현. 구조 시각화는 위→아래 스크롤 플로우차트(순환 감지 포함) |
