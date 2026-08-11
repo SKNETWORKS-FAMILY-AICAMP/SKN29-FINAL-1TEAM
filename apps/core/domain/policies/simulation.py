@@ -96,7 +96,7 @@ def case_from_settlement(settlement: Settlement) -> dict[str, Any]:
         "aiSuggested": settlement.ai_suggested,
         "facts": {
             "evidence.has_valid_receipt": has_receipt,
-            "evidence.purpose_missing": not bool(settlement.purpose),
+            "evidence.expense_purpose_missing": not bool(settlement.purpose),
             "derived.is_late_night": bool(ts and (ts.hour >= 22 or ts.hour < 6)),
             "derived.is_weekend": bool(ts and ts.weekday() >= 5),
             "category.confidence": 0.5 if settlement.ai_suggested else 0.95,

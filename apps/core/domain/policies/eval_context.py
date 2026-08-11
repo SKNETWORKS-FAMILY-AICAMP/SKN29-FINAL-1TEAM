@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 
-EVAL_CONTEXT_SCHEMA_VERSION = 3
-BUILDER_VERSION = "3.0"
+EVAL_CONTEXT_SCHEMA_VERSION = 4
+BUILDER_VERSION = "4.0"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 정적 카탈로그. ACTIVE 전환 게이트(`validate_graph_vars`)와 룰 편집 UI가 사용한다.
@@ -50,7 +50,7 @@ _SCHEMA_FIELDS = {
     # 세부유형 3종 제거. item_type은 청탁금지 한도 룩업 키라 유지.
     "category": ("value", "confidence", "item_type"),
     # 첨부·기재 세분화 7종 제거. "누락"은 대상 필드의 None/0으로 판정한다.
-    "evidence": ("has_valid_receipt", "has_supporting_evidence", "purpose_missing"),
+    "evidence": ("has_valid_receipt", "has_supporting_evidence", "expense_purpose_missing"),
     # 결재선 모델이 없어 단계·사후승인·자기승인 5종 제거. 사전승인 여부만 남긴다.
     "approval": ("pre_approval_obtained",),
     # 참석자 상세 5종 + kickback_law_category(item_type과 중복) 제거.
@@ -73,6 +73,10 @@ _SCHEMA_FIELDS = {
     # tables는 감사용 원본 스냅샷이며 DSL이 참조하지 않는다 → 고정 목록을 두지 않고
     # 조립기가 실제 사용한 별표만 동적으로 담는다(별표가 늘어도 스키마 변경 없음).
     "tables": (),
+    # conflicts도 감사용 동적 섹션이다. 같은 경로에 서로 다른 값이 도착했을 때
+    # "무엇을 택하고 무엇을 버렸는지"를 남긴다. DSL은 참조하지 않는다(고정 목록 없음 →
+    # `validate_graph_vars`가 conflicts.* 참조를 거부한다).
+    "conflicts": (),
     "meta": ("tx_id", "settlement_id", "schema_version", "builder_version", "built_at"),
 }
 EVAL_CONTEXT_SCHEMA_PATHS = frozenset(
@@ -95,6 +99,7 @@ class EvalContext(TypedDict):
     policy: dict[str, Any]
     derived: dict[str, Any]
     tables: dict[str, Any]
+    conflicts: dict[str, Any]
     meta: dict[str, Any]
 
 

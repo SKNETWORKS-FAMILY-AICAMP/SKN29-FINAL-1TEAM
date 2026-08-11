@@ -47,8 +47,17 @@ class PolicyTable(models.Model):
     title = models.CharField(max_length=200, blank=True)          # '별표2. 지역등급별 숙박비 한도'
     key_axes = models.JSONField(default=list, blank=True)         # ["trip.trip_type","trip.region_grade"]
     # 축을 모두 따라간 리프는 스칼라. 축이 없으면 {"value": <스칼라>}.
-    # 키가 없거나 표에 없는 값이면 "*"(와일드카드) 항목으로 폴백한다.
+    # 표에 없는 키 값은 "*"(와일드카드) 항목으로 폴백한다.
     payload = models.JSONField(default=dict, blank=True)
+    strict_keys = models.BooleanField(
+        "키 미상 시 해소 금지", default=False,
+        help_text=(
+            "False(기본): 축 값을 몰라도 '*' 기본값으로 해소한다 — 회사 기본 한도처럼 "
+            "기본값이 의미 있는 표.\n"
+            "True: 축 값을 모르면 해소하지 않고 null로 남긴다 — 금지업종처럼 "
+            "'모르면 안전하다'고 단정할 수 없는 표. null이면 미해소 가드가 REVIEW로 강등한다."
+        ),
+    )
     source_doc = models.ForeignKey(
         PolicyDoc, null=True, blank=True, on_delete=models.SET_NULL, related_name="tables",
     )

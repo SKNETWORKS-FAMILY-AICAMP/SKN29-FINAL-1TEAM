@@ -91,9 +91,39 @@ class SeededTablesTests(TestCase):
         """시드 별표만으로 policy.* 전 종이 해소된다 → 미해소 플래그 0."""
         ctx = empty_eval_context()
         unresolved = resolve_policy(ctx, load_tables())
-        self.assertEqual(unresolved, [])
+        # merchant.forbidden은 policy.*가 아니고, 업종을 모르면 일부러 해소하지 않는다(아래 참조).
+        self.assertEqual([p for p in unresolved if not p.startswith("merchant.")], [])
         self.assertEqual(len(ctx["policy"]), len(RESOLVERS))
         self.assertTrue(all(value is not None for value in ctx["policy"].values()))
+
+    def test_forbidden_is_unknown_when_industry_is_unknown(self):
+        """업종을 모르면 '금지 아님'으로 단정하지 않는다 (strict_keys).
+
+        와일드카드로 False를 주면 업종 미상 결제가 조용히 통과한다. 모르면 모른다고 남겨
+        미해소 가드가 사람에게 보내야 한다.
+        """
+        tables = load_tables()
+
+        unknown = empty_eval_context()
+        self.assertIn("merchant.forbidden", resolve_policy(unknown, tables))
+        self.assertIsNone(unknown["merchant"]["forbidden"])
+
+        known = empty_eval_context()
+        known["merchant"]["merchant_type"] = "한식"          # 알지만 금지 목록엔 없음
+        self.assertNotIn("merchant.forbidden", resolve_policy(known, tables))
+        self.assertIs(known["merchant"]["forbidden"], False)
+
+        banned = empty_eval_context()
+        banned["merchant"]["merchant_type"] = "유흥주점"
+        resolve_policy(banned, tables)
+        self.assertIs(banned["merchant"]["forbidden"], True)
+
+    def test_limit_tables_still_fall_back_to_default(self):
+        """한도표는 반대다 — 직책을 몰라도 회사 기본값(*)으로 해소한다(strict_keys=False)."""
+        ctx = empty_eval_context()
+        self.assertIsNone(ctx["user"]["position"])
+        resolve_policy(ctx, load_tables())
+        self.assertEqual(ctx["policy"]["position_daily_limit"], 600_000)
 
     def test_resolved_values_match_demo_snapshot(self):
         """시연 EvalContext(DEMO_POLICY)와 조립기 결과가 어긋나지 않는다."""

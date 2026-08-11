@@ -11,7 +11,7 @@ export const decisionTone = (decision: string) =>
 export const BOOLEAN_FACTS = [
   { path: 'evidence.has_valid_receipt', label: '적격증빙 있음' },
   { path: 'approval.pre_approval_obtained', label: '사전승인 받음' },
-  { path: 'evidence.purpose_missing', label: '사용 목적 누락' },
+  { path: 'evidence.expense_purpose_missing', label: '사용 목적 누락' },
   { path: 'derived.is_late_night', label: '심야 결제' },
   { path: 'derived.is_weekend', label: '주말 결제' },
 ] as const
@@ -135,7 +135,7 @@ export const DEFAULT_TEST_CASES: TestCase[] = [
     { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'participants.participant_count': 12,
       'history.daily_cumulative_amount': 1200000, 'policy.position_daily_limit': 500000 }),
   testCase('TC-5', '주말 결제 · 사용 목적 누락', '스타벅스 본사점', 48000, '회의', 'RETURN',
-    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'evidence.purpose_missing': true }),
+    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'evidence.expense_purpose_missing': true }),
   testCase('TC-6', '대규모 · 동일 가맹점 반복', '한식뷔페', 380000, '회의', 'REVIEW',
     { 'evidence.has_valid_receipt': true, 'participants.participant_count': 12, 'history.same_vendor_count': 6 }),
 ]

@@ -69,6 +69,8 @@ TABLES: list[dict] = [
         "key": "forbidden_merchant_table",
         "title": "제9조② 사용 금지 업종",
         "key_axes": ["merchant.merchant_type"],
+        # 업종을 모르면 "금지 아님"으로 단정하지 않는다 — null로 남겨 사람이 보게 한다.
+        "strict_keys": True,
         "payload": {
             "*": False,
             "유흥주점": True, "단란주점": True, "노래연습장": True, "사행성업종": True,
@@ -134,6 +136,7 @@ def upsert_all(effective_date=EFFECTIVE_FROM) -> int:
                 "title": spec["title"],
                 "key_axes": spec["key_axes"],
                 "payload": spec["payload"],
+                "strict_keys": spec.get("strict_keys", False),
                 "source_clause": spec["source_clause"],
             },
         )

@@ -451,7 +451,7 @@ TEST_NODES = [
     # 「형식적 기재(purpose_is_generic)」는 AI의 텍스트 품질 판정이라 v3에서 제거했다.
     # 목적 문구의 품질은 룰이 아니라 초안 작성(Draft Agent) 단계에서 다루는 것이 맞다.
     _test_node("T-22", "사용 목적 누락",
-               {"==": [{"var": "evidence.purpose_missing"}, True]}, "RETURN",
+               {"==": [{"var": "evidence.expense_purpose_missing"}, True]}, "RETURN",
                "목적이 비어 있는 건입니다.", 5, severity="MEDIUM", flag="PURPOSE_UNCLEAR",
                when="사용 목적이 비어 있을 때",
                then="쓴 사람에게 보완을 요청합니다. 무슨 일로 썼는지 구체적으로 적어주세요."),

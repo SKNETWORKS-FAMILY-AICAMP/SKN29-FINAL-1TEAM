@@ -35,7 +35,7 @@ function interpret(text: string, target: TestCase): { patch: Partial<TestCase>; 
   const toggle = (path: string, on: boolean, label: string) => { facts[path] = on; notes.push(`${label} → ${on ? '예' : '아니오'}`) }
   if (/증빙/.test(text)) toggle('evidence.has_valid_receipt', !/없|누락|미첨부/.test(text), '적격증빙 있음')
   if (/사전\s*승인/.test(text)) toggle('approval.pre_approval_obtained', !/없|누락|안\s*받/.test(text), '사전승인 받음')
-  if (/목적/.test(text)) toggle('evidence.purpose_missing', /없|누락|비어/.test(text), '사용 목적 누락')
+  if (/목적/.test(text)) toggle('evidence.expense_purpose_missing', /없|누락|비어/.test(text), '사용 목적 누락')
   if (/심야|새벽/.test(text)) toggle('derived.is_late_night', !/아니|제외/.test(text), '심야 결제')
   if (/주말|토요일|일요일/.test(text)) toggle('derived.is_weekend', !/아니|제외/.test(text), '주말 결제')
   // 정산 지연은 "경과 영업일 > policy.settlement_deadline_days" 비교로 판정한다.

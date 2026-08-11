@@ -492,7 +492,7 @@ class Command(BaseCommand):
         ctx["merchant"].update({"merchant_type": "한식", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "접대", "confidence": 0.91, "item_type": "식사"})
         ctx["evidence"].update({"has_valid_receipt": False, "has_supporting_evidence": True,
-                                "purpose_missing": False})
+                                "expense_purpose_missing": False})
         ctx["approval"].update({"pre_approval_obtained": False})
         ctx["participants"].update({"participant_count": 4, "external_participant_count": 2,
                                     "has_kickback_law_target": False})
@@ -518,7 +518,7 @@ class Command(BaseCommand):
         ctx["merchant"].update({"merchant_type": "숙박", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "출장", "confidence": 0.96, "item_type": "숙박"})
         ctx["evidence"].update({"has_valid_receipt": True, "has_supporting_evidence": True,
-                                "purpose_missing": False})
+                                "expense_purpose_missing": False})
         ctx["approval"].update({"pre_approval_obtained": True})
         ctx["trip"].update({"trip_type": "국내", "region_grade": "B", "lodging_amount_per_night": 193000})
         ctx["history"].update({"same_vendor_count": 1, "daily_cumulative_amount": 386000,
@@ -541,7 +541,7 @@ class Command(BaseCommand):
         ctx["user"].update({"position": "과장", "is_working_hours": True})
         ctx["merchant"].update({"merchant_type": "카페", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "식대", "confidence": 0.88, "item_type": "음료"})
-        ctx["evidence"].update({"has_valid_receipt": True, "purpose_missing": False})
+        ctx["evidence"].update({"has_valid_receipt": True, "expense_purpose_missing": False})
         ctx["approval"].update({"pre_approval_obtained": False})
         ctx["participants"].update({"participant_count": 12, "external_participant_count": 0})
         ctx["dining"].update({"includes_alcohol": False, "is_secondary_venue": False})
