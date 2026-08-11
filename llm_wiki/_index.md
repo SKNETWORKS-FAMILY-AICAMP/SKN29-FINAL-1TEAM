@@ -34,6 +34,8 @@
 | `_context/policy-domain.md` | **규정 임계값(policy) 도메인 캐논** — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그 13종)/해소 규약 2층 구조, 8개 항목 검토·누락 6종, 필드명 상수 금지 규칙, 미해소 가드 | 2026-08-10 · **설계 확정, 구현 미착수** |
 | `_context/policy-domain-plan.md` | 위 캐논의 **구현 PLAN** — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화. 인수조건·리스크 등록부 포함 | 2026-08-10 · **승인 대기(미착수)** |
 | `_context/pdf_parsing_strategy.md` | **PDF RAG 파싱·청킹 전략**(실측 기반) — 페이지 단위 하이브리드 파이프라인·CDM·전처리 조건부 게이트·조(條) 단위 청킹·메타 스키마·품질 지표 | 2026-08-10 · **파싱→청킹 구현 완료** (`apps/ai/app/rag/parsing/`, MCP `chunk_pdf`). 임베딩·Chroma upsert(§13.1⑪⑫)는 미착수 |
+| `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 **역할 분담·로드맵** — 계약(입출력) 고정, v0(@김정민)/v1(@이지현) 작업 분해. **B-1~B-6 전체 완료**(2026-08-10). ⚠️ 정책 조회는 현재 구 `Policy` 모델 사용 — 위 `policy-domain.md` 체계 구현 시 재연동 필요(§7) | 2026-08-10 |
+| `_context/draft-agent-v0.2.md` | Draft Agent **코드 수준 구현 설계서** — pydantic 스키마·정책 조회·프롬프트·에러 폴백. as-is stub 실태 포함 | 2026-08-10 |
 
 ## 4. 발표·보고 자료
 

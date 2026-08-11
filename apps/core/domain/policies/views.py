@@ -1,12 +1,38 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from domain.common.permissions import CanActivateRule, CanViewRule
 
 from . import services, simulation
-from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .models import Policy, RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
+
+
+class PolicyLookupView(APIView):
+    """GET /api/internal/policies/<category>/ — Draft/Rule/Risk Agent 공용 정책 조회(Django 내부 read API).
+
+    관계형 데이터는 Django를 경유해야 한다는 원칙(CLAUDE.md §1)에 따라, FastAPI(ai)의
+    get_policy 도구가 Postgres를 직접 조회하지 않고 이 API를 거친다.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, category):
+        policy = Policy.objects.filter(category=category).first()
+        if not policy:
+            return Response({
+                "category": category, "limit_amount": None,
+                "required_evidence": [], "tax_note": "", "refs": [],
+            })
+        return Response({
+            "category": policy.category,
+            "limit_amount": policy.limit_amount,
+            "required_evidence": policy.required_evidence,
+            "tax_note": policy.tax_note,
+            "refs": policy.refs,
+        })
 
 
 def _actor(request):

@@ -8,12 +8,28 @@
 """
 from __future__ import annotations
 
+import logging
+
+from app.clients import core_client
 from app.ml.registry import get_active_model
+
+logger = logging.getLogger(__name__)
 
 
 def get_policy(category: str) -> dict:
-    """분류별 규정·필요증빙 조회 (Django 경유). Draft/Rule/Risk 공용."""
-    return {"category": category, "limit": None, "required_evidence": [], "refs": []}
+    """분류별 규정·필요증빙 조회 (Django 경유, `PolicyLookupView`). Draft/Rule/Risk 공용.
+
+    Django 미기동·네트워크 오류 등으로 조회에 실패하면 예외를 그대로 올린다 —
+    호출부(Draft Agent 등)가 각자의 폴백 정책으로 처리한다(결정론적 폴백은 여기서 감추지 않는다).
+    """
+    data = core_client.get_policy(category)
+    return {
+        "category": data.get("category", category),
+        "limit": data.get("limit_amount"),
+        "required_evidence": data.get("required_evidence", []),
+        "tax_note": data.get("tax_note", ""),
+        "refs": data.get("refs", []),
+    }
 
 
 def get_card_context(card_id: int) -> dict:

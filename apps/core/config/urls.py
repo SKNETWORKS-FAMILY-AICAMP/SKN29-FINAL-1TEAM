@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
-from domain.policies.views import RuleGraphViewSet
+from domain.policies.views import PolicyLookupView, RuleGraphViewSet
 from domain.settlements.views import SettlementViewSet, TeamBudgetView
 from domain.transactions.views import ReceiptViewSet, TransactionViewSet
 
@@ -31,5 +31,7 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/dashboard/<str:role>/", DashboardView.as_view(), name="dashboard"),
     path("api/team-budget/", TeamBudgetView.as_view(), name="team_budget"),
+    # 내부 전용 read API — FastAPI(ai)의 FastMCP 도구가 관계형 데이터를 Django 경유로 조회(CLAUDE.md §1)
+    path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
     path("api/", include(router.urls)),
 ]

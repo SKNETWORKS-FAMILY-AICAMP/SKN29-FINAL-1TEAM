@@ -28,7 +28,7 @@ from domain.accounts.models import Capability, Role, Team
 from domain.cards.models import Card, CardType
 from domain.policies.engine import run_rule_engine
 from domain.policies.eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION, empty_eval_context
-from domain.policies.models import RuleGraph, RuleGraphStatus, RuleHit
+from domain.policies.models import Policy, RuleGraph, RuleGraphStatus, RuleHit
 from domain.risk.models import RiskReview
 from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
 from domain.transactions.models import MerchantCategory, MerchantSource, Receipt, Transaction
@@ -45,7 +45,7 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if opts["fresh"]:
             # RuleHit은 정산·거래에 SET_NULL이라 함께 지우지 않으면 고아 로그가 남는다.
-            for m in (RuleHit, Settlement, Transaction, Card, RuleGraph, MerchantCategory):
+            for m in (RuleHit, Settlement, Transaction, Card, RuleGraph, MerchantCategory, Policy):
                 m.objects.all().delete()
             User.objects.filter(is_superuser=False).delete()
             Team.objects.all().delete()
@@ -408,10 +408,20 @@ class Command(BaseCommand):
             TeamBudget.objects.create(team=team, year_month=this_month, category="",
                                       limit_amount=sum(limits.values()))
 
+        # ── 분류별 정책 한도(Policy) — Draft Agent get_policy 실연동(B-3)용 최소 시드 ──
+        #  값은 Django 플레이스홀더(draft_agent.py THRESHOLDS)와 동일한 임시 기준(영수증 3만원)이며,
+        #  TIGER-REG-2026-003 원문 대조는 별도 오픈이슈(_context/draft-agent-plan.md §7).
+        if not Policy.objects.exists():
+            for cat in C.values:
+                Policy.objects.create(
+                    category=cat, limit_amount=30_000, required_evidence=["영수증"],
+                    tax_note="임시 기준값 — 규정 원문 대조 전", refs=[],
+                )
+
         self.stdout.write(self.style.SUCCESS(
             f"시드 완료 - 팀 {Team.objects.count()} / 사용자 {User.objects.count()} / 카드 {Card.objects.count()} / "
             f"정산 {Settlement.objects.count()}(검토 {RiskReview.objects.count()}) / 룰그래프 {RuleGraph.objects.count()} / "
-            f"판정로그 {RuleHit.objects.count()} / 예산 {TeamBudget.objects.count()}"
+            f"판정로그 {RuleHit.objects.count()} / 예산 {TeamBudget.objects.count()} / 정책 {Policy.objects.count()}"
         ))
 
     # ════════════════════════════════════════════════════════════

@@ -20,3 +20,8 @@ def health() -> dict:
 def get_transaction(tx_id: int) -> dict:
     # TODO: Django 내부 조회 API(/api/internal/transactions/{id}/) 구현 후 연결
     return _get(f"/api/internal/transactions/{tx_id}/")
+
+
+def get_policy(category: str) -> dict:
+    """분류별 정책 한도 조회 (Django `Policy` 모델, 내부 read API 경유)."""
+    return _get(f"/api/internal/policies/{category}/")

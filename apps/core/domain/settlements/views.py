@@ -1,6 +1,9 @@
+import logging
 import re
 from datetime import datetime, time
 
+import httpx
+from django.conf import settings
 from django.db.models import Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -9,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 from domain.cards.models import Card
 from domain.common.permissions import CanAccountingReview, CanTeamAggregate
@@ -94,18 +99,35 @@ class SettlementViewSet(viewsets.ModelViewSet):
             transaction.delete()
         return Response(status=204)
 
-    # POST /api/settlements/draft-suggest/  — 초안 작성 Agent(플레이스홀더)
+    # POST /api/settlements/draft-suggest/  — 초안 작성 Agent
     @action(detail=False, methods=["post"], url_path="draft-suggest")
     def draft_suggest(self, request):
         """영수증·거래로 초안 생성, 또는 자연어 지시로 초안 수정.
 
-        `instruction`이 있으면 수정 모드, 없으면 생성 모드. 실제 LLM/비전 연동 시 이 액션이
-        FastAPI Draft Agent 호출로 교체된다(응답 셰이프 유지).
+        `instruction`이 있으면 수정 모드, 없으면 생성 모드. FastAPI Draft Agent(`/agent/draft`)를
+        우선 호출하고, 미기동·타임아웃 등으로 실패하면 로컬 플레이스홀더로 폴백한다(응답 셰이프는
+        두 경로가 동일하므로 화면은 어느 쪽이 응답했는지 알 필요가 없다).
         """
         data = request.data if isinstance(request.data, dict) else {}
+
+        ai_result = self._call_draft_agent(data)
+        if ai_result is not None:
+            return Response(ai_result)
+
         if str(data.get("instruction", "")).strip():
             return Response(draft_agent.revise_draft(data))
         return Response(draft_agent.suggest_draft(data))
+
+    @staticmethod
+    def _call_draft_agent(data):
+        """FastAPI `/agent/draft` 호출. 실패(미기동·타임아웃·5xx 등)하면 None을 돌려줘 폴백을 유도한다."""
+        try:
+            resp = httpx.post(f"{settings.AI_BASE_URL}/agent/draft", json=data, timeout=20)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("FastAPI Draft Agent 호출 실패, 로컬 폴백 사용: %s", exc)
+            return None
 
     def get_queryset(self):
         qs = super().get_queryset()
