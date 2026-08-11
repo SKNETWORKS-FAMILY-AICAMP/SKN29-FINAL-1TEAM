@@ -97,6 +97,13 @@
 **`ctx.history`** (SoR 집계): `same_vendor_count_3m`, `user_post_approval_count_3m`, `late_settlement_count_no_reason_3m`(number — R-011·R-112), `daily_cumulative_amount`·`monthly_cumulative_amount`(number — R-007).
 
 **`ctx.policy`** (별표 선해소 스칼라 — **DSL이 실제 비교하는 값**):
+
+> ⚠️ **재설계됨 (2026-08-10)** — 아래 8개는 초안이다. 확정 카탈로그는 **13개**이며 캐논은
+> `_context/policy-domain.md` §4다. 변경점: ① `gift_type` **제거**(정책값이 아니라 `kickback_limit`의
+> 룩업 키 → `category.item_type`으로 이관) ② 누락 임계값 6종 승격(`evidence_threshold`·
+> `dining_per_person_limit`·`settlement_deadline_days`·`history_window_months`·`night_meal_limit`·
+> `business_class_min_hours` — 현재 DSL 리터럴과 필드명에 상수로 박혀 있음)
+> ③ 저장층은 `policy_tables`(자유 JSON payload + `key_axes` 축 선언), 해소는 `RESOLVERS` 규약.
 | 경로 | 산출식 | 근거 별표 | 사용 RULE |
 |---|---|---|---|
 | policy.preapproval_threshold | `pre_approval_threshold_table[position]` | 사용규정 별표1 | R-013·R-312 |
