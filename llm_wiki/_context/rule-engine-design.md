@@ -1,7 +1,28 @@
 # 룰 실행 엔진 설계 — EvalContext · 조건 DSL · 결정론적 엔진 (Engineering Design)
 
 > 파생 컨텍스트(에이전트 생성, 엔지니어링 설계). **권위 규범 = 기술명세서 §4.2 / 요구사항 FR-RA-08~10**, 캐논 요약 = `_context/rule-engine.md`, 필드 원천 = `법인카드_사용규정_기반_RULE_명세서.md` §2·§2-1.
-> 이 문서는 **구현 설계**다(코드 아님). 핵심 명제: **"엔진 품질 = EvalContext를 얼마나 완전·정확·재현가능하게 정의하고 백엔드가 이를 얼마나 견고히 조립·검증·스냅샷하는가"**. 최종 갱신 2026-07-31.
+> 이 문서는 **구현 설계**다(코드 아님). 핵심 명제: **"엔진 품질 = EvalContext를 얼마나 완전·정확·재현가능하게 정의하고 백엔드가 이를 얼마나 견고히 조립·검증·스냅샷하는가"**. 최종 갱신 2026-08-11.
+
+---
+
+## ⚠️ 이 문서를 읽기 전에 — 본문은 2026-07-31 설계안이다
+
+**아래 본문(특히 §2.3 필드 카탈로그·§5 모듈 레이아웃·§7 로드맵)은 설계 당시 기준이며, 이후
+구현·축소되면서 여러 곳이 실제와 다르다.** 현재 상태는 아래 표와 링크가 정본이다.
+
+| 항목 | 설계안(본문) | **현재 구현 (2026-08-11)** |
+|---|---|---|
+| EvalContext 필드 수 | 101 | **46** (v4). 판정 필드·조합 가능 필드·원천 없는 필드를 잘라냄 → `eval-context-sourcing.md` §12 |
+| 조립기 위치 | `eval_context.py`에 `build_rule_context` | **`policies/context_builder.py`** (`eval_context.py`는 스키마 계약 전용) |
+| 별표 로더 | `tables.py`(미작성) | **`PolicyTable` 모델 + `tiger_tables.py` 시드** → `policy-domain.md` |
+| 별표 선해소 | 개념만 | **구현 완료.** `RESOLVERS` 8종 + `merchant.forbidden` 불린. 표별 폴백 정책(`strict_keys`) |
+| 미해소 처리 | 언급 없음 | **미해소 가드** — 참조 경로가 `null`이면 `REVIEW` 강등 + `UNRESOLVED_POLICY_VAR`/`UNRESOLVED_FACT` |
+| 출처 충돌 | 언급 없음 | **`FactMerger`** — 출처 순위(SoR>입력>추출) + `ctx.conflicts` 기록 |
+| 첨부 추출 | 언급 없음 | **`Attachment` 모델** + 증빙자료 추출 Agent → `evidence-extraction-agent.md` |
+| `orchestrator.py` | 계획 | **미구현** (GLOBAL→scope 선택·`RuleHit` 기록은 아직 시뮬레이션 경로에만) |
+| AI 파생 필드 | `personal_use_suspected` 등 사용 | **제거.** 판정을 입력받지 않고 그래프에서 원자 사실을 조합한다 |
+
+> **사람이 먼저 읽을 문서**: `_context/eval-context-guide.md` (쉬운 설명 → 상세)
 
 ---
 
@@ -251,12 +272,13 @@ while node is not None:
 ### 5.1 모듈 레이아웃 (전부 Django `domain/policies/`, 순수 지향)
 | 모듈 | 책임 | 순수성 |
 |---|---|---|
-| `eval_context.py` | `build_rule_context(settlement)` + `EvalContext` 타입 + 스키마 경로 집합 | **I/O 유일 지점** |
+| `eval_context.py` | `EvalContext` 타입 + 스키마 경로 집합 (**조립은 아래로 분리됨**) | 순수 |
+| `context_builder.py` | `build_rule_context(settlement)`·별표 선해소·첨부 병합·`FactMerger` | **I/O 유일 지점** |
 | `dsl.py` | `evaluate(expr, ctx)`·`extract_vars(expr)`·`validate_expr(expr)` | 순수 |
 | `engine.py` | `run_rule_engine(ctx, graph_snapshot)` | 순수 |
 | `orchestrator.py` | 그래프 선택(GLOBAL→scope)·엔진 호출·**RuleHit 기록** | I/O(그래프 로드·hit 저장) |
 | `scope.py` | `normalize_scope()` (구현 완료) | 순수 |
-| `tables.py` | 별표 로더/캐시(버전드) | I/O(캐시) |
+| ~~`tables.py`~~ → `models.PolicyTable` + `tiger_tables.py` | 별표 저장(자유 JSON payload)·시드. 로더는 `context_builder.load_tables` | I/O |
 
 > **배치 결정(중요)**: 엔진·DSL·조립기는 **Django 서비스 레이어에 둔다**(SoR=Postgres 원칙·감사 일원화). AI(FastAPI)의 FastMCP `build_rule_context`/`run_rule_engine`는 **Django 내부 엔드포인트를 호출하는 얇은 프록시**로 구현 → Postgres 접근·`rule_hits` 쓰기가 전부 Django에 남는다. (대안: FastAPI가 Django read API로 조립·순회 — 순수성은 같으나 쓰기·감사가 분산되어 비권장.)
 
@@ -328,16 +350,18 @@ builder_version             = models.CharField(max_length=20, blank=True)
 ## 7. 구현 로드맵
 1. ✅ `RuleHit`에 `eval_context/flags/schema_version/builder_version` 추가 + `0002` 마이그레이션. (2026-07-31)
 2. ✅ `dsl.py`: evaluate/validate/extract_vars + 단위테스트. 허용 연산자·깊이·널·타입 계약 반영. (2026-07-31)
-3. 🚧 `eval_context.py`: TypedDict·전체 `EVAL_CONTEXT_SCHEMA_PATHS`·null-safe 기본 컨텍스트 구현. **남음:** `build_rule_context` 섹션별 ORM 조립·파생·별표 선해소.
+3. ✅ `eval_context.py`: TypedDict·`EVAL_CONTEXT_SCHEMA_PATHS`·null-safe 기본 컨텍스트. **스키마 v4(46필드)로 축소** (2026-08-11)
+3-1. ✅ `context_builder.py`: `build_rule_context` — 별표 선해소·첨부 추출 병합·출처 충돌 해소·산술 파생 (2026-08-11)
 4. ✅ `engine.py`: `run_rule_engine` + 참조 무결성·라우팅 중복·DAG/사이클 검증 + 골든 단위테스트. (2026-07-31)
-5. 🚧 ACTIVE 전환에 `validate_graph` + `validate_graph_vars` hard gate 연결. **남음:** `orchestrator.py` GLOBAL→scope 선택·hit 기록·상태 매핑.
-6. `tables.py`: 별표 버전드 로더. `classify_merchant` 연동(§7-1).
-7. 시드 룰 그래프(→ `_context/rule-seed-plan.md`)로 골든 테스트 구성.
-8. FastMCP 프록시(build_rule_context/run_rule_engine) → Django 내부 엔드포인트 위임.
+5. ✅ ACTIVE 전환에 `validate_graph` + `validate_graph_vars` hard gate 연결. **남음:** `orchestrator.py` GLOBAL→scope 선택·`RuleHit` 기록·상태 매핑 (**미구현**)
+6. ✅ 별표 로더 — `tables.py` 대신 **`PolicyTable` 모델 + `context_builder.load_tables`**(유효일 기준 버전드). `classify_merchant` 연동은 **미착수**
+7. ✅ 시드 룰 그래프 골든 테스트 — `tests/test_rule_graph_consumption.py`(29 시나리오)·`test_eval_context_assembly.py`(32 케이스)
+8. ✅ FastMCP `build_rule_context` → Django `/api/internal/rule-context/<id>/` 프록시. `run_rule_engine` 프록시는 **미착수**
+9. 🔲 **다음**: 판정 사실의 원천 확보(참석 인원·2차 여부·청탁 대상) → `eval-context-sourcing.md` §7·§13
 
 ## 8. Open Issues / 리스크
 - **θ_pass·θ_reject**(확신 임계) 확정 — decision→상태 컷(기술 §4.2). MVP는 게이트 CRITICAL=자동 REJECT 후보/그 외 REVIEW로 보수적.
-- **AI 파생 필드**(`personal_use_suspected`·`purpose_is_generic`)의 산출 주체·신뢰도 — 결정론 엔진에 비결정 입력이 섞이는 지점. 조립 시점에 스냅샷되므로 재현성은 유지되나, 값 자체는 Draft/Risk 판정 품질에 의존.
+- ~~**AI 파생 필드**(`personal_use_suspected`·`purpose_is_generic`)~~ → **해소됨(v3)**: 판정 결과를 입력으로 받지 않는다. EvalContext는 원자 사실만 주고 그래프가 조합한다(`eval-context-sourcing.md` §12).
 - **별표 버전·유효일자** 관리(규정 개정) — `ctx.tables` 스냅샷 + 별표 버전 기록으로 과거 판정 보존.
 - **EvalContext 스키마 진화** — `schema_version` bump 시 과거 hit 호환(리플레이는 당시 스키마로).
 - **완전성 게이트의 엄격도** — 활성 전환을 막을지(hard) 경고만(soft)할지: 본 설계는 hard(안전) 권장.

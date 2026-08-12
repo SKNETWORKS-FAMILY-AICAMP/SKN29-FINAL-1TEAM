@@ -11,18 +11,26 @@ export const decisionTone = (decision: string) =>
 export const BOOLEAN_FACTS = [
   { path: 'evidence.has_valid_receipt', label: '적격증빙 있음' },
   { path: 'approval.pre_approval_obtained', label: '사전승인 받음' },
-  { path: 'evidence.purpose_missing', label: '사용 목적 누락' },
+  { path: 'evidence.expense_purpose_missing', label: '사용 목적 누락' },
   { path: 'derived.is_late_night', label: '심야 결제' },
   { path: 'derived.is_weekend', label: '주말 결제' },
-  { path: 'derived.biz_days_over_7', label: '정산 지연(영업일 7일 초과)' },
 ] as const
 
+// 규정 임계값은 별표(policy_tables)에서 조립기가 해소한다. 검증셋에서는 "만약 이 한도라면"을
+// 시험할 수 있도록 덮어쓰기용으로 노출한다(policy-domain.md §4).
 export const NUMBER_FACTS = [
   { path: 'participants.participant_count', label: '참석 인원' },
   { path: 'participants.external_participant_count', label: '외부 참석자' },
-  { path: 'history.same_vendor_count_3m', label: '동일 가맹점 3개월 결제 수' },
+  { path: 'history.same_vendor_count', label: '동일 가맹점 반복 결제 수' },
   { path: 'history.daily_cumulative_amount', label: '당일 누적 사용액(원)' },
+  { path: 'derived.business_days_since_expense', label: '결제 후 경과 영업일' },
+  { path: 'tx.per_person_amount', label: '1인당 금액(원)' },
   { path: 'policy.position_daily_limit', label: '직책 일일 한도(원)' },
+  { path: 'policy.preapproval_threshold', label: '사전승인 기준액(원)' },
+  { path: 'policy.evidence_threshold', label: '적격증빙 기준액(원)' },
+  { path: 'policy.dining_per_person_limit', label: '회식 1인당 한도(원)' },
+  { path: 'policy.lodging_limit', label: '1박 숙박비 한도(원)' },
+  { path: 'policy.settlement_deadline_days', label: '정산 기한(영업일)' },
 ] as const
 
 export const CATEGORIES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
@@ -127,7 +135,7 @@ export const DEFAULT_TEST_CASES: TestCase[] = [
     { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'participants.participant_count': 12,
       'history.daily_cumulative_amount': 1200000, 'policy.position_daily_limit': 500000 }),
   testCase('TC-5', '주말 결제 · 사용 목적 누락', '스타벅스 본사점', 48000, '회의', 'RETURN',
-    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'evidence.purpose_missing': true }),
+    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'evidence.expense_purpose_missing': true }),
   testCase('TC-6', '대규모 · 동일 가맹점 반복', '한식뷔페', 380000, '회의', 'REVIEW',
-    { 'evidence.has_valid_receipt': true, 'participants.participant_count': 12, 'history.same_vendor_count_3m': 6 }),
+    { 'evidence.has_valid_receipt': true, 'participants.participant_count': 12, 'history.same_vendor_count': 6 }),
 ]

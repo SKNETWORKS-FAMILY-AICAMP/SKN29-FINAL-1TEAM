@@ -23,5 +23,13 @@ def get_transaction(tx_id: int) -> dict:
 
 
 def get_policy(category: str) -> dict:
-    """분류별 정책 한도 조회 (Django `Policy` 모델, 내부 read API 경유)."""
+    """분류별 정책 한도 조회 (Django `PolicyTable` 별표, 내부 read API 경유)."""
     return _get(f"/api/internal/policies/{category}/")
+
+
+def build_rule_context(settlement_id: int) -> dict:
+    """판정용 EvalContext 조립 요청 (Django `context_builder`, 내부 read API 경유).
+
+    별표 룩업·ORM 조회는 전부 Django에서 끝난다 — AI는 조립된 facts 스냅샷만 받는다.
+    """
+    return _get(f"/api/internal/rule-context/{settlement_id}/")

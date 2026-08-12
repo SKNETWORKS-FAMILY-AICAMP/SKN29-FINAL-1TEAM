@@ -120,15 +120,19 @@ G_SHARED_CARD = node(
 )
 G_PERSONAL_USE = node(
     "R-006", "심야·휴일 사적사용 의심",
+    # 「사적사용 의심」은 결론이지 사실이 아니다. EvalContext는 원자 사실(단어)만 주고,
+    # 판단은 여기서 조합한다 — 심야 결제 AND (휴일 OR 가맹점 업종 미확인).
     {"and": [{"==": [{"var": "derived.is_late_night"}, True]},
-             {"==": [{"var": "derived.personal_use_suspected"}, True]}]},
-    "REVIEW", "심야 시간대 결제이면서 사적사용 의심 신호가 함께 있는 건을 사람 검토로 넘깁니다.", 3,
+             {"or": [{"==": [{"var": "derived.is_weekend"}, True]},
+                     {"==": [{"var": "merchant.merchant_info_resolved"}, False]}]}]},
+    "REVIEW", "심야 결제이면서 휴일이거나 가맹점 업종을 확인할 수 없는 건을 사람 검토로 넘깁니다.", 3,
     clause=f"{REG} 제7조①", severity="HIGH", flag="PERSONAL_USE_SUSPECTED",
     note="이상탐지 점수와 함께 회계 담당자가 최종 판단합니다.",
-    ai_reason="GIST·KAIST 부정사용 사례처럼 '서류상 문제없지만 패턴이 이상한' 건을 공통 단계에서 잡기 위해 v3에 추가했습니다.",
+    ai_reason="'사적사용 의심'이라는 결론을 그대로 입력받지 않고, 심야·휴일·업종미확인이라는 "
+              "확인 가능한 사실 세 개의 조합으로 바꿨습니다. 조합 규칙이 화면에 보이므로 근거를 따질 수 있습니다.",
     approver="회계 담당자",
-    when="늦은 밤에 결제했고, 동시에 개인적으로 쓴 것 같다는 신호까지 함께 잡혔을 때",
-    then="둘 중 하나만으로는 판단하지 않고, 두 가지가 겹칠 때만 회계 담당자가 직접 보도록 검토 목록에 올립니다.",
+    when="늦은 밤에 결제했고, 그날이 휴일이거나 어떤 가게인지 확인이 안 될 때",
+    then="한 가지만으로는 판단하지 않고, 두 가지가 겹칠 때만 회계 담당자가 직접 보도록 검토 목록에 올립니다.",
 )
 G_PASS = node(
     "_GLOBAL_PASS", "공통 게이트 통과", True, "PASS",
@@ -170,9 +174,9 @@ ENTERTAIN_FAMILY_KEY = uuid.UUID("2b7c1f04-9a5e-4b26-8d3a-51f0c7a91b02")
 
 E_RECEIPT = node(
     "E-001", "3만원 초과 적격증빙 미수취",
-    {"and": [{">": [{"var": "tx.amount"}, 30000]},
+    {"and": [{">": [{"var": "tx.amount"}, {"var": "policy.evidence_threshold"}]},
              {"==": [{"var": "evidence.has_valid_receipt"}, False]}]},
-    "RETURN", "건당 3만원을 초과하는 기업업무추진비인데 적격증빙이 없는 건입니다.", 0,
+    "RETURN", "적격증빙 기준액을 초과하는 기업업무추진비인데 적격증빙이 없는 건입니다.", 0,
     clause=f"{REG} 제11조②", severity="HIGH", flag="NON_DEDUCTIBLE_RISK",
     note="적격증빙(세금계산서·신용카드매출전표)을 첨부하면 자동 재판정됩니다.",
     ai_reason="3만원 초과 적격증빙 미수취 시 손금불산입 대상이라는 조항을 그대로 판정 조건으로 옮겼습니다.",
@@ -207,7 +211,9 @@ E_KICKBACK = node(
 )
 E_PARTICIPANTS = node(
     "E-004", "참석자 명단 누락",
-    {"==": [{"var": "evidence.participant_list_missing"}, True]},
+    # 「명단 누락」이라는 별도 불린을 두지 않는다 — 참석 인원이 0(=기록 없음)이면 곧 누락이다.
+    # 인원을 아예 안 물어본 경우는 None이 남아 미해소 가드가 잡는다(모름 ≠ 0명).
+    {"==": [{"var": "participants.participant_count"}, 0]},
     "RETURN", "기업업무추진비는 참석자·목적이 함께 기록돼야 업무관련성을 입증할 수 있습니다.", 3,
     clause=f"{REG} 제11조④", severity="MEDIUM", flag="PARTICIPANT_LIST_REQUIRED",
     note="참석자 명단(소속·인원)과 목적을 입력해주세요.",
@@ -215,17 +221,6 @@ E_PARTICIPANTS = node(
     approver="지출 담당자(본인 보완)",
     when="누구와 함께한 자리였는지(참석자 명단)가 비어 있을 때",
     then="쓴 사람에게 보완을 요청합니다. 나중에 세무조사를 받을 때 '업무 때문에 쓴 돈'이라고 설명할 핵심 자료가 참석자 명단입니다.",
-)
-E_SERVICE_CHARGE = node(
-    "E-005", "봉사료 10% 이상 포함",
-    {">=": [{"var": "tx.service_charge_ratio"}, 0.1]},
-    "REVIEW", "결제 금액에 봉사료가 10% 이상 포함된 건은 업무관련성 엄격 심사 대상입니다.", 4,
-    clause=f"{REG} 제12조②", severity="MEDIUM", flag="SERVICE_CHARGE_HIGH",
-    note="봉사료 비중이 높은 업종인지, 실제 접대 목적이 맞는지 확인해주세요.",
-    ai_reason="v2 개정 시 회계팀 요청으로 추가 — 봉사료 과다 업소 이용을 조기에 식별합니다.",
-    approver="회계 담당자",
-    when="결제 금액 중 봉사료(팁 성격의 추가 요금)가 차지하는 비중이 10% 이상일 때",
-    then="봉사료가 많이 붙는 곳은 업무 목적이 맞는지 더 꼼꼼히 봐야 해서, 회계 담당자 검토 목록에 올립니다.",
 )
 E_PASS = node(
     "E-PASS", "기업업무추진비 검증 통과", True, "PASS",
@@ -243,11 +238,12 @@ ENTERTAIN_V1 = {
     "note": "최초 배포 — 증빙·사전승인·참석자 3종",
 }
 ENTERTAIN_V2 = {
-    "nodes": [E_RECEIPT, E_PREAPPROVAL, E_KICKBACK, E_PARTICIPANTS, E_SERVICE_CHARGE, E_PASS],
+    "nodes": [E_RECEIPT, E_PREAPPROVAL, E_KICKBACK, E_PARTICIPANTS, E_PASS],
     "routings": [*branch("E-001", "", "E-002"), *branch("E-002", "", "E-003"),
-                 *branch("E-003", "", "E-004"), *branch("E-004", "", "E-005"),
-                 *branch("E-005", "", "E-PASS")],
-    "note": "청탁금지법 대상(E-003)·봉사료 과다(E-005) 추가",
+                 *branch("E-003", "", "E-004"), *branch("E-004", "", "E-PASS")],
+    # E-005(봉사료 10% 이상)는 v3 다이어트에서 제거 — 영수증에 봉사료가 표기되지 않는 경우가
+    # 많아 원천을 확보할 수 없고, 판정 기여도 대비 부차적이다.
+    "note": "청탁금지법 대상(E-003) 추가",
 }
 
 
@@ -261,8 +257,8 @@ def _dining_nodes(status):
     return {
         "per_person": node(
             "M-001", "1인당 한도 초과",
-            {">": [{"var": "tx.per_person_amount"}, 50000]},
-            "REVIEW", "회식비 1인당 5만원 한도를 초과한 건입니다.", 0,
+            {">": [{"var": "tx.per_person_amount"}, {"var": "policy.dining_per_person_limit"}]},
+            "REVIEW", "회식비 1인당 한도를 초과한 건입니다.", 0,
             clause=f"{REG} 제14조①", severity="MEDIUM", flag="PER_PERSON_LIMIT_OVER", status=status,
             note="참석 인원과 실제 지출 목적을 확인해주세요.",
             ai_reason="회식비는 총액이 아니라 1인당 금액으로 판단해야 한다는 규정을 반영했습니다.",
@@ -283,7 +279,9 @@ def _dining_nodes(status):
         ),
         "participants": node(
             "M-003", "참석자 명단 누락",
-            {"==": [{"var": "evidence.participant_list_missing"}, True]},
+            # 「명단 누락」이라는 별도 불린을 두지 않는다 — 참석 인원이 0(=기록 없음)이면 곧 누락이다.
+    # 인원을 아예 안 물어본 경우는 None이 남아 미해소 가드가 잡는다(모름 ≠ 0명).
+    {"==": [{"var": "participants.participant_count"}, 0]},
             "RETURN", "참석자 명단이 없으면 1인당 한도 자체를 계산할 수 없습니다.", 2,
             clause=f"{REG} 제14조②", severity="HIGH", flag="PARTICIPANT_LIST_REQUIRED", status=status,
             note="참석자 명단을 입력하면 1인당 금액이 자동 계산됩니다.",
@@ -291,17 +289,6 @@ def _dining_nodes(status):
             approver="지출 담당자(본인 보완)",
             when="회식에 누가 참석했는지(참석자 명단)가 비어 있을 때",
             then="쓴 사람에게 보완을 요청합니다. 인원수를 모르면 1인당 금액 자체를 계산할 수 없어서, 다른 검사보다 먼저 확인합니다.",
-        ),
-        "split": node(
-            "M-004", "동일 행사 분할 결제 의심",
-            {"==": [{"var": "dining.same_event_multiple_merchants"}, True]},
-            "REVIEW", "같은 행사에서 여러 가맹점에 나눠 결제된 정황입니다.", 3,
-            clause=f"{REG} 제8조", severity="HIGH", flag="SPLIT_PAYMENT_SUSPECTED", status=status,
-            note="한도 회피 목적의 분할 결제인지 확인이 필요합니다.",
-            ai_reason="v2 초안 — 회계팀이 '한도 바로 아래 소액 다건' 패턴을 잡아달라고 요청해 추가했습니다.",
-            approver="회계팀장",
-            when="같은 날 같은 행사인데 여러 가게에 금액을 나눠서 결제한 정황이 있을 때",
-            then="한도에 걸리지 않으려고 일부러 쪼갠 것인지 확인이 필요해서, 회계팀장 검토 목록에 올립니다.",
         ),
         "alcohol": node(
             "M-005", "주류 과다 포함",
@@ -339,11 +326,12 @@ DINING_V1 = {
 }
 DINING_V2 = {
     "nodes": [_D_DRAFT["participants"], _D_DRAFT["per_person"], _D_DRAFT["secondary"],
-              _D_DRAFT["split"], _D_DRAFT["alcohol"], _D_DRAFT["pass"]],
+              _D_DRAFT["alcohol"], _D_DRAFT["pass"]],
     "routings": [*branch("M-003", "", "M-001"), *branch("M-001", "", "M-002"),
-                 *branch("M-002", "", "M-004"), *branch("M-004", "", "M-005"),
-                 *branch("M-005", "", "M-PASS")],
-    "note": "분할 결제 의심(M-004)·주류 과다(M-005) 추가 — 검증 대기",
+                 *branch("M-002", "", "M-005"), *branch("M-005", "", "M-PASS")],
+    # M-004(동일 행사 분할결제 의심)는 v3 다이어트에서 제거 — 패턴 탐지는 룰이 아니라
+    # 비지도 이상탐지(Risk Review 1차)의 영역이다.
+    "note": "주류 과다(M-005) 추가 — 검증 대기",
 }
 
 
@@ -354,15 +342,6 @@ TRIP_FAMILY_KEY = uuid.UUID("a41e9d68-0b73-4c85-9f22-6e17d5a3c904")
 
 TRIP_V1 = {
     "nodes": [
-        node("T-101", "출장 신청 사전 미제출",
-             {"<": [{"var": "trip.trip_request_submitted_days_before"}, 3]},
-             "REVIEW", "출장 3영업일 전까지 신청서가 제출되지 않은 건입니다.", 0,
-             clause=f"{REG} 제16조①", severity="MEDIUM", flag="TRIP_REQUEST_LATE", status="VERIFIED",
-             note="긴급 출장이면 사유를 기재해주세요.",
-             ai_reason="긴급 출장 예외가 있어 자동 반려 대신 사유 확인(REVIEW)으로 설계했습니다.",
-             approver="회계 담당자",
-             when="출장 가기 3영업일 전까지 출장 신청서를 내지 않았을 때",
-             then="갑자기 잡힌 출장일 수도 있어서 바로 반려하지 않고, 회계 담당자가 사유를 보고 판단합니다."),
         node("T-102", "숙박비 1박 한도 초과",
              {">": [{"var": "trip.lodging_amount_per_night"}, {"var": "policy.lodging_limit"}]},
              "RETURN", "지역 등급별 1박 숙박비 한도를 초과한 건입니다.", 1,
@@ -373,25 +352,6 @@ TRIP_V1 = {
              when="하룻밤 숙박비가 그 지역에 정해진 한도를 넘었을 때",
              then="쓴 사람에게 보완을 요청합니다. 넘은 금액은 본인 부담이거나 따로 승인을 받아야 합니다. "
                   "지역·직급별 한도는 규정 표에서 읽어오므로, 규정이 바뀌면 이 룰을 고치지 않아도 됩니다."),
-        node("T-103", "단거리 비즈니스석 이용",
-             {"and": [{"==": [{"var": "trip.flight_class"}, "BUSINESS"]},
-                      {"<": [{"var": "trip.flight_duration_hours"}, 6]}]},
-             "REVIEW", "6시간 미만 노선에서 비즈니스석을 이용한 건입니다.", 2,
-             clause=f"{REG} 제17조④", severity="MEDIUM", flag="FLIGHT_CLASS_OVER", status="VERIFIED",
-             note="임원 예외 또는 좌석 사정 등 사유가 있으면 기재해주세요.",
-             ai_reason="직급별 예외가 있어 자동 반려하지 않고 사람 확인으로 넘깁니다.",
-             approver="회계팀장",
-             when="비행시간이 6시간이 안 되는 짧은 노선인데 비즈니스석을 탔을 때",
-             then="임원이거나 좌석이 없어서 어쩔 수 없었을 수도 있어, 바로 반려하지 않고 회계팀장이 사유를 보고 판단합니다."),
-        node("T-104", "일정 불일치 결제",
-             {"==": [{"var": "trip.itinerary_mismatch"}, True]},
-             "REVIEW", "승인된 출장 일정·지역과 실제 결제 내역이 어긋나는 건입니다.", 3,
-             clause=f"{REG} 제16조④", severity="HIGH", flag="ITINERARY_MISMATCH", status="VERIFIED",
-             note="일정 변경이 있었다면 변경 승인 내역을 첨부해주세요.",
-             ai_reason="출장지 이탈·개인 여행 결합 사례를 잡기 위한 조건입니다.",
-             approver="회계 담당자",
-             when="승인받은 출장 일정·지역과 실제로 결제한 내역이 서로 맞지 않을 때",
-             then="회계 담당자 검토 목록에 올립니다. 일정이 바뀐 경우라면 변경 승인 내역을 첨부해주세요."),
         node("T-PASS", "출장비 검증 통과", True, "PASS",
              "출장 신청·숙박·항공·일정 조건에 모두 해당하지 않은 건입니다.", 9,
              clause="RULE 명세서 §4", status="VERIFIED",
@@ -400,9 +360,10 @@ TRIP_V1 = {
              when="앞의 출장비 점검 항목에 하나도 걸리지 않았을 때",
              then="문제없는 출장비로 봅니다. 다만 시스템이 마음대로 확정하지는 않고, 회계 담당자가 마지막으로 확정해야 끝납니다."),
     ],
-    "routings": [*branch("T-101", "", "T-102"), *branch("T-102", "", "T-103"),
-                 *branch("T-103", "", "T-104"), *branch("T-104", "", "T-PASS")],
-    "note": "최초 작성 — 시뮬레이션 검증 완료 후 승인 요청",
+    "routings": [*branch("T-102", "", "T-PASS")],
+    # T-101(신청 선행일수)·T-103(비즈니스석)·T-104(일정 불일치)는 v3 다이어트에서 제거 —
+    # 출장 도메인(신청서·항공 예약) 모델이 없어 원천을 만들 수 없다. 모델이 생기면 함께 되살린다.
+    "note": "최초 작성 — 숙박비 한도 1종(출장 도메인 확보 후 확장)",
 }
 
 TRIP_REVIEW_COMMENT = """## 검토 의견
@@ -467,9 +428,10 @@ TEST_NODES = [
                "모든 거래가 통과하는 진입 노드. 이후 분기를 두 갈래로 나눕니다.", 0, severity="INFO",
                when="모든 지출이 여기를 거칩니다 (걸러내는 조건이 없습니다)",
                then="아무 판정도 하지 않고 다음 검사로 넘깁니다. 검사가 시작되는 출발점입니다."),
-    _test_node("T-10", "고액 결제 감지 (50만원 초과)", {">": [{"var": "tx.amount"}, 500000]}, "REVIEW",
-               "건당 50만원을 초과한 결제를 잡아냅니다.", 1, severity="HIGH", flag="HIGH_AMOUNT",
-               when="한 번에 결제한 금액이 50만원을 넘을 때",
+    _test_node("T-10", "고액 결제 감지 (사전승인 기준액 초과)",
+               {">": [{"var": "tx.amount"}, {"var": "policy.preapproval_threshold"}]}, "REVIEW",
+               "사전승인 기준액을 초과한 결제를 잡아냅니다.", 1, severity="HIGH", flag="HIGH_AMOUNT",
+               when="한 번에 결제한 금액이 규정이 정한 사전승인 기준액을 넘을 때",
                then="금액이 큰 지출이라 회계 담당자가 직접 보도록 검토 목록에 올립니다."),
     _test_node("T-11", "심야·주말 결제 감지",
                {"or": [{"==": [{"var": "derived.is_late_night"}, True]},
@@ -486,11 +448,12 @@ TEST_NODES = [
                severity="HIGH", flag="EVIDENCE_MISSING",
                when="세금계산서·카드전표 같은 정식 증빙이 첨부되지 않았을 때",
                then="쓴 사람에게 보완을 요청합니다. 증빙을 올리면 다시 판정합니다."),
-    _test_node("T-22", "사용 목적 불명확",
-               {"or": [{"==": [{"var": "evidence.purpose_missing"}, True]},
-                       {"==": [{"var": "evidence.purpose_is_generic"}, True]}]}, "RETURN",
-               "목적이 비어 있거나 형식적인 문구만 적힌 건입니다.", 5, severity="MEDIUM", flag="PURPOSE_UNCLEAR",
-               when="사용 목적이 비어 있거나, '업무상 사용'처럼 형식적인 문구만 적혀 있을 때",
+    # 「형식적 기재(purpose_is_generic)」는 AI의 텍스트 품질 판정이라 v3에서 제거했다.
+    # 목적 문구의 품질은 룰이 아니라 초안 작성(Draft Agent) 단계에서 다루는 것이 맞다.
+    _test_node("T-22", "사용 목적 누락",
+               {"==": [{"var": "evidence.expense_purpose_missing"}, True]}, "RETURN",
+               "목적이 비어 있는 건입니다.", 5, severity="MEDIUM", flag="PURPOSE_UNCLEAR",
+               when="사용 목적이 비어 있을 때",
                then="쓴 사람에게 보완을 요청합니다. 무슨 일로 썼는지 구체적으로 적어주세요."),
     _test_node("T-30", "참석자 과다 (8인 초과)", {">": [{"var": "participants.participant_count"}, 8]}, "REVIEW",
                "참석 인원이 많아 목적·성격 확인이 필요한 건입니다.", 6, severity="MEDIUM",
@@ -500,7 +463,7 @@ TEST_NODES = [
                "외부 참석자가 포함되어 접대성 여부 판단이 필요한 건입니다.", 7, severity="MEDIUM",
                when="회사 밖 사람이 한 명이라도 참석했을 때",
                then="접대성 지출인지 아닌지 갈리는 지점이라 회계 담당자 검토 목록에 올립니다."),
-    _test_node("T-40", "동일 가맹점 3개월 5회 이상", {">=": [{"var": "history.same_vendor_count_3m"}, 5]}, "REVIEW",
+    _test_node("T-40", "동일 가맹점 반복 결제 5회 이상", {">=": [{"var": "history.same_vendor_count"}, 5]}, "REVIEW",
                "같은 가맹점에서 반복 결제된 패턴입니다. 참석자 과다 갈래에서만 도달합니다.", 8,
                severity="MEDIUM", flag="REPEATED_VENDOR",
                when="최근 3개월 동안 같은 가게에서 5번 이상 결제했을 때",
@@ -523,10 +486,12 @@ TEST_NODES = [
                "라우팅이 없는 리프 노드 — 이 노드의 액션으로 판정이 끝납니다.", 12, severity="LOW", approver="회계담당",
                when="여기까지 온 모든 지출 (걸러내는 조건이 없습니다)",
                then="회계 담당자 검토 목록에 올리고 판정을 끝냅니다. 뒤에 이어지는 검사가 없습니다."),
-    _test_node("T-61", "정산 지연 (영업일 7일 초과)", {"==": [{"var": "derived.biz_days_over_7"}, True]}, "RETURN",
+    _test_node("T-61", "정산 지연 (기한 초과)",
+               {">": [{"var": "derived.business_days_since_expense"}, {"var": "policy.settlement_deadline_days"}]},
+               "RETURN",
                "정산 제출이 늦어진 건입니다.", 13, severity="MEDIUM", flag="LATE_SETTLEMENT",
-               when="결제한 뒤 영업일로 7일이 지나도록 정산을 올리지 않았을 때",
-               then="쓴 사람에게 보완을 요청합니다."),
+               when="결제한 뒤 규정이 정한 정산 기한(영업일 기준)을 넘기도록 정산을 올리지 않았을 때",
+               then="쓴 사람에게 보완을 요청합니다. 기한 일수는 규정 표에서 읽어오므로 규정이 바뀌면 이 룰을 고치지 않아도 따라갑니다."),
     _test_node("T-70", "최종 통과 후보", True, "PASS", "가장 깊은 레벨의 리프 노드입니다.", 14, severity="INFO",
                when="여기까지 온 모든 지출 (걸러내는 조건이 없습니다)",
                then="문제없는 지출로 보고 판정을 끝냅니다. 최종 확정은 회계 담당자가 합니다."),
@@ -775,7 +740,7 @@ class Command(BaseCommand):
     # ── ④ 출장비 ────────────────────────────────────────────────
     def _seed_trip(self, lead, acc):
         graph = self._upsert(
-            TRIP_FAMILY_KEY, 1, name="출장비 검증 그래프", scope="출장", entry="T-101",
+            TRIP_FAMILY_KEY, 1, name="출장비 검증 그래프", scope="출장", entry="T-102",
             clause=f"{REG} 제16조·제17조", status=RuleGraphStatus.SIMULATED, spec=TRIP_V1,
             reviewer=acc, review_comment=TRIP_REVIEW_COMMENT, days_ago=2,
         )

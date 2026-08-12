@@ -43,25 +43,36 @@ class GlobalRuleSeedTests(SimpleTestCase):
         self.assertEqual(result.path, ["R-002", "R-003", "R-004"])
 
     def test_late_night_personal_use_goes_to_review(self):
-        """v3에서 추가된 심야 사적사용 의심 게이트(R-006)."""
+        """R-006 — 「사적사용 의심」을 입력받지 않고 원자 사실을 조합해 판단한다(스키마 v3)."""
         context = {
-            "merchant": {"merchant_type": "문구점"},
+            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
-            "derived": {"is_late_night": True, "personal_use_suspected": True},
+            "derived": {"is_late_night": True, "is_weekend": True},
         }
         result = run_rule_engine(context, self.graph)
         self.assertEqual(result.decision, "REVIEW")
         self.assertEqual(result.path, ["R-002", "R-003", "R-004", "R-006"])
 
-    def test_clean_transaction_passes_global_gate(self):
+    def test_late_night_alone_is_not_enough(self):
+        """조합이므로 심야 하나만으로는 걸리지 않는다 — 업종이 확인됐고 평일이면 통과."""
         context = {
-            "merchant": {"merchant_type": "문구점"},
+            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
-            "derived": {"is_late_night": False, "personal_use_suspected": False},
+            "derived": {"is_late_night": True, "is_weekend": False},
+        }
+        self.assertEqual(run_rule_engine(context, self.graph).decision, "PASS")
+
+    def test_clean_transaction_passes_global_gate(self):
+        context = {
+            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
+            "category": {"item_type": "비품"},
+            "tx": {"payment_method": "카드"},
+            "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
+            "derived": {"is_late_night": False, "is_weekend": False},
         }
         result = run_rule_engine(context, self.graph)
         self.assertEqual(result.decision, "PASS")

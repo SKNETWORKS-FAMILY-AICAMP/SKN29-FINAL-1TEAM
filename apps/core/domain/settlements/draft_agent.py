@@ -30,11 +30,16 @@ KEYWORD_CATEGORY = [
     (("우체국", "등기", "택배", "인쇄", "복사"), "업무활성", "일반 업무비"),
 ]
 
-# 규정 임계값 — 실제 운영에서는 policy 테이블에서 읽는다.
-THRESHOLDS = {
-    "receipt": (30000, "TIGER-REG-2026-003 제11조②", "3만원을 초과하면 적격증빙(세금계산서·카드전표)이 필요합니다."),
-    "preapproval": (500000, "TIGER-REG-2026-003 제12조①", "건당 50만원을 초과하면 사전승인 기록이 필요합니다."),
-    "dining_per_person": (50000, "TIGER-REG-2026-003 제14조①", "회식비는 참석자 1인당 5만원을 넘을 수 없습니다."),
+# 규정 임계값은 **별표(PolicyTable)에서 읽는다** — 여기에 숫자를 두지 않는다.
+#  (`_context/policy-domain.md` §4 — 임계값이 여러 곳에 흩어져 값이 갈라진 것이 이 도메인의 원인 결함)
+#  안내 문구만 여기서 관리하고, 숫자는 표에서 읽어 문구에 끼워 넣는다.
+HINT_SPECS = {
+    "receipt": ("evidence_threshold_table",
+                "{limit:,}원을 초과하면 적격증빙(세금계산서·카드전표)이 필요합니다."),
+    "preapproval": ("pre_approval_threshold_table",
+                    "건당 {limit:,}원을 초과하면 사전승인 기록이 필요합니다."),
+    "dining_per_person": ("dining_per_person_limit_table",
+                          "회식비는 참석자 1인당 {limit:,}원을 넘을 수 없습니다."),
 }
 
 PURPOSE_TEMPLATE = {
@@ -75,21 +80,47 @@ def _guess_category(merchant: str, industry: str) -> tuple[str, float, str]:
     return "업무활성", 0.52, "업종·가맹점명으로 분류를 특정하지 못해 기본값으로 두었습니다. 직접 확인해주세요."
 
 
+def _resolve_hint_limits(category: str) -> dict[str, tuple[int, str, str]]:
+    """별표에서 안내용 임계값을 읽는다 — (한도, 근거조항, 문구).
+
+    표가 없거나 값을 못 찾으면 그 항목을 **생략**한다. 숫자를 지어내 안내하지 않는다.
+    """
+    from domain.policies.context_builder import load_tables, lookup
+    from domain.policies.eval_context import empty_eval_context
+
+    tables = load_tables()
+    ctx = empty_eval_context()
+    ctx["category"]["value"] = category
+    ctx["category"]["scope"] = category
+
+    resolved: dict[str, tuple[int, str, str]] = {}
+    for name, (table_key, template) in HINT_SPECS.items():
+        table = tables.get(table_key)
+        limit = lookup(table, ctx) if table else None
+        if isinstance(limit, (int, float)):
+            resolved[name] = (int(limit), table.source_clause, template.format(limit=int(limit)))
+    return resolved
+
+
 def _policy_hints(category: str, amount: int, has_receipt: bool, headcount: int) -> list[dict[str, Any]]:
     """제출 전 규정 안내 — 반려를 미리 막기 위한 사전 힌트."""
     hints: list[dict[str, Any]] = []
-    limit, clause, text = THRESHOLDS["receipt"]
-    if amount > limit:
-        hints.append({
-            "level": "warn" if not has_receipt else "info", "clause": clause, "text": text,
-            "status": "증빙 첨부됨" if has_receipt else "증빙 미첨부 — 지금 첨부하면 보완요청을 피할 수 있습니다.",
-        })
-    limit, clause, text = THRESHOLDS["preapproval"]
-    if amount > limit:
-        hints.append({"level": "warn", "clause": clause, "text": text,
-                      "status": "사전승인 문서를 함께 첨부해주세요."})
-    if category in ("식대", "접대") and headcount:
-        limit, clause, text = THRESHOLDS["dining_per_person"]
+    limits = _resolve_hint_limits(category)
+
+    if "receipt" in limits:
+        limit, clause, text = limits["receipt"]
+        if amount > limit:
+            hints.append({
+                "level": "warn" if not has_receipt else "info", "clause": clause, "text": text,
+                "status": "증빙 첨부됨" if has_receipt else "증빙 미첨부 — 지금 첨부하면 보완요청을 피할 수 있습니다.",
+            })
+    if "preapproval" in limits:
+        limit, clause, text = limits["preapproval"]
+        if amount > limit:
+            hints.append({"level": "warn", "clause": clause, "text": text,
+                          "status": "사전승인 문서를 함께 첨부해주세요."})
+    if category in ("식대", "접대") and headcount and "dining_per_person" in limits:
+        limit, clause, text = limits["dining_per_person"]
         per_person = amount // max(headcount, 1)
         hints.append({
             "level": "warn" if per_person > limit else "info", "clause": clause, "text": text,

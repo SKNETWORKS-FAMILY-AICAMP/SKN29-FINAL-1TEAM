@@ -19,20 +19,6 @@ from domain.settlements.models import Category
 RULE_SCOPE_CHOICES = [("GLOBAL", "공통 필수 게이트"), *Category.choices]
 
 
-class Policy(models.Model):
-    category = models.CharField(max_length=20)
-    limit_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
-    required_evidence = models.JSONField(default=list, blank=True)
-    tax_note = models.TextField(blank=True)
-    refs = models.JSONField(default=list, blank=True)
-
-    class Meta:
-        verbose_name_plural = "policies"
-
-    def __str__(self):
-        return f"Policy({self.category})"
-
-
 class PolicyDoc(models.Model):
     """RAG 소스 규정 문서 메타. 실제 임베딩(Chroma)은 ai(FastAPI)가 수행."""
     title = models.CharField(max_length=200)
@@ -44,6 +30,51 @@ class PolicyDoc(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class PolicyTable(models.Model):
+    """규정 별표(임계값 표) 원본 1개 = 1행 — `_context/policy-domain.md` §2.
+
+    별표마다 축 개수·깊이가 다르다(직책 1키 / 출장구분×지역등급 2키 / 축 없는 전역값).
+    고정 컬럼으로는 담을 수 없으므로 표 원문 구조를 ``payload``에 그대로 두고, 룩업 축만
+    ``key_axes``에 **EvalContext 경로**로 선언한다. 조립기는 이 선언만 보고 룩업하므로
+    축이 2개든 3개든 코드 변경이 없다(마이그레이션 0).
+
+    **개정은 UPDATE가 아니라 INSERT**: 새 ``effective_date`` 행을 추가하고 구행에
+    ``superseded_date``를 찍는다. 과거 판정을 그 시점 한도로 재현하기 위해서다.
+    """
+    key = models.CharField(max_length=64, db_index=True)          # 'lodging_limit_table'
+    title = models.CharField(max_length=200, blank=True)          # '별표2. 지역등급별 숙박비 한도'
+    key_axes = models.JSONField(default=list, blank=True)         # ["trip.trip_type","trip.region_grade"]
+    # 축을 모두 따라간 리프는 스칼라. 축이 없으면 {"value": <스칼라>}.
+    # 표에 없는 키 값은 "*"(와일드카드) 항목으로 폴백한다.
+    payload = models.JSONField(default=dict, blank=True)
+    strict_keys = models.BooleanField(
+        "키 미상 시 해소 금지", default=False,
+        help_text=(
+            "False(기본): 축 값을 몰라도 '*' 기본값으로 해소한다 — 회사 기본 한도처럼 "
+            "기본값이 의미 있는 표.\n"
+            "True: 축 값을 모르면 해소하지 않고 null로 남긴다 — 금지업종처럼 "
+            "'모르면 안전하다'고 단정할 수 없는 표. null이면 미해소 가드가 REVIEW로 강등한다."
+        ),
+    )
+    source_doc = models.ForeignKey(
+        PolicyDoc, null=True, blank=True, on_delete=models.SET_NULL, related_name="tables",
+    )
+    source_clause = models.CharField(max_length=200, blank=True)  # 'TIGER-REG-2026-003 별표2'
+    effective_date = models.DateField()
+    superseded_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["key", "-effective_date"]
+        constraints = [
+            models.UniqueConstraint(fields=["key", "effective_date"], name="uq_policy_table_key_effective"),
+        ]
+        indexes = [models.Index(fields=["key", "effective_date"], name="ix_policy_table_lookup")]
+
+    def __str__(self):
+        return f"{self.key}@{self.effective_date}"
 
 
 class RuleGraphStatus(models.TextChoices):

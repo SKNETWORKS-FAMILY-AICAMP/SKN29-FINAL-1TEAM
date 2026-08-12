@@ -25,17 +25,23 @@
   "merchant": { "industry_code": "FD6", "forbidden": false },
   "evidence": { "has_receipt": false, "pre_approved": false,
                 "fields": { "거래처": true, "참석자": false, "목적": true, "일시장소": true } },
-  "policy":   { "preapproval_threshold": 300000, "position_limit": 500000 },
+  "policy":   { "preapproval_threshold": 500000, "position_daily_limit": 600000,
+                "evidence_threshold": 30000, "settlement_deadline_days": 7 },
   "history":  { "same_merchant_7d": 1, "late_submit_count": 1 },
-  "derived":  { "days_since_expense": 9, "biz_days_over_7": false,
+  "derived":  { "business_days_since_expense": 9,
                 "is_late_night": true, "is_weekend": false }
 }
 ```
+
+> ⚠️ 위 예시는 **설명용 약식 표기**다. 필드명·값의 캐논은 `eval_context.py`(스키마 v2)와
+> `_context/policy-domain.md` §4다. 정책값은 별표(`policy_tables`)에서 조립기가 해소하며,
+> `biz_days_over_7`처럼 **상수가 이름에 박힌 필드는 폐기**됐다
+> (→ `derived.business_days_since_expense > policy.settlement_deadline_days`).
 | 섹션 | 소스 | 경로 |
 |---|---|---|
 | tx·card·user·evidence·history·policy | Postgres(SoT) | Django 내부 read API |
 | merchant.industry/forbidden | 업종 캐시→카카오→웹 | `classify_merchant`(스냅샷) |
-| policy.preapproval_threshold = `min(300000, 별표1[직책])` · derived.* | 계산 | 조립기 파생 산출 |
+| policy.* (별표 선해소 스칼라) · derived.* | `policy_tables` 룩업 + 계산 | 조립기(`context_builder`) 산출 |
 
 > **파생은 조립기가 미리 계산**한다(예: `min(30만, 직책한도)`·영업일 경과·심야). DSL은 단순 비교만.
 
@@ -56,7 +62,7 @@
 | `n_evidence` | `category.ai=="기업업무추진비" & tx.amount>30000 & evidence.has_receipt==false` | REVIEW·NON_DEDUCTIBLE_RISK | (단말) | `n_preapproval` | 제11조2항 |
 | `n_preapproval` | `category.ai in [식대,기업업무추진비] & tx.amount>policy.preapproval_threshold & evidence.pre_approved==false` | REVIEW·PREAPPROVAL_REQUIRED | (단말) | `n_fields` | 제10조2항 |
 | `n_fields` | `category.ai=="기업업무추진비" & (evidence.fields.참석자==false or evidence.fields.거래처==false)` | RETURN·FIELDS_MISSING | (단말) | `n_deadline` | 제11조4항 |
-| `n_deadline` | `derived.biz_days_over_7 == true` | RETURN·LATE_SUBMIT | (단말) | (게이트 통과 → 과목별 그래프) | 제12조1항 |
+| `n_deadline` | `derived.business_days_since_expense > policy.settlement_deadline_days` | RETURN·LATE_SUBMIT | (단말) | (게이트 통과 → 과목별 그래프) | 제12조1항 |
 
 DSL 예(`n_evidence`):
 ```jsonc

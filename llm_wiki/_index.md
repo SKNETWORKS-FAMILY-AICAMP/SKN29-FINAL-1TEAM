@@ -11,7 +11,7 @@
 | `기술명세서.md` | Draft v0.2 | 아키텍처·데이터·API·FastMCP Tool·ML/RAG·룰 그래프 | 최신 · §3.3 제출플로우/계정과목 구현 정합 갭 명시 | 2026-07-31 |
 | `기획_확장안_v2.md` | Draft v0.2 | 제품 기획·3-Agent 플로우·객체 모델·라이프사이클 | 최신 · §1.5 1인 팀 경로·정합 갭 크로스레퍼런스 | 2026-07-31 |
 | `화면설계서/` | Rev.1 v1.1 | 6개 화면(S-01~06)·역할·상태머신 화면매핑 (압축해제 .docx) | 프론트 구현 기준 | — |
-| `법인카드_사용규정_기반_RULE_명세서.md` | v1.4 | Rule 콘솔 등록용 활성 58 RULE(공통14·업무추진비14·회식16·출장14)·필드정의·심각도·우선순위 | 룰 시드 SoT | 2026-07-30 |
+| `법인카드_사용규정_기반_RULE_명세서.md` | v1.4 | **참고용 예시** — 규정에서 도출 가능한 58 RULE을 사람이 손으로 뽑아 본 산출물. 필드정의·심각도·우선순위 | ⚠️ **권위 스펙 아님.** 제품 기본 제공은 **DEFAULT GATE 1개**뿐이고 세부 룰은 **고객 규정 문서 업로드 시 생성**된다. 필드 정의는 이상 집합이며 실제 스키마는 v3(46) | 2026-08-11 |
 
 > 세 스펙 문서(요구사항·기술·기획)는 서로 **상충 없이** 유지한다. 상태머신·룰 도메인·Risk 2단계 등 핵심 결정은 `CLAUDE.md §2`에 요약.
 
@@ -20,19 +20,39 @@
 - **정산 상태머신(4단계)**: 개인 보유(`DRAFT`) → 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`). 팀 수준(`TEAM_*`)과 회계 수준(`RETURNED`/`REJECT`) 구분. — 요구사항 §4.4·§5.6 / 기술 §3.3
 - **Risk Review = MVP 2단계**(이상탐지→RAG 내규검증), 지도학습은 post-MVP. — 요구사항 §6
 - **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. **룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL**. — 기술 §4.2 / `_context/rule-engine.md`
-- **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` **고정 카탈로그**(DSL 계약·ACTIVE 검증 게이트·룰 편집 UI가 의존하므로 자유화 금지). 초기 `Policy` 모델은 폐기. ⚠️ **조립기 미구현 → 실 정산 경로에서 한도 룰 전량 미발동 중.** — `_context/policy-domain.md` / 기술 §3.3-4 / 요구사항 Open #16·#17
+- **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` **고정 카탈로그**(DSL 계약·ACTIVE 검증 게이트·룰 편집 UI가 의존하므로 자유화 금지). 초기 `Policy` 모델은 폐기. 조립기(`context_builder.build_rule_context`)·미해소 가드(`UNRESOLVED_POLICY_VAR` → REVIEW 강등) 구현 완료, EvalContext 스키마 v2. — `_context/policy-domain.md` / 기술 §3.3-4 / 요구사항 Open #16·#17
 - **가맹점 업종 구분**(캐시→카카오→웹), 비용분류 보조 힌트(세무 아님), MCC는 post-MVP. — 기술 §7-1
 - **인가 = 기능 단위(Capability) RBAC**: `team_aggregate`/`accounting_review`/`rule_activate`/`governance_view` 4종. 유효능력 = 역할 기본 ∪ 개인 추가부여(`extra_capabilities`). 역할은 라벨·기본값용. 백엔드 강제(리뷰/확정·팀취합·룰활성·거버넌스) + 프론트 `useCan()` 게이트 전환 완료(mock=역할기본, 실=`/api/me`). — 기술 §3.1a
+
+## 2a. 룰 엔진 영역 현재 상태 (2026-08-11) — 새 세션 빠른 파악용
+
+> 이 영역은 최근 대폭 바뀌었다. **`_context/eval-context-guide.md`를 먼저 읽으면 아래를 다 이해할 수 있다.**
+
+| 무엇 | 상태 | 한 줄 |
+|---|---|---|
+| **룰 제공 정책** | ✅ 확정 | 제품 기본 제공은 **`DEFAULT GATE` 1개**뿐. 세부 룰은 **고객 규정 문서 업로드 시 생성**. RULE 명세서 58종·시드 4계열은 **참고 예시/시연용** |
+| **규정 임계값(policy)** | ✅ 구현 | 저장층 `PolicyTable`(자유 JSON payload + `key_axes` + `strict_keys`) → 조립기 선해소 → `ctx.policy.*` 8종. 개정은 INSERT(유효일) |
+| **EvalContext 스키마** | ✅ **v4 (46필드)** | 101 → 46 다이어트. **판정 필드 제거**(판단은 그래프가 조합), 조합 가능·원천 없는 필드 제거. `tables`·`conflicts`는 동적 감사 섹션 |
+| **조립기** | ✅ 구현 | `policies/context_builder.py` — 원장·화면입력·첨부추출·별표를 **출처 순위(SoR>입력>추출)** 로 병합, 충돌은 `ctx.conflicts`에 기록 |
+| **미해소 가드** | ✅ 구현 | `None`=**모름** 계약. 참조 경로가 null이면 `REVIEW` 강등 + `UNRESOLVED_POLICY_VAR`(표 채우면 해결)/`UNRESOLVED_FACT`(원천 필요) |
+| **판정 입력 원천** | 🚧 절반 | `Settlement` 판정 컬럼 9종 + `Attachment`(첨부 추출 저장 틀) 신설. **조립 커버리지 24/46**, 실 정산 강등 **31%** |
+| **증빙자료 추출 Agent** | 🔲 미착수 | 저장 구조·조립기 연결은 완료. 실제 문서 판독 미구현 |
+| **`orchestrator.py`** | 🔲 미구현 | GLOBAL→scope 그래프 선택·`RuleHit` 기록이 아직 시뮬레이션 경로에만 있다 |
+
+**다음 후보**(우선순위): ① GLOBAL 게이트에 적용 조건 부착(컬럼 추가 0으로 강등 감소) ② A등급 조립 채우기(`user.*`·`history.*` — 데이터는 있고 코드만 없음) ③ 추출 Agent 구현 ④ `orchestrator.py`
 
 ## 3. 파생 컨텍스트 (`_context/`, 에이전트 생성)
 
 | 파일 | 용도 | 상태 |
 |---|---|---|
+| `_context/eval-context-guide.md` | ⭐ **EvalContext 읽는 법 (사람용 안내서)** — 판정이 어떻게 이뤄지는지 한 문서로. **PART 1 쉬운 설명**(3단 흐름·표 예시·핵심 규칙 4개·값의 출처·현재 진척) → **PART 2 상세**(46필드 카탈로그·조립 파이프라인·충돌 규칙·별표 폴백·엔진/가드·코드와 테스트 위치·스키마 버전 이력). **새로 합류하면 여기부터** | 2026-08-11 · 스키마 v4 기준 |
 | `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루 | 2026-07-28 |
-| `_context/rule-engine-design.md` | 룰엔진 **엔지니어링 설계·구현 추적** — EvalContext 필드 카탈로그·DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. 로드맵 1·2·4 완료, 3·5 진행 | 2026-07-31 |
-| `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. GLOBAL R-002·R-003 v1 구현 완료, 카테고리 RULE 후속 | 2026-07-31 |
-| `_context/policy-domain.md` | **규정 임계값(policy) 도메인 캐논** — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그 13종)/해소 규약 2층 구조, 8개 항목 검토·누락 6종, 필드명 상수 금지 규칙, 미해소 가드 | 2026-08-10 · **설계 확정, 구현 미착수** |
-| `_context/policy-domain-plan.md` | 위 캐논의 **구현 PLAN** — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화. 인수조건·리스크 등록부 포함 | 2026-08-10 · **승인 대기(미착수)** |
+| `_context/rule-engine-design.md` | 룰엔진 **엔지니어링 설계 원안(2026-07-31)** — DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. ⚠️ **본문 §2.3 필드 카탈로그·§5 모듈·§7 로드맵은 설계 당시 기준이라 현행과 다르다** — 문서 상단에 현행 대조표를 넣어 뒀고, 현재 상태는 `eval-context-guide.md`가 정본 | 2026-08-11 · 상단 대조표 갱신 |
+| `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. 조립기 미구현 항목은 해소 표기. ⚠️ RULE 명세서 58종은 **참고용 예시**로 확정돼 전량 시드가 목표가 아니다 | 2026-08-11 · 조립기 완료 반영 |
+| `_context/policy-domain.md` | **규정 임계값(policy) 도메인 캐논** — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그 13종)/해소 규약 2층 구조, 8개 항목 검토·누락 6종, 필드명 상수 금지 규칙, 미해소 가드 | 2026-08-11 · **구현 완료** (`policies/context_builder.py`·`tiger_tables.py`, EvalContext v2) |
+| `_context/evidence-extraction-agent.md` | **증빙자료 추출 Agent** — 첨부 다종 문서(사전승인·회의록·출장계획서·영수증) → 판정 사실(EvalContext dot-path). Draft/Rule/Risk와의 경계, **관측 계약**(부재 확인=명시값 / 미관측=경로 생략), 우선순위, `chunk_pdf`·비전 재사용, 종류별 추출 대상, 미결 5건 | 2026-08-11 · **저장 구조·조립기 연결 완료 / 추출 로직 미착수** |
+| `_context/eval-context-sourcing.md` | **EvalContext 데이터 출처 점검 + v3 다이어트 기록** — 필드를 A(데이터 있음·코드만)/B(컬럼·입력칸만)/C(도메인 신설)/D(제외)로 등급화(§1~7), 부분 조립 실측·GLOBAL 게이트 병목(§8), 첨부 문서 추출 축(§9), 재설계 대신 그래프 축소(§10), **v3 다이어트 101→46 실행 기록(§12)**, 미결 쟁점 8건(§13) | 2026-08-11 · **다이어트 실행 완료** |
+| `_context/policy-domain-plan.md` | 위 캐논의 **구현 PLAN + 인수 결과** — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화 | 2026-08-11 · **STEP 1~5 완료, 인수조건 5개 실측 통과** |
 | `_context/pdf_parsing_strategy.md` | **PDF RAG 파싱·청킹 전략**(실측 기반) — 페이지 단위 하이브리드 파이프라인·CDM·전처리 조건부 게이트·조(條) 단위 청킹·메타 스키마·품질 지표 | 2026-08-10 · **파싱→청킹 구현 완료** (`apps/ai/app/rag/parsing/`, MCP `chunk_pdf`). 임베딩·Chroma upsert(§13.1⑪⑫)는 미착수 |
 | `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 **역할 분담·로드맵** — 계약(입출력) 고정, v0(@김정민)/v1(@이지현) 작업 분해. **B-1~B-6 전체 완료**(2026-08-10). ⚠️ 정책 조회는 현재 구 `Policy` 모델 사용 — 위 `policy-domain.md` 체계 구현 시 재연동 필요(§7) | 2026-08-10 |
 | `_context/draft-agent-v0.2.md` | Draft Agent **코드 수준 구현 설계서** — pydantic 스키마·정책 조회·프롬프트·에러 폴백. as-is stub 실태 포함 | 2026-08-10 |
