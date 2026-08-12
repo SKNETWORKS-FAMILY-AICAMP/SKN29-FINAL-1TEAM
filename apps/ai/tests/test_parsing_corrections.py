@@ -128,3 +128,48 @@ def test_report_explains_every_skipped_step(corrected):
     for _, doc, _ in corrected.values():
         for step, reason in doc.report.skipped_steps.items():
             assert reason, f"{doc.name}: {step} 스킵 사유 없음"
+
+
+REGULATIONS = [n for n, p in EXPECTED_PROFILE.items() if p == "REGULATION"]
+
+
+@pytest.mark.parametrize("name", sorted(REGULATIONS))
+def test_cover_meta_survives_unrecognized_table(corrected, name):
+    """C7 — 표지가 표로 안 잡혀도 시행일을 얻는다.
+
+    📏 docling은 같은 표지 레이아웃을 법인카드·출장비에선 `table`(grid)로, 업무추진비·회식
+    에선 개별 `paragraph`로 내놓는다. grid만 보던 구현은 후자 2종에서 `effective_date`를
+    통째로 놓쳤다 — 규정 4종이 모두 같은 시행일을 갖는다는 사실이 그 결손을 가려 줬다.
+    """
+    _, doc, _ = corrected[name]
+    assert doc.meta.get("effective_date") == "2026.8.1", (
+        f"{name}: 시행일 결측/오값 — {doc.meta.get('effective_date')!r}"
+    )
+    assert doc.meta.get("enacted_date") == "2026.7.20"
+    assert doc.meta.get("owner_dept", "").startswith("경영지원본부")
+
+
+def test_cover_fallback_rejects_prose(corrected):
+    """폴백이 본문 문장을 값으로 집으면 결측보다 나쁘다 — 날짜꼴 가드를 고정한다.
+
+    `revision_history`에서 첫 날짜를 긁는 폴백을 검토했다가 버린 이유가 이것이다:
+    업무추진비의 개정이력 첫 날짜는 `2024.1.1`(세법 개정 시행일)이라 규정 시행일이 아니다.
+    """
+    from app.rag.parsing.corrections import c7_meta
+    from app.rag.parsing.model import Element
+
+    def el(text: str, seq: int) -> Element:
+        return Element(element_id=f"t:p1:e{seq}", type="paragraph", text=text,
+                       page=1, order=seq)
+
+    meta: dict = {}
+    c7_meta._cover_pairs(meta, [el("시행일", 1), el("추후 공고한다", 2)])
+    assert "effective_date" not in meta
+
+    meta = {}
+    c7_meta._cover_pairs(meta, [el("시행일자는 다음과 같다", 1), el("2026. 8. 1.", 2)])
+    assert "effective_date" not in meta
+
+    meta = {}
+    c7_meta._cover_pairs(meta, [el("시행일", 1), el("2026. 8. 1.", 2)])
+    assert meta["effective_date"] == "2026.8.1"

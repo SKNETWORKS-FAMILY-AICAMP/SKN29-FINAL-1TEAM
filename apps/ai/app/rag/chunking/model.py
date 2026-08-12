@@ -11,11 +11,30 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 ChunkType = Literal["article", "clause", "table", "annex", "section", "preamble"]
 ChunkRole = Literal["atomic", "parent", "child"]
+
+# 문서 메타 중 청크마다 복제할 가치가 없는 것. `revision_history`는 최대 500자인데
+# 📏 법인세법은 청크가 425개라 같은 문자열이 425벌 실린다. 검색에도 필터에도 안 쓰인다.
+_META_DROP = frozenset({"revision_history"})
+
+_DATE = re.compile(r"(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})")
+
+
+def _as_date_int(raw: str) -> int | None:
+    """`'2026.8.1'` → `20260801`.
+
+    **날짜를 문자열로 저장하면 범위 비교가 뒤집힌다** — `'2026.8.1' > '2026.10.1'`이
+    사전순으로 참이다. Chroma 메타 필터에 `$lte`를 걸 수 있으려면 정렬 가능한 정수여야
+    한다. 저장 시점에 바꾸지 않으면 나중엔 전량 재적재다.
+    """
+    if (m := _DATE.match(raw.strip())) is None:
+        return None
+    return int(f"{m[1]}{int(m[2]):02d}{int(m[3]):02d}")
 
 
 @dataclass(frozen=True)
@@ -110,8 +129,14 @@ class Chunk:
             body = body[: DEFAULT_BUDGET.parent_embed_head]
         return f"{self.header}\n\n{body}" if self.header else body
 
-    def to_chroma(self) -> tuple[str, str, dict[str, Any]]:
-        """(id, document, metadata). Chroma 메타데이터는 스칼라만 허용하므로 리스트는 접는다."""
+    def to_chroma(self, embedder_version: str | None = None) -> tuple[str, str, dict[str, Any]]:
+        """(id, document, metadata). Chroma 메타데이터는 스칼라만 허용하므로 리스트는 접는다.
+
+        `embedder_version`은 **벡터를 만든 주체의 신원**이다(`openai/…@1024/B_heading`).
+        없으면 한 컬렉션에 두 모델의 벡터가 섞여도 알아낼 방법이 없다 — 하필 재검토
+        트리거로 남겨 둔 `bge-m3`와 채택안 `3-large@1024`가 **똑같이 1024차원**이라
+        Chroma도 못 막는다. 부분 재임베딩·마이그레이션도 이 필드가 있어야 가능하다.
+        """
         meta: dict[str, Any] = {
             "doc_id": self.doc_id,
             "doc_name": self.doc_name,
@@ -137,9 +162,15 @@ class Chunk:
         if self.flags:
             meta["flags"] = ",".join(self.flags)
         meta["element_ids"] = ",".join(self.element_ids)
+        if embedder_version:
+            meta["embedder_version"] = embedder_version
         for key, value in self.meta.items():
-            if isinstance(value, (str, int, float, bool)):
-                meta[f"doc_{key}"] = value
+            if key in _META_DROP or not isinstance(value, (str, int, float, bool)):
+                continue
+            if key.endswith("_date") and (as_int := _as_date_int(str(value))) is not None:
+                meta[f"doc_{key}"] = as_int     # 정렬·범위비교 가능해야 한다
+                continue
+            meta[f"doc_{key}"] = value
         return self.chunk_id, self.context_text(), meta
 
 

@@ -335,3 +335,20 @@ def test_noise_chunks_are_flagged_not_dropped(chunked):
     """목차 잔재는 표시만 하고 지우지 않는다 — 삭제 판단은 인덱싱 정책의 몫이다."""
     _, chunks, _ = chunked["법인세법"]
     assert any("toc_like" in c.flags for c in chunks)
+
+
+@pytest.mark.parametrize("name", DOCS)
+def test_annex_citation_names_the_annex(chunked, name):
+    """별표 인용이 문서명뿐이면 어느 별표인지 알 수 없다 — 한도표가 룰 임계값의 원천이다.
+
+    `article_label`이 `제N조`만 알던 시절 별표 청크의 인용은 `법인카드_사용규정`으로만
+    나왔고, 한 문서에 별표가 둘 이상이면(업무추진비 별표1·별표2) 근거를 특정하지 못했다.
+    """
+    _, chunks, _ = chunked[name]
+    for chunk in chunks:
+        if chunk.chunk_type != "annex":
+            continue
+        assert chunk.article_label, f"{chunk.chunk_id}: 별표 라벨 없음"
+        assert chunk.article_label in chunk.citation, (
+            f"{chunk.chunk_id}: 인용에 별표가 빠졌다 — {chunk.citation!r}"
+        )

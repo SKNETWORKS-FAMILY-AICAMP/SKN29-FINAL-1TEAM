@@ -14,18 +14,26 @@ from app.rag.parsing.model import Element
 ARTICLE_LABEL = re.compile(r"^제\s*(\d+)\s*조(?:\s*의\s*(\d+))?")
 CHAPTER_LABEL = re.compile(r"^제\s*(\d+)\s*장")
 ANNEX_LABEL = re.compile(r"^\[?\s*(별표|부칙)")
+# 별표는 조가 아니지만 **인용 단위**다 — 한도표가 룰 임계값의 원천이라 '별표1'까지 짚어야 한다.
+ANNEX_NUMBERED = re.compile(r"^\[?\s*(별표|별지|부칙)\s*(\d+)?")
 _WS = re.compile(r"[ \t]+")
 
 
 def article_label(text: str, article_no: int | None) -> str | None:
-    """'제55조의2(토지등…)' → '제55조의2'. 원문 표기를 그대로 살린다.
+    """'제55조의2(토지등…)' → '제55조의2', '별표1. 직책별 한도' → '별표1'.
 
     `attrs["article_no"]`는 정수라 `의2`를 잃는다. 인용 문자열이 '제55조'가 되면
     실제 제55조와 구별되지 않으므로, 표기는 헤딩 텍스트에서 다시 뽑는다.
+
+    **별표를 빠뜨리면 인용이 문서명뿐이 된다.** `법인카드_사용규정 별표1`이어야 할 것이
+    `법인카드_사용규정`으로만 나와 회계 담당자가 어느 별표인지 알 수 없다 — 한 문서에
+    별표가 여럿이면 근거를 특정하지 못한다.
     """
     m = ARTICLE_LABEL.match(text.strip())
     if m:
         return f"제{m.group(1)}조의{m.group(2)}" if m.group(2) else f"제{m.group(1)}조"
+    if (a := ANNEX_NUMBERED.match(text.strip())):
+        return f"{a.group(1)}{a.group(2)}" if a.group(2) else a.group(1)
     return f"제{article_no}조" if article_no is not None else None
 
 
