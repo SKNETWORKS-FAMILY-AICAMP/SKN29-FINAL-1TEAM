@@ -1,0 +1,36 @@
+{
+  "vector_db": "Chroma",
+  "distance": "cosine",
+  "collection_config": {
+    "hnsw:space": "cosine"
+  },
+  "embedding": {
+    "provider": "OpenAI",
+    "model": "text-embedding-3-large",
+    "dim": 1024,
+    "dimensions_param": 1024,
+    "pooling": null,
+    "normalize": true,
+    "max_tokens": null,
+    "batch_size": 128,
+    "document_input": "B_heading",
+    "query_input": "Q_ctx"
+  },
+  "collections": {
+    "policy_docs": 90,
+    "미정(DIAGRAM 등)": 48,
+    "tax_refs": 661
+  },
+  "upsert_contract": {
+    "ids": "Chunk.chunk_id",
+    "documents": "Chunk.context_text()   # LLM에 주는 전문",
+    "embeddings": "직접 계산한 벡터 (Chunk.embedding_text() 기반)",
+    "metadatas": "Chunk.to_chroma()[2]  # 스칼라만",
+    "주의": "컬렉션에 embedding_function 을 맡기지 말 것 — 임베딩 텍스트와 저장 문서가 다르다"
+  },
+  "search_contract": {
+    "1_filter": "where={\"chunk_role\": {\"$ne\": \"parent\"}}",
+    "2_expand": "히트의 parent_chunk_id 로 부모 본문을 붙여 LLM 컨텍스트 구성",
+    "3_neighbor": "필요 시 prev/next_chunk_id 로 이웃 1개씩"
+  }
+}

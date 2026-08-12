@@ -1,0 +1,10 @@
+﻿,mrr,mrr,mrr,recall@5,recall@5,recall@5
+input_strategy,B_heading,D_table_nl,E_table_kv,B_heading,D_table_nl,E_table_kv
+model,,,,,,
+3-large,0.938,0.938,0.875,1.0,1.0,1.0
+3-large@1024,0.938,0.938,0.875,1.0,1.0,1.0
+3-large@256,0.917,0.875,0.875,1.0,1.0,1.0
+3-small,0.854,0.917,0.917,1.0,1.0,1.0
+bge-m3,1.0,0.938,1.0,1.0,1.0,1.0
+ko-sroberta,0.938,0.938,1.0,1.0,1.0,1.0
+mini-lm,0.604,0.708,0.667,0.75,0.875,0.75

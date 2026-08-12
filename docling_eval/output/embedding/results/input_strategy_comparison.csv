@@ -1,0 +1,6 @@
+﻿input_strategy,전략,mrr(평균),recall@1(평균),recall@5(평균),최고 모델,입력 토큰(중앙)
+E_table_kv,Hybrid (헤더 반복),0.8121,0.6786,0.9191,bge-m3,215
+B_heading,Heading + Content,0.8096,0.6786,0.9191,3-large@1024,215
+D_table_nl,Table-aware (행 자연어),0.8071,0.6762,0.9238,3-large@1024,215
+C_metadata,Metadata + Content,0.7743,0.6333,0.8738,bge-m3,213
+A_content,Content Only,0.7601,0.6143,0.8738,bge-m3,155

@@ -1,0 +1,8 @@
+﻿key,model_id,provider,역할,local/API,dim,dimensions 요청,max_tokens,pooling,status,note
+3-large,text-embedding-3-large,OpenAI,candidate,API,,,,N/A,실행,네이티브 차원
+3-large@1024,text-embedding-3-large,OpenAI,candidate,API,1024.0,1024.0,,N/A,실행,차원 축소
+3-large@256,text-embedding-3-large,OpenAI,candidate,API,256.0,256.0,,N/A,실행,차원 축소
+3-small,text-embedding-3-small,OpenAI,candidate,API,,,,N/A,실행,네이티브 차원
+bge-m3,BAAI/bge-m3,BAAI,baseline,local,1024.0,,1024.0,cls,실행,기준선 · 다국어 검색 전용. 공식 안내상 dense 검색에 instruction 불필요
+ko-sroberta,jhgan/ko-sroberta-multitask,jhgan,baseline,local,768.0,,128.0,mean,실행,기준선 · 한국어 전용 SBERT
+mini-lm,sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2,sentence-transformers,baseline,local,384.0,,128.0,mean,실행,기준선 · 경량 다국어

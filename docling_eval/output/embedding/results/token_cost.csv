@@ -1,0 +1,5 @@
+﻿model,model_id,dim,이번 실행 토큰,운영 1회 인덱싱 토큰(전략 1개),$/1M,이번 실행 비용
+3-large,text-embedding-3-large,3072,1839427,306566,N/A,N/A
+3-small,text-embedding-3-small,1536,1839427,306566,N/A,N/A
+3-large@256,text-embedding-3-large,256,1839427,306566,N/A,N/A
+3-large@1024,text-embedding-3-large,1024,1839427,306566,N/A,N/A

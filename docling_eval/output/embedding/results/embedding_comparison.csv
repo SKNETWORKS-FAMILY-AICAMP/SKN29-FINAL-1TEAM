@@ -1,0 +1,8 @@
+﻿model,dim,recall@1,recall@5,mrr,table recall@5,최약 질의유형(MRR),texts/sec,cost,비고
+3-large,3072,0.8,0.95,0.911,1.0,numeric 0.70,47.0,N/A (단가 미입력),"최적 입력=E_table_kv, 질의=Q_norm"
+3-large@1024,1024,0.817,0.967,0.906,1.0,numeric 0.67,73.5,N/A (단가 미입력),"최적 입력=D_table_nl, 질의=Q_ctx"
+3-large@256,256,0.717,0.933,0.821,1.0,numeric 0.49,88.6,N/A (단가 미입력),"최적 입력=D_table_nl, 질의=Q_ctx"
+3-small,1536,0.65,0.883,0.782,1.0,multi 0.64,62.4,N/A (단가 미입력),"최적 입력=A_content, 질의=Q_ctx"
+bge-m3,1024,0.833,0.95,0.933,1.0,numeric 0.73,695.9,자체 서빙 (GPU),"최적 입력=E_table_kv, 질의=Q_ctx"
+ko-sroberta,768,0.75,0.967,0.862,1.0,numeric 0.70,2011.6,자체 서빙 (GPU),"최적 입력=E_table_kv, 질의=Q_raw"
+mini-lm,384,0.45,0.767,0.614,0.75,numeric 0.27,2601.0,자체 서빙 (GPU),"최적 입력=E_table_kv, 질의=Q_raw"
