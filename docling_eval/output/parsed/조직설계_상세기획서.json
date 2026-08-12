@@ -1,0 +1,3724 @@
+{
+  "doc_id": "dump:조직설계_상세기획서",
+  "name": "조직설계_상세기획서",
+  "profile": "DIAGRAM",
+  "meta": {},
+  "parser_version": "docling-dump",
+  "report": {
+    "profile": "DIAGRAM",
+    "applied_steps": [
+      "C1",
+      "C6",
+      "C3",
+      "C2",
+      "C5"
+    ],
+    "skipped_steps": {
+      "C4": "프로파일 미적용",
+      "C7": "도해형 — 문서번호·시행일 체계 없음"
+    },
+    "corrections_count": {
+      "C1": 26,
+      "C6": 0,
+      "C3": 0,
+      "C2": 1,
+      "C5": 5
+    },
+    "dropped_elements": [],
+    "warnings": [],
+    "scores": null
+  },
+  "elements": [
+    {
+      "element_id": "조직설계_상세기획서:p1:e1",
+      "type": "paragraph",
+      "text": "타이거주식회사(TigerInc.)",
+      "page": 1,
+      "order": 0,
+      "level": null,
+      "bbox": [
+        206.1,
+        546.0,
+        387.6,
+        531.9
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p1:e2",
+      "type": "heading",
+      "text": "조직설계 상세 기획서",
+      "page": 1,
+      "order": 1,
+      "level": 1,
+      "bbox": [
+        168.5,
+        463.9,
+        422.8,
+        438.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p1:e3",
+      "type": "paragraph",
+      "text": "B2B SaaS / AI / 클라우드 / 데이터 플랫폼 중견 IT기업 조직 설계안",
+      "page": 1,
+      "order": 2,
+      "level": null,
+      "bbox": [
+        146.8,
+        347.9,
+        448.6,
+        337.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p1:e4",
+      "type": "paragraph",
+      "text": "내부참고문서",
+      "page": 1,
+      "order": 3,
+      "level": null,
+      "bbox": [
+        262.0,
+        314.1,
+        330.7,
+        304.9
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e6",
+      "type": "heading",
+      "text": "1. 회사 소개",
+      "page": 2,
+      "order": 4,
+      "level": 1,
+      "bbox": [
+        262.2,
+        717.1,
+        333.0,
+        703.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e7",
+      "type": "table",
+      "text": "| 항목 | 내용 |\n|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|\n| 회사명 | 타이거 주식회사 (Tiger Inc.) |\n| 업종 | B2B SaaS / AI / 클라우드 / 데이터 플랫폼 |\n| 설립연도 | 2015년 (설립 12년 차, 중견기업) |\n| 임직원 수 | 약 1,050명 |\n| 연매출|약 1,200억원 (연결 기준, 가정치) |\n| 본사 위치 | 서울 판교 테크노밸리 |\n| 주요 사업 | ① 기업용 생성형 AI 플랫폼(LLM 기반 업무자동화 솔루션), ② 클라우드 인프라/DevOps 플랫폼, ③ 데이터 분석·통합 SaaS, ④ 공공·금융권 대상 B2B 플랫폼 구축 |\n| 기업 특징 | 사업본부별 독립 손익 운영(BU제) 체제로 각 본부장이 매출·비용에 대한 책임을 지며, 영업/고객성 공 조직은 출장·대면영업이 잦고 AI/클라우드 조직은 GPU·클라우드 종량제 비용이 크다는 점에서 조직마다 비용구조가 뚜렷이 다름. AI사업본부와 플랫폼사업본부 사이에는 인프라 운영을 공동 수행 하는 매트릭스(점선보고) 협업 라인이 존재하며, 전사 의사결정은 CEO 직속 경영회의체와 감사실의 독립적 통제 기능이 병행되는 구조 |",
+      "page": 2,
+      "order": 5,
+      "level": null,
+      "bbox": [
+        61.7,
+        671.9,
+        533.5,
+        338.7
+      ],
+      "attrs": {
+        "rows": 9,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e8",
+      "type": "paragraph",
+      "text": "중견기업 판정 근거: 정보통신업(소프트웨어 개발 및 공급업 등)의 중소기업 매출액 기준은 약 800억원 이하이나, 타이거 주식 회사의 연 매출(약 1,200억원)은 이를 명확히 초과함. 따라서 「중소기업기본법」상 중소기업 요건에 해당하지 않으며, 상시 근로자 수(약 1,050명)와 함께 고려할 때 중견기업으로 분류된다.",
+      "page": 2,
+      "order": 6,
+      "level": null,
+      "bbox": [
+        78.9,
+        316.1,
+        520.4,
+        278.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e5",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 2,
+      "order": 7,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e9",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 2,
+      "order": 8,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p2:e10",
+      "type": "footer",
+      "text": "-2/12-",
+      "page": 2,
+      "order": 9,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e12",
+      "type": "heading",
+      "text": "2. 조직도",
+      "page": 3,
+      "order": 10,
+      "level": 1,
+      "bbox": [
+        269.9,
+        756.8,
+        325.3,
+        743.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e13",
+      "type": "figure",
+      "text": "<picture>",
+      "page": 3,
+      "order": 11,
+      "level": null,
+      "bbox": [
+        61.3,
+        711.8,
+        532.8,
+        137.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e14",
+      "type": "paragraph",
+      "text": "본부 구성 요약: 경영지원본부·AI사업본부·플랫폼사업본부·영업본부·전략기획본부 5개 사업/기능 본부 + CEO 직속 감사실(독립 통제기구) 1개. 부서는 15개 부/실 + 감사실 1개로 총 16개 부서이며, 그 아래 총 27 개 팀 단위 조직으로 구성된다.",
+      "page": 3,
+      "order": 12,
+      "level": null,
+      "bbox": [
+        62.6,
+        120.2,
+        532.5,
+        76.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e11",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 3,
+      "order": 13,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e15",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 3,
+      "order": 14,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p3:e16",
+      "type": "footer",
+      "text": "-3/12-",
+      "page": 3,
+      "order": 15,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e32",
+      "type": "heading",
+      "text": "3. 조직 설계 포인트",
+      "page": 4,
+      "order": 16,
+      "level": 1,
+      "bbox": [
+        239.8,
+        716.6,
+        355.3,
+        703.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e18",
+      "type": "heading",
+      "text": "본부 분리 이유",
+      "page": 4,
+      "order": 17,
+      "level": 1,
+      "bbox": [
+        62.6,
+        666.9,
+        127.0,
+        656.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e19",
+      "type": "list_item",
+      "text": "-경영지원본부: 인사·재무·총무·법무·IT운영 등 전사 공통 기능을 하나로 묶어 각 사업본부가 본연의 사업 (개발·영업)에 집중할 수 있도록 지원 기능을 분리. 단, 본부 산하는 \"부 → 팀\" 2단계로 단순화하여 별도 본부장 없이 부서장이 실무 최종 승인권자 역할을 하도록 설계(결재 신속성 확보).",
+      "page": 4,
+      "order": 18,
+      "level": null,
+      "bbox": [
+        62.6,
+        650.2,
+        532.6,
+        605.7
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e20",
+      "type": "list_item",
+      "text": "-AI사업본부 / 플랫폼사업본부 분리: 두 본부 모두 기술 조직이지만, AI사업본부는 LLM·AI서비스 등 \"제 품/모델\" 중심 조직이고 플랫폼사업본부는 \"인프라/SaaS 플랫폼\" 중심 조직으로 목적함수가 다름. 이를 하나의 본부로 묶으면 자원 배분(연구개발 vs 인프라 안정성) 우선순위 충돌이 잦아지므로 분리하고, 대신 인프라 공동사용 지점(GPU/클라우드)은 매트릭스 협업으로 보완.",
+      "page": 4,
+      "order": 19,
+      "level": null,
+      "bbox": [
+        62.6,
+        600.1,
+        532.9,
+        538.9
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e21",
+      "type": "list_item",
+      "text": "-영업본부: Enterprise·공공·고객성공을 하나의 본부로 묶어 \"수주 이전(영업)\"과 \"수주 이후(고객성공)\"를 한 지휘체계 아래 두어 고객 경험의 연속성을 확보.",
+      "page": 4,
+      "order": 20,
+      "level": null,
+      "bbox": [
+        62.6,
+        533.4,
+        532.7,
+        506.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e22",
+      "type": "list_item",
+      "text": "-전략기획본부: 중장기 전략·신사업·PMO를 하나로 묶어 각 사업본부의 개별 최적화가 전사 전략과 어긋나 지 않도록 조율하는 컨트롤타워 역할.",
+      "page": 4,
+      "order": 21,
+      "level": null,
+      "bbox": [
+        62.8,
+        500.0,
+        532.8,
+        473.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e23",
+      "type": "heading",
+      "text": "기능별 조직 구성 이유",
+      "page": 4,
+      "order": 22,
+      "level": 1,
+      "bbox": [
+        63.1,
+        459.3,
+        159.5,
+        449.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e24",
+      "type": "list_item",
+      "text": "기술 조직(AI사업본부·플랫폼사업본부)은 실제 업무 단위가 세분화되어 있어 \"부 → 팀\"이 3~4개 팀으로 나뉘고, 영업·전략 조직은 기능 중심(영업/고객성공, 전략/신사업)으로 상대적으로 단순하게 구성 — 실제 국내 중견 IT기업의 전형적 형태를 반영.",
+      "page": 4,
+      "order": 23,
+      "level": null,
+      "bbox": [
+        62.6,
+        442.5,
+        532.7,
+        399.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e25",
+      "type": "heading",
+      "text": "협업 구조",
+      "page": 4,
+      "order": 24,
+      "level": 1,
+      "bbox": [
+        62.8,
+        385.2,
+        104.6,
+        375.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e26",
+      "type": "list_item",
+      "text": "AI사업본부 MLOps팀과 플랫폼사업본부 클라우드부는 점선보고(매트릭스) 관계로, 공식 소속은 AI사업 본부이나 GPU·클라우드 리소스 운영은 클라우드부와 공동 수행. 이런 구조는 \"신청 조직 = 실사용 조직\"이 항상 일치하지는 않는 예외 케이스를 만들어내며, 비용귀속·정산 프로세스 설계 시 별도 규정이 필요.",
+      "page": 4,
+      "order": 25,
+      "level": null,
+      "bbox": [
+        62.6,
+        368.5,
+        531.4,
+        324.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e27",
+      "type": "heading",
+      "text": "의사결정 구조",
+      "page": 4,
+      "order": 26,
+      "level": 1,
+      "bbox": [
+        62.7,
+        311.1,
+        124.5,
+        301.0
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e28",
+      "type": "list_item",
+      "text": "CEO 직속 경영회의체(본부장급 협의체)가 전사 의사결정의 중심이며, 감사실은 보고라인상 CEO 직속이 지만 실질적으로는 경영진 견제 목적의 독립 기능으로 운영(감사 대상에 경영진 의사결정도 포함).",
+      "page": 4,
+      "order": 27,
+      "level": null,
+      "bbox": [
+        62.8,
+        294.4,
+        531.3,
+        266.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e29",
+      "type": "list_item",
+      "text": "금액/사안별로 팀장 → 부서장 → 본부장 → CEO로 이어지는 단계적 위임전결 구조를 기본으로 하되, 본부장이 없는 경영지원본부는 부서장 전결 또는 CEO 직접 결재로 대체.",
+      "page": 4,
+      "order": 28,
+      "level": null,
+      "bbox": [
+        62.6,
+        260.9,
+        532.6,
+        234.1
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e30",
+      "type": "heading",
+      "text": "조직 운영 특징",
+      "page": 4,
+      "order": 29,
+      "level": 1,
+      "bbox": [
+        62.6,
+        220.3,
+        125.8,
+        210.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e31",
+      "type": "list_item",
+      "text": "사업본부별 독립 손익(BU) 운영으로 본부장에게 예산·인력 운용의 상당한 재량이 주어지되, 전사 공통 리 스크(법무·보안·감사)는 경영지원본부·감사실이 횡단적으로 통제.",
+      "page": 4,
+      "order": 30,
+      "level": null,
+      "bbox": [
+        62.6,
+        203.5,
+        531.2,
+        175.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e17",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 4,
+      "order": 31,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e33",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 4,
+      "order": 32,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p4:e34",
+      "type": "footer",
+      "text": "-4/12-",
+      "page": 4,
+      "order": 33,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p5:e36",
+      "type": "heading",
+      "text": "4. 부서 소개",
+      "page": 5,
+      "order": 34,
+      "level": 1,
+      "bbox": [
+        261.3,
+        756.8,
+        333.0,
+        743.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p5:e37",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 5,
+      "order": 35,
+      "level": null,
+      "bbox": [
+        61.4,
+        711.6,
+        533.4,
+        96.1
+      ],
+      "attrs": {
+        "rows": 89,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          5,
+          6
+        ],
+        "continued_from": "조직설계_상세기획서:p5:e37",
+        "split_on_chunk": true
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p5:e35",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 5,
+      "order": 36,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p5:e38",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 5,
+      "order": 37,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p5:e39",
+      "type": "footer",
+      "text": "-5/12-",
+      "page": 5,
+      "order": 38,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e42",
+      "type": "heading",
+      "text": "5. 조직 운영 체계",
+      "page": 6,
+      "order": 39,
+      "level": 1,
+      "bbox": [
+        246.4,
+        361.3,
+        348.0,
+        347.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e43",
+      "type": "heading",
+      "text": "보고 체계",
+      "page": 6,
+      "order": 40,
+      "level": 1,
+      "bbox": [
+        62.6,
+        311.5,
+        103.7,
+        301.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e44",
+      "type": "list_item",
+      "text": "기본 라인: 팀원 → 팀장 → 부서장 → 본부장 → CEO. 경영지원본부는 본부장이 없어 부서장이 CEO에 직 보.",
+      "page": 6,
+      "order": 41,
+      "level": null,
+      "bbox": [
+        62.6,
+        294.8,
+        531.3,
+        269.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e45",
+      "type": "list_item",
+      "text": "감사실은 CEO 직속이나 예산·인사 평가에서 경영지원본부와 분리 운영하여 독립성을 확보(경영진에 대한 견제 기능 유지).",
+      "page": 6,
+      "order": 42,
+      "level": null,
+      "bbox": [
+        62.8,
+        261.4,
+        532.8,
+        233.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e46",
+      "type": "heading",
+      "text": "의사결정 구조",
+      "page": 6,
+      "order": 43,
+      "level": 1,
+      "bbox": [
+        62.7,
+        220.7,
+        124.5,
+        210.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e47",
+      "type": "list_item",
+      "text": "주요 경영 의사결정은 CEO 주재 월간 경영회의(본부장급 참석)에서 결정. 예산·인력 등 본부 내 사안은 본부장 전결, 전사 정책·규정 변경은 CEO 결재.",
+      "page": 6,
+      "order": 44,
+      "level": null,
+      "bbox": [
+        62.6,
+        204.1,
+        532.7,
+        176.6
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e48",
+      "type": "list_item",
+      "text": "금액/리스크 기준의 단계적 위임전결 체계를 운영하며, 일정 기준 이상 사안은 관련 부서(법무, 재무 등)의 사전 검토를 거침.",
+      "page": 6,
+      "order": 45,
+      "level": null,
+      "bbox": [
+        62.6,
+        170.6,
+        531.3,
+        143.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e49",
+      "type": "heading",
+      "text": "프로젝트 운영 방식",
+      "page": 6,
+      "order": 46,
+      "level": 1,
+      "bbox": [
+        62.6,
+        129.9,
+        145.8,
+        119.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e50",
+      "type": "list_item",
+      "text": "기술 조직(AI사업본부·플랫폼사업본부)은 2주 단위 스프린트 기반 애자일 방식으로 운영, PMO실이 전사 프로젝트 현황을 통합 관리.",
+      "page": 6,
+      "order": 47,
+      "level": null,
+      "bbox": [
+        62.6,
+        113.2,
+        532.8,
+        86.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e40",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 6,
+      "order": 48,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e51",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 6,
+      "order": 49,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p6:e52",
+      "type": "footer",
+      "text": "-6/12-",
+      "page": 6,
+      "order": 50,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e54",
+      "type": "list_item",
+      "text": "영업/공공사업 등 수주형 프로젝트는 제안 → 계약 → 수행 → 검수의 워터폴형 마일스톤 관리 방식을 병 행.",
+      "page": 7,
+      "order": 51,
+      "level": null,
+      "bbox": [
+        62.7,
+        758.6,
+        531.4,
+        731.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e55",
+      "type": "heading",
+      "text": "협업 방식",
+      "page": 7,
+      "order": 52,
+      "level": 1,
+      "bbox": [
+        62.8,
+        718.0,
+        103.4,
+        707.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e56",
+      "type": "list_item",
+      "text": "공식 조직도상 소속과 별개로 매트릭스(점선보고) 협업 라인(예: MLOps팀-클라우드부)을 운영하여 인프 라·리소스 이슈에 대한 실무 공동 대응 체계를 갖춤.",
+      "page": 7,
+      "order": 53,
+      "level": null,
+      "bbox": [
+        62.8,
+        701.2,
+        532.6,
+        674.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e57",
+      "type": "list_item",
+      "text": "부서 간 이슈는 담당자 간 실무 협의를 우선으로 하되, 이견 발생 시 상위 부서장/본부장 레벨에서 조정.",
+      "page": 7,
+      "order": 54,
+      "level": null,
+      "bbox": [
+        62.8,
+        667.8,
+        515.4,
+        657.1
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e58",
+      "type": "heading",
+      "text": "회의 문화",
+      "page": 7,
+      "order": 55,
+      "level": 1,
+      "bbox": [
+        62.7,
+        643.8,
+        104.7,
+        633.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e59",
+      "type": "list_item",
+      "text": "주간 팀 단위 스탠드업/주간회의, 월간 본부 단위 실적/이슈 리뷰, 분기 단위 전사 타운홀을 기본 리듬으로 운영.",
+      "page": 7,
+      "order": 56,
+      "level": null,
+      "bbox": [
+        62.6,
+        627.2,
+        532.6,
+        600.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e60",
+      "type": "list_item",
+      "text": "안건 중심의 짧은 회의를 지향하며, 의사결정이 필요한 회의는 사전에 결정사항·데드라인을 명시한 안건지 를 공유.",
+      "page": 7,
+      "order": 57,
+      "level": null,
+      "bbox": [
+        62.6,
+        593.7,
+        531.3,
+        567.0
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e61",
+      "type": "heading",
+      "text": "권한과 책임 원칙",
+      "page": 7,
+      "order": 58,
+      "level": 1,
+      "bbox": [
+        62.7,
+        553.0,
+        135.8,
+        542.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e62",
+      "type": "list_item",
+      "text": "본부장에게는 예산·인력 운영에 대한 실질적 재량을, 반면 법무·보안·회계 등 전사 리스크 영역은 경영지원 본부·감사실이 통제권을 가지는 \"사업 재량 + 리스크 중앙통제\"의 이원 구조.",
+      "page": 7,
+      "order": 59,
+      "level": null,
+      "bbox": [
+        62.6,
+        536.3,
+        532.0,
+        509.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e63",
+      "type": "list_item",
+      "text": "결재자는 승인 행위에 대한 책임을 지며, 반려 시 사유 명시 의무를 가짐.",
+      "page": 7,
+      "order": 60,
+      "level": null,
+      "bbox": [
+        62.8,
+        502.9,
+        381.8,
+        492.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e64",
+      "type": "heading",
+      "text": "6. 직급 체계",
+      "page": 7,
+      "order": 61,
+      "level": 1,
+      "bbox": [
+        261.8,
+        424.4,
+        333.1,
+        410.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e65",
+      "type": "paragraph",
+      "text": "국내 IT기업의 일반적 관행에 따라 직급(연차/근속 기반 호칭)과 직책(팀장/부서장/본부장 등 보직)을 분리 운영한다.",
+      "page": 7,
+      "order": 62,
+      "level": null,
+      "bbox": [
+        79.0,
+        369.4,
+        487.0,
+        360.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e66",
+      "type": "heading",
+      "text": "직급·직책 운영 원칙",
+      "page": 7,
+      "order": 63,
+      "level": 1,
+      "bbox": [
+        63.1,
+        334.5,
+        149.2,
+        324.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e67",
+      "type": "list_item",
+      "text": "결재 권한 및 법인카드 사용한도는 직책 기준으로 부여한다(직급 기준이 아니다).",
+      "page": 7,
+      "order": 64,
+      "level": null,
+      "bbox": [
+        63.1,
+        317.8,
+        424.7,
+        306.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e68",
+      "type": "list_item",
+      "text": "급여·승진 등 처우는 직급 기준으로 결정한다.",
+      "page": 7,
+      "order": 65,
+      "level": null,
+      "bbox": [
+        63.0,
+        301.1,
+        272.1,
+        290.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e69",
+      "type": "list_item",
+      "text": "임원(이사~대표이사)은 예외로, 직급과 직책이 사실상 일치하는 것으로 간주한다.",
+      "page": 7,
+      "order": 66,
+      "level": null,
+      "bbox": [
+        62.8,
+        284.4,
+        430.1,
+        273.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e70",
+      "type": "list_item",
+      "text": "직책이 변경된 경우 결재권·카드한도는 발령일부터 적용한다.",
+      "page": 7,
+      "order": 67,
+      "level": null,
+      "bbox": [
+        62.7,
+        267.7,
+        341.7,
+        257.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e71",
+      "type": "heading",
+      "text": "6-1. 직급표",
+      "page": 7,
+      "order": 68,
+      "level": 2,
+      "bbox": [
+        62.9,
+        232.0,
+        116.8,
+        221.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e72",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 7,
+      "order": 69,
+      "level": null,
+      "bbox": [
+        61.7,
+        210.4,
+        533.4,
+        94.5
+      ],
+      "attrs": {
+        "rows": 29,
+        "cols": 4,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          7,
+          8
+        ],
+        "continued_from": "조직설계_상세기획서:p7:e72"
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e53",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 7,
+      "order": 70,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e73",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 7,
+      "order": 71,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p7:e74",
+      "type": "footer",
+      "text": "-7/12-",
+      "page": 7,
+      "order": 72,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p8:e75",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 8,
+      "order": 73,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p8:e77",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 8,
+      "order": 74,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p8:e78",
+      "type": "footer",
+      "text": "-8/12-",
+      "page": 8,
+      "order": 75,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e80",
+      "type": "table",
+      "text": "| 직급 | 역할 | 책임 | 보임 가능 직책 |\n|---------------|-----------------------------------|--------------------------------|-----------------------|\n| 이사 | 본부 내 사업/기능 총괄 보좌 | 본부 전략 실행, 대외 협상 | 부서장, 본부장 대행 |\n| 상무 | 사업본부 총괄 | 본부 손익, 인력·예산 운영 전권 | 본부장 |\n| 전무 | 복수 본부 총괄 또는 CEO 직속 임원 | 전사 전략 방향 수립 참여 | 본부장, 복수본부 총괄 |\n| 대표이사(CEO) | 회사 경영 총괄 | 전사 경영성과, 대외 대표 | 대표이사(해당 없음) |",
+      "page": 9,
+      "order": 76,
+      "level": null,
+      "bbox": [
+        61.6,
+        763.5,
+        533.4,
+        619.0
+      ],
+      "attrs": {
+        "rows": 5,
+        "cols": 4,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e81",
+      "type": "heading",
+      "text": "6-2. 직책별 결재권",
+      "page": 9,
+      "order": 77,
+      "level": 2,
+      "bbox": [
+        62.9,
+        596.3,
+        150.2,
+        585.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e82",
+      "type": "paragraph",
+      "text": "금액 기준은 이 표에서 다루지 않으며, 「법인카드 사용 규정」 별표1에서 관리한다.",
+      "page": 9,
+      "order": 78,
+      "level": null,
+      "bbox": [
+        79.0,
+        564.9,
+        372.6,
+        555.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e83",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 9,
+      "order": 79,
+      "level": null,
+      "bbox": [
+        61.6,
+        534.5,
+        533.4,
+        300.4
+      ],
+      "attrs": {
+        "rows": 22,
+        "cols": 3,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          9,
+          9
+        ],
+        "continued_from": "조직설계_상세기획서:p9:e83"
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e84",
+      "type": "heading",
+      "text": "7. 조직 간 협업 구조",
+      "page": 9,
+      "order": 80,
+      "level": 1,
+      "bbox": [
+        238.5,
+        234.4,
+        357.0,
+        220.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e79",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 9,
+      "order": 81,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e86",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 9,
+      "order": 82,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p9:e87",
+      "type": "footer",
+      "text": "-9/12-",
+      "page": 9,
+      "order": 83,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p10:e89",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 10,
+      "order": 84,
+      "level": null,
+      "bbox": [
+        61.6,
+        763.3,
+        533.4,
+        619.4
+      ],
+      "attrs": {
+        "rows": 31,
+        "cols": 3,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          10,
+          11
+        ],
+        "continued_from": "조직설계_상세기획서:p10:e89"
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p10:e88",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 10,
+      "order": 85,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p10:e90",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 10,
+      "order": 86,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p10:e91",
+      "type": "footer",
+      "text": "- 10 / 12 -",
+      "page": 10,
+      "order": 87,
+      "level": null,
+      "bbox": [
+        280.2,
+        38.6,
+        315.1,
+        30.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p11:e94",
+      "type": "heading",
+      "text": "8. 조직 특징 요약",
+      "page": 11,
+      "order": 88,
+      "level": 1,
+      "bbox": [
+        246.7,
+        495.0,
+        348.8,
+        481.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p11:e95",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 11,
+      "order": 89,
+      "level": null,
+      "bbox": [
+        61.5,
+        449.8,
+        533.4,
+        290.5
+      ],
+      "attrs": {
+        "rows": 17,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          11,
+          12
+        ],
+        "continued_from": "조직설계_상세기획서:p11:e95"
+      }
+    },
+    {
+      "element_id": "조직설계_상세기획서:p11:e92",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 11,
+      "order": 90,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p11:e96",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 11,
+      "order": 91,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p11:e97",
+      "type": "footer",
+      "text": "- 11 / 12 -",
+      "page": 11,
+      "order": 92,
+      "level": null,
+      "bbox": [
+        280.2,
+        38.6,
+        315.1,
+        30.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p12:e98",
+      "type": "header",
+      "text": "타이거 주식회사 조직설계 상세 기획서",
+      "page": 12,
+      "order": 93,
+      "level": null,
+      "bbox": [
+        232.0,
+        811.6,
+        362.9,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p12:e100",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 12,
+      "order": 94,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직설계_상세기획서:p12:e101",
+      "type": "footer",
+      "text": "- 12 / 12 -",
+      "page": 12,
+      "order": 95,
+      "level": null,
+      "bbox": [
+        280.2,
+        38.6,
+        315.1,
+        30.2
+      ],
+      "attrs": {}
+    }
+  ]
+}

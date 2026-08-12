@@ -1,0 +1,191 @@
+{
+  "Document": "부서소개",
+  "Table": 8,
+  "Page": 4,
+  "Rows": 7,
+  "Cols": 3,
+  "Cells": 19,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 2,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "조직 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 대상 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 목적"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 2,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI사업본부"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼사업본부(클라우드 부)"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적 화"
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객 제안 시 기술 검증(PoC) 및 기술영업 지원"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼사업본부 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부(고객성공부) "
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼 장애·개선 요청 대응, 고객 피드백 반영"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 2,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부"
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "경영지원본부(법무부) "
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계약서 검토, 조건 협상 리스크 점검"
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전략기획본부 "
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "신규 산업군 진출 시 시장성 검토, 사업기획 협업"
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전략기획본부 "
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전 사업본부 "
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "중기 전략·연간 사업계획 수립 시 본부별 목표 조율"
+    }
+  ],
+  "markdown": "| 조직           | 협업 대상                   | 협업 목적                                             |\n|----------------|-----------------------------|-------------------------------------------------------|\n| AI사업본부     | 플랫폼사업본부(클라우드 부) | GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적 화 |\n| AI사업본부     | 영업본부                    | 고객 제안 시 기술 검증(PoC) 및 기술영업 지원          |\n| 플랫폼사업본부 | 영업본부(고객성공부)        | 플랫폼 장애·개선 요청 대응, 고객 피드백 반영          |\n| 영업본부       | 경영지원본부(법무부)        | 계약서 검토, 조건 협상 리스크 점검                    |\n| 영업본부       | 전략기획본부                | 신규 산업군 진출 시 시장성 검토, 사업기획 협업        |\n| 전략기획본부   | 전 사업본부                 | 중기 전략·연간 사업계획 수립 시 본부별 목표 조율      |"
+}

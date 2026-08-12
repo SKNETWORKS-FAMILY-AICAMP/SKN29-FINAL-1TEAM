@@ -1,0 +1,290 @@
+{
+  "Document": "회식_운영규정",
+  "Table": 9,
+  "Page": 9,
+  "Rows": 6,
+  "Cols": 5,
+  "Cells": 30,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "회식 유형 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "개최 권한 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1차 승인 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "최종 승인(사전승인 대상 시) "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "사전승인 트 리거"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "프로젝트 회식"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장(TF의 경우 소속 부 서장이 지정 한 팀장급 담 당자)"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장(본인 사용 시 부 서장)"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "30만원 초 과, 야간·주 말, 외부인 (파트너) 참 석"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "워크숍 식사 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "주관 부서장 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장 "
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장(워크숍 행사 전체 사전승인에 포함)"
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "워크숍 자체 가 사전승인 대상이므로 별도 트리거 없음(제4조 준용)"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "환영회/송별회 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 또는 부 서장"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장(본인 사용 시 부 서장)"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀 회식과 동 일(30만원 초과, 야간· 주말)"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "성과 달성 축하 회식"
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 또는 부 서장"
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "해당 조직 장(본인 사 용 시 상위 승인권자)"
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장(거래처 동석 시 아래 거래처 동반 회식 기 준 적용)"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "30만원 초 과, 야간·주 말, 거래처 동석 시 외부 인 참석 트리 거"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "거래처 동반 회식 "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 이상 "
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "해당 조직 승인권자"
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "「기업업무추진비 사용 규정」제6조의 금액 구간 별 승인권자 — 외부인 참석 시 금액과 무관하게 사전승인이 필수이므로 30만원 이하도 부서장 승 인을 받아야 함(사후등록 특례 미적용). 30만원 이 하·30만원 초과~100만원 이하 부서장/100만원 초과~300만원 이하 본부장 이상/300만원 초과 대 표이사"
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "외부인 참석 자체가 트리 거(금액 무 관)"
+    }
+  ],
+  "markdown": "| 회식 유형           | 개최 권한                                             | 1차 승인                                  | 최종 승인(사전승인 대상 시)                                                                                                                                                                                                                                                              | 사전승인 트 리거                                                |\n|---------------------|-------------------------------------------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|\n| 프로젝트 회식       | 팀장(TF의 경우 소속 부 서장이 지정 한 팀장급 담 당자) | 팀장(본인 사용 시 부 서장)                | 부서장                                                                                                                                                                                                                                                                                   | 30만원 초 과, 야간·주 말, 외부인 (파트너) 참 석                 |\n| 워크숍 식사         | 주관 부서장                                           | 부서장                                    | 본부장(워크숍 행사 전체 사전승인에 포함)                                                                                                                                                                                                                                                 | 워크숍 자체 가 사전승인 대상이므로 별도 트리거 없음(제4조 준용) |\n| 환영회/송별회       | 팀장 또는 부 서장                                     | 팀장(본인 사용 시 부 서장)                | 부서장                                                                                                                                                                                                                                                                                   | 팀 회식과 동 일(30만원 초과, 야간· 주말)                        |\n| 성과 달성 축하 회식 | 팀장 또는 부 서장                                     | 해당 조직 장(본인 사 용 시 상위 승인권자) | 부서장(거래처 동석 시 아래 거래처 동반 회식 기 준 적용)                                                                                                                                                                                                                                  | 30만원 초 과, 야간·주 말, 거래처 동석 시 외부 인 참석 트리 거   |\n| 거래처 동반 회식    | 팀장 이상                                             | 해당 조직 승인권자                        | 「기업업무추진비 사용 규정」제6조의 금액 구간 별 승인권자 — 외부인 참석 시 금액과 무관하게 사전승인이 필수이므로 30만원 이하도 부서장 승 인을 받아야 함(사후등록 특례 미적용). 30만원 이 하·30만원 초과~100만원 이하 부서장/100만원 초과~300만원 이하 본부장 이상/300만원 초과 대 표이사 | 외부인 참석 자체가 트리 거(금액 무 관)                          |"
+}

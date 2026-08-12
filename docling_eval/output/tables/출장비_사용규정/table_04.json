@@ -1,0 +1,110 @@
+{
+  "Document": "출장비_사용규정",
+  "Table": 4,
+  "Page": 6,
+  "Rows": 2,
+  "Cols": 5,
+  "Cells": 10,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "등급 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "대상 지역(예 시) "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "항공권 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1일 숙박비 상 한"
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "일비(식비 포함, 1일)"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "C등급 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "그 밖의 지역 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "이코노미 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "150,000원 "
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "50,000원"
+    }
+  ],
+  "markdown": "| 등급    | 대상 지역(예 시)    | 항공권    | 1일 숙박비 상 한   | 일비(식비 포함, 1일)   |\n|---------|---------------------|-----------|--------------------|------------------------|\n| C등급   | 그 밖의 지역        | 이코노미  | 150,000원          | 50,000원               |"
+}

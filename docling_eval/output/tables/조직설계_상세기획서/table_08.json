@@ -1,0 +1,92 @@
+{
+  "Document": "조직설계_상세기획서",
+  "Table": 8,
+  "Page": 9,
+  "Rows": 3,
+  "Cols": 3,
+  "Cells": 8,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 1,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "조직 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 대상 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 목적"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 2,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI사업본부"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼사업본부(클라우드 부)"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적 화"
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객 제안 시 기술 검증(PoC) 및 기술영업 지원"
+    }
+  ],
+  "markdown": "| 조직       | 협업 대상                   | 협업 목적                                             |\n|------------|-----------------------------|-------------------------------------------------------|\n| AI사업본부 | 플랫폼사업본부(클라우드 부) | GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적 화 |\n| AI사업본부 | 영업본부                    | 고객 제안 시 기술 검증(PoC) 및 기술영업 지원          |"
+}

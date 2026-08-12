@@ -1,0 +1,245 @@
+{
+  "Document": "회식_운영규정",
+  "Table": 8,
+  "Page": 8,
+  "Rows": 5,
+  "Cols": 5,
+  "Cells": 25,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "회식 유형 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "개최 권한 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1차 승인 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "최종 승인(사전승인 대상 시) "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "사전승인 트 리거"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀 회식 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장(본인 사용 시 부 서장)"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "30만원 초 과, 야간·주 말, 외부인 참석"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서 회식 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장(본 인 사용 시 본부장/ CEO)"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장 또는 CEO(경영지원본부) "
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "상동"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부 회식 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장(본 인 사용 시 CEO)"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "상동 + 항상 사전보고 권 장"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 회식 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO/경영지 원본부 "
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO "
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "금액 무관 항 상 사전승인"
+    }
+  ],
+  "markdown": "| 회식 유형    | 개최 권한         | 1차 승인                          | 최종 승인(사전승인 대상 시)    | 사전승인 트 리거                      |\n|--------------|-------------------|-----------------------------------|--------------------------------|---------------------------------------|\n| 팀 회식      | 팀장              | 팀장(본인 사용 시 부 서장)        | 부서장                         | 30만원 초 과, 야간·주 말, 외부인 참석 |\n| 부서 회식    | 부서장            | 부서장(본 인 사용 시 본부장/ CEO) | 본부장 또는 CEO(경영지원본부)  | 상동                                  |\n| 본부 회식    | 본부장            | 본부장(본 인 사용 시 CEO)         | CEO                            | 상동 + 항상 사전보고 권 장            |\n| 전사 회식    | CEO/경영지 원본부 | CEO                               | CEO                            | 금액 무관 항 상 사전승인              |"
+}

@@ -1,0 +1,146 @@
+{
+  "Document": "회식_운영규정",
+  "Table": 10,
+  "Page": 9,
+  "Rows": 2,
+  "Cols": 7,
+  "Cells": 14,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "Y",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "회식 유형 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "카드전 표"
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "참석자명 단"
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "목적/사유 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "거래처정 보"
+    },
+    {
+      "row": 0,
+      "col": 5,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "프로젝트 명"
+    },
+    {
+      "row": 0,
+      "col": 6,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "사진"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": true,
+      "text": "공식/팀/부서/본부/전사 회 식"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "필수 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "필수 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "필수 "
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "- "
+    },
+    {
+      "row": 1,
+      "col": 5,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "- "
+    },
+    {
+      "row": 1,
+      "col": 6,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "선택"
+    }
+  ],
+  "markdown": "| 회식 유형                    | 카드전 표   | 참석자명 단   | 목적/사유    | 거래처정 보   | 프로젝트 명   | 사진   |\n|------------------------------|-------------|---------------|--------------|---------------|---------------|--------|\n| 공식/팀/부서/본부/전사 회 식 | 필수        | 필수          | 필수         | -             | -             | 선택   |"
+}

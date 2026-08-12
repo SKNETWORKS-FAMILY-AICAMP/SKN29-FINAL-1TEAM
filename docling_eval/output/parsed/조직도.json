@@ -1,0 +1,1027 @@
+{
+  "doc_id": "dump:조직도",
+  "name": "조직도",
+  "profile": "DIAGRAM",
+  "meta": {},
+  "parser_version": "docling-dump",
+  "report": {
+    "profile": "DIAGRAM",
+    "applied_steps": [
+      "C1",
+      "C6",
+      "C3",
+      "C2",
+      "C5"
+    ],
+    "skipped_steps": {
+      "C4": "프로파일 미적용",
+      "C7": "도해형 — 문서번호·시행일 체계 없음"
+    },
+    "corrections_count": {
+      "C1": 12,
+      "C6": 0,
+      "C3": 0,
+      "C2": 2,
+      "C5": 2
+    },
+    "dropped_elements": [],
+    "warnings": [],
+    "scores": null
+  },
+  "elements": [
+    {
+      "element_id": "조직도:p1:e1",
+      "type": "heading",
+      "text": "타이거주식회사(TigerInc.)",
+      "page": 1,
+      "order": 0,
+      "level": 1,
+      "bbox": [
+        206.1,
+        526.2,
+        387.6,
+        512.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p1:e2",
+      "type": "heading",
+      "text": "조직도",
+      "page": 1,
+      "order": 1,
+      "level": 1,
+      "bbox": [
+        258.1,
+        443.9,
+        334.9,
+        418.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p1:e3",
+      "type": "paragraph",
+      "text": "내부참고문서",
+      "page": 1,
+      "order": 2,
+      "level": null,
+      "bbox": [
+        262.0,
+        333.9,
+        330.7,
+        324.7
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p2:e6",
+      "type": "caption",
+      "text": "1. 회사 개요",
+      "page": 2,
+      "order": 3,
+      "level": null,
+      "bbox": [
+        262.2,
+        717.1,
+        333.7,
+        703.5
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p2:e5",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 2,
+      "order": 4,
+      "level": null,
+      "bbox": [
+        61.7,
+        671.8,
+        533.5,
+        427.8
+      ],
+      "attrs": {
+        "rows": 19,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "1. 회사 개요",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          2,
+          4
+        ],
+        "continued_from": "조직도:p2:e5"
+      }
+    },
+    {
+      "element_id": "조직도:p2:e7",
+      "type": "paragraph",
+      "text": "중견기업 판정 근거: 정보통신업 중소기업 매출액 기준(약 800억원 이하)을 연 매출 약 1,200억원이 초과하여 「중소기업기본 법」상 중견기업으로 분류됨.",
+      "page": 2,
+      "order": 5,
+      "level": null,
+      "bbox": [
+        78.9,
+        404.7,
+        521.1,
+        382.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p2:e4",
+      "type": "header",
+      "text": "타이거 주식회사 조직도",
+      "page": 2,
+      "order": 6,
+      "level": null,
+      "bbox": [
+        257.4,
+        811.5,
+        338.2,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p2:e8",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 2,
+      "order": 7,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p2:e9",
+      "type": "footer",
+      "text": "-2/6-",
+      "page": 2,
+      "order": 8,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p3:e11",
+      "type": "heading",
+      "text": "2. 조직도",
+      "page": 3,
+      "order": 9,
+      "level": 1,
+      "bbox": [
+        269.9,
+        756.8,
+        325.3,
+        743.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p3:e12",
+      "type": "figure",
+      "text": "<picture>",
+      "page": 3,
+      "order": 10,
+      "level": null,
+      "bbox": [
+        61.3,
+        711.9,
+        532.9,
+        137.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p3:e13",
+      "type": "paragraph",
+      "text": "본부 구성 요약: 경영지원본부·AI사업본부·플랫폼사업본부·영업본부·전략기획본부 5개 사업/기능 본부 + CEO 직속 감사실(독립 통제기구) 1개. 부서는 15개 부/실 + 감사실 1개로 총 16개 부서이며, 그 아래 총 27 개 팀 단위 조직으로 구성.",
+      "page": 3,
+      "order": 11,
+      "level": null,
+      "bbox": [
+        62.6,
+        120.2,
+        532.5,
+        76.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p3:e10",
+      "type": "header",
+      "text": "타이거 주식회사 조직도",
+      "page": 3,
+      "order": 12,
+      "level": null,
+      "bbox": [
+        257.4,
+        811.5,
+        338.2,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p3:e14",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 3,
+      "order": 13,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p3:e15",
+      "type": "footer",
+      "text": "-3/6-",
+      "page": 3,
+      "order": 14,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p4:e32",
+      "type": "heading",
+      "text": "3. 조직 설계 포인트",
+      "page": 4,
+      "order": 15,
+      "level": 1,
+      "bbox": [
+        239.8,
+        716.6,
+        355.3,
+        703.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p4:e17",
+      "type": "heading",
+      "text": "본부 분리 이유",
+      "page": 4,
+      "order": 16,
+      "level": 1,
+      "bbox": [
+        62.6,
+        666.9,
+        127.0,
+        656.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e18",
+      "type": "list_item",
+      "text": "-경영지원본부: 전사 공통 지원 기능(인사·재무·총무·법무·IT운영)을 묶되, \"부 → 팀\" 2단계로 단순화하여 별도 본부장 없이 부서장이 실무 최종 승인권자 역할 수행(결재 신속성 확보).",
+      "page": 4,
+      "order": 17,
+      "level": null,
+      "bbox": [
+        62.8,
+        650.2,
+        531.3,
+        622.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e19",
+      "type": "list_item",
+      "text": "-AI사업본부 / 플랫폼사업본부 분리: AI사업본부는 \"제품/모델\" 중심, 플랫폼사업본부는 \"인프라/SaaS 플랫폼\" 중심으로 목적함수가 달라 자원배분 우선순위 충돌을 피하기 위해 분리. 인프라 공동사용 지점(GPU/ 클라우드)은 매트릭스 협업으로 보완.",
+      "page": 4,
+      "order": 18,
+      "level": null,
+      "bbox": [
+        62.6,
+        616.8,
+        532.7,
+        572.3
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p4:e20",
+      "type": "list_item",
+      "text": "-영업본부: Enterprise·공공·고객성공을 한 지휘체계 아래 두어 \"수주 이전(영업)\"과 \"수주 이후(고객성 공)\"의 고객 경험 연속성 확보.",
+      "page": 4,
+      "order": 19,
+      "level": null,
+      "bbox": [
+        62.6,
+        566.8,
+        531.4,
+        538.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e21",
+      "type": "list_item",
+      "text": "-전략기획본부: 중장기 전략·신사업·PMO를 하나로 묶어 각 사업본부 개별 최적화가 전사 전략과 어긋나지 않도록 조율하는 컨트롤타워.",
+      "page": 4,
+      "order": 20,
+      "level": null,
+      "bbox": [
+        62.8,
+        533.4,
+        531.2,
+        506.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e22",
+      "type": "heading",
+      "text": "협업 구조",
+      "page": 4,
+      "order": 21,
+      "level": 1,
+      "bbox": [
+        62.8,
+        492.7,
+        104.6,
+        482.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e23",
+      "type": "list_item",
+      "text": "AI사업본부 MLOps팀과 플랫폼사업본부 클라우드부는 점선보고(매트릭스) 관계. 공식 소속은 AI사업본 부이나 GPU·클라우드 리소스 운영은 클라우드부와 공동 수행 → \"신청 조직 = 실사용 조직\"이 일치하지 않 는 예외 케이스 발생, 비용귀속·정산 프로세스 설계 시 별도 규정 필요.",
+      "page": 4,
+      "order": 22,
+      "level": null,
+      "bbox": [
+        62.6,
+        476.0,
+        532.8,
+        431.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e24",
+      "type": "heading",
+      "text": "의사결정 구조",
+      "page": 4,
+      "order": 23,
+      "level": 1,
+      "bbox": [
+        62.7,
+        418.5,
+        124.5,
+        408.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e25",
+      "type": "list_item",
+      "text": "CEO 직속 경영회의체(본부장급 협의체)가 전사 의사결정 중심.",
+      "page": 4,
+      "order": 24,
+      "level": null,
+      "bbox": [
+        62.8,
+        401.9,
+        344.8,
+        390.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e26",
+      "type": "list_item",
+      "text": "-감사실은 보고라인상 CEO 직속이나, 경영진 견제 목적의 독립 기능으로 운영(감사 대상에 경영진 의사결 정도 포함).",
+      "page": 4,
+      "order": 25,
+      "level": null,
+      "bbox": [
+        62.8,
+        385.2,
+        531.9,
+        357.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e27",
+      "type": "list_item",
+      "text": "팀장 → 부서장 → 본부장 → CEO의 단계적 위임전결 구조가 기본. 본부장이 없는 경영지원본부는 부서장 전결 또는 CEO 직접 결재로 대체.",
+      "page": 4,
+      "order": 26,
+      "level": null,
+      "bbox": [
+        62.8,
+        351.7,
+        532.8,
+        324.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e28",
+      "type": "heading",
+      "text": "조직 운영 특징",
+      "page": 4,
+      "order": 27,
+      "level": 1,
+      "bbox": [
+        62.6,
+        311.1,
+        125.8,
+        300.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e29",
+      "type": "list_item",
+      "text": "사업본부별 독립 손익(BU) 운영으로 본부장에게 예산·인력 운용 재량 부여, 전사 공통 리스크(법무·보안· 감사)는 경영지원본부·감사실이 횡단적으로 통제.",
+      "page": 4,
+      "order": 28,
+      "level": null,
+      "bbox": [
+        62.7,
+        294.3,
+        531.8,
+        266.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e30",
+      "type": "heading",
+      "text": "4. 조직 특징 요약",
+      "page": 4,
+      "order": 29,
+      "level": 1,
+      "bbox": [
+        246.4,
+        199.1,
+        348.8,
+        185.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e16",
+      "type": "header",
+      "text": "타이거 주식회사 조직도",
+      "page": 4,
+      "order": 30,
+      "level": null,
+      "bbox": [
+        257.4,
+        811.5,
+        338.2,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e33",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 4,
+      "order": 31,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p4:e34",
+      "type": "footer",
+      "text": "-4/6-",
+      "page": 4,
+      "order": 32,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p5:e36",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 5,
+      "order": 33,
+      "level": null,
+      "bbox": [
+        61.4,
+        763.5,
+        533.4,
+        647.3
+      ],
+      "attrs": {
+        "rows": 15,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          5,
+          6
+        ],
+        "continued_from": "조직도:p5:e36"
+      }
+    },
+    {
+      "element_id": "조직도:p5:e35",
+      "type": "header",
+      "text": "타이거 주식회사 조직도",
+      "page": 5,
+      "order": 34,
+      "level": null,
+      "bbox": [
+        257.4,
+        811.5,
+        338.2,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p5:e37",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 5,
+      "order": 35,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p5:e38",
+      "type": "footer",
+      "text": "-5/6-",
+      "page": 5,
+      "order": 36,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "조직도:p6:e39",
+      "type": "header",
+      "text": "타이거 주식회사 조직도",
+      "page": 6,
+      "order": 37,
+      "level": null,
+      "bbox": [
+        257.4,
+        811.5,
+        338.2,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p6:e41",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 6,
+      "order": 38,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "조직도:p6:e42",
+      "type": "footer",
+      "text": "-6/6-",
+      "page": 6,
+      "order": 39,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "Document": "조직도",
+  "Table": 3,
+  "Page": 5,
+  "Rows": 4,
+  "Cols": 2,
+  "Cells": 8,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "항목 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "내용"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "연 매출 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "약 1,200억원 (연결 기준, 가정치)"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부 수 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "5개 (경영지원본부, AI사업본부, 플랫폼사업본부, 영업본부, 전략기획본부) + CEO 직속 감사실"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부 수 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "15개(부/실) + 감사실 1개 = 총 16개 부서"
+    }
+  ],
+  "markdown": "| 항목    | 내용                                                                                     |\n|---------|------------------------------------------------------------------------------------------|\n| 연 매출 | 약 1,200억원 (연결 기준, 가정치)                                                         |\n| 본부 수 | 5개 (경영지원본부, AI사업본부, 플랫폼사업본부, 영업본부, 전략기획본부) + CEO 직속 감사실 |\n| 부 수   | 15개(부/실) + 감사실 1개 = 총 16개 부서                                                  |"
+}

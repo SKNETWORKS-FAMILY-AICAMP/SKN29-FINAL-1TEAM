@@ -8,3 +8,10 @@ scikit-learn==1.5.*
 numpy>=1.26,<3.0
 pandas==2.3.*
 openai>=1.40,<2.0
+
+# --- RAG PDF 파싱 (llm_wiki/_context/pdf_parsing_strategy.md §2.1) ---
+docling>=2.0,<3.0        # 파싱 엔진. TORCHDYNAMO_DISABLE=1 을 import 이전에 설정할 것
+docling-core>=2.0,<3.0
+
+# --- 개발/테스트 ---
+pytest>=8.0,<9.0

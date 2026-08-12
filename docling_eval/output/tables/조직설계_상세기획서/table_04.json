@@ -1,0 +1,146 @@
+{
+  "Document": "조직설계_상세기획서",
+  "Table": 4,
+  "Page": 7,
+  "Rows": 4,
+  "Cols": 4,
+  "Cells": 14,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 1,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "직급 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "책임 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "보임 가능 직책"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사원 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "실무 수행, 기본 업무 처리 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "배정된 과업의 완수"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "주임 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "실무 수행 및 후배 사원 가이드 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "담당 업무의 품질 관리 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 3,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "없음"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "대리 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "담당 업무의 독립적 수행 "
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "프로젝트/과업 단위 책임"
+    }
+  ],
+  "markdown": "| 직급    | 역할                          | 책임                    | 보임 가능 직책   |\n|---------|-------------------------------|-------------------------|------------------|\n| 사원    | 실무 수행, 기본 업무 처리     | 배정된 과업의 완수      | 없음             |\n| 주임    | 실무 수행 및 후배 사원 가이드 | 담당 업무의 품질 관리   | 없음             |\n| 대리    | 담당 업무의 독립적 수행       | 프로젝트/과업 단위 책임 | 없음             |"
+}

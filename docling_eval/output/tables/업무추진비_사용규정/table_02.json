@@ -1,0 +1,110 @@
+{
+  "Document": "업무추진비_사용규정",
+  "Table": 2,
+  "Page": 6,
+  "Rows": 5,
+  "Cols": 2,
+  "Cells": 10,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "접대 유형 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "필수 확인 사항"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "식사·다과 접대 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "참석자 명단, 업무 관련성, 3만원 초과 시 적격증빙"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "선물 접대 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "청탁금지법 적용대상자 포함 여부, 별표1 한도 준수"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "행사성 접대(골프 등) "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장 사전승인, 참석자 명단, 행사 목적 소명자료"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "경조사 화환·조의금 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "청첩장·부고장 등 소명자료, 20만원 초과 시 적격증빙"
+    }
+  ],
+  "markdown": "| 접대 유형            | 필수 확인 사항                                     |\n|----------------------|----------------------------------------------------|\n| 식사·다과 접대       | 참석자 명단, 업무 관련성, 3만원 초과 시 적격증빙   |\n| 선물 접대            | 청탁금지법 적용대상자 포함 여부, 별표1 한도 준수   |\n| 행사성 접대(골프 등) | 부서장 사전승인, 참석자 명단, 행사 목적 소명자료   |\n| 경조사 화환·조의금   | 청첩장·부고장 등 소명자료, 20만원 초과 시 적격증빙 |"
+}

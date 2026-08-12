@@ -1,0 +1,155 @@
+{
+  "Document": "부서소개",
+  "Table": 2,
+  "Page": 2,
+  "Rows": 3,
+  "Cols": 5,
+  "Cells": 15,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "부서 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "핵심 업무 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 산출물 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 부서"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI플랫폼부 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "LLM/AI서비스 개발 및 운영"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "모델 파인튜닝/서빙, AI서비스 기획개발, MLOps 파이프라인 운영"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI서비스 릴리즈, 모델 성능리포트"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터부, 클라 우드부(매트릭 스)"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터부"
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터 파이프 라인 구축 및 분 석"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터 수집/정제, 데이터 품질 관리, BI/분석"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터파이프라인, 분 석리포트, 데이터품질 지표"
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI플랫폼부, 플 랫폼개발부"
+    }
+  ],
+  "markdown": "| 부서       | 주요 역할                        | 핵심 업무                                                    | 주요 산출물                                    | 협업 부서                        |\n|------------|----------------------------------|--------------------------------------------------------------|------------------------------------------------|----------------------------------|\n| AI플랫폼부 | LLM/AI서비스 개발 및 운영        | 모델 파인튜닝/서빙, AI서비스 기획개발, MLOps 파이프라인 운영 | AI서비스 릴리즈, 모델 성능리포트               | 데이터부, 클라 우드부(매트릭 스) |\n| 데이터부   | 데이터 파이프 라인 구축 및 분 석 | 데이터 수집/정제, 데이터 품질 관리, BI/분석                  | 데이터파이프라인, 분 석리포트, 데이터품질 지표 | AI플랫폼부, 플 랫폼개발부        |"
+}

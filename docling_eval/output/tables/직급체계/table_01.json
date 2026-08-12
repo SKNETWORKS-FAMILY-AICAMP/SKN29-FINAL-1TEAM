@@ -1,0 +1,254 @@
+{
+  "Document": "직급체계",
+  "Table": 1,
+  "Page": 2,
+  "Rows": 7,
+  "Cols": 4,
+  "Cells": 26,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 1,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "직급 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "책임 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "보임 가능 직책"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사원 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "실무 수행, 기본 업무 처리 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "배정된 과업의 완수"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "주임 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "실무 수행 및 후배 사원 가이드 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "담당 업무의 품질 관리 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 3,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "없음"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "대리 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "담당 업무의 독립적 수행 "
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "프로젝트/과업 단위 책임"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "과장 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "소규모 팀 또는 파트 리드 "
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀 성과 및 일정 관리 "
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "차장 "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀/파트 리드, 중간관리자 "
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "복수 프로젝트 총괄, 후배 육성 "
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장"
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부장 "
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서 총괄 "
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서 성과, 예산, 인력관리 책임 "
+    },
+    {
+      "row": 6,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장, 부서장"
+    }
+  ],
+  "markdown": "| 직급    | 역할                          | 책임                           | 보임 가능 직책   |\n|---------|-------------------------------|--------------------------------|------------------|\n| 사원    | 실무 수행, 기본 업무 처리     | 배정된 과업의 완수             | 없음             |\n| 주임    | 실무 수행 및 후배 사원 가이드 | 담당 업무의 품질 관리          | 없음             |\n| 대리    | 담당 업무의 독립적 수행       | 프로젝트/과업 단위 책임        | 없음             |\n| 과장    | 소규모 팀 또는 파트 리드      | 팀 성과 및 일정 관리           | 팀장             |\n| 차장    | 팀/파트 리드, 중간관리자      | 복수 프로젝트 총괄, 후배 육성  | 팀장             |\n| 부장    | 부서 총괄                     | 부서 성과, 예산, 인력관리 책임 | 팀장, 부서장     |"
+}

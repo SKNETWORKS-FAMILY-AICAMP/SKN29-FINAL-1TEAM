@@ -1,0 +1,1924 @@
+{
+  "doc_id": "dump:부서소개",
+  "name": "부서소개",
+  "profile": "DIAGRAM",
+  "meta": {},
+  "parser_version": "docling-dump",
+  "report": {
+    "profile": "DIAGRAM",
+    "applied_steps": [
+      "C1",
+      "C6",
+      "C3",
+      "C2",
+      "C5"
+    ],
+    "skipped_steps": {
+      "C4": "프로파일 미적용",
+      "C7": "도해형 — 문서번호·시행일 체계 없음"
+    },
+    "corrections_count": {
+      "C1": 15,
+      "C6": 0,
+      "C3": 0,
+      "C2": 0,
+      "C5": 4
+    },
+    "dropped_elements": [],
+    "warnings": [],
+    "scores": null
+  },
+  "elements": [
+    {
+      "element_id": "부서소개:p1:e1",
+      "type": "heading",
+      "text": "타이거주식회사(TigerInc.)",
+      "page": 1,
+      "order": 0,
+      "level": 1,
+      "bbox": [
+        206.1,
+        526.2,
+        387.6,
+        512.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p1:e2",
+      "type": "heading",
+      "text": "부서 소개",
+      "page": 1,
+      "order": 1,
+      "level": 1,
+      "bbox": [
+        240.4,
+        443.9,
+        351.4,
+        418.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p1:e3",
+      "type": "paragraph",
+      "text": "내부참고문서",
+      "page": 1,
+      "order": 2,
+      "level": null,
+      "bbox": [
+        262.0,
+        333.9,
+        330.7,
+        324.7
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p1:e4",
+      "type": "footer",
+      "text": "총 16개 부서(15개 부/실 + 감사실), 27개 팀으로 구성된다.",
+      "page": 1,
+      "order": 3,
+      "level": null,
+      "bbox": [
+        202.6,
+        71.6,
+        392.5,
+        63.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p2:e5",
+      "type": "header",
+      "text": "타이거 주식회사 부서 소개",
+      "page": 2,
+      "order": 4,
+      "level": null,
+      "bbox": [
+        252.5,
+        811.5,
+        342.6,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p2:e6",
+      "type": "heading",
+      "text": "1. 경영지원본부",
+      "page": 2,
+      "order": 5,
+      "level": 1,
+      "bbox": [
+        250.5,
+        717.1,
+        345.3,
+        703.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p2:e7",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 2,
+      "order": 6,
+      "level": null,
+      "bbox": [
+        61.3,
+        671.8,
+        533.7,
+        363.8
+      ],
+      "attrs": {
+        "rows": 44,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          2,
+          2
+        ],
+        "continued_from": "부서소개:p2:e7",
+        "split_on_chunk": true
+      }
+    },
+    {
+      "element_id": "부서소개:p2:e8",
+      "type": "heading",
+      "text": "2. AI사업본부",
+      "page": 2,
+      "order": 7,
+      "level": 1,
+      "bbox": [
+        256.1,
+        318.6,
+        339.0,
+        305.0
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p2:e10",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 2,
+      "order": 8,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p2:e11",
+      "type": "footer",
+      "text": "-2/5-",
+      "page": 2,
+      "order": 9,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p3:e12",
+      "type": "header",
+      "text": "타이거 주식회사 부서 소개",
+      "page": 3,
+      "order": 10,
+      "level": null,
+      "bbox": [
+        252.5,
+        811.5,
+        342.6,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p3:e13",
+      "type": "heading",
+      "text": "3. 플랫폼사업본부",
+      "page": 3,
+      "order": 11,
+      "level": 1,
+      "bbox": [
+        243.0,
+        756.8,
+        352.0,
+        743.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p3:e14",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 3,
+      "order": 12,
+      "level": null,
+      "bbox": [
+        61.5,
+        711.7,
+        533.5,
+        563.7
+      ],
+      "attrs": {
+        "rows": 34,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          3,
+          3
+        ],
+        "continued_from": "부서소개:p3:e14"
+      }
+    },
+    {
+      "element_id": "부서소개:p3:e15",
+      "type": "heading",
+      "text": "4. 영업본부",
+      "page": 3,
+      "order": 13,
+      "level": 1,
+      "bbox": [
+        263.0,
+        518.5,
+        332.0,
+        504.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p3:e17",
+      "type": "heading",
+      "text": "5. 전략기획본부",
+      "page": 3,
+      "order": 14,
+      "level": 1,
+      "bbox": [
+        249.7,
+        267.0,
+        345.3,
+        253.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p3:e18",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 3,
+      "order": 15,
+      "level": null,
+      "bbox": [
+        61.6,
+        221.6,
+        533.5,
+        104.1
+      ],
+      "attrs": {
+        "rows": 24,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          3,
+          4
+        ],
+        "continued_from": "부서소개:p3:e18"
+      }
+    },
+    {
+      "element_id": "부서소개:p3:e19",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 3,
+      "order": 16,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p3:e20",
+      "type": "footer",
+      "text": "-3/5-",
+      "page": 3,
+      "order": 17,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p4:e21",
+      "type": "header",
+      "text": "타이거 주식회사 부서 소개",
+      "page": 4,
+      "order": 18,
+      "level": null,
+      "bbox": [
+        252.5,
+        811.5,
+        342.6,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p4:e23",
+      "type": "heading",
+      "text": "6. CEO 직속",
+      "page": 4,
+      "order": 19,
+      "level": 1,
+      "bbox": [
+        260.3,
+        643.6,
+        335.1,
+        630.0
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p4:e24",
+      "type": "table",
+      "text": "| 부서 | 주요 역할 | 핵심 업무 | 주요 산출물 | 협업 부서 |\n|---------|----------------------------|---------------------------------------------------------------------|-----------------------------------------------|----------------------|\n| 감사실 | 전사 내부통제 및 감사 총괄 | 정기/수시 감사, 컴플라이언스 점검, 재무회계부 자체사용건 사후검 증 | 감사보고서, 시정조치 권 고안, 내부통제 점검표 | 재무회계부, 전 부서 |",
+      "page": 4,
+      "order": 20,
+      "level": null,
+      "bbox": [
+        61.6,
+        598.6,
+        533.5,
+        509.2
+      ],
+      "attrs": {
+        "rows": 2,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p4:e25",
+      "type": "heading",
+      "text": "7. 조직 간 협업 구조",
+      "page": 4,
+      "order": 21,
+      "level": 1,
+      "bbox": [
+        238.5,
+        443.4,
+        357.0,
+        429.7
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p4:e26",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 4,
+      "order": 22,
+      "level": null,
+      "bbox": [
+        61.4,
+        398.2,
+        533.5,
+        182.4
+      ],
+      "attrs": {
+        "rows": 36,
+        "cols": 3,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          4,
+          5
+        ],
+        "continued_from": "부서소개:p4:e26"
+      }
+    },
+    {
+      "element_id": "부서소개:p4:e27",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 4,
+      "order": 23,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p4:e28",
+      "type": "footer",
+      "text": "-4/5-",
+      "page": 4,
+      "order": 24,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "부서소개:p5:e29",
+      "type": "header",
+      "text": "타이거 주식회사 부서 소개",
+      "page": 5,
+      "order": 25,
+      "level": null,
+      "bbox": [
+        252.5,
+        811.5,
+        342.6,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p5:e31",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 5,
+      "order": 26,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "부서소개:p5:e32",
+      "type": "footer",
+      "text": "-5/5-",
+      "page": 5,
+      "order": 27,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    }
+  ]
+}

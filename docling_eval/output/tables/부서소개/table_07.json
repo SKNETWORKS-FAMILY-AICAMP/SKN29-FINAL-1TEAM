@@ -1,0 +1,110 @@
+{
+  "Document": "부서소개",
+  "Table": 7,
+  "Page": 4,
+  "Rows": 2,
+  "Cols": 5,
+  "Cells": 10,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "부서 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "핵심 업무 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 산출물 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 부서"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "감사실 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 내부통제 및 감사 총괄"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "정기/수시 감사, 컴플라이언스 점 검, 재무회계부 자체사용건 사후검 증"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "감사보고서, 시정조치 권 고안, 내부통제 점검표"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무회계 부, 전 부서"
+    }
+  ],
+  "markdown": "| 부서    | 주요 역할                  | 핵심 업무                                                           | 주요 산출물                                   | 협업 부서            |\n|---------|----------------------------|---------------------------------------------------------------------|-----------------------------------------------|----------------------|\n| 감사실  | 전사 내부통제 및 감사 총괄 | 정기/수시 감사, 컴플라이언스 점 검, 재무회계부 자체사용건 사후검 증 | 감사보고서, 시정조치 권 고안, 내부통제 점검표 | 재무회계 부, 전 부서 |"
+}

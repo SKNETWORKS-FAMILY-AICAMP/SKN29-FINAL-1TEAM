@@ -1,0 +1,128 @@
+{
+  "Document": "회식_운영규정",
+  "Table": 7,
+  "Page": 7,
+  "Rows": 6,
+  "Cols": 2,
+  "Cells": 12,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "예외 상황 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "처리 기준"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "긴급 회식(재해·사고 등 불 가피한 대응)"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사전승인 생략 가능, 사후 1영업일 이내 소명 및 관리자 사후승인(제8조 사후승인 기한과 통일)"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객 컴플레인 대응 식사 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "기업업무추진비로 분류, 거래처 정보 기재 조건으로 사후승인 허용"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "야간 장애 대응(IT운영부· 클라우드부 등) "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "야식 성격으로 1인당 3만원 이내는 완화 적용, 익일 사후승인"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "프로젝트 오픈 축하 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사전 계획 시 사전승인, 당일 긴급 결정 시 익일 사후승인"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "해외 출장 중 회식"
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "해외출장은 별도 식비 항목이 없으므로 「출장비 사용 규정」별표2의 일비(식비 포함) 범위에서 처리하되, 거래처 동행 시 기업업무추진비로 분류하여 「기업업무추진비 사용 규정」을 적용"
+    }
+  ],
+  "markdown": "| 예외 상황                               | 처리 기준                                                                                                                                                                        |\n|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|\n| 긴급 회식(재해·사고 등 불 가피한 대응)  | 사전승인 생략 가능, 사후 1영업일 이내 소명 및 관리자 사후승인(제8조 사후승인 기한과 통일)                                                                                        |\n| 고객 컴플레인 대응 식사                 | 기업업무추진비로 분류, 거래처 정보 기재 조건으로 사후승인 허용                                                                                                                   |\n| 야간 장애 대응(IT운영부· 클라우드부 등) | 야식 성격으로 1인당 3만원 이내는 완화 적용, 익일 사후승인                                                                                                                        |\n| 프로젝트 오픈 축하                      | 사전 계획 시 사전승인, 당일 긴급 결정 시 익일 사후승인                                                                                                                           |\n| 해외 출장 중 회식                       | 해외출장은 별도 식비 항목이 없으므로 「출장비 사용 규정」별표2의 일비(식비 포함) 범위에서 처리하되, 거래처 동행 시 기업업무추진비로 분류하여 「기업업무추진비 사용 규정」을 적용 |"
+}

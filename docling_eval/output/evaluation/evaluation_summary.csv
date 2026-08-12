@@ -1,0 +1,17 @@
+﻿Category,Metric,Score,Weight,Status,Note,Eff.Weight
+Layout,Element Detection F1,0.929,0.4,OK,,0.533
+Layout,Element Type Accuracy,0.923,0.35,OK,정렬된 쌍 기준,0.467
+Layout,Bounding Box IoU,,0.25,N/A,GT 좌표 없음,0.0
+Hierarchy,Heading Detection F1,0.844,0.4,OK,,0.4
+Hierarchy,Heading Level Accuracy,0.93,0.25,OK,문서별 오프셋 보정,0.25
+Hierarchy,Parent-Child Accuracy,0.737,0.2,OK,,0.2
+Hierarchy,Document Order Accuracy,0.921,0.15,OK,,0.15
+Table,Table Detection F1,0.928,0.2,OK,,0.222
+Table,Row Accuracy,0.594,0.15,OK,행 수 완전일치 비율,0.167
+Table,Column Accuracy,1.0,0.15,OK,열 수 완전일치 비율,0.167
+Table,Header Accuracy,0.938,0.15,OK,,0.167
+Table,Cell Accuracy,0.965,0.25,OK,정규화 후 값 일치,0.278
+Table,Merged Cell Accuracy,,0.1,N/A,마크다운 GT 표현 불가,0.0
+Layout,── Layout Score (100점),92.6,0.3,OK,영역 합산,0.3
+Hierarchy,── Hierarchy Score (100점),85.6,0.3,OK,영역 합산,0.3
+Table,── Table Score (100점),89.6,0.4,OK,영역 합산,0.4

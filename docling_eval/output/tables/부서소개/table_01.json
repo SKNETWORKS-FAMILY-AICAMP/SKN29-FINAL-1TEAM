@@ -1,0 +1,290 @@
+{
+  "Document": "부서소개",
+  "Table": 1,
+  "Page": 2,
+  "Rows": 6,
+  "Cols": 5,
+  "Cells": 30,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "부서 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "핵심 업무 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 산출물 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 부서"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인사부 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용·인력운영· 조직문화 관리"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용기획/실행, 평가·보상 운 영, 교육체계 설계, 조직문화 프 로그램 운영"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용계획서, 평가 결과보고서, 교육 이수현황"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전략기획부(인력 계획), 각 사업본 부"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무회계부"
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "회계처리·자금관 리·법인카드 정 산 총괄"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "결산, 세무신고, 자금운용, 법인 카드 정산·승인 프로세스 운영"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무제표, 정산보 고서, 자금운용계 획"
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전 부서, 감사실"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "총무구매부 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사무환경 및 자산 관리"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "구매계약, 시설관리, 복리후생 운영, 사내행사"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "구매계약서, 자산 대장, 시설점검보 고서"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "IT운영부, 인사 부"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "법무부 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "법률리스크 관리 "
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계약검토, 지적재산권관리, 소 송대응, 개인정보 등 규제대응"
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계약검토의견서, 법률자문보고서"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부, AI사 업본부"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "IT운영부 "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사내 IT 인프라 및 보안 운영"
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "그룹웨어/ERP 운영, 계정권한 관리, 보안정책, 장애대응"
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "시스템운영현황보 고서, 보안점검보 고서"
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "클라우드부, 전 부서"
+    }
+  ],
+  "markdown": "| 부서       | 주요 역할                              | 핵심 업무                                                              | 주요 산출물                                | 협업 부서                           |\n|------------|----------------------------------------|------------------------------------------------------------------------|--------------------------------------------|-------------------------------------|\n| 인사부     | 채용·인력운영· 조직문화 관리           | 채용기획/실행, 평가·보상 운 영, 교육체계 설계, 조직문화 프 로그램 운영 | 채용계획서, 평가 결과보고서, 교육 이수현황 | 전략기획부(인력 계획), 각 사업본 부 |\n| 재무회계부 | 회계처리·자금관 리·법인카드 정 산 총괄 | 결산, 세무신고, 자금운용, 법인 카드 정산·승인 프로세스 운영            | 재무제표, 정산보 고서, 자금운용계 획       | 전 부서, 감사실                     |\n| 총무구매부 | 사무환경 및 자산 관리                  | 구매계약, 시설관리, 복리후생 운영, 사내행사                            | 구매계약서, 자산 대장, 시설점검보 고서     | IT운영부, 인사 부                   |\n| 법무부     | 법률리스크 관리                        | 계약검토, 지적재산권관리, 소 송대응, 개인정보 등 규제대응              | 계약검토의견서, 법률자문보고서             | 영업본부, AI사 업본부               |\n| IT운영부   | 사내 IT 인프라 및 보안 운영            | 그룹웨어/ERP 운영, 계정권한 관리, 보안정책, 장애대응                   | 시스템운영현황보 고서, 보안점검보 고서     | 클라우드부, 전 부서                 |"
+}

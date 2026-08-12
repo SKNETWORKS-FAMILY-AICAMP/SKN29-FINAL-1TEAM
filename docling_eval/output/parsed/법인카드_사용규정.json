@@ -1,0 +1,2693 @@
+{
+  "doc_id": "dump:법인카드_사용규정",
+  "name": "법인카드_사용규정",
+  "profile": "REGULATION",
+  "meta": {
+    "revision_history": "v1.0 제정 (조문 정합성 검토 반영) / v1.1 개정: 제2조 관리자 정의 정비, 제10조 사전승인 예외절차 신 설, 별표1 이사 겸직·대행 시 한도 적용기준 명확화",
+    "revision": "v1.1"
+  },
+  "parser_version": "docling-dump",
+  "report": {
+    "profile": "REGULATION",
+    "applied_steps": [
+      "C1",
+      "C6",
+      "C7",
+      "C3",
+      "C2",
+      "C5"
+    ],
+    "skipped_steps": {
+      "C4": "해당 결함 없음(목차 덤프는 법령 전용)"
+    },
+    "corrections_count": {
+      "C1": 20,
+      "C6": 2,
+      "C7": 2,
+      "C3": 26,
+      "C2": 3,
+      "C5": 0
+    },
+    "dropped_elements": [],
+    "warnings": [],
+    "scores": null
+  },
+  "elements": [
+    {
+      "element_id": "법인카드_사용규정:p1:e1",
+      "type": "heading",
+      "text": "타이거주식회사(TigerInc.)",
+      "page": 1,
+      "order": 0,
+      "level": 1,
+      "bbox": [
+        206.1,
+        594.1,
+        387.6,
+        580.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p1:e2",
+      "type": "heading",
+      "text": "법인카드 사용 규정",
+      "page": 1,
+      "order": 1,
+      "level": 1,
+      "bbox": [
+        183.0,
+        511.9,
+        409.3,
+        486.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p1:e3",
+      "type": "table",
+      "text": "| 제정일 | 2026. 7. 20. |\n|-----------|----------------|\n| 시행일 | 2026. 8. 1. |\n| 소관부서 | 경영지원본부 |",
+      "page": 1,
+      "order": 2,
+      "level": null,
+      "bbox": [
+        205.0,
+        378.9,
+        389.8,
+        292.6
+      ],
+      "attrs": {
+        "rows": 3,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p1:e4",
+      "type": "paragraph",
+      "text": "개정이력 v1.0 제정 (조문 정합성 검토 반영) / v1.1 개정: 제2조 관리자 정의 정비, 제10조 사전승인 예외절차 신 설, 별표1 이사 겸직·대행 시 한도 적용기준 명확화",
+      "page": 1,
+      "order": 3,
+      "level": null,
+      "bbox": [
+        113.3,
+        272.4,
+        481.4,
+        251.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p1:e5",
+      "type": "paragraph",
+      "text": "※ 본 규정은 데모/교육 목적의 가상 기업(타이거 주식회사, Tiger Inc.) 시나리오용으로 작성되었으며, 회사는 설립 12년차 중견 기업(세법상 중소기업 특례 대상 아님)임을 가정합니다. 연 매출액은 연결 기준 약 1,200억원(500억원 초과 구간)으로 가정하였 으며, 실제 적용 시 회사의 정확한 매출 규모·업종·지주회사 여부 등에 따라 한도 및 조항을 조정해야 합니다.",
+      "page": 1,
+      "order": 4,
+      "level": null,
+      "bbox": [
+        91.5,
+        95.7,
+        503.8,
+        63.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e19",
+      "type": "heading",
+      "text": "제1장 총칙",
+      "page": 2,
+      "order": 5,
+      "level": 1,
+      "bbox": [
+        265.4,
+        717.1,
+        328.6,
+        703.5
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ],
+        "chapter_no": 1
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e7",
+      "type": "heading",
+      "text": "제1조 (목적)",
+      "page": 2,
+      "order": 6,
+      "level": 2,
+      "bbox": [
+        62.6,
+        666.8,
+        120.8,
+        654.9
+      ],
+      "attrs": {
+        "article_no": 1,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e8",
+      "type": "paragraph",
+      "text": "이 규정은 타이거 주식회사(이하 \"회사\")가 임직원에게 발급하는 법인카드의 발급, 관리, 사용 및 정산에 관 한 사항을 정함으로써 업무 효율성을 높이고, 관계 법령에 따른 손금 인정 요건을 충족하여 세무상 불이익을 방지하며, 법인카드 오남용을 예방하는 것을 목적으로 한다.",
+      "page": 2,
+      "order": 7,
+      "level": null,
+      "bbox": [
+        62.6,
+        641.1,
+        532.8,
+        597.0
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 1
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e9",
+      "type": "heading",
+      "text": "제2조 (정의)",
+      "page": 2,
+      "order": 8,
+      "level": 2,
+      "bbox": [
+        62.6,
+        572.0,
+        160.4,
+        560.1
+      ],
+      "attrs": {
+        "revision": "v1.1",
+        "raw_title": "제2조 (정의) 개정 v1.1",
+        "corrections": [
+          "C6"
+        ],
+        "article_no": 2,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e10",
+      "type": "paragraph",
+      "text": "이 규정에서 사용하는 용어의 정의는 다음과 같다.",
+      "page": 2,
+      "order": 9,
+      "level": null,
+      "bbox": [
+        63.4,
+        546.4,
+        279.5,
+        536.3
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e11",
+      "type": "list_item",
+      "text": "\"법인카드\"란 회사 명의로 발급되어 임직원이 업무 목적의 지출에 사용하는 신용카드·체크카드를 말한다.",
+      "page": 2,
+      "order": 10,
+      "level": null,
+      "bbox": [
+        63.0,
+        529.7,
+        532.8,
+        503.0
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e12",
+      "type": "list_item",
+      "text": "\"사용자\"란 법인카드를 발급받아 사용하는 임직원을 말한다.",
+      "page": 2,
+      "order": 11,
+      "level": null,
+      "bbox": [
+        63.0,
+        496.4,
+        337.6,
+        486.2
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e13",
+      "type": "list_item",
+      "text": "\"관리자\"란 법인카드 정산 승인 권한을 가진 자로서 「직급체계」에 따라 결재권을 보유한 팀장·부서장· 본부장 및 대표이사를 말한다. 법인카드의 발급·회수 등 관리업무는 경영지원본부(인사부·재무회계부·총무 구매부·법무부)가 총괄한다.",
+      "page": 2,
+      "order": 12,
+      "level": null,
+      "bbox": [
+        62.6,
+        479.7,
+        532.7,
+        435.1
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e14",
+      "type": "list_item",
+      "text": "\"담당자\"란 법인카드를 발급받아 사용하고 정산을 신청하는 임직원 본인을 말하며, 법인카드 사용 신청· 영수증 업로드·사유 작성 및 반려 시 재상신·이의제기(어필)를 수행하는 자를 말한다(제2호의 \"사용자\"와 동 일인을 지칭하는 정산 시스템상의 역할 명칭이다). 정산 서류의 1차 확인·처리 업무는 재무회계부(재무회계 팀)가 수행한다.",
+      "page": 2,
+      "order": 13,
+      "level": null,
+      "bbox": [
+        62.7,
+        429.6,
+        532.7,
+        368.4
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e15",
+      "type": "list_item",
+      "text": "\"기업업무추진비\"란 회사가 업무와 관련하여 접대·교제·사례 등의 목적으로 지출하는 비용을 말한다(종 전 \"접대비\").",
+      "page": 2,
+      "order": 14,
+      "level": null,
+      "bbox": [
+        62.8,
+        362.9,
+        532.7,
+        335.0
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e16",
+      "type": "list_item",
+      "text": "\"적격증명서류\"란 신용카드매출전표, 현금영수증, 세금계산서, 계산서 등 세법상 인정되는 증빙서류를 말한다.",
+      "page": 2,
+      "order": 15,
+      "level": null,
+      "bbox": [
+        62.9,
+        329.5,
+        532.7,
+        302.7
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e17",
+      "type": "heading",
+      "text": "제3조 (적용범위)",
+      "page": 2,
+      "order": 16,
+      "level": 2,
+      "bbox": [
+        62.6,
+        277.1,
+        141.6,
+        265.2
+      ],
+      "attrs": {
+        "article_no": 3,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e18",
+      "type": "paragraph",
+      "text": "이 규정은 회사로부터 법인카드를 발급받은 모든 임직원에게 적용한다.",
+      "page": 2,
+      "order": 17,
+      "level": null,
+      "bbox": [
+        63.4,
+        251.4,
+        371.7,
+        241.3
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 3
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e6",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 2,
+      "order": 18,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e20",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 2,
+      "order": 19,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p2:e21",
+      "type": "footer",
+      "text": "-2/7-",
+      "page": 2,
+      "order": 20,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e44",
+      "type": "heading",
+      "text": "제2장 법인카드의 발급 및 관리",
+      "page": 3,
+      "order": 21,
+      "level": 1,
+      "bbox": [
+        207.1,
+        756.8,
+        387.0,
+        743.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ],
+        "chapter_no": 2
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e23",
+      "type": "heading",
+      "text": "제4조 (발급 대상)",
+      "page": 3,
+      "order": 22,
+      "level": 2,
+      "bbox": [
+        62.6,
+        706.4,
+        144.1,
+        694.5
+      ],
+      "attrs": {
+        "article_no": 4,
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e24",
+      "type": "list_item",
+      "text": "1. 팀장 이상 직책(팀장·부서장·본부장·대표이사)을 보임한 임직원에게는 원칙적으로 개인 법인카드를 발 급한다.",
+      "page": 3,
+      "order": 23,
+      "level": null,
+      "bbox": [
+        69.2,
+        680.8,
+        525.9,
+        654.1
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e25",
+      "type": "list_item",
+      "text": "2. 직책이 없는 임직원(비직책자)은 부서 공용카드를 사용하거나, 업무상 필요가 인정되는 경우 관리자 승",
+      "page": 3,
+      "order": 24,
+      "level": null,
+      "bbox": [
+        68.3,
+        644.6,
+        526.9,
+        633.4
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e26",
+      "type": "list_item",
+      "text": "인을 받아 개인 카드를 발급받을 수 있다.",
+      "page": 3,
+      "order": 25,
+      "level": null,
+      "bbox": [
+        80.4,
+        627.9,
+        256.7,
+        617.8
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e27",
+      "type": "heading",
+      "text": "제5조 (발급 절차)",
+      "page": 3,
+      "order": 26,
+      "level": 2,
+      "bbox": [
+        62.6,
+        592.2,
+        144.1,
+        580.3
+      ],
+      "attrs": {
+        "article_no": 5,
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e28",
+      "type": "paragraph",
+      "text": "사용자는 소속 부서장의 승인을 받아 「법인카드 발급 신청서」를 경영지원본부에 제출하며, 경영지원본부는 신청 내용을 검토하여 카드사에 발급을 요청한다.",
+      "page": 3,
+      "order": 27,
+      "level": null,
+      "bbox": [
+        62.6,
+        566.5,
+        532.7,
+        539.8
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 5
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e29",
+      "type": "heading",
+      "text": "제6조 (관리 책임)",
+      "page": 3,
+      "order": 28,
+      "level": 2,
+      "bbox": [
+        62.6,
+        514.2,
+        144.1,
+        502.3
+      ],
+      "attrs": {
+        "article_no": 6,
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e30",
+      "type": "list_item",
+      "text": "1. 사용자는 법인카드를 선량한 관리자의 주의로 보관·사용하여야 하며, 타인에게 양도·대여할 수 없다. 다만 제4조제2항의 부서 공용카드는 소속 부서장의 관리 하에 부서원이 순환하여 사용할 수 있으며, 이는 제1항의 양도·대여 금지 대상에 해당하지 아니한다. 이 경우 정산 시스템에 실사용자를 반드시 기록하여 야 한다.",
+      "page": 3,
+      "order": 29,
+      "level": null,
+      "bbox": [
+        69.2,
+        488.5,
+        529.7,
+        428.4
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 1,
+        "level_hint": 3,
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e31",
+      "type": "list_item",
+      "text": "2. 퇴사, 휴직, 부서 이동 시 사용자는 지체 없이 법인카드를 반납하여야 한다.",
+      "page": 3,
+      "order": 30,
+      "level": null,
+      "bbox": [
+        68.3,
+        418.9,
+        403.3,
+        408.2
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e32",
+      "type": "heading",
+      "text": "제7조 (분실·도난 시 조치)",
+      "page": 3,
+      "order": 31,
+      "level": 2,
+      "bbox": [
+        62.6,
+        383.2,
+        184.6,
+        371.3
+      ],
+      "attrs": {
+        "article_no": 7,
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e33",
+      "type": "paragraph",
+      "text": "사용자는 법인카드의 분실 또는 도난을 인지한 즉시 카드사에 사용정지를 요청하고, 24시간 이내에 경영지",
+      "page": 3,
+      "order": 32,
+      "level": null,
+      "bbox": [
+        62.6,
+        357.6,
+        531.2,
+        346.8
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 7
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e34",
+      "type": "paragraph",
+      "text": "원본부에 서면(이메일 포함)으로 보고하여야 한다.",
+      "page": 3,
+      "order": 33,
+      "level": null,
+      "bbox": [
+        62.7,
+        340.9,
+        281.7,
+        329.8
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 법인카드의 발급 및 관리",
+        "article_no": 7
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e35",
+      "type": "heading",
+      "text": "제3장 법인카드 사용 원칙",
+      "page": 3,
+      "order": 34,
+      "level": 1,
+      "bbox": [
+        222.0,
+        262.3,
+        372.0,
+        248.7
+      ],
+      "attrs": {
+        "chapter_no": 3
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e36",
+      "type": "heading",
+      "text": "제8조 (사용 가능 항목)",
+      "page": 3,
+      "order": 35,
+      "level": 2,
+      "bbox": [
+        62.6,
+        212.0,
+        167.5,
+        200.1
+      ],
+      "attrs": {
+        "article_no": 8,
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e37",
+      "type": "paragraph",
+      "text": "법인카드는 다음 각 호의 업무 목적 지출에 한하여 사용할 수 있다.",
+      "page": 3,
+      "order": 36,
+      "level": null,
+      "bbox": [
+        63.1,
+        186.3,
+        349.7,
+        176.2
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e38",
+      "type": "list_item",
+      "text": "거래처 미팅, 회의 관련 식대 및 다과비",
+      "page": 3,
+      "order": 37,
+      "level": null,
+      "bbox": [
+        63.1,
+        169.6,
+        240.0,
+        158.9
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e39",
+      "type": "list_item",
+      "text": "기업업무추진비(거래처 접대, 경조사비 등 업무 관련성이 인정되는 지출)",
+      "page": 3,
+      "order": 38,
+      "level": null,
+      "bbox": [
+        63.0,
+        152.9,
+        391.0,
+        141.8
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e40",
+      "type": "list_item",
+      "text": "사무용품, 소모품 구입비",
+      "page": 3,
+      "order": 39,
+      "level": null,
+      "bbox": [
+        62.8,
+        136.2,
+        180.6,
+        125.5
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e41",
+      "type": "list_item",
+      "text": "출장 관련 교통비, 숙박비",
+      "page": 3,
+      "order": 40,
+      "level": null,
+      "bbox": [
+        62.7,
+        119.6,
+        183.2,
+        108.8
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e42",
+      "type": "list_item",
+      "text": "임직원 복리후생 목적의 식대(사내 식대 지원 규정에 따름), 경조사비",
+      "page": 3,
+      "order": 41,
+      "level": null,
+      "bbox": [
+        62.8,
+        102.9,
+        372.7,
+        91.7
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e43",
+      "type": "list_item",
+      "text": "그 밖에 관리자가 업무상 필요하다고 인정한 지출",
+      "page": 3,
+      "order": 42,
+      "level": null,
+      "bbox": [
+        62.9,
+        86.2,
+        288.7,
+        76.1
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e22",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 3,
+      "order": 43,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e45",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 3,
+      "order": 44,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p3:e46",
+      "type": "footer",
+      "text": "-3/7-",
+      "page": 3,
+      "order": 45,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e48",
+      "type": "heading",
+      "text": "제9조 (사용 제한 및 금지 항목)",
+      "page": 4,
+      "order": 46,
+      "level": 2,
+      "bbox": [
+        62.6,
+        758.1,
+        203.8,
+        746.2
+      ],
+      "attrs": {
+        "article_no": 9,
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e49",
+      "type": "list_item",
+      "text": "1. 사적 용도의 지출",
+      "page": 4,
+      "order": 47,
+      "level": null,
+      "bbox": [
+        69.2,
+        732.4,
+        154.1,
+        722.3
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e50",
+      "type": "list_item",
+      "text": "2. 유흥업소, 사행성 업종에서의 지출",
+      "page": 4,
+      "order": 48,
+      "level": null,
+      "bbox": [
+        68.3,
+        712.9,
+        229.7,
+        702.2
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e51",
+      "type": "list_item",
+      "text": "3. 상품권 등 유가증권의 현금 구매(부득이 상품권을 구입하는 경우 반드시 신용카드로 결제하여 적격증빙 을 확보한다)",
+      "page": 4,
+      "order": 49,
+      "level": null,
+      "bbox": [
+        68.1,
+        693.4,
+        528.4,
+        665.5
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e52",
+      "type": "list_item",
+      "text": "4. 업무 관련성이 객관적으로 소명되지 않는 지출",
+      "page": 4,
+      "order": 50,
+      "level": null,
+      "bbox": [
+        68.0,
+        657.2,
+        281.4,
+        647.0
+      ],
+      "attrs": {
+        "clause_no": 4,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e53",
+      "type": "list_item",
+      "text": "5. 개인 명의 카드로 결제 후 회사에 청구하는 방식의 우회 사용",
+      "page": 4,
+      "order": 51,
+      "level": null,
+      "bbox": [
+        68.1,
+        637.6,
+        341.7,
+        627.5
+      ],
+      "attrs": {
+        "clause_no": 5,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e54",
+      "type": "heading",
+      "text": "제10조 (사용 한도)",
+      "page": 4,
+      "order": 52,
+      "level": 2,
+      "bbox": [
+        62.6,
+        601.9,
+        190.4,
+        590.0
+      ],
+      "attrs": {
+        "revision": "v1.1",
+        "raw_title": "제10조 (사용 한도) 개정 v1.1",
+        "corrections": [
+          "C6"
+        ],
+        "article_no": 10,
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e55",
+      "type": "list_item",
+      "text": "1. 1일 사용한도 및 월 사용한도는 직책별로 별표 1과 같이 정한다.",
+      "page": 4,
+      "order": 53,
+      "level": null,
+      "bbox": [
+        69.2,
+        576.3,
+        353.9,
+        566.2
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 10
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e56",
+      "type": "list_item",
+      "text": "2. 건당 지출에 대한 사전승인 기준은 원칙적으로 직책별로 별표 1과 같이 정한다. 다만, 식대·기업업무추 진비 지출은 직책에 관계없이 건당 30만원을 초과하는 경우 사전에 관리자 승인을 받아야 하며, 별표1 의 직책별 기준액이 30만원보다 큰 경우에도 이 항의 30만원 기준을 우선 적용한다(즉, 별표 1의 기준과 이 항의 기준 중 더 낮은 금액을 기준으로 한다).",
+      "page": 4,
+      "order": 54,
+      "level": null,
+      "bbox": [
+        68.3,
+        556.8,
+        529.2,
+        495.6
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 2,
+        "level_hint": 3,
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 10
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e57",
+      "type": "list_item",
+      "text": "3. 부득이한 사유로 제1항·제2항의 사전승인 기준을 초과하는 지출에 대해 사전승인을 받지 못한 경우, 사용자는 정산 신청 시 미승인 사유를 명시하고 관리자의 사후 승인을 받아야 한다. 사후 승인이 3개월 내 3회 이상 발생하는 경우 리스크 리뷰어는 해당 건을 고위험으로 분류하며, 관리자는 재발 방지 조치를 검토한다.",
+      "page": 4,
+      "order": 55,
+      "level": null,
+      "bbox": [
+        68.1,
+        487.2,
+        526.3,
+        427.1
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 3,
+        "level_hint": 3,
+        "chapter_no": 3,
+        "chapter_title": "제3장 법인카드 사용 원칙",
+        "article_no": 10
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e58",
+      "type": "heading",
+      "text": "제4장 증빙 및 정산",
+      "page": 4,
+      "order": 56,
+      "level": 1,
+      "bbox": [
+        242.1,
+        358.6,
+        353.1,
+        344.9
+      ],
+      "attrs": {
+        "chapter_no": 4
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e59",
+      "type": "heading",
+      "text": "제11조 (증빙서류의 원칙)",
+      "page": 4,
+      "order": 57,
+      "level": 2,
+      "bbox": [
+        62.6,
+        308.2,
+        182.0,
+        296.3
+      ],
+      "attrs": {
+        "article_no": 11,
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e60",
+      "type": "list_item",
+      "text": "1. 사용자는 모든 지출에 대해 적격증명서류(신용카드매출전표 등)를 원칙으로 수취하여야 한다.",
+      "page": 4,
+      "order": 58,
+      "level": null,
+      "bbox": [
+        69.2,
+        282.5,
+        488.3,
+        271.4
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e61",
+      "type": "list_item",
+      "text": "2. 기업업무추진비는 건당 3만원을 초과하는 경우 적격증명서류를 수취하지 아니하면 전액 손금불산입된다. 기업업무추진비 외의 지출은 건당 3만원을 초과하는 경우 적격증명서류 수취 의무가 있으며, 미수취 시 증빙불비가산세가 부과될 수 있다.",
+      "page": 4,
+      "order": 59,
+      "level": null,
+      "bbox": [
+        68.3,
+        263.0,
+        529.9,
+        219.5
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 2,
+        "level_hint": 3,
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e62",
+      "type": "list_item",
+      "text": "3. 경조사비는 건당 20만원까지 적격증명서류 없이 청첩장, 부고장, 문자메시지 내역, 계좌이체 내역 등의 소명자료로 갈음할 수 있다. 20만원을 초과하는 경조사비로서 적격증빙이 없는 경우에는 초과분만이 아 니라 해당 지출 전액이 손금불산입된다.",
+      "page": 4,
+      "order": 60,
+      "level": null,
+      "bbox": [
+        68.1,
+        210.2,
+        531.1,
+        166.7
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e63",
+      "type": "list_item",
+      "text": "4. 기업업무추진비 지출 시 다음 사항을 정산 시스템에 반드시 기록한다.",
+      "page": 4,
+      "order": 61,
+      "level": null,
+      "bbox": [
+        68.0,
+        157.2,
+        381.4,
+        147.1
+      ],
+      "attrs": {
+        "clause_no": 4,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e64",
+      "type": "list_item",
+      "text": "거래처명 및 담당자",
+      "page": 4,
+      "order": 62,
+      "level": null,
+      "bbox": [
+        79.8,
+        140.6,
+        170.4,
+        130.5
+      ],
+      "attrs": {
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e65",
+      "type": "list_item",
+      "text": "참석자 인원 및 소속",
+      "page": 4,
+      "order": 63,
+      "level": null,
+      "bbox": [
+        79.8,
+        123.9,
+        172.9,
+        113.7
+      ],
+      "attrs": {
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e66",
+      "type": "list_item",
+      "text": "지출 목적(업무 관련성)",
+      "page": 4,
+      "order": 64,
+      "level": null,
+      "bbox": [
+        79.8,
+        107.2,
+        186.9,
+        96.1
+      ],
+      "attrs": {
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e67",
+      "type": "list_item",
+      "text": "일시 및 장소",
+      "page": 4,
+      "order": 65,
+      "level": null,
+      "bbox": [
+        79.8,
+        90.5,
+        140.4,
+        80.5
+      ],
+      "attrs": {
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e47",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 4,
+      "order": 66,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e68",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 4,
+      "order": 67,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p4:e69",
+      "type": "footer",
+      "text": "-4/7-",
+      "page": 4,
+      "order": 68,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e71",
+      "type": "heading",
+      "text": "제12조 (정산 기한 및 절차)",
+      "page": 5,
+      "order": 69,
+      "level": 2,
+      "bbox": [
+        62.6,
+        758.1,
+        187.1,
+        746.2
+      ],
+      "attrs": {
+        "article_no": 12,
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e72",
+      "type": "list_item",
+      "text": "1. 사용자는 지출일로부터 7영업일 이내에 정산 시스템을 통해 사용 내역, 증빙, 지출 목적을 등록하여야 한다.",
+      "page": 5,
+      "order": 70,
+      "level": null,
+      "bbox": [
+        69.2,
+        732.5,
+        521.7,
+        705.7
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 12
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e73",
+      "type": "list_item",
+      "text": "2. 재무회계팀은 등록된 정산 건에 대해 룰 엔진 및 리스크 리뷰어의 검토 결과를 참고하여 1차 확인하며, 이상 징후(고액, 반복, 한도 초과, 증빙 누락 등)로 분류된 건은 관리자의 최종 승인을 거쳐야 한다.",
+      "page": 5,
+      "order": 71,
+      "level": null,
+      "bbox": [
+        68.3,
+        696.2,
+        521.4,
+        668.4
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 12
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e74",
+      "type": "list_item",
+      "text": "3. 정산이 완료되지 않은 지출은 사용자 본인의 동의를 받아 급여에서 공제하거나, 법인카드 사용을 정지할 수 있다.",
+      "page": 5,
+      "order": 72,
+      "level": null,
+      "bbox": [
+        68.1,
+        660.0,
+        532.2,
+        633.2
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 12
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e75",
+      "type": "heading",
+      "text": "제13조 (미정산·증빙 누락 시 조치)",
+      "page": 5,
+      "order": 73,
+      "level": 2,
+      "bbox": [
+        62.6,
+        607.6,
+        225.0,
+        595.7
+      ],
+      "attrs": {
+        "article_no": 13,
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e76",
+      "type": "list_item",
+      "text": "1. 정당한 사유 없이 정산 기한을 3회 이상 초과한 경우 법인카드 사용을 일시 정지할 수 있다.",
+      "page": 5,
+      "order": 74,
+      "level": null,
+      "bbox": [
+        69.2,
+        581.9,
+        472.6,
+        571.8
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 13
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e77",
+      "type": "list_item",
+      "text": "2. 적격증빙 미비로 손금불산입 처리된 금액은 원칙적으로 사용자 본인이 소명하여야 하며, 소명이 불가능 한 경우 회사는 관련 세무상 불이익(가산세 등)을 사용자 본인의 동의를 받아 급여에서 공제하는 방법 등 으로 사용자에게 구상할 수 있다.",
+      "page": 5,
+      "order": 75,
+      "level": null,
+      "bbox": [
+        68.3,
+        562.4,
+        531.5,
+        518.9
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 증빙 및 정산",
+        "article_no": 13
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e78",
+      "type": "heading",
+      "text": "제5장 세무 관련 준수사항",
+      "page": 5,
+      "order": 76,
+      "level": 1,
+      "bbox": [
+        222.0,
+        450.6,
+        373.1,
+        436.9
+      ],
+      "attrs": {
+        "chapter_no": 5
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e79",
+      "type": "heading",
+      "text": "제14조 (기업업무추진비 한도 관리)",
+      "page": 5,
+      "order": 77,
+      "level": 2,
+      "bbox": [
+        62.6,
+        400.1,
+        226.1,
+        388.2
+      ],
+      "attrs": {
+        "article_no": 14,
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e80",
+      "type": "list_item",
+      "text": "1. 회사는 세법에서 정한 기업업무추진비 손금산입 한도를 초과하지 않도록 연간 지출 현황을 분기별로 모 니터링한다.",
+      "page": 5,
+      "order": 78,
+      "level": null,
+      "bbox": [
+        69.2,
+        374.5,
+        528.7,
+        347.8
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e81",
+      "type": "list_item",
+      "text": "2. 손금산입 한도(일반법인 기준)는 다음과 같이 구성된다.",
+      "page": 5,
+      "order": 79,
+      "level": null,
+      "bbox": [
+        68.3,
+        338.3,
+        321.2,
+        327.1
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e82",
+      "type": "list_item",
+      "text": "기본한도: 연 1,200만원 (회사는 설립 12년차 중견기업으로 중소기업 기본한도 3,600만원 특례 대상이 아니며, 일반법인 기본한도가 적용된다)",
+      "page": 5,
+      "order": 80,
+      "level": null,
+      "bbox": [
+        79.8,
+        321.6,
+        530.7,
+        293.8
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e83",
+      "type": "list_item",
+      "text": "수입금액별 한도: 매출 100억원 이하분 0.3%, 100억원 초과~500억원 이하분 0.2%, 500억원 초과분 0.03% (회사 연 매출은 연결 기준 약 1,200억원으로 세 구간에 모두 걸쳐 있으며, 이를 적용하면 수입금 액별 한도는 100억원×0.3%+400억원×0.2%+700억원×0.03% ≈ 1억 3,100만원 수준으로 산정됨. 실제 매출액 확정 시 갱신 필요)",
+      "page": 5,
+      "order": 81,
+      "level": null,
+      "bbox": [
+        79.8,
+        288.2,
+        529.6,
+        227.0
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e84",
+      "type": "list_item",
+      "text": "추가한도: 문화비 지출분(일반한도의 20%), 전통시장·지역사랑상품권 지출분(일반한도의 20%, 2026. 1. 1. 이후 신고분부터 상향 적용)",
+      "page": 5,
+      "order": 82,
+      "level": null,
+      "bbox": [
+        79.8,
+        221.5,
+        504.9,
+        193.7
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e85",
+      "type": "list_item",
+      "text": "3. 정산 자동화 플랫폼의 대시보드는 위 한도 대비 누적 사용률을 실시간으로 표시하고, 한도 임박 시 경영",
+      "page": 5,
+      "order": 83,
+      "level": null,
+      "bbox": [
+        68.1,
+        185.3,
+        526.0,
+        174.5
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e86",
+      "type": "list_item",
+      "text": "지원본부에 경보를 발생시킨다.",
+      "page": 5,
+      "order": 84,
+      "level": null,
+      "bbox": [
+        80.0,
+        168.6,
+        216.3,
+        158.6
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 14
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e87",
+      "type": "heading",
+      "text": "제15조 (비용 항목 구분 기준)",
+      "page": 5,
+      "order": 85,
+      "level": 2,
+      "bbox": [
+        62.6,
+        132.9,
+        197.5,
+        121.0
+      ],
+      "attrs": {
+        "article_no": 15,
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e88",
+      "type": "paragraph",
+      "text": "룰 엔진 및 재무회계팀은 다음 기준에 따라 지출 항목을 구분하여 처리한다.",
+      "page": 5,
+      "order": 86,
+      "level": null,
+      "bbox": [
+        62.6,
+        107.2,
+        389.5,
+        97.1
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e89",
+      "type": "list_item",
+      "text": "기업업무추진비: 거래처 등 외부인을 대상으로 친목·거래 촉진 목적으로 지출한 비용",
+      "page": 5,
+      "order": 87,
+      "level": null,
+      "bbox": [
+        63.1,
+        90.6,
+        441.7,
+        80.4
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e70",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 5,
+      "order": 88,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e90",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 5,
+      "order": 89,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p5:e91",
+      "type": "footer",
+      "text": "-5/7-",
+      "page": 5,
+      "order": 90,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e93",
+      "type": "list_item",
+      "text": "복리후생비: 임직원을 대상으로 한 식대, 경조사비, 명절 선물 등 (일정 요건 충족 시 전액 손금 인정)",
+      "page": 6,
+      "order": 91,
+      "level": null,
+      "bbox": [
+        63.0,
+        758.7,
+        508.4,
+        747.5
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e94",
+      "type": "list_item",
+      "text": "회의비: 사내 회의 중 발생한 통상적인 다과·식대(사회통념상 인정되는 범위)",
+      "page": 6,
+      "order": 92,
+      "level": null,
+      "bbox": [
+        62.8,
+        742.0,
+        407.0,
+        730.8
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e95",
+      "type": "list_item",
+      "text": "광고선전비: 불특정 다수를 대상으로 한 견본품, 기념품 등",
+      "page": 6,
+      "order": 93,
+      "level": null,
+      "bbox": [
+        62.7,
+        725.3,
+        327.9,
+        714.5
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e96",
+      "type": "list_item",
+      "text": "여비교통비: 「출장비 사용 규정」에 따른 교통비·숙박비·일비·식비 등 출장 관련 지출. 제1호부터 제4호 까지와는 별도의 계정과목이며, 제14조(기업업무추진비 한도 관리)의 손금산입 한도 관리 대상이 아니다. 6. 항목 구분이 모호한 건은 리스크 리뷰어가 1차 분류하되, 최종 항목 확정은 재무회계팀 및 관리자가 수행",
+      "page": 6,
+      "order": 94,
+      "level": null,
+      "bbox": [
+        62.6,
+        708.6,
+        532.6,
+        664.5
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e97",
+      "type": "list_item",
+      "text": "하며 시스템은 참고 정보만 제공한다.",
+      "page": 6,
+      "order": 95,
+      "level": null,
+      "bbox": [
+        62.6,
+        658.5,
+        224.5,
+        648.5
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 15
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e98",
+      "type": "heading",
+      "text": "제16조 (인적 책임의 원칙)",
+      "page": 6,
+      "order": 96,
+      "level": 2,
+      "bbox": [
+        62.6,
+        622.9,
+        184.5,
+        610.9
+      ],
+      "attrs": {
+        "article_no": 16,
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e99",
+      "type": "paragraph",
+      "text": "이 규정에 따른 AI 기반 룰 엔진, 리스크 리뷰어 및 RAG 근거 생성 결과는 정산 처리를 보조하는 참고 자료 이며, 손금산입 여부 및 정산 승인에 대한 최종 판단과 책임은 관리자 및 재무회계팀 등 사람에게 있다.",
+      "page": 6,
+      "order": 97,
+      "level": null,
+      "bbox": [
+        63.4,
+        597.2,
+        532.7,
+        569.8
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 세무 관련 준수사항",
+        "article_no": 16
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e100",
+      "type": "heading",
+      "text": "제6장 위반 시 조치",
+      "page": 6,
+      "order": 98,
+      "level": 1,
+      "bbox": [
+        242.1,
+        501.9,
+        351.9,
+        488.3
+      ],
+      "attrs": {
+        "chapter_no": 6
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e101",
+      "type": "heading",
+      "text": "제17조 (제재)",
+      "page": 6,
+      "order": 99,
+      "level": 2,
+      "bbox": [
+        62.6,
+        451.6,
+        127.4,
+        439.7
+      ],
+      "attrs": {
+        "article_no": 17,
+        "chapter_no": 6,
+        "chapter_title": "제6장 위반 시 조치"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e102",
+      "type": "list_item",
+      "text": "1. 법인카드를 사적 용도로 사용하거나 증빙을 허위로 작성한 경우 인사규정에 따른 징계 대상이 되며, 사용 금액 전액을 회사에 반환하여야 한다.",
+      "page": 6,
+      "order": 100,
+      "level": null,
+      "bbox": [
+        69.2,
+        425.9,
+        524.9,
+        399.1
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 1,
+        "level_hint": 3,
+        "chapter_no": 6,
+        "chapter_title": "제6장 위반 시 조치",
+        "article_no": 17
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e103",
+      "type": "list_item",
+      "text": "2. 반복적인 규정 위반 시 법인카드 발급을 취소할 수 있다.",
+      "page": 6,
+      "order": 101,
+      "level": null,
+      "bbox": [
+        68.3,
+        389.7,
+        321.7,
+        379.6
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 6,
+        "chapter_title": "제6장 위반 시 조치",
+        "article_no": 17
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e104",
+      "type": "heading",
+      "text": "제7장 보칙",
+      "page": 6,
+      "order": 102,
+      "level": 1,
+      "bbox": [
+        265.4,
+        311.2,
+        328.6,
+        297.5
+      ],
+      "attrs": {
+        "chapter_no": 7
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e105",
+      "type": "heading",
+      "text": "제18조 (규정의 개정)",
+      "page": 6,
+      "order": 103,
+      "level": 2,
+      "bbox": [
+        62.6,
+        260.8,
+        161.2,
+        248.9
+      ],
+      "attrs": {
+        "article_no": 18,
+        "chapter_no": 7,
+        "chapter_title": "제7장 보칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e106",
+      "type": "list_item",
+      "text": "이 규정의 개정은 경영지원본부의 제안으로 대표이사의 승인을 받아 시행한다.",
+      "page": 6,
+      "order": 104,
+      "level": null,
+      "bbox": [
+        63.4,
+        235.1,
+        404.1,
+        225.1
+      ],
+      "attrs": {
+        "chapter_no": 7,
+        "chapter_title": "제7장 보칙",
+        "article_no": 18
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e107",
+      "type": "heading",
+      "text": "제19조 (시행일)",
+      "page": 6,
+      "order": 105,
+      "level": 2,
+      "bbox": [
+        62.6,
+        199.4,
+        137.8,
+        187.5
+      ],
+      "attrs": {
+        "article_no": 19,
+        "chapter_no": 7,
+        "chapter_title": "제7장 보칙"
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e108",
+      "type": "list_item",
+      "text": "이 규정은 2026년 8월 1일부터 시행한다.",
+      "page": 6,
+      "order": 106,
+      "level": null,
+      "bbox": [
+        63.4,
+        173.8,
+        240.8,
+        163.8
+      ],
+      "attrs": {
+        "chapter_no": 7,
+        "chapter_title": "제7장 보칙",
+        "article_no": 19
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e92",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 6,
+      "order": 107,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e109",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 6,
+      "order": 108,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p6:e110",
+      "type": "footer",
+      "text": "-6/7-",
+      "page": 6,
+      "order": 109,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e113",
+      "type": "caption",
+      "text": "별표1. 직책별 법인카드 사용 한도 개정 v1.1",
+      "page": 7,
+      "order": 110,
+      "level": null,
+      "bbox": [
+        63.2,
+        758.2,
+        255.1,
+        747.8
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C2"
+        ],
+        "annex": true
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e112",
+      "type": "table",
+      "text": "별표1. 직책별 법인카드 사용 한도 개정 v1.1\n\n| 직책 | 1일 한도 | 월 한도 | 건당 사전승인 기준 |\n|--------------------|-------------|------------|----------------------|\n| 대표이사 | 300만원 | 1,000만원 | 100만원 초과 |\n| 본부장 | 250만원 | 800만원 | 80만원 초과 |\n| 부서장 | 150만원 | 500만원 | 60만원 초과 |\n| 팀장 | 100만원 | 400만원 | 50만원 초과 |\n| 비직책자(공용카드) | 50만원 | 200만원 | 30만원 초과 |",
+      "page": 7,
+      "order": 111,
+      "level": null,
+      "bbox": [
+        61.6,
+        737.2,
+        533.5,
+        564.2
+      ],
+      "attrs": {
+        "rows": 6,
+        "cols": 4,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "별표 1. 직책별 법인카드 사용 한도 개정 v1.1",
+        "corrections": [
+          "C1"
+        ],
+        "annex": true
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e114",
+      "type": "list_item",
+      "text": "※ 한도는 보임 중인 직책 기준으로 적용되며, 직급(사원~전무)과는 무관하다. 직책이 변경된 경우 한도는 발령일부터 적용된다.",
+      "page": 7,
+      "order": 112,
+      "level": null,
+      "bbox": [
+        79.3,
+        541.3,
+        520.7,
+        519.1
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e115",
+      "type": "list_item",
+      "text": "※ 경영지원본부는 본부장 직위가 없으므로, 산하 각 부서장(인사부·재무회계부·총무구매부·법무부·IT운영부)은 부서장 한도를 적용한다.",
+      "page": 7,
+      "order": 113,
+      "level": null,
+      "bbox": [
+        79.0,
+        513.0,
+        521.2,
+        490.9
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e116",
+      "type": "list_item",
+      "text": "※ 식대·기업업무추진비 지출은 제10조 제2항에 따라 직책과 무관하게 건당 30만원 초과 시 사전승인 대상이며, 위 표의 직책별 기준액과 30만원 중 더 낮은 금액이 우선 적용된다.",
+      "page": 7,
+      "order": 114,
+      "level": null,
+      "bbox": [
+        79.4,
+        484.9,
+        520.6,
+        462.8
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e117",
+      "type": "list_item",
+      "text": "※ \"이사\"가 부서장을 겸직하는 경우 부서장 한도를, 본부장 대행으로 보임된 경우 본부장 한도를 적용한다. 겸직·대행 여부 및 적용 한도는 발령 문서(인사발령서)에 명시된 보임 직책을 기준으로 한다.",
+      "page": 7,
+      "order": 115,
+      "level": null,
+      "bbox": [
+        79.0,
+        456.6,
+        520.8,
+        433.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e118",
+      "type": "list_item",
+      "text": "※ \"전무\"가 복수본부 총괄로 보임된 경우에도 본부장 한도를 적용하며, 발령 문서상 총괄 대상 본부가 둘 이상인 경우 카드는 1개만 발급하고 한도는 단일 본부장 한도를 초과하지 아니한다.",
+      "page": 7,
+      "order": 116,
+      "level": null,
+      "bbox": [
+        79.3,
+        428.5,
+        521.0,
+        406.4
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e111",
+      "type": "header",
+      "text": "법인카드 사용 규정",
+      "page": 7,
+      "order": 117,
+      "level": null,
+      "bbox": [
+        265.3,
+        811.5,
+        329.8,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e119",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 7,
+      "order": 118,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "법인카드_사용규정:p7:e120",
+      "type": "footer",
+      "text": "-7/7-",
+      "page": 7,
+      "order": 119,
+      "level": null,
+      "bbox": [
+        284.9,
+        38.6,
+        310.4,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    }
+  ]
+}

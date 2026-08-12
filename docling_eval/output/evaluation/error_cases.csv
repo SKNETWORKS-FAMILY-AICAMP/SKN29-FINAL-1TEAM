@@ -1,0 +1,416 @@
+﻿Area,Error Type,Document,Page,Expected,Detected,Note
+Layout,Text Mismatch,법인카드_사용규정,2,제2조 (정의),제2조 (정의) 개정 v1.1,부분 일치 — 텍스트 오염/분할
+Layout,Layout Missing,법인카드_사용규정,,"[List] 항목 구분이 모호한 건은 리스크 리뷰어가 1차 분류하되, 최종 항목 확정은 재무회계팀 및 관리자가 수행하며 시스템은 참고 정보만 제공한다.",(없음),GT 요소 미탐지
+Layout,Layout Extra,법인카드_사용규정,1,(없음),"[Text] 개정이력 v1.0 제정 (조문 정합성 검토 반영) / v1.1 개정: 제2조 관리자 정의 정비, 제10조 사전승인 예외절차 신 설, 별표1 이사 겸직·대행 시 한도 적용기준 명확화",GT에 없는 요소
+Layout,Layout Extra,법인카드_사용규정,3,(없음),[List] 인을 받아 개인 카드를 발급받을 수 있다.,GT에 없는 요소
+Layout,Layout Extra,법인카드_사용규정,3,(없음),[Text] 원본부에 서면(이메일 포함)으로 보고하여야 한다.,GT에 없는 요소
+Layout,Layout Extra,법인카드_사용규정,5,(없음),[List] 지원본부에 경보를 발생시킨다.,GT에 없는 요소
+Layout,Layout Extra,법인카드_사용규정,6,(없음),[List] 하며 시스템은 참고 정보만 제공한다.,GT에 없는 요소
+Layout,Layout Missing,부서소개,,"[Text] 총 16개 부서(15개 부/실 + 감사실), 27개 팀으로 구성된다.",(없음),GT 요소 미탐지
+Layout,Layout Extra,부서소개,1,(없음),[Heading] 부서 소개,GT에 없는 요소
+Layout,Layout Extra,부서소개,1,(없음),[Text] 내 부 참 고 문 서,GT에 없는 요소
+Layout,Layout Extra,부서소개,4,(없음),[Table] <table 2x5>,GT에 없는 요소
+Layout,Layout Extra,부서소개,5,(없음),[Table] <table 6x3>,GT에 없는 요소
+Layout,Text Mismatch,업무추진비_사용규정,2,제2조 (정의),제2조 (정의) 개정 v1.2,부분 일치 — 텍스트 오염/분할
+Layout,Layout Missing,업무추진비_사용규정,,[Heading] 제6조 (사용 승인),(없음),GT 요소 미탐지
+Layout,Layout Missing,업무추진비_사용규정,,[Heading] 제7조 (기록 사항),(없음),GT 요소 미탐지
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 제정일,GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 2026. 7. 20.,GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 시행일,GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 2026. 8. 1.,GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 소관부서,GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,1,(없음),[Text] 경영지원본부 (재무회계부),GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,3,(없음),[Heading] 제6조 (사용 승인) 개정 v1.3(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,업무추진비_사용규정,4,(없음),[Heading] 제7조 (기록 사항) 개정 v1.3(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,조직도,1,(없음),[Heading] 조직도,GT에 없는 요소
+Layout,Layout Extra,조직도,1,(없음),[Text] 내 부 참 고 문 서,GT에 없는 요소
+Layout,Layout Extra,조직도,4,(없음),[Table] <table 2x2>,GT에 없는 요소
+Layout,Layout Extra,조직도,5,(없음),[Table] <table 4x2>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,1,(없음),[Heading] 조직설계 상세 기획서,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,1,(없음),[Text] 내 부 참 고 문 서,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,6,(없음),[Table] <table 7x5>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,7,(없음),[Table] <table 4x4>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,8,(없음),[Table] <table 4x4>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,9,(없음),[Table] <table 3x3>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,10,(없음),[Table] <table 5x3>,GT에 없는 요소
+Layout,Layout Extra,조직설계_상세기획서,12,(없음),[Table] <table 4x2>,GT에 없는 요소
+Layout,Layout Missing,직급체계,,[Text] 국내 IT기업의 일반적 관행에 따라 **직급(연차/근속 기반 호칭)**과 **직책(팀장/부서장/본부장 등 보직)**을 분리 운영한다.,(없음),GT 요소 미탐지
+Layout,Layout Extra,직급체계,1,(없음),[Heading] 직급 체계,GT에 없는 요소
+Layout,Layout Extra,직급체계,1,(없음),[Text] 내 부 참 고 문 서,GT에 없는 요소
+Layout,Layout Extra,직급체계,3,(없음),[Table] <table 5x4>,GT에 없는 요소
+Layout,Text Mismatch,출장비_사용규정,5,별표 1. 국내출장 여비 정액 기준,별표 1. 국내출장 여비 정액 기준 개정 v1.1(2026.7.28),부분 일치 — 텍스트 오염/분할
+Layout,Text Mismatch,출장비_사용규정,5,별표 2. 해외출장 지역등급별 여비 기준,별표 2. 해외출장 지역등급별 여비 기준 개정 v1.1(2026.7.28),부분 일치 — 텍스트 오염/분할
+Layout,Layout Missing,출장비_사용규정,,[Heading] 제5조 (사전승인 기준금액),(없음),GT 요소 미탐지
+Layout,Layout Missing,출장비_사용규정,,[Heading] 제6조 (여비의 구성),(없음),GT 요소 미탐지
+Layout,Layout Missing,출장비_사용규정,,[Heading] 제8조 (해외출장 여비),(없음),GT 요소 미탐지
+Layout,Layout Extra,출장비_사용규정,1,(없음),"[Text] 개정이력 v1.0 제정 / v1.1(2026.7.28) — ⑥ 해외출장 식비 기준 공백 해소(제6조4호·제8조3항·별표2 신설), ⑦ 사문화된 제5조2항을 본부장 이상 사전승인 기준(500만원 초과)으로 실질화, ⑧ 별표1 주석의 참조 대상을 ""건당 사전승인 기준액""으로 특",GT에 없는 요소
+Layout,Layout Extra,출장비_사용규정,3,(없음),[Heading] 제5조 (사전승인 기준금액) 개정 v1.1(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,출장비_사용규정,3,(없음),[Heading] 제6조 (여비의 구성) 개정 v1.1(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,출장비_사용규정,3,(없음),[Heading] 제8조 (해외출장 여비) 개정 v1.1(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,출장비_사용규정,6,(없음),[Table] <table 2x5>,GT에 없는 요소
+Layout,Text Mismatch,회식_운영규정,5,제8조 (사전승인이 필요한 경우),제8조 (사전승인이 필요한 경우) 개정 v1.1(2026.7.28),부분 일치 — 텍스트 오염/분할
+Layout,Text Mismatch,회식_운영규정,8,별표 1. 회식 유형별 승인 기준,별표 1. 회식 유형별 승인 기준 개정 v1.1(2026.7.28),부분 일치 — 텍스트 오염/분할
+Layout,Layout Missing,회식_운영규정,,"[Table] <table 9x2> 구분 내용 문서번호 TIGER-REG-2026-003-1 상위 규정 법인카드 사용 규정(TIGER-REG-2026-003) 제8조·제9조·제10조·제11조·제15조의 세부 운영지침 관련 규정 출장비 사용 규정(TIGER-REG-2026-004), 기업",(없음),GT 요소 미탐지
+Layout,Layout Missing,회식_운영규정,,"[Text] ※ 본 규정은 데모/교육 목적의 가상 기업(타이거 주식회사, Tiger Inc.) 시나리오용으로 작성되었다.",(없음),GT 요소 미탐지
+Layout,Layout Missing,회식_운영규정,,[Heading] 제6조 (참석 기준),(없음),GT 요소 미탐지
+Layout,Layout Missing,회식_운영규정,,[Heading] 제5장 예외 규정,(없음),GT 요소 미탐지
+Layout,Layout Extra,회식_운영규정,1,(없음),[Text] 제정일,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),[Text] 2026. 7. 20.,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),[Text] 시행일,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),[Text] 2026. 8. 1.,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),[Text] 소관부서,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),"[Text] 경영지원본부(재무회계부 정산 총괄, 총무구매부 행사성 회식 지원)",GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,1,(없음),"[Text] 개정이력 v1.0 제정 / v1.1(2026.7.28) — ① 별표1 거래처 동반 회식 행의 ""30만원 이하 사후등록"" 자기모순 삭제 및 업무추진비 규정 신규 구간(100만~300만원 본부장 이상/300만원 초과 대표이사) 반영, ⑥ 해외출장 중 회식 참 조를 출장비 규정 ",GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,3,(없음),[Text] 제6조(사용 승인)·제7조(기록 사항)를 적용한다. 특히 피접대자 중 청탁금지법 적용대상자가 포함되는 경우 「기업업무추진 비 사용 규정」별표1의 한도를 반드시 확인한다.,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,4,(없음),[Heading] 제6조 (참석 기준) 개정 v1.1(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,6,(없음),"[Text] 로 원칙적으로 18시)과는 목적과 값이 다른 별개의 개념이다. 룰 엔진 구현 시 두 기준을 하나의 ""야간"" 변수로 통합하지 아니하 고 각각 독립된 파라미터로 정의한다.",GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,7,(없음),[Table] <table 3x3>,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,7,(없음),[Heading] 제5장 예외 규정 개정 v1.1(2026.7.28),GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,8,(없음),[Table] <table 5x5>,GT에 없는 요소
+Layout,Layout Extra,회식_운영규정,9,(없음),[Table] <table 2x7>,GT에 없는 요소
+Layout,Layout Error,법인카드_사용규정,1,Text,Heading (Heading),**타이거 주식회사 (Tiger Inc.)**
+Layout,Layout Error,법인카드_사용규정,6,Text,List (List),이 규정의 개정은 경영지원본부의 제안으로 대표이사의 승인을 받아 시행한다.
+Layout,Layout Error,법인카드_사용규정,6,Text,List (List),이 규정은 2026년 8월 1일부터 시행한다.
+Layout,Layout Error,법인카드_사용규정,7,Heading,Text (Caption),별표 1. 직책별 법인카드 사용 한도
+Layout,Layout Error,법인카드_사용규정,7,Text,List (List),"※ 한도는 보임 중인 **직책** 기준으로 적용되며, 직급(사원~전무)과는 무관하다. 직책이 변경된 경우 한"
+Layout,Layout Error,법인카드_사용규정,7,Text,List (List),"※ 경영지원본부는 본부장 직위가 없으므로, 산하 각 부서장(인사부·재무회계부·총무구매부·법무부·IT운영부)은"
+Layout,Layout Error,법인카드_사용규정,7,Text,List (List),※ 식대·기업업무추진비 지출은 제10조 제2항에 따라 직책과 무관하게 건당 30만원 초과 시 사전승인 대상이
+Layout,Layout Error,법인카드_사용규정,7,Text,List (List),"※ ""이사""가 부서장을 겸직하는 경우 부서장 한도를, 본부장 대행으로 보임된 경우 본부장 한도를 적용한다. "
+Layout,Layout Error,법인카드_사용규정,7,Text,List (List),"※ ""전무""가 복수본부 총괄로 보임된 경우에도 본부장 한도를 적용하며, 발령 문서상 총괄 대상 본부가 둘 이"
+Layout,Layout Error,업무추진비_사용규정,1,Text,Heading (Heading),**타이거 주식회사 (Tiger Inc.)**
+Layout,Layout Error,업무추진비_사용규정,1,Table,Text (Text),<table 7x2> 구분 내용 문서번호 TIGER-REG-2026-005 제정일 2026. 7. 20. 시
+Layout,Layout Error,조직도,2,Heading,Text (Caption),1. 회사 개요
+Layout,Layout Error,조직도,4,Text,Heading (Heading),**본부 분리 이유**
+Layout,Layout Error,조직도,4,Text,Heading (Heading),**협업 구조**
+Layout,Layout Error,조직도,4,Text,Heading (Heading),**의사결정 구조**
+Layout,Layout Error,조직도,4,Text,Heading (Heading),**조직 운영 특징**
+Layout,Layout Error,조직설계_상세기획서,1,Heading,Text (Text),타이거 주식회사(Tiger Inc.) 조직설계 상세 기획서
+Layout,Layout Error,조직설계_상세기획서,1,Heading,Text (Text),B2B SaaS / AI / 클라우드 / 데이터 플랫폼 중견 IT기업 조직 설계안
+Layout,Layout Error,조직설계_상세기획서,4,Text,Heading (Heading),**본부 분리 이유**
+Layout,Layout Error,조직설계_상세기획서,4,Text,Heading (Heading),**기능별 조직 구성 이유**
+Layout,Layout Error,조직설계_상세기획서,4,Text,Heading (Heading),**협업 구조**
+Layout,Layout Error,조직설계_상세기획서,4,Text,Heading (Heading),**의사결정 구조**
+Layout,Layout Error,조직설계_상세기획서,4,Text,Heading (Heading),**조직 운영 특징**
+Layout,Layout Error,조직설계_상세기획서,6,Text,Heading (Heading),**보고 체계**
+Layout,Layout Error,조직설계_상세기획서,6,Text,Heading (Heading),**의사결정 구조**
+Layout,Layout Error,조직설계_상세기획서,6,Text,Heading (Heading),**프로젝트 운영 방식**
+Layout,Layout Error,조직설계_상세기획서,7,Text,Heading (Heading),**협업 방식**
+Layout,Layout Error,조직설계_상세기획서,7,Text,Heading (Heading),**회의 문화**
+Layout,Layout Error,조직설계_상세기획서,7,Text,Heading (Heading),**권한과 책임 원칙**
+Layout,Layout Error,조직설계_상세기획서,7,Text,Heading (Heading),**직급·직책 운영 원칙**
+Layout,Layout Error,출장비_사용규정,1,Text,Heading (Heading),**타이거 주식회사 (Tiger Inc.)**
+Layout,Layout Error,회식_운영규정,1,Text,Heading (Heading),**타이거 주식회사 (Tiger Inc.)**
+Hierarchy,Heading Level Error,법인카드_사용규정,1,H1,H1 (δ=-1 보정 후에도 불일치),법인카드 사용 규정
+Hierarchy,Parent-Child Error,법인카드_사용규정,2,부모=제1장 총칙,부모=법인카드 사용 규정,제1조 (목적)
+Hierarchy,Parent-Child Error,법인카드_사용규정,2,부모=제1장 총칙,부모=법인카드 사용 규정,제2조 (정의)
+Hierarchy,Parent-Child Error,법인카드_사용규정,2,부모=제1장 총칙,부모=법인카드 사용 규정,제3조 (적용범위)
+Hierarchy,Parent-Child Error,법인카드_사용규정,3,부모=제2장 법인카드의 발급 및 관리,부모=제1장 총칙,제4조 (발급 대상)
+Hierarchy,Parent-Child Error,법인카드_사용규정,3,부모=제2장 법인카드의 발급 및 관리,부모=제1장 총칙,제5조 (발급 절차)
+Hierarchy,Parent-Child Error,법인카드_사용규정,3,부모=제2장 법인카드의 발급 및 관리,부모=제1장 총칙,제6조 (관리 책임)
+Hierarchy,Parent-Child Error,법인카드_사용규정,3,부모=제2장 법인카드의 발급 및 관리,부모=제1장 총칙,제7조 (분실·도난 시 조치)
+Hierarchy,Parent-Child Error,법인카드_사용규정,4,부모=제3장 법인카드 사용 원칙,부모=제2장 법인카드의 발급 및 관리,제9조 (사용 제한 및 금지 항목)
+Hierarchy,Parent-Child Error,법인카드_사용규정,4,부모=제3장 법인카드 사용 원칙,부모=제2장 법인카드의 발급 및 관리,제10조 (사용 한도)
+Hierarchy,Document Order Error,법인카드_사용규정,2,GT 3번째 헤딩,docling 순서 역전(Order 7),제1조 (목적)
+Hierarchy,Document Order Error,법인카드_사용규정,3,GT 7번째 헤딩,docling 순서 역전(Order 23),제4조 (발급 대상)
+Hierarchy,Heading Text Mismatch,법인카드_사용규정,2,제2조 (정의),제2조 (정의) 개정 v1.1,헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Missing,법인카드_사용규정,,H2 별표 1. 직책별 법인카드 사용 한도,(없음),헤딩 미탐지
+Hierarchy,Heading Extra,법인카드_사용규정,1,(없음),H1 타 이 거 주 식 회 사 ( T i ge r I n c . ),GT에 없는 헤딩
+Hierarchy,Heading Level Error,부서소개,1,H1,H1 (δ=-1 보정 후에도 불일치),타이거 주식회사(Tiger Inc.) 부서 소개
+Hierarchy,Heading Extra,부서소개,1,(없음),H1 부서 소개,GT에 없는 헤딩
+Hierarchy,Heading Level Error,업무추진비_사용규정,1,H1,H1 (δ=-1 보정 후에도 불일치),기업업무추진비 사용 규정
+Hierarchy,Parent-Child Error,업무추진비_사용규정,2,부모=제1장 총칙,부모=기업업무추진비 사용 규정,제1조 (목적)
+Hierarchy,Parent-Child Error,업무추진비_사용규정,2,부모=제1장 총칙,부모=기업업무추진비 사용 규정,제2조 (정의)
+Hierarchy,Parent-Child Error,업무추진비_사용규정,2,부모=제1장 총칙,부모=기업업무추진비 사용 규정,제3조 (적용범위)
+Hierarchy,Parent-Child Error,업무추진비_사용규정,3,부모=제2장 접대의 유형 및 사용 원칙,부모=제1장 총칙,제5조 (사용 원칙)
+Hierarchy,Document Order Error,업무추진비_사용규정,2,GT 3번째 헤딩,docling 순서 역전(Order 12),제1조 (목적)
+Hierarchy,Heading Text Mismatch,업무추진비_사용규정,2,제2조 (정의),제2조 (정의) 개정 v1.2,헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Missing,업무추진비_사용규정,,H3 제6조 (사용 승인),(없음),헤딩 미탐지
+Hierarchy,Heading Missing,업무추진비_사용규정,,H3 제7조 (기록 사항),(없음),헤딩 미탐지
+Hierarchy,Heading Extra,업무추진비_사용규정,1,(없음),H1 타 이 거 주 식 회 사 ( T i ge r I n c . ),GT에 없는 헤딩
+Hierarchy,Heading Extra,업무추진비_사용규정,3,(없음),H2 제6조 (사용 승인) 개정 v1.3(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Extra,업무추진비_사용규정,4,(없음),H2 제7조 (기록 사항) 개정 v1.3(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Level Error,조직도,1,H1,H1 (δ=-1 보정 후에도 불일치),타이거 주식회사(Tiger Inc.) 조직도
+Hierarchy,Document Order Error,조직도,4,GT 4번째 헤딩,docling 순서 역전(Order 30),4. 조직 특징 요약
+Hierarchy,Heading Missing,조직도,,H2 1. 회사 개요,(없음),헤딩 미탐지
+Hierarchy,Heading Extra,조직도,1,(없음),H1 조직도,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직도,4,(없음),H1 본부 분리 이유,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직도,4,(없음),H1 협업 구조,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직도,4,(없음),H1 의사결정 구조,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직도,4,(없음),H1 조직 운영 특징,GT에 없는 헤딩
+Hierarchy,Parent-Child Error,조직설계_상세기획서,7,부모=6. 직급 체계,부모=직급·직책 운영 원칙,6-1. 직급표
+Hierarchy,Parent-Child Error,조직설계_상세기획서,9,부모=6. 직급 체계,부모=직급·직책 운영 원칙,6-2. 직책별 결재권
+Hierarchy,Heading Missing,조직설계_상세기획서,,H1 타이거 주식회사(Tiger Inc.) 조직설계 상세 기획서,(없음),헤딩 미탐지
+Hierarchy,Heading Missing,조직설계_상세기획서,,H2 B2B SaaS / AI / 클라우드 / 데이터 플랫폼 중견 IT기업 조직 설계안,(없음),헤딩 미탐지
+Hierarchy,Heading Extra,조직설계_상세기획서,1,(없음),H1 조직설계 상세 기획서,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,4,(없음),H1 본부 분리 이유,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,4,(없음),H1 기능별 조직 구성 이유,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,4,(없음),H1 협업 구조,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,4,(없음),H1 의사결정 구조,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,4,(없음),H1 조직 운영 특징,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,6,(없음),H1 보고 체계,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,6,(없음),H1 의사결정 구조,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,6,(없음),H1 프로젝트 운영 방식,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,7,(없음),H1 협업 방식,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,7,(없음),H1 회의 문화,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,7,(없음),H1 권한과 책임 원칙,GT에 없는 헤딩
+Hierarchy,Heading Extra,조직설계_상세기획서,7,(없음),H1 직급·직책 운영 원칙,GT에 없는 헤딩
+Hierarchy,Heading Level Error,직급체계,1,H1,H1 (δ=-1 보정 후에도 불일치),타이거 주식회사(Tiger Inc.) 직급 체계
+Hierarchy,Heading Extra,직급체계,1,(없음),H1 직급 체계,GT에 없는 헤딩
+Hierarchy,Heading Level Error,출장비_사용규정,1,H1,H1 (δ=-1 보정 후에도 불일치),출장비 사용 규정
+Hierarchy,Parent-Child Error,출장비_사용규정,2,부모=제1장 총칙,부모=출장비 사용 규정,제1조 (목적)
+Hierarchy,Parent-Child Error,출장비_사용규정,2,부모=제1장 총칙,부모=출장비 사용 규정,제2조 (정의)
+Hierarchy,Parent-Child Error,출장비_사용규정,2,부모=제1장 총칙,부모=출장비 사용 규정,제3조 (적용범위)
+Hierarchy,Parent-Child Error,출장비_사용규정,4,부모=제4장 증빙 및 정산 제한,부모=제3장 여비의 지급 기준,제9조 (증빙서류)
+Hierarchy,Parent-Child Error,출장비_사용규정,4,부모=제4장 증빙 및 정산 제한,부모=제3장 여비의 지급 기준,제10조 (야간식대의 인정기준)
+Hierarchy,Parent-Child Error,출장비_사용규정,4,부모=제4장 증빙 및 정산 제한,부모=제3장 여비의 지급 기준,제11조 (사용 제한 업종)
+Hierarchy,Parent-Child Error,출장비_사용규정,4,부모=제4장 증빙 및 정산 제한,부모=제3장 여비의 지급 기준,제12조 (사후 정산 특례)
+Hierarchy,Parent-Child Error,출장비_사용규정,5,부모=제5장 정산 및 위반 시 조치,부모=제4장 증빙 및 정산 제한,제13조 (정산 절차)
+Hierarchy,Parent-Child Error,출장비_사용규정,5,부모=제5장 정산 및 위반 시 조치,부모=제4장 증빙 및 정산 제한,제14조 (제재)
+Hierarchy,Parent-Child Error,출장비_사용규정,5,부모=제5장 정산 및 위반 시 조치,부모=제4장 증빙 및 정산 제한,제15조 (규정의 개정)
+Hierarchy,Document Order Error,출장비_사용규정,2,GT 3번째 헤딩,docling 순서 역전(Order 7),제1조 (목적)
+Hierarchy,Document Order Error,출장비_사용규정,4,GT 11번째 헤딩,docling 순서 역전(Order 45),제9조 (증빙서류)
+Hierarchy,Document Order Error,출장비_사용규정,5,GT 16번째 헤딩,docling 순서 역전(Order 64),제13조 (정산 절차)
+Hierarchy,Heading Text Mismatch,출장비_사용규정,5,별표 1. 국내출장 여비 정액 기준,별표 1. 국내출장 여비 정액 기준 개정 v1.1(2026.7.28),헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Text Mismatch,출장비_사용규정,5,별표 2. 해외출장 지역등급별 여비 기준,별표 2. 해외출장 지역등급별 여비 기준 개정 v1.1(2026.7.28),헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Missing,출장비_사용규정,,H3 제5조 (사전승인 기준금액),(없음),헤딩 미탐지
+Hierarchy,Heading Missing,출장비_사용규정,,H3 제6조 (여비의 구성),(없음),헤딩 미탐지
+Hierarchy,Heading Missing,출장비_사용규정,,H3 제8조 (해외출장 여비),(없음),헤딩 미탐지
+Hierarchy,Heading Extra,출장비_사용규정,1,(없음),H1 타 이 거 주 식 회 사 ( T i ge r I n c . ),GT에 없는 헤딩
+Hierarchy,Heading Extra,출장비_사용규정,3,(없음),H2 제5조 (사전승인 기준금액) 개정 v1.1(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Extra,출장비_사용규정,3,(없음),H2 제6조 (여비의 구성) 개정 v1.1(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Extra,출장비_사용규정,3,(없음),H2 제8조 (해외출장 여비) 개정 v1.1(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Level Error,회식_운영규정,1,H1,H1 (δ=-1 보정 후에도 불일치),회식 관련 법인카드 운영 규정
+Hierarchy,Parent-Child Error,회식_운영규정,2,부모=제1장 총칙,부모=회식 관련 법인카드 운영 규정,제1조 (목적)
+Hierarchy,Parent-Child Error,회식_운영규정,2,부모=제1장 총칙,부모=회식 관련 법인카드 운영 규정,제2조 (정의)
+Hierarchy,Parent-Child Error,회식_운영규정,5,부모=제3장 승인 절차,부모=제2장 회식 기준,제7조 (금액 기준)
+Hierarchy,Parent-Child Error,회식_운영규정,5,부모=제3장 승인 절차,부모=제2장 회식 기준,제8조 (사전승인이 필요한 경우)
+Hierarchy,Heading Level Error,회식_운영규정,10,H3,H1 (δ=-1 보정 후에도 불일치),부칙
+Hierarchy,Parent-Child Error,회식_운영규정,10,부모=별표 2. 회식 유형별 증빙 기준,부모=ROOT,부칙
+Hierarchy,Document Order Error,회식_운영규정,2,GT 3번째 헤딩,docling 순서 역전(Order 12),제1조 (목적)
+Hierarchy,Document Order Error,회식_운영규정,5,GT 10번째 헤딩,docling 순서 역전(Order 46),제7조 (금액 기준)
+Hierarchy,Heading Text Mismatch,회식_운영규정,8,별표 1. 회식 유형별 승인 기준,별표 1. 회식 유형별 승인 기준 개정 v1.1(2026.7.28),헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Text Mismatch,회식_운영규정,5,제8조 (사전승인이 필요한 경우),제8조 (사전승인이 필요한 경우) 개정 v1.1(2026.7.28),헤딩은 찾았으나 텍스트가 다름
+Hierarchy,Heading Missing,회식_운영규정,,H3 제6조 (참석 기준),(없음),헤딩 미탐지
+Hierarchy,Heading Missing,회식_운영규정,,H2 제5장 예외 규정,(없음),헤딩 미탐지
+Hierarchy,Heading Extra,회식_운영규정,1,(없음),H1 타 이 거 주 식 회 사 ( T i ge r I n c . ),GT에 없는 헤딩
+Hierarchy,Heading Extra,회식_운영규정,4,(없음),H2 제6조 (참석 기준) 개정 v1.1(2026.7.28),GT에 없는 헤딩
+Hierarchy,Heading Extra,회식_운영규정,7,(없음),H1 제5장 예외 규정 개정 v1.1(2026.7.28),GT에 없는 헤딩
+Table,Table Detection Error,부서소개,3,GT 표 5 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,부서소개,4,GT 표 7 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,업무추진비_사용규정,,GT 표 1 (7x2),(미탐지),표 누락
+Table,Table Detection Error,조직도,5,GT 표 2 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,조직도,4,(없음),docling 표 2 (2x2),GT에 없는 표(오탐)
+Table,Table Detection Error,조직설계_상세기획서,5,GT 표 2 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,조직설계_상세기획서,7,GT 표 3 1개,docling 표 3개로 분할,표 분할(Split)
+Table,Table Detection Error,조직설계_상세기획서,10,GT 표 5 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,조직설계_상세기획서,11,GT 표 6 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,조직설계_상세기획서,9,(없음),docling 표 8 (3x3),GT에 없는 표(오탐)
+Table,Table Detection Error,직급체계,2,GT 표 1 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,출장비_사용규정,5,GT 표 3 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,회식_운영규정,,GT 표 1 (9x2),(미탐지),표 누락
+Table,Table Detection Error,회식_운영규정,6,GT 표 6 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,회식_운영규정,8,GT 표 8 1개,docling 표 2개로 분할,표 분할(Split)
+Table,Table Detection Error,회식_운영규정,9,(없음),docling 표 10 (2x7),GT에 없는 표(오탐)
+Table,Row/Column Error,법인카드_사용규정,1,Rows 6,Rows 3,GT 표 1
+Table,Header Error,법인카드_사용규정,1,구분 | 내용,헤더 미인식,GT 표 1
+Table,Row/Column Error,부서소개,3,Rows 4,Rows 5,GT 표 5
+Table,Row/Column Error,부서소개,4,Rows 12,Rows 13,GT 표 7
+Table,Row/Column Error,조직설계_상세기획서,5,Rows 17,Rows 18,GT 표 2
+Table,Row/Column Error,조직설계_상세기획서,7,Rows 11,Rows 13,GT 표 3
+Table,Row/Column Error,조직설계_상세기획서,10,Rows 12,Rows 11,GT 표 5
+Table,Row/Column Error,조직설계_상세기획서,11,Rows 8,Rows 9,GT 표 6
+Table,Row/Column Error,직급체계,2,Rows 11,Rows 12,GT 표 1
+Table,Row/Column Error,출장비_사용규정,1,Rows 7,Rows 3,GT 표 1
+Table,Header Error,출장비_사용규정,1,구분 | 내용,헤더 미인식,GT 표 1
+Table,Row/Column Error,출장비_사용규정,5,Rows 4,Rows 5,GT 표 3
+Table,Row/Column Error,회식_운영규정,6,Rows 8,Rows 9,GT 표 6
+Table,Row/Column Error,회식_운영규정,8,Rows 10,Rows 11,GT 표 8
+Table,Row/Column Error,회식_운영규정,10,Rows 7,Rows 6,GT 표 9
+Table,Cell Content Error,법인카드_사용규정,,구분,,"표 1 (0,0) — 빈 셀"
+Table,Cell Content Error,법인카드_사용규정,,내용,,"표 1 (0,1) — 빈 셀"
+Table,Cell Content Error,법인카드_사용규정,,문서번호,,"표 1 (1,0) — 빈 셀"
+Table,Cell Content Error,법인카드_사용규정,,TIGER-REG-2026-003,,"표 1 (1,1) — 빈 셀"
+Table,Cell Content Error,법인카드_사용규정,,개정이력,,"표 1 (5,0) — 빈 셀"
+Table,Cell Content Error,법인카드_사용규정,,"v1.0 제정 (조문 정합성 검토 반영) / v1.1 개정: 제2조 관리자 정의 정비, 제10조 사전승인 예외절차 신설, 별표1 이사 겸직·대행 시 한도 적용기준 명확화",,"표 1 (5,1) — 빈 셀"
+Table,OCR/Text Error,부서소개,,채용·인력운영·조직문화 관리,채용·인력운영· 조직문화 관리,"표 1 (1,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"채용기획/실행, 평가·보상 운영, 교육체계 설계, 조직문화 프로그램 운영","채용기획/실행, 평가·보상 운 영, 교육체계 설계, 조직문화 프 로그램 운영","표 1 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"채용계획서, 평가결과보고서, 교육이수현황","채용계획서, 평가 결과보고서, 교육 이수현황","표 1 (1,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"전략기획부(인력계획), 각 사업본부","전략기획부(인력 계획), 각 사업본 부","표 1 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,회계처리·자금관리·법인카드 정산 총괄,회계처리·자금관 리·법인카드 정 산 총괄,"표 1 (2,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"결산, 세무신고, 자금운용, 법인카드 정산·승인 프로세스 운영","결산, 세무신고, 자금운용, 법인 카드 정산·승인 프로세스 운영","표 1 (2,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"재무제표, 정산보고서, 자금운용계획","재무제표, 정산보 고서, 자금운용계 획","표 1 (2,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,사무환경 및 자산관리,사무환경 및 자산 관리,"표 1 (3,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"구매계약서, 자산대장, 시설점검보고서","구매계약서, 자산 대장, 시설점검보 고서","표 1 (3,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"IT운영부, 인사부","IT운영부, 인사 부","표 1 (3,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"계약검토, 지적재산권관리, 소송대응, 개인정보 등 규제대응","계약검토, 지적재산권관리, 소 송대응, 개인정보 등 규제대응","표 1 (4,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"영업본부, AI사업본부","영업본부, AI사 업본부","표 1 (4,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"그룹웨어/ERP 운영, 계정권한관리, 보안정책, 장애대응","그룹웨어/ERP 운영, 계정권한 관리, 보안정책, 장애대응","표 1 (5,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"시스템운영현황보고서, 보안점검보고서","시스템운영현황보 고서, 보안점검보 고서","표 1 (5,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"데이터부, 클라우드부(매트릭스)","데이터부, 클라 우드부(매트릭 스)","표 2 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,데이터 파이프라인 구축 및 분석,데이터 파이프 라인 구축 및 분 석,"표 2 (2,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"데이터 수집/정제, 데이터 품질관리, BI/분석","데이터 수집/정제, 데이터 품질 관리, BI/분석","표 2 (2,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"데이터파이프라인, 분석리포트, 데이터품질지표","데이터파이프라인, 분 석리포트, 데이터품질 지표","표 2 (2,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"AI플랫폼부, 플랫폼개발부","AI플랫폼부, 플 랫폼개발부","표 2 (2,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,SaaS 플랫폼 기획·개발·운영,SaaS 플랫폼 기 획·개발·운영,"표 3 (1,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"서비스 기획, Backend/Frontend 개발, 배포운영","서비스 기획, Backend/ Frontend 개발, 배포운영","표 3 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"플랫폼 릴리즈노트, 서비스 로드맵","플랫폼 릴리즈노 트, 서비스 로드 맵","표 3 (1,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"클라우드부, 고객성공부","클라우드부, 고객성공 부","표 3 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"인프라 설계/운영, 비용최적화, 네트워크/보안","인프라 설계/운영, 비용최적 화, 네트워크/보안","표 3 (2,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"인프라 아키텍처 문서, 비용리포트","인프라 아키텍처 문서, 비용리포 트","표 3 (2,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"AI플랫폼부(매트릭스), 플랫폼개발부, IT운영부","AI플랫폼부(매트릭스), 플랫폼개발부, IT운영 부","표 3 (2,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,Enterprise영업부,Enterprise영업 부,"표 4 (1,0) — 공백·자간"
+Table,OCR/Text Error,부서소개,,대기업 대상 영업,대기업 대 상 영업,"표 4 (1,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"영업기회 발굴, 제안/계약, 매출관리","영업기회 발굴, 제안/계 약, 매출관리","표 4 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"제안서, 계약서, 영업파이프라인 현황","제안서, 계약서, 영업파 이프라인 현황","표 4 (1,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"고객성공부, AI플랫폼부, 법무부","고객성공부, AI플랫폼 부, 법무부","표 4 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"입찰대응, 공공사업 제안, 규정준수","입찰대응, 공공사업 제 안, 규정준수","표 4 (2,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"입찰제안서, 사업수행계획서","입찰제안서, 사업수행계 획서 ","표 4 (2,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,고객 온보딩 및 유지,고객 온보 딩 및 유지,"표 4 (3,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"온보딩가이드, 고객만족도리포트, 갱신현황","온보딩가이드, 고객만족 도리포트, 갱신현황","표 4 (3,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"Enterprise영업부, 플랫폼개발부","Enterprise영업부, 플랫 폼개발부","표 4 (3,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,중장기 전략수립,중장기 전략 수립,"표 5 (1,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"시장분석, 사업계획수립, 경영지표관리","시장분석, 사업계획수립, 경영 지표관리","표 5 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"중기전략보고서, 사업계획서","중기전략보고서, 사업계 획서","표 5 (1,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"전 본부, 신사업개발부","전 본부, 신사업 개발부","표 5 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,신규사업 발굴,신규사업 발 굴,"표 5 (2,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"시장기회 발굴, PoC 추진, 파트너십","시장기회 발굴, PoC 추진, 파트 너십","표 5 (2,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"신사업제안서, PoC 결과보고서","신사업제안서, PoC 결과 보고서","표 5 (2,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"AI사업본부, 전략기획부","AI사업본부, 전 략기획부","표 5 (2,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,전사 프로젝트관리,전사 프로젝 트관리,"표 5 (3,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"프로젝트 일정/리스크 관리, 표준 프로세스 운영","프로젝트 일정/리스크 관리, 표 준 프로세스 운영","표 5 (3,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"정기/수시 감사, 컴플라이언스 점검, 재무회계부 자체사용건 사후검증","정기/수시 감사, 컴플라이언스 점 검, 재무회계부 자체사용건 사후검 증","표 6 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"감사보고서, 시정조치 권고안, 내부통제 점검표","감사보고서, 시정조치 권 고안, 내부통제 점검표","표 6 (1,3) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"재무회계부, 전 부서","재무회계 부, 전 부서","표 6 (1,4) — 공백·자간"
+Table,OCR/Text Error,부서소개,,플랫폼사업본부(클라우드부),플랫폼사업본부(클라우드 부),"표 7 (1,1) — 공백·자간"
+Table,OCR/Text Error,부서소개,,"GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적화","GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적 화","표 7 (1,2) — 공백·자간"
+Table,OCR/Text Error,부서소개,,경영지원본부(재무회계부),경영지원본부(재무회계 부) ,"표 7 (9,0) — 공백·자간"
+Table,OCR/Text Error,부서소개,,플랫폼사업본부(클라우드부),플랫폼사업본부(클라우드 부) ,"표 7 (11,1) — 공백·자간"
+Table,Cell Content Error,조직도,,임직원 수,,"표 2 (1,0) — 빈 셀"
+Table,Cell Content Error,조직도,,"약 1,050명",,"표 2 (1,1) — 빈 셀"
+Table,OCR/Text Error,조직도,,"BU제 독립 손익 운영, AI-플랫폼 매트릭스 협업, CEO 직속 감사실을 통한 경영진 견제, 결재/카드한도는 직책 기준·처우는 직급 기준 분리 운영","BU제 독립 손익 운영, AI-플랫폼 매트릭스 협업, CEO 직속 감사실을 통한 경영진 견제, 결재/카드한 도는 직책 기준·처우는 직급 기준 분리 운영","표 2 (7,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"사업본부별 **독립 손익 운영(BU제)** 체제로 각 본부장이 매출·비용에 대한 책임을 지며, 영업/고객성공 조직은 출장·대면영업이 잦고 AI/클라우드 조직은 GPU·클라우드 종량제 비용이 크다는 점에서 조직마다 비용구조가 뚜렷이 다름. AI사업본부와 플랫폼사업본부 사이에는 인프라 운영","사업본부별 독립 손익 운영(BU제) 체제로 각 본부장이 매출·비용에 대한 책임을 지며, 영업/고객성 공 조직은 출장·대면영업이 잦고 AI/클라우드 조직은 GPU·클라우드 종량제 비용이 크다는 점에서 조직마다 비용구조가 뚜렷이 다름. AI사업본부와 플랫폼사업본부 사이에는 인프라 운영을 공","표 1 (8,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"정기/수시 감사, 컴플라이언스 점검, 재무회계부 자체사용건 사후검증","정기/수시 감사, 컴플라이언 스 점검, 재무회계부 자체사 용건 사후검증","표 2 (1,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"감사보고서, 시정조치 권고안, 내부통제 점검표","감사보고서, 시정 조치 권고안, 내 부통제 점검표","표 2 (1,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,채용·인력운영·조직문화 관리,채용·인력운영 ·조직문화 관리,"표 2 (2,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"채용기획/실행, 평가·보상 운영, 교육체계 설계, 조직문화 프로그램 운영","채용기획/실행, 평가·보상 운영, 교육체계 설계, 조직문 화 프로그램 운영","표 2 (2,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"채용계획서, 평가결과보고서, 교육이수현황","채용계획서, 평가 결과보고서, 교육 이수현황","표 2 (2,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,회계처리·자금관리·법인카드 정산 총괄,회계처리·자금 관리·법인카드 정산 총괄,"표 2 (3,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"결산, 세무신고, 자금운용, 법인카드 정산·승인 프로세스 운영","결산, 세무신고, 자금운용, 법 인카드 정산·승인 프로세스 운영","표 2 (3,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"재무제표, 정산보고서, 자금운용계획","재무제표, 정산보 고서, 자금운용계 획","표 2 (3,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,사무환경 및 자산관리,사무환경 및 자 산관리,"표 2 (4,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"구매계약, 시설관리, 복리후생 운영, 사내행사","구매계약, 시설관리, 복리후 생 운영, 사내행사","표 2 (4,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"구매계약서, 자산대장, 시설점검보고서","구매계약서, 자산 대장, 시설점검보 고서","표 2 (4,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,법률리스크 관리,법률리스크 관 리,"표 2 (5,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"계약검토, 지적재산권관리, 소송대응, 개인정보 등 규제대응","계약검토, 지적재산권관리, 소송대응, 개인정보 등 규제 대응","표 2 (5,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"그룹웨어/ERP 운영, 계정권한관리, 보안정책, 장애대응","그룹웨어/ERP 운영, 계정권 한관리, 보안정책, 장애대응","표 2 (6,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"시스템운영현황보고서, 보안점검보고서","시스템운영현황 보고서, 보안점검 보고서","표 2 (6,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"모델 파인튜닝/서빙, AI서비스 기획개발, MLOps 파이프라인 운영","모델 파인튜닝/서빙, AI서비 스 기획개발, MLOps 파이프 라인 운영","표 2 (7,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"데이터부, 클라우드부(매트릭스)","데이터부, 클라우드부 (매트릭스)","표 2 (7,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,데이터 파이프라인 구축 및 분석,데이터 파이프 라인 구축 및 분 석,"표 2 (8,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"데이터 수집/정제, 데이터 품질관리, BI/분석","데이터 수집/정제, 데이터 품 질관리, BI/분석","표 2 (8,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"데이터파이프라인, 분석리포트, 데이터품질지표","데이터파이프라 인, 분석리포트, 데이터품질지표","표 2 (8,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"AI플랫폼부, 플랫폼개발부","AI플랫폼부, 플랫폼개 발부","표 2 (8,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,SaaS 플랫폼 기획·개발·운영,SaaS 플랫폼 기획·개발·운 영,"표 2 (9,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"서비스 기획, Backend/Frontend 개발, 배포운영","서비스 기획, Backend/ Frontend 개발, 배포운영","표 2 (9,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"플랫폼 릴리즈노트, 서비스 로드맵","플랫폼 릴리즈노 트, 서비스 로드 맵","표 2 (9,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"클라우드부, 고객성공부","클라우드부, 고객성공 부","표 2 (9,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,클라우드 인프라 및 운영자동화,클라우드 인프 라 및 운영자동 화,"표 2 (10,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"인프라 설계/운영, 비용최적화, 네트워크/보안","인프라 설계/운영, 비용최적 화, 네트워크/보안","표 2 (10,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"AI플랫폼부(매트릭스), 플랫폼개발부, IT운영부","AI플랫폼부(매트릭스), 플랫폼개발부, IT운영 부","표 2 (10,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,Enterprise영업부,Enterprise영업 부,"표 2 (11,0) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,대기업 대상 영업,대기업 대상 영 업,"표 2 (11,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"고객성공부, AI플랫폼부, 법무부","고객성공부, AI플랫폼 부, 법무부","표 2 (11,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"입찰대응, 공공사업 제안, 규정준수","입찰대응, 공공사업 제안, 규 정준수","표 2 (12,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"입찰제안서, 사업수행계획서","입찰제안서, 사업 수행계획서 ","표 2 (12,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"온보딩지원, 기술지원, 이탈방지, 갱신관리","온보딩지원, 기술지원, 이탈 방지, 갱신관리","표 2 (13,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"온보딩가이드, 고객만족도리포트, 갱신현황","온보딩가이드, 고 객만족도리포트, 갱신현황","표 2 (13,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"Enterprise영업부, 플랫폼개발부","Enterprise영업부, 플 랫폼개발부","표 2 (13,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,중장기 전략수립,중장기 전략수 립,"표 2 (14,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"시장분석, 사업계획수립, 경영지표관리","시장분석, 사업계획수립, 경 영지표관리","표 2 (14,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"시장기회 발굴, PoC 추진, 파트너십","시장기회 발굴, PoC 추진, 파 트너십","표 2 (15,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"AI사업본부, 전략기획부","AI사업본부, 전략기획 부","표 2 (15,4) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,전사 프로젝트관리,전사 프로젝트 관리,"표 2 (16,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"프로젝트 현황보고서, PM 가이드라인","프로젝트 현황보 고서, PM 가이드 라인","표 2 (16,3) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"부서 단위 예산 집행 승인, 기업업무추진비·해외출장비 등 규정상 필수 승인 항목의 승인권자","부서 단위 예산 집행 승인, 기업업무추진비· 해외출장비 등 규정상 필수 승인 항목의 승인 권자","표 4 (2,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,경영지원본부는 본부장 직위 미설치로 부서장 전결 또는 CEO 직접승인으로 대체(3장 예외 규정 참조),경영지원본부는 본부장 직위 미설치로 부서장 전 결 또는 CEO 직접승인으로 대체(3장 예외 규정 참 조),"표 4 (3,2) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,경영지원본부 예외건 및 최고 금액구간 승인 포함(금액 기준은 별표1 참조),경영지원본부 예외건 및 최고 금액구간 승인 포함 (금액 기준은 별표1 참조),"표 4 (4,2) — 공백·자간"
+Table,Cell Content Error,조직설계_상세기획서,,AI사업본부,,"표 5 (1,0) — 빈 셀"
+Table,Cell Content Error,조직설계_상세기획서,,플랫폼사업본부(클라우드부),,"표 5 (1,1) — 빈 셀"
+Table,Cell Content Error,조직설계_상세기획서,,"GPU·클라우드 인프라 공동 운영(매트릭스), 비용 최적화",,"표 5 (1,2) — 빈 셀"
+Table,Cell Content Error,조직설계_상세기획서,,AI사업본부,,"표 5 (2,0) — 빈 셀"
+Table,Cell Content Error,조직설계_상세기획서,,영업본부,,"표 5 (2,1) — 빈 셀"
+Table,Cell Content Error,조직설계_상세기획서,,고객 제안 시 기술 검증(PoC) 및 기술영업 지원,,"표 5 (2,2) — 빈 셀"
+Table,OCR/Text Error,조직설계_상세기획서,,경영지원본부(재무회계부),경영지원본부(재무회계 부) ,"표 5 (9,0) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,플랫폼사업본부(클라우드부),플랫폼사업본부(클라우드 부) ,"표 5 (11,1) — 공백·자간"
+Table,OCR/Text Error,조직설계_상세기획서,,"약 1,200억원 (연결 기준, 가정치) — 정보통신업 중소기업 매출기준(약 800억원 이하) 초과로 중견기업 해당","약 1,200억원 (연결 기준, 가정치) — 정보통신업 중소기업 매출기준(약 800억원 이하) 초과로 중견 기업 해당","표 6 (2,1) — 공백·자간"
+Table,OCR/Text Error,직급체계,,"부서 단위 예산 집행 승인, 기업업무추진비·해외출장비 등 규정상 필수 승인 항목의 승인권자","부서 단위 예산 집행 승인, 기업업무추진비·해외 출장비 등 규정상 필수 승인 항목의 승인권자 ","표 2 (2,1) — 공백·자간"
+Table,OCR/Text Error,직급체계,,경영지원본부는 본부장 직위 미설치로 부서장 전결 또는 CEO 직접승인으로 대체,경영지원본부는 본부장 직위 미설치로 부서 장 전결 또는 CEO 직접승인으로 대체,"표 2 (3,2) — 공백·자간"
+Table,Cell Content Error,출장비_사용규정,,구분,,"표 1 (0,0) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,내용,,"표 1 (0,1) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,문서번호,,"표 1 (1,0) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,TIGER-REG-2026-004,,"표 1 (1,1) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,관련 규정,,"표 1 (5,0) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,「법인카드 사용 규정」(TIGER-REG-2026-003),,"표 1 (5,1) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,개정이력,,"표 1 (6,0) — 빈 셀"
+Table,Cell Content Error,출장비_사용규정,,"v1.0 제정 / v1.1(2026.7.28) — ⑥ 해외출장 식비 기준 공백 해소(제6조4호·제8조3항·별표2 신설), ⑦ 사문화된 제5조2항을 본부장 이상 사전승인 기준(500만원 초과)으로 실질화, ⑧ 별표1 주석의 참조 대상을 ""건당 사전승인 기준액""으로 특정",,"표 1 (6,1) — 빈 셀"
+Table,OCR/Text Error,출장비_사용규정,,대상 지역(예시),대상 지역(예 시) ,"표 3 (0,1) — 공백·자간"
+Table,OCR/Text Error,출장비_사용규정,,1일 숙박비 상한,1일 숙박비 상 한,"표 3 (0,3) — 공백·자간"
+Table,OCR/Text Error,출장비_사용규정,,미국·유럽·중동,미국·유럽· 중동,"표 3 (1,1) — 공백·자간"
+Table,OCR/Text Error,출장비_사용규정,,일본·동남아·중국,일본·동남아 ·중국,"표 3 (2,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,특정 프로젝트(TF 포함) 참여 인원을 대상으로 착수·마일스톤·종료 시점에 개최되는 회식,특정 프로젝트(TF 포함) 참여 인원을 대상으로 착 수·마일스톤·종료 시점에 개최되는 회식,"표 2 (3,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,복리후생비 원칙(외부 파트너 동석 시 기업업무추진비로 전환될 수 있음),복리후생비 원칙(외부 파트너 동석 시 기 업업무추진비로 전환될 수 있음),"표 2 (3,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,워크숍·세미나 등 사전 승인된 행사 프로그램에 포함된 식사,워크숍·세미나 등 사전 승인된 행사 프로그램에 포 함된 식사,"표 2 (4,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,회의비 또는 복리후생비(제15조 3호·2호 준용),회의비 또는 복리후생비(제15조 3호·2 호 준용),"표 2 (4,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,⑤ 신규 입사자 환영회,⑤ 신규 입사자 환 영회,"표 2 (5,0) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,퇴사(예정)자를 대상으로 소속 팀·부서가 개최하는 송별 목적 회식,퇴사(예정)자를 대상으로 소속 팀·부서가 개최하 는 송별 목적 회식,"표 2 (6,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"프로젝트 종료, 계약 수주, 목표 달성 등을 기념하는 회식","프로젝트 종료, 계약 수주, 목표 달성 등을 기념하 는 회식","표 2 (7,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,복리후생비(거래처 동석 시 기업업무추진비),복리후생비(거래처 동석 시 기업업무추 진비),"표 2 (7,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,⑧ 거래처 동반 회식,⑧ 거래처 동반 회 식,"표 2 (8,0) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,1차 승인권자,1차 승 인권자 ,"표 3 (0,3) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,부서장 본인이 사용자인 경우 **본부장**(경영지원본부는 **CEO**)이 최종 승인,부서장 본인이 사용자인 경우 본부장(경영지원본 부는 CEO)이 최종 승인,"표 3 (2,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,본부장 본인이 사용자인 경우 **CEO**가 최종 승인. 경영지원본부는 본부장 직위가 없으므로 소관 부서장이 개최하고 **CEO**가 승인,본부장 본인이 사용자인 경우 CEO가 최종 승인. 경영지원본부는 본부장 직위가 없으므로 소관 부 서장이 개최하고 CEO가 승인,"표 3 (3,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,CEO 또는 경영지원본부(총무구매부) 주관,CEO 또는 경영지 원본부(총무구매 부) 주관,"표 3 (4,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"전사 공지 및 예산 편성 필요, 사전승인 필수(제9조)","전사 공지 및 예산 편성 필요, 사전승인 필수(제9 조)","표 3 (4,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"개인 선물, 상품권 등 유가증권(「법인카드 사용 규정」제9조 3호 준용), 귀가 후 개인 주류 구입, 2차 비용(노래방·단란주점 등 별도 가맹점 결제), 유흥업소·사행성 업종(제9조 2호 준용), 사적 모임(가족·지인만 참석하는 식사), 회식과 무관한 물품 구매","개인 선물, 상품권 등 유가증권(「법인카드 사용 규정」제9조 3호 준용), 귀가 후 개인 주류 구입, 2 차 비용(노래방·단란주점 등 별도 가맹점 결제), 유흥업소·사행성 업종(제9조 2호 준용), 사적 모임 (가족·지인만 참석하는 식사), 회식과 무관한 물품 구매","표 4 (2,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,1인당 식대 권장 한도,1인당 식대 권 장 한도 ,"표 5 (0,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,제10조 2항(식대는 직책 불문 30만원 기준 우선 적용),제10조 2항(식대는 직책 불문 30만 원 기준 우선 적용),"표 5 (1,3) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,건당 총액 **30만원 초과**(항상 본부장 이상 사전승인 권장),건당 총액 30만원 초과(항상 본부장 이 상 사전승인 권장) ,"표 5 (3,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금불산입),3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금 불산입),"표 6 (1,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,참석자 명단(소속·직급·성명),참석자 명단(소속·직급·성 명) ,"표 6 (2,0) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,조건부 필수,조건부 필 수,"표 6 (5,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,조건부 필수,조건부 필 수,"표 6 (6,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,긴급 회식(재해·사고 등 불가피한 대응),긴급 회식(재해·사고 등 불 가피한 대응),"표 7 (1,0) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,야간 장애 대응(IT운영부·클라우드부 등),야간 장애 대응(IT운영부· 클라우드부 등) ,"표 7 (3,0) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,사전승인 트리거,사전승인 트 리거,"표 8 (0,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장(본인 사용 시 부서장),팀장(본인 사용 시 부 서장),"표 8 (1,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"30만원 초과, 야간·주말, 외부인 참석","30만원 초 과, 야간·주 말, 외부인 참석","표 8 (1,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,부서장(본인 사용 시 본부장/CEO),부서장(본 인 사용 시 본부장/ CEO),"표 8 (2,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,본부장(본인 사용 시 CEO),본부장(본 인 사용 시 CEO),"표 8 (3,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,상동 + 항상 사전보고 권장,상동 + 항상 사전보고 권 장,"표 8 (3,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,CEO/경영지원본부,CEO/경영지 원본부 ,"표 8 (4,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,금액 무관 항상 사전승인,금액 무관 항 상 사전승인,"표 8 (4,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장(TF의 경우 소속 부서장이 지정한 팀장급 담당자),팀장(TF의 경우 소속 부 서장이 지정 한 팀장급 담 당자),"표 8 (5,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장(본인 사용 시 부서장),팀장(본인 사용 시 부 서장),"표 8 (5,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"30만원 초과, 야간·주말, 외부인(파트너) 참석","30만원 초 과, 야간·주 말, 외부인 (파트너) 참 석","표 8 (5,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,워크숍 자체가 사전승인 대상이므로 별도 트리거 없음(제4조 준용),워크숍 자체 가 사전승인 대상이므로 별도 트리거 없음(제4조 준용),"표 8 (6,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장 또는 부서장,팀장 또는 부 서장,"표 8 (7,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장(본인 사용 시 부서장),팀장(본인 사용 시 부 서장),"표 8 (7,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"팀 회식과 동일(30만원 초과, 야간·주말)","팀 회식과 동 일(30만원 초과, 야간· 주말)","표 8 (7,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,팀장 또는 부서장,팀장 또는 부 서장,"표 8 (8,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,해당 조직장(본인 사용 시 상위 승인권자),해당 조직 장(본인 사 용 시 상위 승인권자),"표 8 (8,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,부서장(거래처 동석 시 아래 거래처 동반 회식 기준 적용),부서장(거래처 동석 시 아래 거래처 동반 회식 기 준 적용),"표 8 (8,3) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,"30만원 초과, 야간·주말, 거래처 동석 시 외부인 참석 트리거","30만원 초 과, 야간·주 말, 거래처 동석 시 외부 인 참석 트리 거","표 8 (8,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,「기업업무추진비 사용 규정」제6조의 금액 구간별 승인권자 — 외부인 참석 시 금액과 무관하게 사전승인이 필수이므로 30만원 이하도 부서장 승인을 받아야 함(사후등록 특례 미적용). 30만원 이하·30만원 초과~100만원 이하 부서장/100만원 초과~300만원 이하 본부장 이상/300만원,「기업업무추진비 사용 규정」제6조의 금액 구간 별 승인권자 — 외부인 참석 시 금액과 무관하게 사전승인이 필수이므로 30만원 이하도 부서장 승 인을 받아야 함(사후등록 특례 미적용). 30만원 이 하·30만원 초과~100만원 이하 부서장/100만원 초과~300만원 이하 본부장 이상/30,"표 8 (9,3) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,외부인 참석 자체가 트리거(금액 무관),외부인 참석 자체가 트리 거(금액 무 관),"표 8 (9,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,카드전표,카드전 표,"표 9 (0,1) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,참석자명단,참석자명 단,"표 9 (0,2) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,거래처정보,거래처정 보,"표 9 (0,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,프로젝트명,프로젝트 명,"표 9 (0,5) — 공백·자간"
+Table,Cell Content Error,회식_운영규정,,공식/팀/부서/본부/전사 회식,,"표 9 (1,0) — 빈 셀"
+Table,Cell Content Error,회식_운영규정,,필수,,"표 9 (1,1) — 빈 셀"
+Table,Cell Content Error,회식_운영규정,,필수,,"표 9 (1,2) — 빈 셀"
+Table,Cell Content Error,회식_운영규정,,필수,,"표 9 (1,3) — 빈 셀"
+Table,OCR/Text Error,회식_운영규정,,-,,"표 9 (1,4) — 공백·자간"
+Table,OCR/Text Error,회식_운영규정,,-,,"표 9 (1,5) — 공백·자간"
+Table,Cell Content Error,회식_운영규정,,선택,,"표 9 (1,6) — 빈 셀"
+Table,OCR/Text Error,회식_운영규정,,필수(대상자 명시),필수(대상자 명 시) ,"표 9 (4,3) — 공백·자간"

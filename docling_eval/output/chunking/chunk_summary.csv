@@ -1,0 +1,19 @@
+﻿Category,Metric,Score,Weight,Status
+Structure Integrity,Element Coverage,1.0,0.35,scored
+Structure Integrity,Ownership Uniqueness,1.0,0.15,scored
+Structure Integrity,Citation Correctness,0.9987,0.25,scored
+Structure Integrity,Table Atomicity,1.0,0.15,scored
+Structure Integrity,Table Row Retention,1.0,0.1,scored
+Structure Integrity,── 영역 점수,100.0,0.4,scored
+Context Sufficiency,Citation Coverage,1.0,0.4,scored
+Context Sufficiency,Article Label (본문),0.9959,0.3,scored
+Context Sufficiency,Chapter Path,0.9136,0.15,scored
+Context Sufficiency,No Dangling Start,1.0,0.15,scored
+Context Sufficiency,── 영역 점수,98.6,0.3,scored
+Size Fitness,Within Budget,0.9825,0.45,scored
+Size Fitness,No Hard Overflow,1.0,0.3,scored
+Size Fitness,Fragment-Free,0.8861,0.25,scored
+Size Fitness,── 영역 점수,96.4,0.3,scored
+Retrieval Effectiveness,Recall@5,,0.5,N/A
+Retrieval Effectiveness,MRR,,0.5,N/A
+Retrieval Effectiveness,── 영역 점수,,0.0,N/A

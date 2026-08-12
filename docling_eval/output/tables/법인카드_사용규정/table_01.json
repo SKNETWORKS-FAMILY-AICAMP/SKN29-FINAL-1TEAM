@@ -1,0 +1,74 @@
+{
+  "Document": "법인카드_사용규정",
+  "Table": 1,
+  "Page": 1,
+  "Rows": 3,
+  "Cols": 2,
+  "Cells": 6,
+  "Header": "Not detected",
+  "Header Rows": 0,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "제정일 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "2026. 7. 20."
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "시행일 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "2026. 8. 1."
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "소관부서 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "경영지원본부"
+    }
+  ],
+  "markdown": "| 제정일    | 2026. 7. 20.   |\n|-----------|----------------|\n| 시행일    | 2026. 8. 1.    |\n| 소관부서  | 경영지원본부   |"
+}

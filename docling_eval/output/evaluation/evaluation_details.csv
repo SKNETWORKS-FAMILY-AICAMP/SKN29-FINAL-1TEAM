@@ -1,0 +1,185 @@
+﻿Document,Category,Metric,Value,Scope
+법인카드_사용규정,Layout,Element Detection Precision,0.951,document
+법인카드_사용규정,Layout,Element Detection Recall,0.99,document
+법인카드_사용규정,Layout,Element Detection F1,0.97,document
+법인카드_사용규정,Layout,Missing Elements,1.0,document
+법인카드_사용규정,Layout,Extra Elements,5.0,document
+부서소개,Layout,Element Detection Precision,0.789,document
+부서소개,Layout,Element Detection Recall,0.938,document
+부서소개,Layout,Element Detection F1,0.857,document
+부서소개,Layout,Missing Elements,1.0,document
+부서소개,Layout,Extra Elements,4.0,document
+업무추진비_사용규정,Layout,Element Detection Precision,0.907,document
+업무추진비_사용규정,Layout,Element Detection Recall,0.975,document
+업무추진비_사용규정,Layout,Element Detection F1,0.94,document
+업무추진비_사용규정,Layout,Missing Elements,2.0,document
+업무추진비_사용규정,Layout,Extra Elements,8.0,document
+조직도,Layout,Element Detection Precision,0.846,document
+조직도,Layout,Element Detection Recall,1.0,document
+조직도,Layout,Element Detection F1,0.917,document
+조직도,Layout,Missing Elements,0.0,document
+조직도,Layout,Extra Elements,4.0,document
+조직설계_상세기획서,Layout,Element Detection Precision,0.881,document
+조직설계_상세기획서,Layout,Element Detection Recall,1.0,document
+조직설계_상세기획서,Layout,Element Detection F1,0.937,document
+조직설계_상세기획서,Layout,Missing Elements,0.0,document
+조직설계_상세기획서,Layout,Extra Elements,8.0,document
+직급체계,Layout,Element Detection Precision,0.857,document
+직급체계,Layout,Element Detection Recall,0.947,document
+직급체계,Layout,Element Detection F1,0.9,document
+직급체계,Layout,Missing Elements,1.0,document
+직급체계,Layout,Extra Elements,3.0,document
+출장비_사용규정,Layout,Element Detection Precision,0.926,document
+출장비_사용규정,Layout,Element Detection Recall,0.955,document
+출장비_사용규정,Layout,Element Detection F1,0.94,document
+출장비_사용규정,Layout,Missing Elements,3.0,document
+출장비_사용규정,Layout,Extra Elements,5.0,document
+회식_운영규정,Layout,Element Detection Precision,0.818,document
+회식_운영규정,Layout,Element Detection Recall,0.94,document
+회식_운영규정,Layout,Element Detection F1,0.875,document
+회식_운영규정,Layout,Missing Elements,4.0,document
+회식_운영규정,Layout,Extra Elements,14.0,document
+법인카드_사용규정,Hierarchy,Heading Detection F1,0.964,document
+법인카드_사용규정,Hierarchy,Heading Level Acc (strict),0.037,document
+법인카드_사용규정,Hierarchy,Heading Level Acc (offset),0.963,document
+법인카드_사용규정,Hierarchy,Parent-Child Acc,0.667,document
+법인카드_사용규정,Hierarchy,Document Order Acc,0.926,document
+법인카드_사용규정,Hierarchy,Level Offset,-1.0,document
+부서소개,Hierarchy,Heading Detection F1,0.941,document
+부서소개,Hierarchy,Heading Level Acc (strict),0.125,document
+부서소개,Hierarchy,Heading Level Acc (offset),0.875,document
+부서소개,Hierarchy,Parent-Child Acc,1.0,document
+부서소개,Hierarchy,Document Order Acc,1.0,document
+부서소개,Hierarchy,Level Offset,-1.0,document
+업무추진비_사용규정,Hierarchy,Heading Detection F1,0.898,document
+업무추진비_사용규정,Hierarchy,Heading Level Acc (strict),0.045,document
+업무추진비_사용규정,Hierarchy,Heading Level Acc (offset),0.955,document
+업무추진비_사용규정,Hierarchy,Parent-Child Acc,0.818,document
+업무추진비_사용규정,Hierarchy,Document Order Acc,0.955,document
+업무추진비_사용규정,Hierarchy,Level Offset,-1.0,document
+조직도,Hierarchy,Heading Detection F1,0.571,document
+조직도,Hierarchy,Heading Level Acc (strict),0.25,document
+조직도,Hierarchy,Heading Level Acc (offset),0.75,document
+조직도,Hierarchy,Parent-Child Acc,1.0,document
+조직도,Hierarchy,Document Order Acc,0.75,document
+조직도,Hierarchy,Level Offset,-1.0,document
+조직설계_상세기획서,Hierarchy,Heading Detection F1,0.571,document
+조직설계_상세기획서,Hierarchy,Heading Level Acc (strict),1.0,document
+조직설계_상세기획서,Hierarchy,Heading Level Acc (offset),1.0,document
+조직설계_상세기획서,Hierarchy,Parent-Child Acc,0.8,document
+조직설계_상세기획서,Hierarchy,Document Order Acc,1.0,document
+조직설계_상세기획서,Hierarchy,Level Offset,0.0,document
+직급체계,Hierarchy,Heading Detection F1,0.909,document
+직급체계,Hierarchy,Heading Level Acc (strict),0.2,document
+직급체계,Hierarchy,Heading Level Acc (offset),0.8,document
+직급체계,Hierarchy,Parent-Child Acc,1.0,document
+직급체계,Hierarchy,Document Order Acc,1.0,document
+직급체계,Hierarchy,Level Offset,-1.0,document
+출장비_사용규정,Hierarchy,Heading Detection F1,0.851,document
+출장비_사용규정,Hierarchy,Heading Level Acc (strict),0.05,document
+출장비_사용규정,Hierarchy,Heading Level Acc (offset),0.95,document
+출장비_사용규정,Hierarchy,Parent-Child Acc,0.5,document
+출장비_사용규정,Hierarchy,Document Order Acc,0.85,document
+출장비_사용규정,Hierarchy,Level Offset,-1.0,document
+회식_운영규정,Hierarchy,Heading Detection F1,0.878,document
+회식_운영규정,Hierarchy,Heading Level Acc (strict),0.056,document
+회식_운영규정,Hierarchy,Heading Level Acc (offset),0.889,document
+회식_운영규정,Hierarchy,Parent-Child Acc,0.722,document
+회식_운영규정,Hierarchy,Document Order Acc,0.889,document
+회식_운영규정,Hierarchy,Level Offset,-1.0,document
+법인카드_사용규정,Table,Table Detection F1,1.0,document
+법인카드_사용규정,Table,Missing Tables,0.0,document
+법인카드_사용규정,Table,False Positive Tables,0.0,document
+법인카드_사용규정,Table,Split Tables,0.0,document
+부서소개,Table,Table Detection F1,1.0,document
+부서소개,Table,Missing Tables,0.0,document
+부서소개,Table,False Positive Tables,0.0,document
+부서소개,Table,Split Tables,2.0,document
+업무추진비_사용규정,Table,Table Detection F1,0.8,document
+업무추진비_사용규정,Table,Missing Tables,1.0,document
+업무추진비_사용규정,Table,False Positive Tables,0.0,document
+업무추진비_사용규정,Table,Split Tables,0.0,document
+조직도,Table,Table Detection F1,0.8,document
+조직도,Table,Missing Tables,0.0,document
+조직도,Table,False Positive Tables,1.0,document
+조직도,Table,Split Tables,1.0,document
+조직설계_상세기획서,Table,Table Detection F1,0.923,document
+조직설계_상세기획서,Table,Missing Tables,0.0,document
+조직설계_상세기획서,Table,False Positive Tables,1.0,document
+조직설계_상세기획서,Table,Split Tables,4.0,document
+직급체계,Table,Table Detection F1,1.0,document
+직급체계,Table,Missing Tables,0.0,document
+직급체계,Table,False Positive Tables,0.0,document
+직급체계,Table,Split Tables,1.0,document
+출장비_사용규정,Table,Table Detection F1,1.0,document
+출장비_사용규정,Table,Missing Tables,0.0,document
+출장비_사용규정,Table,False Positive Tables,0.0,document
+출장비_사용규정,Table,Split Tables,1.0,document
+회식_운영규정,Table,Table Detection F1,0.889,document
+회식_운영규정,Table,Missing Tables,1.0,document
+회식_운영규정,Table,False Positive Tables,1.0,document
+회식_운영규정,Table,Split Tables,2.0,document
+법인카드_사용규정,Table,Cell Accuracy,0.5,table 1
+법인카드_사용규정,Table,Cell Accuracy (strict),0.5,table 1
+법인카드_사용규정,Table,Cell Accuracy,1.0,table 2
+법인카드_사용규정,Table,Cell Accuracy (strict),1.0,table 2
+부서소개,Table,Cell Accuracy,1.0,table 1
+부서소개,Table,Cell Accuracy (strict),0.533,table 1
+부서소개,Table,Cell Accuracy,1.0,table 2
+부서소개,Table,Cell Accuracy (strict),0.667,table 2
+부서소개,Table,Cell Accuracy,1.0,table 3
+부서소개,Table,Cell Accuracy (strict),0.533,table 3
+부서소개,Table,Cell Accuracy,1.0,table 4
+부서소개,Table,Cell Accuracy (strict),0.5,table 4
+부서소개,Table,Cell Accuracy,1.0,table 5
+부서소개,Table,Cell Accuracy (strict),0.5,table 5
+부서소개,Table,Cell Accuracy,1.0,table 6
+부서소개,Table,Cell Accuracy (strict),0.7,table 6
+부서소개,Table,Cell Accuracy,1.0,table 7
+부서소개,Table,Cell Accuracy (strict),0.889,table 7
+업무추진비_사용규정,Table,Cell Accuracy,1.0,table 2
+업무추진비_사용규정,Table,Cell Accuracy (strict),1.0,table 2
+업무추진비_사용규정,Table,Cell Accuracy,1.0,table 3
+업무추진비_사용규정,Table,Cell Accuracy (strict),1.0,table 3
+조직도,Table,Cell Accuracy,1.0,table 1
+조직도,Table,Cell Accuracy (strict),1.0,table 1
+조직도,Table,Cell Accuracy,0.875,table 2
+조직도,Table,Cell Accuracy (strict),0.812,table 2
+조직설계_상세기획서,Table,Cell Accuracy,1.0,table 1
+조직설계_상세기획서,Table,Cell Accuracy (strict),0.944,table 1
+조직설계_상세기획서,Table,Cell Accuracy,1.0,table 2
+조직설계_상세기획서,Table,Cell Accuracy (strict),0.506,table 2
+조직설계_상세기획서,Table,Cell Accuracy,1.0,table 3
+조직설계_상세기획서,Table,Cell Accuracy (strict),1.0,table 3
+조직설계_상세기획서,Table,Cell Accuracy,1.0,table 4
+조직설계_상세기획서,Table,Cell Accuracy (strict),0.8,table 4
+조직설계_상세기획서,Table,Cell Accuracy,0.833,table 5
+조직설계_상세기획서,Table,Cell Accuracy (strict),0.778,table 5
+조직설계_상세기획서,Table,Cell Accuracy,1.0,table 6
+조직설계_상세기획서,Table,Cell Accuracy (strict),0.938,table 6
+직급체계,Table,Cell Accuracy,1.0,table 1
+직급체계,Table,Cell Accuracy (strict),1.0,table 1
+직급체계,Table,Cell Accuracy,1.0,table 2
+직급체계,Table,Cell Accuracy (strict),0.867,table 2
+출장비_사용규정,Table,Cell Accuracy,0.429,table 1
+출장비_사용규정,Table,Cell Accuracy (strict),0.429,table 1
+출장비_사용규정,Table,Cell Accuracy,1.0,table 2
+출장비_사용규정,Table,Cell Accuracy (strict),1.0,table 2
+출장비_사용규정,Table,Cell Accuracy,1.0,table 3
+출장비_사용규정,Table,Cell Accuracy (strict),0.8,table 3
+회식_운영규정,Table,Cell Accuracy,1.0,table 2
+회식_운영규정,Table,Cell Accuracy (strict),0.667,table 2
+회식_운영규정,Table,Cell Accuracy,1.0,table 3
+회식_운영규정,Table,Cell Accuracy (strict),0.8,table 3
+회식_운영규정,Table,Cell Accuracy,1.0,table 4
+회식_운영규정,Table,Cell Accuracy (strict),0.833,table 4
+회식_운영규정,Table,Cell Accuracy,1.0,table 5
+회식_운영규정,Table,Cell Accuracy (strict),0.85,table 5
+회식_운영규정,Table,Cell Accuracy,1.0,table 6
+회식_운영규정,Table,Cell Accuracy (strict),0.833,table 6
+회식_운영규정,Table,Cell Accuracy,1.0,table 7
+회식_운영규정,Table,Cell Accuracy (strict),0.833,table 7
+회식_운영규정,Table,Cell Accuracy,1.0,table 8
+회식_운영규정,Table,Cell Accuracy (strict),0.58,table 8
+회식_운영규정,Table,Cell Accuracy,0.898,table 9
+회식_운영규정,Table,Cell Accuracy (strict),0.755,table 9

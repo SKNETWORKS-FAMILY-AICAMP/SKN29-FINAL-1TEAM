@@ -1,0 +1,200 @@
+{
+  "Document": "부서소개",
+  "Table": 4,
+  "Page": 3,
+  "Rows": 4,
+  "Cols": 5,
+  "Cells": 20,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "부서 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "핵심 업무 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 산출물 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 부서"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "Enterprise영업 부"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "대기업 대 상 영업"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업기회 발굴, 제안/계 약, 매출관리"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "제안서, 계약서, 영업파 이프라인 현황"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객성공부, AI플랫폼 부, 법무부"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "공공사업부 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "공공기관 대상 영업"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "입찰대응, 공공사업 제 안, 규정준수"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "입찰제안서, 사업수행계 획서 "
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "법무부, 전략기획부"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객성공부 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "고객 온보 딩 및 유지"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "온보딩지원, 기술지원, 이탈방지, 갱신관리"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "온보딩가이드, 고객만족 도리포트, 갱신현황"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "Enterprise영업부, 플랫 폼개발부"
+    }
+  ],
+  "markdown": "| 부서              | 주요 역할            | 핵심 업무                                | 주요 산출물                               | 협업 부서                       |\n|-------------------|----------------------|------------------------------------------|-------------------------------------------|---------------------------------|\n| Enterprise영업 부 | 대기업 대 상 영업    | 영업기회 발굴, 제안/계 약, 매출관리      | 제안서, 계약서, 영업파 이프라인 현황      | 고객성공부, AI플랫폼 부, 법무부 |\n| 공공사업부        | 공공기관 대상 영업   | 입찰대응, 공공사업 제 안, 규정준수       | 입찰제안서, 사업수행계 획서               | 법무부, 전략기획부              |\n| 고객성공부        | 고객 온보 딩 및 유지 | 온보딩지원, 기술지원, 이탈방지, 갱신관리 | 온보딩가이드, 고객만족 도리포트, 갱신현황 | Enterprise영업부, 플랫 폼개발부 |"
+}

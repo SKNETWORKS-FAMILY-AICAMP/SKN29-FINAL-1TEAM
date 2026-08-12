@@ -1,0 +1,515 @@
+{
+  "Document": "조직설계_상세기획서",
+  "Table": 2,
+  "Page": 5,
+  "Rows": 11,
+  "Cols": 5,
+  "Cells": 55,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "조직 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 역할 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "핵심 업무 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "주요 산출물 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "협업 부서"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "감사실 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 내부통제 및 감사 총괄"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "정기/수시 감사, 컴플라이언 스 점검, 재무회계부 자체사 용건 사후검증"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "감사보고서, 시정 조치 권고안, 내 부통제 점검표"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무회계부, 전 부서"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인사부 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용·인력운영 ·조직문화 관리"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용기획/실행, 평가·보상 운영, 교육체계 설계, 조직문 화 프로그램 운영"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "채용계획서, 평가 결과보고서, 교육 이수현황"
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전략기획부(인력계획), 각 사업본부"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무회계부"
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "회계처리·자금 관리·법인카드 정산 총괄"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "결산, 세무신고, 자금운용, 법 인카드 정산·승인 프로세스 운영"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "재무제표, 정산보 고서, 자금운용계 획"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전 부서, 감사실"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "총무구매부 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사무환경 및 자 산관리"
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "구매계약, 시설관리, 복리후 생 운영, 사내행사"
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "구매계약서, 자산 대장, 시설점검보 고서"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "IT운영부, 인사부"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "법무부 "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "법률리스크 관 리"
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계약검토, 지적재산권관리, 소송대응, 개인정보 등 규제 대응"
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계약검토의견서, 법률자문보고서 "
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "영업본부, AI사업본부"
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "IT운영부 "
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사내 IT 인프라 및 보안 운영"
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "그룹웨어/ERP 운영, 계정권 한관리, 보안정책, 장애대응"
+    },
+    {
+      "row": 6,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "시스템운영현황 보고서, 보안점검 보고서"
+    },
+    {
+      "row": 6,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "클라우드부, 전 부서"
+    },
+    {
+      "row": 7,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI플랫폼부 "
+    },
+    {
+      "row": 7,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "LLM/AI서비스 개발 및 운영"
+    },
+    {
+      "row": 7,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "모델 파인튜닝/서빙, AI서비 스 기획개발, MLOps 파이프 라인 운영"
+    },
+    {
+      "row": 7,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI서비스 릴리즈, 모델 성능리포트"
+    },
+    {
+      "row": 7,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터부, 클라우드부 (매트릭스)"
+    },
+    {
+      "row": 8,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터부"
+    },
+    {
+      "row": 8,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터 파이프 라인 구축 및 분 석"
+    },
+    {
+      "row": 8,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터 수집/정제, 데이터 품 질관리, BI/분석"
+    },
+    {
+      "row": 8,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "데이터파이프라 인, 분석리포트, 데이터품질지표"
+    },
+    {
+      "row": 8,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI플랫폼부, 플랫폼개 발부"
+    },
+    {
+      "row": 9,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼개발부"
+    },
+    {
+      "row": 9,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "SaaS 플랫폼 기획·개발·운 영"
+    },
+    {
+      "row": 9,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "서비스 기획, Backend/ Frontend 개발, 배포운영"
+    },
+    {
+      "row": 9,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "플랫폼 릴리즈노 트, 서비스 로드 맵"
+    },
+    {
+      "row": 9,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "클라우드부, 고객성공 부"
+    },
+    {
+      "row": 10,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "클라우드부"
+    },
+    {
+      "row": 10,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "클라우드 인프 라 및 운영자동 화"
+    },
+    {
+      "row": 10,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인프라 설계/운영, 비용최적 화, 네트워크/보안"
+    },
+    {
+      "row": 10,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인프라 아키텍처 문서, 비용리포트"
+    },
+    {
+      "row": 10,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "AI플랫폼부(매트릭스), 플랫폼개발부, IT운영 부"
+    }
+  ],
+  "markdown": "| 조직         | 주요 역할                             | 핵심 업무                                                             | 주요 산출물                                    | 협업 부서                                     |\n|--------------|---------------------------------------|-----------------------------------------------------------------------|------------------------------------------------|-----------------------------------------------|\n| 감사실       | 전사 내부통제 및 감사 총괄            | 정기/수시 감사, 컴플라이언 스 점검, 재무회계부 자체사 용건 사후검증   | 감사보고서, 시정 조치 권고안, 내 부통제 점검표 | 재무회계부, 전 부서                           |\n| 인사부       | 채용·인력운영 ·조직문화 관리          | 채용기획/실행, 평가·보상 운영, 교육체계 설계, 조직문 화 프로그램 운영 | 채용계획서, 평가 결과보고서, 교육 이수현황     | 전략기획부(인력계획), 각 사업본부             |\n| 재무회계부   | 회계처리·자금 관리·법인카드 정산 총괄 | 결산, 세무신고, 자금운용, 법 인카드 정산·승인 프로세스 운영           | 재무제표, 정산보 고서, 자금운용계 획           | 전 부서, 감사실                               |\n| 총무구매부   | 사무환경 및 자 산관리                 | 구매계약, 시설관리, 복리후 생 운영, 사내행사                          | 구매계약서, 자산 대장, 시설점검보 고서         | IT운영부, 인사부                              |\n| 법무부       | 법률리스크 관 리                      | 계약검토, 지적재산권관리, 소송대응, 개인정보 등 규제 대응             | 계약검토의견서, 법률자문보고서                 | 영업본부, AI사업본부                          |\n| IT운영부     | 사내 IT 인프라 및 보안 운영           | 그룹웨어/ERP 운영, 계정권 한관리, 보안정책, 장애대응                  | 시스템운영현황 보고서, 보안점검 보고서         | 클라우드부, 전 부서                           |\n| AI플랫폼부   | LLM/AI서비스 개발 및 운영             | 모델 파인튜닝/서빙, AI서비 스 기획개발, MLOps 파이프 라인 운영        | AI서비스 릴리즈, 모델 성능리포트               | 데이터부, 클라우드부 (매트릭스)               |\n| 데이터부     | 데이터 파이프 라인 구축 및 분 석      | 데이터 수집/정제, 데이터 품 질관리, BI/분석                           | 데이터파이프라 인, 분석리포트, 데이터품질지표  | AI플랫폼부, 플랫폼개 발부                     |\n| 플랫폼개발부 | SaaS 플랫폼 기획·개발·운 영           | 서비스 기획, Backend/ Frontend 개발, 배포운영                         | 플랫폼 릴리즈노 트, 서비스 로드 맵             | 클라우드부, 고객성공 부                       |\n| 클라우드부   | 클라우드 인프 라 및 운영자동 화       | 인프라 설계/운영, 비용최적 화, 네트워크/보안                          | 인프라 아키텍처 문서, 비용리포트               | AI플랫폼부(매트릭스), 플랫폼개발부, IT운영 부 |"
+}

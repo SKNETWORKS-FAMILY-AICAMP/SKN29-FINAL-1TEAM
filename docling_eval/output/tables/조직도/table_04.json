@@ -1,0 +1,92 @@
+{
+  "Document": "조직도",
+  "Table": 4,
+  "Page": 6,
+  "Rows": 4,
+  "Cols": 2,
+  "Cells": 8,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "항목 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "내용"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀 수 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "27개"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "직급 단계 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "10단계 (사원 ~ 대표이사)"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "조직 특징 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "BU제 독립 손익 운영, AI-플랫폼 매트릭스 협업, CEO 직속 감사실을 통한 경영진 견제, 결재/카드한 도는 직책 기준·처우는 직급 기준 분리 운영"
+    }
+  ],
+  "markdown": "| 항목      | 내용                                                                                                                                    |\n|-----------|-----------------------------------------------------------------------------------------------------------------------------------------|\n| 팀 수     | 27개                                                                                                                                    |\n| 직급 단계 | 10단계 (사원 ~ 대표이사)                                                                                                                |\n| 조직 특징 | BU제 독립 손익 운영, AI-플랫폼 매트릭스 협업, CEO 직속 감사실을 통한 경영진 견제, 결재/카드한 도는 직책 기준·처우는 직급 기준 분리 운영 |"
+}

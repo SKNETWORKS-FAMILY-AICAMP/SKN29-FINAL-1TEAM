@@ -1,0 +1,6 @@
+﻿Strategy,Chunks,Median,p90,Max,Cross-Article,Table Broken,Mid-Sentence,No Citation,Hierarchy Kept
+A_fixed800,414,800,800,800,190,29,299,216,0
+B_fixed800_ov100,471,800,800,800,218,30,333,246,0
+C_recursive800,861,114,804,962,176,38,0,219,0
+D_structure,799,290,956,1873,1,0,0,3,0
+E_hier_parent,888,290,956,1873,1,0,0,3,730

@@ -1,0 +1,15 @@
+﻿Category,Evaluation Item,Auto Metric,Result,Comment
+Layout,영역 탐지(요소 누락/오탐),0.929,PASS,F1=0.929 / 누락 12건
+Layout,요소 타입 분류,0.923,PASS,정확도=0.923
+Layout,Bounding Box 정확도,,REVIEW,GT 좌표 없음 — 육안 검수 필요
+Layout,머리말/꼬리말 분리,,REVIEW,docling이 furniture로 분리한 요소 147건 — 육안 확인
+Hierarchy,헤딩 탐지,0.844,WARN,F1=0.844
+Hierarchy,헤딩 레벨(H1/H2/H3) 구분,0.93,PASS,"offset 보정=0.930, strict=0.149"
+Hierarchy,부모-자식 관계,0.737,FAIL,정확도=0.737
+Hierarchy,문서 순서(리딩오더),0.921,PASS,정확도=0.921
+Table,표 탐지,0.928,PASS,F1=0.928 / 분할 11건
+Table,행/열 복원,0.797,WARN,"row=0.594, col=1.000"
+Table,헤더 인식,0.938,PASS,정확도=0.938
+Table,셀 값 정확도,0.965,PASS,"loose=0.965, strict=0.755"
+Table,병합 셀,,REVIEW,마크다운 GT로 판정 불가 — 원본 PDF와 육안 대조 필요
+Text,공백·자간 결함,,REVIEW,공백만 다른 셀 161건 — CJK 양끝맞춤 조판 유래

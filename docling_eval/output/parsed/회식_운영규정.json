@@ -1,0 +1,4150 @@
+{
+  "doc_id": "dump:회식_운영규정",
+  "name": "회식_운영규정",
+  "profile": "REGULATION",
+  "meta": {
+    "revision_history": "v1.0 제정 / v1.1(2026.7.28) — ① 별표1 거래처 동반 회식 행의 \"30만원 이하 사후등록\" 자기모순 삭제 및 업무추진비 규정 신규 구간(100만~300만원 본부장 이상/300만원 초과 대표이사) 반영, ⑥ 해외출장 중 회식 참 조를 출장비 규정 개정(일비=식비 포함)에 맞춰 수정, ⑨ 상주 외주인력 소수 참석 시 계정과목(복리후생비) 유지 명시, ⑩ 회식_야간판정기준(22시)과 출장_야간식대인정기준(18시)이 별개 파라미터임을 명시, 긴급회식 사후소명 기한을 1영업일로 통일",
+    "revision": "v1.1(2026.7.28)"
+  },
+  "parser_version": "docling-dump",
+  "report": {
+    "profile": "REGULATION",
+    "applied_steps": [
+      "C1",
+      "C6",
+      "C7",
+      "C3",
+      "C2",
+      "C5"
+    ],
+    "skipped_steps": {
+      "C4": "해당 결함 없음(목차 덤프는 법령 전용)"
+    },
+    "corrections_count": {
+      "C1": 30,
+      "C6": 4,
+      "C7": 2,
+      "C3": 21,
+      "C2": 2,
+      "C5": 3
+    },
+    "dropped_elements": [],
+    "warnings": [],
+    "scores": null
+  },
+  "elements": [
+    {
+      "element_id": "회식_운영규정:p1:e1",
+      "type": "heading",
+      "text": "타이거주식회사(TigerInc.)",
+      "page": 1,
+      "order": 0,
+      "level": 1,
+      "bbox": [
+        206.1,
+        613.3,
+        387.6,
+        599.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p1:e2",
+      "type": "heading",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 1,
+      "order": 1,
+      "level": 1,
+      "bbox": [
+        119.6,
+        531.1,
+        471.8,
+        505.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e3",
+      "type": "paragraph",
+      "text": "제정일",
+      "page": 1,
+      "order": 2,
+      "level": null,
+      "bbox": [
+        120.9,
+        385.9,
+        145.8,
+        377.2
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e4",
+      "type": "paragraph",
+      "text": "2026. 7. 20.",
+      "page": 1,
+      "order": 3,
+      "level": null,
+      "bbox": [
+        217.3,
+        385.1,
+        265.3,
+        377.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e5",
+      "type": "paragraph",
+      "text": "시행일",
+      "page": 1,
+      "order": 4,
+      "level": null,
+      "bbox": [
+        121.0,
+        358.0,
+        145.8,
+        349.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e6",
+      "type": "paragraph",
+      "text": "2026. 8. 1.",
+      "page": 1,
+      "order": 5,
+      "level": null,
+      "bbox": [
+        217.3,
+        357.2,
+        260.1,
+        349.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e7",
+      "type": "paragraph",
+      "text": "소관부서",
+      "page": 1,
+      "order": 6,
+      "level": null,
+      "bbox": [
+        121.0,
+        330.2,
+        154.3,
+        321.5
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e8",
+      "type": "paragraph",
+      "text": "경영지원본부(재무회계부 정산 총괄, 총무구매부 행사성 회식 지원)",
+      "page": 1,
+      "order": 7,
+      "level": null,
+      "bbox": [
+        217.5,
+        330.2,
+        473.9,
+        320.3
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p1:e9",
+      "type": "paragraph",
+      "text": "개정이력 v1.0 제정 / v1.1(2026.7.28) — ① 별표1 거래처 동반 회식 행의 \"30만원 이하 사후등록\" 자기모순 삭제 및 업무추진비 규정 신규 구간(100만~300만원 본부장 이상/300만원 초과 대표이사) 반영, ⑥ 해외출장 중 회식 참 조를 출장비 규정 개정(일비=식비 포함)에 맞춰 수정, ⑨ 상주 외주인력 소수 참석 시 계정과목(복리후생비) 유지 명시, ⑩ 회식_야간판정기준(22시)과 출장_야간식대인정기준(18시)이 별개 파라미터임을 명시, 긴급회식 사후소명 기한을 1영업일로 통일",
+      "page": 1,
+      "order": 8,
+      "level": null,
+      "bbox": [
+        113.3,
+        291.6,
+        481.9,
+        232.9
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p1:e10",
+      "type": "footer",
+      "text": "※ 본 규정은 데모/교육 목적의 가상 기업(타이거 주식회사, Tiger Inc.) 시나리오용으로 작성되었다.",
+      "page": 1,
+      "order": 9,
+      "level": null,
+      "bbox": [
+        137.1,
+        71.6,
+        458.7,
+        62.9
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p2:e18",
+      "type": "heading",
+      "text": "제1장 총칙",
+      "page": 2,
+      "order": 10,
+      "level": 1,
+      "bbox": [
+        265.4,
+        717.1,
+        328.6,
+        703.5
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ],
+        "chapter_no": 1
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e12",
+      "type": "heading",
+      "text": "제1조 (목적)",
+      "page": 2,
+      "order": 11,
+      "level": 2,
+      "bbox": [
+        62.6,
+        666.8,
+        120.8,
+        654.9
+      ],
+      "attrs": {
+        "article_no": 1,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e13",
+      "type": "paragraph",
+      "text": "이 규정은 「법인카드 사용 규정」제8조(사용 가능 항목) 제1호·제5호 및 제15조(비용 항목 구분 기준)에 따른 회식성 지출의 승인·사용·정산 절차를 세부적으로 정함으로써, 회식 관련 법인카드 사용의 기준을 명확히 하고 임직원과 관리자가 일관되게 이를 적용할 수 있도록 함을 목적으로 한다.",
+      "page": 2,
+      "order": 12,
+      "level": null,
+      "bbox": [
+        62.6,
+        641.1,
+        532.8,
+        597.6
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 1
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e14",
+      "type": "heading",
+      "text": "제2조 (정의)",
+      "page": 2,
+      "order": 13,
+      "level": 2,
+      "bbox": [
+        62.6,
+        572.0,
+        120.8,
+        560.1
+      ],
+      "attrs": {
+        "article_no": 2,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e15",
+      "type": "paragraph",
+      "text": "이 규정에서 사용하는 용어는 「법인카드 사용 규정」제2조를 따르며, 회식 유형은 다음과 같이 정의한다.",
+      "page": 2,
+      "order": 14,
+      "level": null,
+      "bbox": [
+        63.4,
+        546.4,
+        524.0,
+        535.6
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e16",
+      "type": "table",
+      "text": "| 유형 | 정의 | 비용 항목 분류(제15조 준용) |\n|-----------------------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------|\n| ① 공식 회식 | 부서·본부 단위로 사전 계획되어 관리자 주관 하에 개최되는 정기·비정기 행사성 회식 | 복리후생비 원칙 |\n| ②팀회식|팀 단위로 팀장 주관 하에 개최되는 소규모 회식 | 복리후생비 원칙 |\n| ③ 프로젝트 회식 | 특정 프로젝트(TF 포함) 참여 인원을 대상으로 착 수·마일스톤·종료 시점에 개최되는 회식 | 복리후생비 원칙(외부 파트너 동석 시 기업업무추진비로 전환될 수 있음) |\n| ④ 워크숍 식사 | 워크숍·세미나 등 사전 승인된 행사 프로그램에 포 함된 식사 | 회의비 또는 복리후생비(제15조 3호·2 호 준용) |\n| ⑤ 신규 입사자 환 영회 | 신규 입사자를 대상으로 소속 팀·부서가 개최하는 환영 목적 회식 | 복리후생비 |\n| ⑥ 퇴사자 송별회 | 퇴사(예정)자를 대상으로 소속 팀·부서가 개최하는 송별 목적 회식 | 복리후생비 |\n| ⑦ 성과 달성 축하 회식 | 프로젝트 종료, 계약 수주, 목표 달성 등을 기념하 는 회식 | 복리후생비(거래처 동석 시 기업업무추 진비) |\n| ⑧ 거래처 동반회식| 협력사·고객사 등 외부인이 참석하는 회식 | 기업업무추진비(제15조 1호) |",
+      "page": 2,
+      "order": 15,
+      "level": null,
+      "bbox": [
+        61.5,
+        525.7,
+        533.5,
+        163.1
+      ],
+      "attrs": {
+        "rows": 9,
+        "cols": 3,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e17",
+      "type": "paragraph",
+      "text": "구분 원칙: 참석자 전원이 임직원인 경우(①~⑦)는 복리후생비 또는 회의비로, 외부인(거래처·협력사 등)이 1인 이상 참석하는 경우(⑧)는 참석 목적·인원 비중과 무관하게 기업업무추진비로 분류한다. 하나의 회식에 임직원과 거래처가 혼재하는 경우, 해당 건 전체를 기업업무추진비로 분류하고 「법인카드 사용 규정」제11조 4항의 기록 의무 및 「기업업무추진비 사용 규정」",
+      "page": 2,
+      "order": 16,
+      "level": null,
+      "bbox": [
+        78.9,
+        139.9,
+        521.1,
+        103.5
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 2
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p2:e11",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 2,
+      "order": 17,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p2:e19",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 2,
+      "order": 18,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p2:e20",
+      "type": "footer",
+      "text": "-2/10-",
+      "page": 2,
+      "order": 19,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e22",
+      "type": "paragraph",
+      "text": "제6조(사용 승인)·제7조(기록 사항)를 적용한다. 특히 피접대자 중 청탁금지법 적용대상자가 포함되는 경우 「기업업무추진비 사용 규정」별표1의 한도를 반드시 확인한다.",
+      "page": 3,
+      "order": 20,
+      "level": null,
+      "bbox": [
+        78.9,
+        759.2,
+        520.6,
+        736.8
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "article_no": 6,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e23",
+      "type": "heading",
+      "text": "제3조 (적용범위)",
+      "page": 3,
+      "order": 21,
+      "level": 2,
+      "bbox": [
+        62.6,
+        702.4,
+        141.6,
+        690.5
+      ],
+      "attrs": {
+        "article_no": 3,
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e24",
+      "type": "paragraph",
+      "text": "이 규정은 회식 목적으로 법인카드(개인 카드·부서 공용카드 포함)를 사용하는 모든 임직원 및 회식 정산 건 을 심사·승인하는 모든 관리자에게 적용한다.",
+      "page": 3,
+      "order": 22,
+      "level": null,
+      "bbox": [
+        62.6,
+        676.7,
+        532.0,
+        649.9
+      ],
+      "attrs": {
+        "chapter_no": 1,
+        "chapter_title": "제1장 총칙",
+        "article_no": 3
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e25",
+      "type": "heading",
+      "text": "제2장 회식 기준",
+      "page": 3,
+      "order": 23,
+      "level": 1,
+      "bbox": [
+        250.4,
+        581.5,
+        344.6,
+        567.9
+      ],
+      "attrs": {
+        "chapter_no": 2
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e26",
+      "type": "heading",
+      "text": "제4조 (개최 권한 및 승인권자)",
+      "page": 3,
+      "order": 24,
+      "level": 2,
+      "bbox": [
+        62.6,
+        531.1,
+        201.2,
+        519.2
+      ],
+      "attrs": {
+        "article_no": 4,
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e27",
+      "type": "paragraph",
+      "text": "회식은 다음 표에 따라 조직 단위별로 개최하며, 「직급체계」의 결재라인을 기준으로 승인한다.",
+      "page": 3,
+      "order": 25,
+      "level": null,
+      "bbox": [
+        62.7,
+        505.5,
+        483.1,
+        494.7
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e28",
+      "type": "table",
+      "text": "| 회식 단위 | 개최(주관) | 참석 범위 | 1차 승인권자 | 비고 |\n|--------------|------------------------------------------|-------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------|\n| 팀 회식 | 팀장 | 팀원 전원 또는 일부 | 팀장 | 팀장 본인이 카드 사용자인 경우 부서장이 최종 승인(자기승인 방지) |\n| 부서 회식 | 부서장 | 부서 전체 또는 복수 팀 합동 | 부서장 | 부서장 본인이 사용자인 경우 본부장(경영지원본 부는 CEO)이 최종 승인 |\n| 본부 회식 | 본부장 | 본부 전체 또는 복수 부서 합동 | 본부장 | 본부장 본인이 사용자인 경우 CEO가 최종 승인. 경영지원본부는 본부장 직위가 없으므로 소관 부서장이 개최하고 CEO가 승인 |\n| 전사 회식 | CEO 또는 경영지 원본부(총무구매 부) 주관 | 전사 임직원 | CEO | 전사 공지 및 예산 편성 필요, 사전승인 필수(제9 조) |",
+      "page": 3,
+      "order": 26,
+      "level": null,
+      "bbox": [
+        61.7,
+        484.7,
+        533.5,
+        220.1
+      ],
+      "attrs": {
+        "rows": 5,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e29",
+      "type": "paragraph",
+      "text": "경영지원본부 예외: 「직급체계」\"3. 직책별 결재권\" 표(본부장 비고란)에 따라 경영지원본부는 본부장 직위가 없으므로, 인 사부·재무회계부·총무구매부·법무부·IT운영부의 부서 회식은 부서장이 개최하며 CEO에 직접 승인을 받는다.",
+      "page": 3,
+      "order": 27,
+      "level": null,
+      "bbox": [
+        78.9,
+        197.1,
+        520.6,
+        174.8
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e30",
+      "type": "paragraph",
+      "text": "대규모 행사의 결제 방식: 전사 회식 등 예상 총액이 개최 조직 승인권자의 「법인카드 사용 규정」별표1상 1일·월 한도를 초 과할 것으로 예상되는 행사는 개인 법인카드 결제 대신 총무구매부 명의의 행사전용 법인카드 사용 또는 세금계산서 기반 구매 계약으로 집행한다. 이 경우에도 참석인원·목적·증빙은 제10조(필수 증빙)를 동일하게 정산 시스템에 기록하며, 사전에 예산 편성 및 CEO 승인을 받아야 한다.",
+      "page": 3,
+      "order": 28,
+      "level": null,
+      "bbox": [
+        78.9,
+        165.5,
+        521.2,
+        115.1
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 4
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p3:e21",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 3,
+      "order": 29,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p3:e31",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 3,
+      "order": 30,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p3:e32",
+      "type": "footer",
+      "text": "-3/10-",
+      "page": 3,
+      "order": 31,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e34",
+      "type": "heading",
+      "text": "제5조 (사용 가능 비용)",
+      "page": 4,
+      "order": 32,
+      "level": 2,
+      "bbox": [
+        62.6,
+        758.1,
+        167.5,
+        746.2
+      ],
+      "attrs": {
+        "article_no": 5,
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e35",
+      "type": "table",
+      "text": "| 구분 | 가능 항목 |\n|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|\n| 가능 | 식사, 음료(비주류), 주류(사회통념상 허용 범위 내, 제6조 사전승인 대상 여부는 별도 판단), 주차비, 룸 이용료, 회의실·연회장 대관료, 케이크·축하용 소품(1건당 5만원 이내) |\n| 불가능 | 개인 선물, 상품권 등 유가증권(「법인카드 사용 규정」제9조 3호 준용), 귀가 후 개인 주류 구입, 2 차 비용(노래방·단란주점 등 별도 가맹점 결제), 유흥업소·사행성 업종(제9조 2호 준용), 사적 모임 (가족·지인만 참석하는 식사), 회식과 무관한 물품 구매 |",
+      "page": 4,
+      "order": 33,
+      "level": null,
+      "bbox": [
+        61.7,
+        736.7,
+        533.3,
+        603.5
+      ],
+      "attrs": {
+        "rows": 3,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 5
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e36",
+      "type": "paragraph",
+      "text": "회식 1건이 2개 이상 가맹점(예: 식당 결제 후 별도 업소 결제)으로 나뉘는 경우, 후속 결제 건은 원칙적으로 회식비로 인정하지 않으며 개인 사용으로 추정하여 별도 심사한다.",
+      "page": 4,
+      "order": 34,
+      "level": null,
+      "bbox": [
+        79.0,
+        580.4,
+        520.3,
+        558.3
+      ],
+      "attrs": {
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 5
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e37",
+      "type": "heading",
+      "text": "제6조 (참석 기준)",
+      "page": 4,
+      "order": 35,
+      "level": 2,
+      "bbox": [
+        62.6,
+        523.8,
+        223.4,
+        511.9
+      ],
+      "attrs": {
+        "revision": "v1.1(2026.7.28)",
+        "raw_title": "제6조 (참석 기준) 개정 v1.1(2026.7.28)",
+        "corrections": [
+          "C6"
+        ],
+        "article_no": 6,
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e38",
+      "type": "list_item",
+      "text": "1. 최소 참석 인원: 원칙적으로 3인 이상(카드 사용자 본인 포함)일 것을 요건으로 한다. 2인 이하 사용 건은 개인 식사로 추정하여 리뷰 대상이 되며, 1:1 멘토링·면담 목적 식사는 별도 규정(복리후생 식대 규정)을 따른다.",
+      "page": 4,
+      "order": 36,
+      "level": null,
+      "bbox": [
+        69.2,
+        498.2,
+        532.3,
+        454.6
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e39",
+      "type": "list_item",
+      "text": "2. 외부인(거래처·협력사) 참석: 제2조 ⑧에 따라 기업업무추진비로 분류하며, 「법인카드 사용 규정」제 11조 4항에 따라 거래처명·참석자·목적·일시·장소를 정산 시스템에 반드시 기록한다.",
+      "page": 4,
+      "order": 37,
+      "level": null,
+      "bbox": [
+        68.3,
+        445.3,
+        525.1,
+        418.4
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e40",
+      "type": "list_item",
+      "text": "3. 가족 참석: 원칙적으로 법인카드 회식비 대상에서 제외한다. 경조사 관련 식사는 「법인카드 사용 규정」제11조 3항의 경조사비 규정을 따른다.",
+      "page": 4,
+      "order": 38,
+      "level": null,
+      "bbox": [
+        68.1,
+        409.1,
+        515.8,
+        382.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 3,
+        "level_hint": 3,
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e41",
+      "type": "list_item",
+      "text": "4. 퇴사자 참석: 퇴사 예정(재직 중)인 임직원을 위한 송별회는 회식비로 인정한다. 퇴사가 완료되어 재직 관계가 종료된 자의 참석은 원칙적으로 회식비 대상이 아니며, 예외적으로 인정하는 경우 부서장 이상의 사전승인을 받아야 한다.",
+      "page": 4,
+      "order": 39,
+      "level": null,
+      "bbox": [
+        68.0,
+        372.9,
+        530.7,
+        329.4
+      ],
+      "attrs": {
+        "clause_no": 4,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e42",
+      "type": "list_item",
+      "text": "5. 협력사(상주 외주 인력·파견직) 참석: 실무 협업 목적의 통상적 참석은 제4조의 일반 회식 승인라인(팀 장→부서장)에 따른 사전승인 대상으로 하되, 인원이 소수(1~2인)이고 정기적 실무 소통 목적임이 소명 되는 경우 부서장 승인으로 갈음할 수 있다. 이 경우 완화되는 것은 승인라인뿐이며, 계정과목은 복리후 생비로 유지하고 기업업무추진비로 전환하지 아니한다. 그 외의 협력사 참석(인원이 3인 이상이거나 정기적 실무 소통 목적이 소명되지 않는 경우 등)은 거래처 동반 회식(제2조 ⑧)으로 분류하여 계정과목을 기업업무추진비로 전환하고 「기업업무추진비 사용 규정」제6조의 금액구간별 승인라인을 적용한다.",
+      "page": 4,
+      "order": 40,
+      "level": null,
+      "bbox": [
+        68.1,
+        320.0,
+        528.7,
+        226.4
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 5,
+        "level_hint": 3,
+        "chapter_no": 2,
+        "chapter_title": "제2장 회식 기준",
+        "article_no": 6
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p4:e33",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 4,
+      "order": 41,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p4:e43",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 4,
+      "order": 42,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p4:e44",
+      "type": "footer",
+      "text": "-4/10-",
+      "page": 4,
+      "order": 43,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e61",
+      "type": "heading",
+      "text": "제3장 승인 절차",
+      "page": 5,
+      "order": 44,
+      "level": 1,
+      "bbox": [
+        250.4,
+        756.8,
+        344.9,
+        743.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C2"
+        ],
+        "chapter_no": 3
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e46",
+      "type": "heading",
+      "text": "제7조 (금액 기준)",
+      "page": 5,
+      "order": 45,
+      "level": 2,
+      "bbox": [
+        62.6,
+        706.4,
+        144.1,
+        694.5
+      ],
+      "attrs": {
+        "article_no": 7,
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e47",
+      "type": "paragraph",
+      "text": "1인당 식대는 다음 표의 권장 한도를 기준으로 하되, 건당 총액 및 사전승인 기준은 「법인카드 사용 규정」 제10조 및 별표1을 우선 적용한다.",
+      "page": 5,
+      "order": 46,
+      "level": null,
+      "bbox": [
+        62.8,
+        680.8,
+        526.1,
+        654.0
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 7
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e48",
+      "type": "table",
+      "text": "| 회식 단위 | 1인당 식대 권장한도| 사전승인 필요 금액 기준 | 근거 |\n|--------------|--------------------------|--------------------------------------------------------|-----------------------------------------------------|\n| 팀 회식 | 5만원 | 건당 총액 30만원 초과 | 제10조 2항(식대는 직책 불문 30만원 기준 우선 적용) |\n| 부서 회식 | 6만원 | 건당 총액 30만원 초과 | 상동 |\n| 본부 회식 | 7만원 | 건당 총액 30만원 초과(항상 본부장이 상 사전승인 권장) | 상동 |\n| 전사 회식 | 8만원 | 금액 무관 CEO 사전승인 필수 | 제4조 |",
+      "page": 5,
+      "order": 47,
+      "level": null,
+      "bbox": [
+        61.5,
+        643.4,
+        533.3,
+        454.1
+      ],
+      "attrs": {
+        "rows": 5,
+        "cols": 4,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 7
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e49",
+      "type": "paragraph",
+      "text": "「법인카드 사용 규정」제10조 2항에 따라 별표1의 직책별 사전승인 기준액(팀장 50만원, 부서장 60만원, 본부장 80만원, 대표이사 100만원)보다 식대의 30만원 기준이 더 낮으므로, 회식(식대) 지출은 직책과 무관하게 건당 30만원을 초과하면 사전승인 대상이 된다. 1인당 한도를 준수하더라도 참석 인원이 많아 건당 총액이 30만원을 넘으면 동일하게 적용된다.",
+      "page": 5,
+      "order": 48,
+      "level": null,
+      "bbox": [
+        79.0,
+        431.0,
+        521.2,
+        394.6
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 7
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e50",
+      "type": "heading",
+      "text": "제8조 (사전승인이 필요한 경우)",
+      "page": 5,
+      "order": 49,
+      "level": 2,
+      "bbox": [
+        62.6,
+        360.2,
+        288.4,
+        348.3
+      ],
+      "attrs": {
+        "revision": "v1.1(2026.7.28)",
+        "raw_title": "제8조 (사전승인이 필요한 경우) 개정 v1.1(2026.7.28)",
+        "corrections": [
+          "C6"
+        ],
+        "article_no": 8,
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e51",
+      "type": "paragraph",
+      "text": "다음 각 호에 해당하는 경우 회식 전 관리자의 사전승인을 받아야 한다. 부득이하게 사전승인을 받지 못한 경우 정산 신청 시 미승인 사유를 명시하고, 지출 후 1영업일 이내에 관리자의 사후 승인을 받아야 한다(사후 승인 절차는 「법인카드 사용 규정」에서 별도로 정하지 아니하므로 이 조에서 정한다).",
+      "page": 5,
+      "order": 50,
+      "level": null,
+      "bbox": [
+        62.6,
+        334.5,
+        532.9,
+        290.0
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e52",
+      "type": "list_item",
+      "text": "1. 건당 총액이 30만원을 초과하는 경우",
+      "page": 5,
+      "order": 51,
+      "level": null,
+      "bbox": [
+        69.2,
+        277.1,
+        240.5,
+        267.0
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e53",
+      "type": "list_item",
+      "text": "2. 22시 이후(야간) 사용하는 경우",
+      "page": 5,
+      "order": 52,
+      "level": null,
+      "bbox": [
+        68.3,
+        257.6,
+        215.5,
+        246.4
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e54",
+      "type": "list_item",
+      "text": "3. 토요일·일요일·공휴일에 사용하는 경우",
+      "page": 5,
+      "order": 53,
+      "level": null,
+      "bbox": [
+        68.1,
+        238.0,
+        250.3,
+        228.0
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e55",
+      "type": "list_item",
+      "text": "4. 거래처 등 외부인이 참석하는 경우",
+      "page": 5,
+      "order": 54,
+      "level": null,
+      "bbox": [
+        68.0,
+        218.5,
+        229.0,
+        208.4
+      ],
+      "attrs": {
+        "clause_no": 4,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e56",
+      "type": "list_item",
+      "text": "5. 호텔·특급 레스토랑 등 고급 업종에서 사용하는 경우",
+      "page": 5,
+      "order": 55,
+      "level": null,
+      "bbox": [
+        68.1,
+        199.0,
+        307.3,
+        188.9
+      ],
+      "attrs": {
+        "clause_no": 5,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e57",
+      "type": "list_item",
+      "text": "6. 주류를 포함하여 1인당 식대가 8만원을 초과하는 경우",
+      "page": 5,
+      "order": 56,
+      "level": null,
+      "bbox": [
+        68.2,
+        179.5,
+        314.5,
+        169.4
+      ],
+      "attrs": {
+        "clause_no": 6,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e58",
+      "type": "list_item",
+      "text": "7. 출장 중 발생하는 회식(출장지 현지 회식 포함)",
+      "page": 5,
+      "order": 57,
+      "level": null,
+      "bbox": [
+        68.3,
+        160.0,
+        280.8,
+        148.8
+      ],
+      "attrs": {
+        "clause_no": 7,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e59",
+      "type": "list_item",
+      "text": "8. 전사 회식(금액 무관, 제4조)",
+      "page": 5,
+      "order": 58,
+      "level": null,
+      "bbox": [
+        68.2,
+        140.4,
+        202.4,
+        129.3
+      ],
+      "attrs": {
+        "clause_no": 8,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e60",
+      "type": "paragraph",
+      "text": "제2호의 \"22시 이후(야간)\" 기준(이하 \"회식_야간판정기준\")은 회식의 사전승인 필요 여부를 판단하는 이 규정 고유의 파라미 터이며, 「출장비 사용 규정」제10조의 출장 중 야간식대 인정기준(\"출장_야간식대인정기준\", 통상 근무 종료 시각을 기준으",
+      "page": 5,
+      "order": 59,
+      "level": null,
+      "bbox": [
+        78.9,
+        110.0,
+        521.1,
+        86.8
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p5:e45",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 5,
+      "order": 60,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p5:e62",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 5,
+      "order": 61,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p5:e63",
+      "type": "footer",
+      "text": "-5/10-",
+      "page": 5,
+      "order": 62,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e65",
+      "type": "paragraph",
+      "text": "로 원칙적으로 18시)과는 목적과 값이 다른 별개의 개념이다. 룰 엔진 구현 시 두 기준을 하나의 \"야간\" 변수로 통합하지 아니하 고 각각 독립된 파라미터로 정의한다.",
+      "page": 6,
+      "order": 63,
+      "level": null,
+      "bbox": [
+        79.0,
+        759.1,
+        521.2,
+        736.9
+      ],
+      "attrs": {
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 8
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e66",
+      "type": "heading",
+      "text": "제9조 (승인 프로세스)",
+      "page": 6,
+      "order": 64,
+      "level": 2,
+      "bbox": [
+        62.6,
+        702.4,
+        164.9,
+        690.5
+      ],
+      "attrs": {
+        "article_no": 9,
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e67",
+      "type": "list_item",
+      "text": "1. 기본 라인: 담당자(회식 개최·사용 주체) → 팀장 → 부서장 → (사전승인 대상 시)본부장/CEO → 재무회 계팀 1차 확인 → (리스크 분류 시)관리자 최종 승인",
+      "page": 6,
+      "order": 65,
+      "level": null,
+      "bbox": [
+        69.2,
+        676.8,
+        531.3,
+        648.9
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e68",
+      "type": "list_item",
+      "text": "2. 경영지원본부 예외: 본부장이 없으므로 부서장 승인 후 CEO에 직보한다.",
+      "page": 6,
+      "order": 66,
+      "level": null,
+      "bbox": [
+        68.3,
+        640.6,
+        396.4,
+        630.4
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e69",
+      "type": "list_item",
+      "text": "3. 재무회계부 자체 사용건: 재무회계부가 회식비 사용 주체인 경우, 「부서소개」에 따라 감사실이 사후 검증을 수행하여 이해상충을 방지한다.",
+      "page": 6,
+      "order": 67,
+      "level": null,
+      "bbox": [
+        68.1,
+        621.0,
+        523.4,
+        594.2
+      ],
+      "attrs": {
+        "clause_no": 3,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e70",
+      "type": "list_item",
+      "text": "4. 결재자는 승인 행위에 대한 책임을 지며, 반려 시 사유를 명시하여야 한다(「직급체계」\"4. 보고·결재 체계\" 준용).",
+      "page": 6,
+      "order": 68,
+      "level": null,
+      "bbox": [
+        68.0,
+        584.8,
+        519.4,
+        557.0
+      ],
+      "attrs": {
+        "clause_no": 4,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e71",
+      "type": "list_item",
+      "text": "5. 정산 신청은 지출일로부터 7영업일 이내에 정산 시스템을 통해 등록한다(「법인카드 사용 규정」제12조 준용).",
+      "page": 6,
+      "order": 69,
+      "level": null,
+      "bbox": [
+        68.1,
+        548.6,
+        524.3,
+        520.8
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C3"
+        ],
+        "clause_no": 5,
+        "level_hint": 3,
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e72",
+      "type": "list_item",
+      "text": "6. 참석 인원 미달, 고액, 반복 사용, 사전승인 미비, 증빙 누락 등 이상 징후로 분류된 건은 정산 시스템의 검토 결과를 참고하여 관리자의 최종 승인을 거쳐야 한다. 세부 판단 기준은 별도의 정산시스템 운영지 침으로 정한다(「법인카드 사용 규정」제12조 2항·제16조 준용).",
+      "page": 6,
+      "order": 70,
+      "level": null,
+      "bbox": [
+        68.2,
+        512.4,
+        523.3,
+        467.9
+      ],
+      "attrs": {
+        "clause_no": 6,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ],
+        "chapter_no": 3,
+        "chapter_title": "제3장 승인 절차",
+        "article_no": 9
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e73",
+      "type": "heading",
+      "text": "제4장 정산 기준",
+      "page": 6,
+      "order": 71,
+      "level": 1,
+      "bbox": [
+        250.4,
+        400.4,
+        344.6,
+        386.8
+      ],
+      "attrs": {
+        "chapter_no": 4
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e74",
+      "type": "heading",
+      "text": "제10조 (필수 증빙)",
+      "page": 6,
+      "order": 72,
+      "level": 2,
+      "bbox": [
+        62.6,
+        350.1,
+        150.8,
+        338.2
+      ],
+      "attrs": {
+        "article_no": 10,
+        "chapter_no": 4,
+        "chapter_title": "제4장 정산 기준"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e75",
+      "type": "paragraph",
+      "text": "회식비 정산 시 다음 자료를 정산 시스템에 등록하여야 한다.",
+      "page": 6,
+      "order": 73,
+      "level": null,
+      "bbox": [
+        62.7,
+        324.4,
+        324.6,
+        314.3
+      ],
+      "attrs": {
+        "chapter_no": 4,
+        "chapter_title": "제4장 정산 기준",
+        "article_no": 10
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e76",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 6,
+      "order": 74,
+      "level": null,
+      "bbox": [
+        61.6,
+        303.9,
+        533.3,
+        86.5
+      ],
+      "attrs": {
+        "rows": 26,
+        "cols": 3,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 정산 기준",
+        "article_no": 10,
+        "page_span": [
+          6,
+          7
+        ],
+        "continued_from": "회식_운영규정:p6:e76"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p6:e64",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 6,
+      "order": 75,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p6:e77",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 6,
+      "order": 76,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p6:e78",
+      "type": "footer",
+      "text": "-6/10-",
+      "page": 6,
+      "order": 77,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e81",
+      "type": "heading",
+      "text": "제11조 (비용 항목 확정)",
+      "page": 7,
+      "order": 78,
+      "level": 2,
+      "bbox": [
+        62.6,
+        637.9,
+        174.1,
+        625.9
+      ],
+      "attrs": {
+        "article_no": 11,
+        "chapter_no": 4,
+        "chapter_title": "제4장 정산 기준"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e82",
+      "type": "paragraph",
+      "text": "회식비의 계정 항목(기업업무추진비/복리후생비/회의비)은 제2조의 기준에 따라 1차 구분하되, 최종 확정은 재무회계팀 및 관리자가 수행한다(「법인카드 사용 규정」제15조 6항, 제16조 준용). 기업업무추진비로 분류된 건은 건당 3만원을 초과함에도 적격증명서류를 수취하지 못한 경우 전액 손금불산입됨에 유의한다.",
+      "page": 7,
+      "order": 79,
+      "level": null,
+      "bbox": [
+        62.6,
+        612.2,
+        532.7,
+        568.7
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 4,
+        "chapter_title": "제4장 정산 기준",
+        "article_no": 11
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e83",
+      "type": "heading",
+      "text": "제5장 예외 규정",
+      "page": 7,
+      "order": 80,
+      "level": 1,
+      "bbox": [
+        209.6,
+        500.2,
+        382.8,
+        486.4
+      ],
+      "attrs": {
+        "revision": "v1.1(2026.7.28)",
+        "raw_title": "제5장 예외 규정 개정 v1.1(2026.7.28)",
+        "corrections": [
+          "C6"
+        ],
+        "chapter_no": 5
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e84",
+      "type": "table",
+      "text": "| 예외 상황 | 처리 기준 |\n|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|\n| 긴급 회식(재해·사고 등 불 가피한 대응) | 사전승인 생략 가능, 사후 1영업일 이내 소명 및 관리자 사후승인(제8조 사후승인 기한과 통일) |\n| 고객 컴플레인 대응 식사 | 기업업무추진비로 분류, 거래처 정보 기재 조건으로 사후승인 허용 |\n| 야간 장애 대응(IT운영부· 클라우드부 등) | 야식 성격으로 1인당 3만원 이내는 완화 적용, 익일 사후승인 |\n| 프로젝트 오픈 축하 | 사전 계획 시 사전승인, 당일 긴급 결정 시 익일 사후승인 |\n| 해외 출장 중 회식 | 해외출장은 별도 식비 항목이 없으므로 「출장비 사용 규정」별표2의 일비(식비 포함) 범위에서 처리하되, 거래처 동행 시 기업업무추진비로 분류하여 「기업업무추진비 사용 규정」을 적용 |",
+      "page": 7,
+      "order": 81,
+      "level": null,
+      "bbox": [
+        61.6,
+        454.9,
+        533.3,
+        222.1
+      ],
+      "attrs": {
+        "rows": 6,
+        "cols": 2,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1"
+        ],
+        "chapter_no": 5,
+        "chapter_title": "제5장 예외 규정"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e85",
+      "type": "paragraph",
+      "text": "사후 승인이 3개월 내 3회 이상 발생하는 경우 해당 사용자 건은 고위험 사용 이력으로 관리하며, 관리자는 재발 방지 조치를 검 토한다(제8조의 사후승인 절차 및 「법인카드 사용 규정」제10조 3항을 준용).",
+      "page": 7,
+      "order": 82,
+      "level": null,
+      "bbox": [
+        78.9,
+        199.1,
+        520.4,
+        176.0
+      ],
+      "attrs": {
+        "chapter_no": 5,
+        "chapter_title": "제5장 예외 규정"
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p7:e79",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 7,
+      "order": 83,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p7:e86",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 7,
+      "order": 84,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p7:e87",
+      "type": "footer",
+      "text": "-7/10-",
+      "page": 7,
+      "order": 85,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p8:e89",
+      "type": "heading",
+      "text": "별표1. 회식 유형별 승인 기준",
+      "page": 8,
+      "order": 86,
+      "level": 1,
+      "bbox": [
+        63.2,
+        758.3,
+        274.6,
+        747.3
+      ],
+      "attrs": {
+        "corrections": [
+          "C1",
+          "C6"
+        ],
+        "revision": "v1.1(2026.7.28)",
+        "raw_title": "별표1. 회식 유형별 승인 기준 개정 v1.1(2026.7.28)",
+        "annex": true
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p8:e90",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 8,
+      "order": 87,
+      "level": null,
+      "bbox": [
+        61.5,
+        737.4,
+        533.4,
+        442.2
+      ],
+      "attrs": {
+        "rows": 54,
+        "cols": 5,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          8,
+          9
+        ],
+        "continued_from": "회식_운영규정:p8:e90",
+        "split_on_chunk": true
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p8:e88",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 8,
+      "order": 88,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p8:e91",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 8,
+      "order": 89,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p8:e92",
+      "type": "footer",
+      "text": "-8/10-",
+      "page": 8,
+      "order": 90,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p9:e95",
+      "type": "heading",
+      "text": "별표 2. 회식 유형별 증빙 기준",
+      "page": 9,
+      "order": 91,
+      "level": 1,
+      "bbox": [
+        63.2,
+        199.5,
+        195.8,
+        189.1
+      ],
+      "attrs": {
+        "annex": true
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p9:e96",
+      "type": "table",
+      "text": "row | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text\nrow | col | row_span | col_span | column_header | row_header | text",
+      "page": 9,
+      "order": 92,
+      "level": null,
+      "bbox": [
+        61.4,
+        178.6,
+        533.5,
+        88.5
+      ],
+      "attrs": {
+        "rows": 55,
+        "cols": 7,
+        "grid": [
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ],
+          [
+            "row",
+            "col",
+            "row_span",
+            "col_span",
+            "column_header",
+            "row_header",
+            "text"
+          ]
+        ],
+        "header_row": [
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "column_header",
+          "row_header",
+          "text"
+        ],
+        "caption": "",
+        "corrections": [
+          "C1",
+          "C5"
+        ],
+        "page_span": [
+          9,
+          10
+        ],
+        "continued_from": "회식_운영규정:p9:e96",
+        "split_on_chunk": true
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p9:e93",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 9,
+      "order": 93,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p9:e97",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 9,
+      "order": 94,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p9:e98",
+      "type": "footer",
+      "text": "-9/10-",
+      "page": 9,
+      "order": 95,
+      "level": null,
+      "bbox": [
+        282.5,
+        38.6,
+        312.8,
+        30.2
+      ],
+      "attrs": {
+        "corrections": [
+          "C1"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p10:e101",
+      "type": "heading",
+      "text": "부칙",
+      "page": 10,
+      "order": 96,
+      "level": 1,
+      "bbox": [
+        286.2,
+        465.5,
+        308.2,
+        453.3
+      ],
+      "attrs": {
+        "annex": true
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p10:e102",
+      "type": "list_item",
+      "text": "1. 이 규정은 「법인카드 사용 규정」의 시행일과 동일한 2026년 8월 1일부터 시행한다.",
+      "page": 10,
+      "order": 97,
+      "level": null,
+      "bbox": [
+        69.2,
+        420.4,
+        450.8,
+        410.3
+      ],
+      "attrs": {
+        "clause_no": 1,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p10:e103",
+      "type": "list_item",
+      "text": "2. 이 규정에서 정하지 않은 사항은 「법인카드 사용 규정」및 「직급체계」를 따른다.",
+      "page": 10,
+      "order": 98,
+      "level": null,
+      "bbox": [
+        68.3,
+        400.9,
+        445.1,
+        390.7
+      ],
+      "attrs": {
+        "clause_no": 2,
+        "level_hint": 3,
+        "corrections": [
+          "C3"
+        ]
+      }
+    },
+    {
+      "element_id": "회식_운영규정:p10:e99",
+      "type": "header",
+      "text": "회식 관련 법인카드 운영 규정",
+      "page": 10,
+      "order": 99,
+      "level": null,
+      "bbox": [
+        247.4,
+        811.5,
+        347.3,
+        803.8
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p10:e104",
+      "type": "footer",
+      "text": "TIGER Inc. 내부 규정",
+      "page": 10,
+      "order": 100,
+      "level": null,
+      "bbox": [
+        62.6,
+        38.5,
+        127.8,
+        31.6
+      ],
+      "attrs": {}
+    },
+    {
+      "element_id": "회식_운영규정:p10:e105",
+      "type": "footer",
+      "text": "- 10 / 10 -",
+      "page": 10,
+      "order": 101,
+      "level": null,
+      "bbox": [
+        280.2,
+        38.6,
+        315.1,
+        30.2
+      ],
+      "attrs": {}
+    }
+  ]
+}

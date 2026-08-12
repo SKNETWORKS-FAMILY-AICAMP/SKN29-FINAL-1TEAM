@@ -1,0 +1,164 @@
+{
+  "Document": "조직도",
+  "Table": 1,
+  "Page": 2,
+  "Rows": 8,
+  "Cols": 2,
+  "Cells": 16,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "1. 회사 개요",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "항목 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "내용"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "회사명 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "타이거 주식회사 (Tiger Inc.)"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "업종 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "B2B SaaS / AI / 클라우드 / 데이터 플랫폼"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "설립연도 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "2015년 (설립 12년 차, 중견기업)"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "임직원 수 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "약 1,050명"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "연 매출 "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "약 1,200억원 (연결 기준, 가정치)"
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본사 위치 "
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "서울 판교 테크노밸리"
+    },
+    {
+      "row": 7,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "기업 특징 "
+    },
+    {
+      "row": 7,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사업본부별 독립 손익 운영(BU제), AI사업본부-플랫폼사업본부 간 매트릭스(점선보고) 협업, CEO 직속 경영회의체 + 감사실의 독립적 통제 기능 병행"
+    }
+  ],
+  "markdown": "1. 회사 개요\n\n| 항목      | 내용                                                                                                                                        |\n|-----------|---------------------------------------------------------------------------------------------------------------------------------------------|\n| 회사명    | 타이거 주식회사 (Tiger Inc.)                                                                                                                |\n| 업종      | B2B SaaS / AI / 클라우드 / 데이터 플랫폼                                                                                                    |\n| 설립연도  | 2015년 (설립 12년 차, 중견기업)                                                                                                             |\n| 임직원 수 | 약 1,050명                                                                                                                                  |\n| 연 매출   | 약 1,200억원 (연결 기준, 가정치)                                                                                                            |\n| 본사 위치 | 서울 판교 테크노밸리                                                                                                                        |\n| 기업 특징 | 사업본부별 독립 손익 운영(BU제), AI사업본부-플랫폼사업본부 간 매트릭스(점선보고) 협업, CEO 직속 경영회의체 + 감사실의 독립적 통제 기능 병행 |"
+}

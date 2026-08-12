@@ -1,0 +1,245 @@
+{
+  "Document": "회식_운영규정",
+  "Table": 2,
+  "Page": 3,
+  "Rows": 5,
+  "Cols": 5,
+  "Cells": 25,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "회식 단위 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "개최(주관) "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "참석 범위 "
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1차 승 인권자 "
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "비고"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀 회식 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀원 전원 또는 일부 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 "
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "팀장 본인이 카드 사용자인 경우 부서장이 최종 승인(자기승인 방지)"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서 회식 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서 전체 또는 복수 팀 합동"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장 "
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "부서장 본인이 사용자인 경우 본부장(경영지원본 부는 CEO)이 최종 승인"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부 회식 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부 전체 또는 복수 부서 합동"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "본부장 본인이 사용자인 경우 CEO가 최종 승인. 경영지원본부는 본부장 직위가 없으므로 소관 부 서장이 개최하고 CEO가 승인"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 회식"
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO 또는 경영지 원본부(총무구매 부) 주관"
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 임직원 "
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "CEO"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "전사 공지 및 예산 편성 필요, 사전승인 필수(제9 조)"
+    }
+  ],
+  "markdown": "| 회식 단위    | 개최(주관)                               | 참석 범위                     | 1차 승 인권자    | 비고                                                                                                                  |\n|--------------|------------------------------------------|-------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------|\n| 팀 회식      | 팀장                                     | 팀원 전원 또는 일부           | 팀장             | 팀장 본인이 카드 사용자인 경우 부서장이 최종 승인(자기승인 방지)                                                      |\n| 부서 회식    | 부서장                                   | 부서 전체 또는 복수 팀 합동   | 부서장           | 부서장 본인이 사용자인 경우 본부장(경영지원본 부는 CEO)이 최종 승인                                                   |\n| 본부 회식    | 본부장                                   | 본부 전체 또는 복수 부서 합동 | 본부장           | 본부장 본인이 사용자인 경우 CEO가 최종 승인. 경영지원본부는 본부장 직위가 없으므로 소관 부 서장이 개최하고 CEO가 승인 |\n| 전사 회식    | CEO 또는 경영지 원본부(총무구매 부) 주관 | 전사 임직원                   | CEO              | 전사 공지 및 예산 편성 필요, 사전승인 필수(제9 조)                                                                    |"
+}

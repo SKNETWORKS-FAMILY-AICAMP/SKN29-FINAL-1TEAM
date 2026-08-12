@@ -1,0 +1,19 @@
+├─ [H1] 타 이 거 주 식 회 사 ( T i ge r I n c . )   (p.1)
+├─ [H1] 부서 소개   (p.1)
+│   ├─ [TEXT] 내 부 참 고 문 서
+├─ [H1] 1. 경영지원본부   (p.2)
+│   ├─ [TABLE] <table 6x5>
+├─ [H1] 2. AI사업본부   (p.2)
+│   ├─ [TABLE] <table 3x5>
+├─ [H1] 3. 플랫폼사업본부   (p.3)
+│   ├─ [TABLE] <table 3x5>
+├─ [H1] 4. 영업본부   (p.3)
+│   ├─ [TABLE] <table 4x5>
+├─ [H1] 5. 전략기획본부   (p.3)
+│   ├─ [TABLE] <table 3x5>
+│   ├─ [TABLE] <table 2x5>
+├─ [H1] 6. CEO 직속   (p.4)
+│   ├─ [TABLE] <table 2x5>
+├─ [H1] 7. 조직 간 협업 구조   (p.4)
+│   ├─ [TABLE] <table 7x3>
+│   ├─ [TABLE] <table 6x3>
