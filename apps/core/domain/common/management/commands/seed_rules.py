@@ -2,7 +2,7 @@
 
     python manage.py seed_rules [--no-test]
 
-근거: ``llm_wiki/법인카드_사용규정_기반_RULE_명세서.md`` §4·§8, 구성 계획: ``llm_wiki/_context/rule-seed-plan.md``.
+근거: ``llm_wiki/docs/법인카드_사용규정_기반_RULE_명세서.md`` §4·§8, 구성 계획: ``llm_wiki/_context/rule-seed-plan.md``.
 
 시연에서 보여줄 상태 조합:
 

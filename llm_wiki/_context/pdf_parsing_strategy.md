@@ -5,7 +5,7 @@
 > **범위 밖**: 청킹·임베딩·Chroma upsert (§9에 인터페이스만 규정, 별도 문서에서 확정)
 > **작성일**: 2026-08-12 (2026-08-10 PyMuPDF+pdfplumber 수제 파이프라인안을 **폐기하고 대체**)
 > **실측 근거**: `docling_eval/output/evaluation/` (GT 8종 정량 채점) · `docling_eval/docling_parsing_test.ipynb`
-> **관련**: `CLAUDE.md` §2·§5, `llm_wiki/기술명세서.md` §3.2·§8
+> **관련**: `CLAUDE.md` §2·§5, `llm_wiki/docs/기술명세서.md` §3.2·§8
 
 ---
 

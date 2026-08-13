@@ -1,6 +1,6 @@
 # 법인카드 정산 자동화 플랫폼 (Hybrid AI)
 
-기술명세서(`llm_wiki/기술명세서.md`) 아키텍처 기준 모노레포입니다.
+기술명세서(`llm_wiki/docs/기술명세서.md`) 아키텍처 기준 모노레포입니다.
 
 - **React SPA** ─► **Nginx** ─► **Django(DRF)** = System of Record(확정 데이터·상태머신·RBAC)
 - **FastAPI** = AI Orchestrator (3-Agent + 단일 FastMCP 서버 + ML 이상탐지 서빙) — *내부 전용*
