@@ -1,4 +1,8 @@
-"""공통 뷰 — 헬스체크, 역할별 대시보드 지표."""
+"""공통 뷰 — 헬스체크, 역할별 대시보드 지표, AI-LAB 프록시."""
+import logging
+
+import httpx
+from django.conf import settings
 from django.db import connection
 from django.db.models import Count, Sum
 from rest_framework.decorators import api_view, permission_classes
@@ -7,8 +11,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from domain.accounts.models import Capability
+from domain.common.permissions import CanUseAiLab
 from domain.settlements.models import Settlement
 from domain.settlements.models import SettlementStatus as S
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(["GET"])
@@ -71,3 +78,44 @@ class DashboardView(APIView):
             return Response({"detail": f"알 수 없는 역할: {role}"}, status=400)
 
         return Response({"role": role, "kpis": kpis, "byStatus": by_status})
+
+
+class AiLabProxyView(APIView):
+    """GET/POST /api/ai-lab/{subpath} → FastAPI `/lab/{subpath}` (AI-LAB 관리자 실험 화면).
+
+    FastAPI는 내부 전용이므로(CLAUDE.md §1) 관리자 화면도 Django를 거친다. 여기서 하는 일은
+    **인가(Capability `ai_lab`)와 전달뿐**이다 — 응답 가공은 하지 않는다. 화면이 보는 것과
+    FastAPI가 실제로 낸 것이 달라지면 실험 도구로서 값을 잃기 때문이다.
+
+    실패는 감추지 않고 그대로 올린다: 연결 실패는 503, 나머지는 FastAPI의 상태코드·본문 그대로.
+    (정산 경로의 `draft-suggest`와 반대다 — 그쪽은 폴백이 목적이고, 여기는 진단이 목적이다.)
+    """
+    permission_classes = [CanUseAiLab]
+    # LLM·임베딩 호출이 얹히므로 일반 API보다 넉넉하게. 그래도 무한 대기는 두지 않는다.
+    TIMEOUT = httpx.Timeout(90.0, connect=5.0)
+
+    def get(self, request, subpath):
+        return self._forward("GET", request, subpath)
+
+    def post(self, request, subpath):
+        return self._forward("POST", request, subpath)
+
+    @classmethod
+    def _forward(cls, method, request, subpath):
+        url = f"{settings.AI_BASE_URL}/lab/{subpath.lstrip('/')}"
+        body = request.data if (method == "POST" and isinstance(request.data, (dict, list))) else None
+        try:
+            resp = httpx.request(
+                method, url, params=request.query_params.dict(), json=body, timeout=cls.TIMEOUT
+            )
+        except Exception as exc:  # noqa: BLE001  # 미기동·타임아웃·DNS 등
+            logger.warning("AI-LAB 프록시 실패 %s: %s", url, exc)
+            return Response(
+                {"detail": f"AI 서비스({settings.AI_BASE_URL})에 연결하지 못했습니다 — {type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {"detail": resp.text[:2000]}
+        return Response(payload, status=resp.status_code)

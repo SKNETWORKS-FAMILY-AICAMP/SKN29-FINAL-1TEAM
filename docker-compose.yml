@@ -70,6 +70,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
       - ./apps/ai:/app
+      # RAG 인덱싱 배치의 입력(파싱 덤프). 레포 루트에 있어 `/app` 마운트로는 안 보인다 —
+      # 컨테이너는 읽기만 하므로 :ro. 사용: `--dump /data/docling_eval/output`
+      - ./docling_eval:/data/docling_eval:ro
     ports:
       - "9000:9000"
     depends_on:

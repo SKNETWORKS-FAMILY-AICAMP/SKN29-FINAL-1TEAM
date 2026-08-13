@@ -8,7 +8,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api import draft, embeddings, health, ml, risk, rule
+from app.api import draft, embeddings, health, lab, ml, risk, rule
 
 app = FastAPI(title="Settlement AI Orchestrator", version="0.1.0")
 
@@ -19,6 +19,8 @@ app.include_router(rule.router, prefix="/agent", tags=["agent"])
 app.include_router(risk.router, prefix="/agent", tags=["agent"])
 app.include_router(ml.router, prefix="/ml", tags=["ml"])
 app.include_router(embeddings.router, prefix="/embeddings", tags=["rag"])
+# AI-LAB: 관리자 실험 화면 전용. Django `/api/ai-lab/*` 프록시(Capability `ai_lab`)로만 노출된다.
+app.include_router(lab.router, prefix="/lab", tags=["lab"])
 
 # 단일 FastMCP 서버 마운트 — import/버전 이슈가 있어도 앱은 항상 부팅되도록 guard.
 try:

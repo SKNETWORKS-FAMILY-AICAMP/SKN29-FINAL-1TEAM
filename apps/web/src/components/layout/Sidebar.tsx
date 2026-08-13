@@ -13,6 +13,7 @@ interface MenuItem {
 //  · 내 지출·팀 현황: 공통(권한 불필요, 팀 현황의 개별건 처리 컨트롤은 team_aggregate로 별도 게이트)
 //  · 검토 워크스페이스: accounting_review
 //  · Rule 콘솔: rule_view(열람) — ACTIVE 전환 버튼만 rule_activate로 별도 게이트  · 거버넌스: governance_view
+//  · AI-LAB(AI 기능 독립 실행): ai_lab — 프롬프트·모델 내부가 보이고 LLM 비용이 나가는 관리자 도구
 //  · 규정 문서 관리(/policy-docs): 임시 비활성화 — 실 API 미연동(mock 전용). 재개 시 아래 줄과 App.tsx 라우트를 함께 복구.
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '내 지출' },
@@ -21,6 +22,7 @@ const MENU: MenuItem[] = [
   // { to: '/policy-docs', label: '규정 문서 관리', capability: 'accounting_review' },
   { to: '/rules', label: 'Rule 콘솔', capability: 'rule_view' },
   { to: '/governance', label: '거버넌스 대시보드', capability: 'governance_view' },
+  { to: '/ai-lab', label: 'AI-LAB (관리자)', capability: 'ai_lab' },
 ]
 
 export function Sidebar() {

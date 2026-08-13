@@ -7,6 +7,7 @@
 - 회계 검토(승인/보완/반려)·확정: CanAccountingReview
 - Rule ACTIVE 전환/롤백: CanActivateRule
 - 거버넌스 대시보드 열람: CanViewGovernance
+- AI-LAB(AI 기능 독립 실행): CanUseAiLab
 """
 from rest_framework.permissions import BasePermission
 
@@ -47,6 +48,12 @@ class CanViewRule(HasCapability):
 class CanViewGovernance(HasCapability):
     capability = Capability.GOVERNANCE_VIEW
     message = "거버넌스 대시보드 열람 권한이 필요합니다."
+
+
+class CanUseAiLab(HasCapability):
+    """AI-LAB(AI 기능 독립 실행) 사용 — 프롬프트·모델 내부 노출 + LLM 호출 비용 발생."""
+    capability = Capability.AI_LAB
+    message = "AI-LAB 사용 권한이 필요합니다."
 
 
 # ── 하위호환 별칭(구 역할기반 이름) — 신규 코드는 위 Capability 클래스를 쓸 것 ──

@@ -5,10 +5,14 @@
   어긋난 값 자체가 나올 수 없으므로, 별도의 사후 clamp 로직이 필요 없다(B-2).
 - get_policy는 Django `Policy` 테이블을 FastMCP 경유로 실조회한다(B-3). 조회 실패 시에만 폴백값 사용.
 - 영수증 비전 판독은 이 파일 범위 밖.
+- `trace` 인자는 AI-LAB(관리자 실험 화면)이 "왜 이렇게 나왔는지"를 보기 위한 선택적 수집 통로다
+  (모델·프롬프트·원본 응답·토큰·지연·정책 출처). None이면 아무것도 하지 않으므로 운영 경로는
+  그대로다 — 응답 본문에 추적 정보를 섞지 않기 위해 반환값이 아니라 인자로 받는다.
 """
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING, Literal
 
 from openai import OpenAI
@@ -23,7 +27,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"  # 키 권한에 따라 조정. model_not_found면 사용 가능 모델로 교체
+MODEL = "gpt-4o-mini"  # 키 권한에 따라 조정. model_not_found면 사용 가능 모델로 교체
 
 _client: OpenAI | None = None
 
@@ -117,20 +121,29 @@ USER_PROMPT_TEMPLATE_REVISE = """현재 초안:
 
 # ── 정책 힌트(get_policy 실연동, B-3) ──────────────────────────────────
 
-def _resolve_policy(category: str) -> dict:
+def _resolve_policy(category: str, trace: dict | None = None) -> dict:
     """Django `Policy` 테이블 실조회(FastMCP get_policy 경유). 실패해도 절대 예외를 올리지 않는다."""
     try:
         policy = tools.get_policy(category)
         if policy.get("limit") is not None:
+            if trace is not None:
+                trace["policy"] = {"source": "core", "value": policy}
             return policy
+        if trace is not None:
+            trace["policy"] = {"source": "fallback", "reason": "limit이 비어 있음", "lookup": policy}
     except Exception as exc:  # noqa: BLE001  # Django 미기동·네트워크 오류 등
         logger.warning("get_policy(%s) 실패, 폴백 사용: %s", category, exc)
-    return {"category": category, **FALLBACK_POLICY}
+        if trace is not None:
+            trace["policy"] = {"source": "fallback", "reason": f"{type(exc).__name__}: {exc}"}
+    fallback = {"category": category, **FALLBACK_POLICY}
+    if trace is not None:
+        trace["policy"]["value"] = fallback
+    return fallback
 
 
-def _build_policy_hints(amount: int, evidence: str, category: str) -> list[dict]:
+def _build_policy_hints(amount: int, evidence: str, category: str, trace: dict | None = None) -> list[dict]:
     """LLM이 지어내지 않고, 정책 숫자를 근거로 서버가 결정론적으로 생성(감사 가능성)."""
-    policy = _resolve_policy(category)
+    policy = _resolve_policy(category, trace)
     limit = policy["limit"]
     hints = []
     if limit is not None and amount > limit:
@@ -145,7 +158,30 @@ def _build_policy_hints(amount: int, evidence: str, category: str) -> list[dict]
 
 # ── OpenAI 호출 (Structured Output strict) ─────────────────────────────
 
-def _call_llm_create(req: "DraftRequest") -> LLMDraftOutput:
+def _record_call(trace: dict | None, system_prompt: str, user_prompt: str) -> None:
+    if trace is not None:
+        trace.update(model=MODEL, temperature=0.3, systemPrompt=system_prompt, userPrompt=user_prompt)
+
+
+def _record_response(trace: dict | None, resp, started: float) -> None:
+    """원본 응답·토큰·지연을 추적에 남긴다. 추적 수집이 본 호출을 깨뜨리지 않도록 전부 getattr."""
+    if trace is None:
+        return
+    trace["latencyMs"] = round((time.perf_counter() - started) * 1000, 1)
+    usage = getattr(resp, "usage", None)
+    if usage is not None:
+        trace["usage"] = {
+            "promptTokens": getattr(usage, "prompt_tokens", None),
+            "completionTokens": getattr(usage, "completion_tokens", None),
+            "totalTokens": getattr(usage, "total_tokens", None),
+        }
+    message = resp.choices[0].message
+    trace["rawOutput"] = getattr(message, "content", None)   # 구조화 출력 원본 JSON 문자열
+    trace["refusal"] = getattr(message, "refusal", None)
+    trace["finishReason"] = getattr(resp.choices[0], "finish_reason", None)
+
+
+def _call_llm_create(req: "DraftRequest", trace: dict | None = None) -> LLMDraftOutput:
     user_prompt = USER_PROMPT_TEMPLATE_CREATE.format(
         merchant=req.merchant,
         amount=req.amount,
@@ -154,8 +190,10 @@ def _call_llm_create(req: "DraftRequest") -> LLMDraftOutput:
         evidence=req.evidence or "OK",
         headcount=req.headcount or 0,
     )
+    _record_call(trace, SYSTEM_PROMPT_CREATE, user_prompt)
+    started = time.perf_counter()
     resp = _get_client().beta.chat.completions.parse(
-        model=_MODEL,
+        model=MODEL,
         temperature=0.3,
         timeout=15,
         messages=[
@@ -164,13 +202,14 @@ def _call_llm_create(req: "DraftRequest") -> LLMDraftOutput:
         ],
         response_format=LLMDraftOutput,
     )
+    _record_response(trace, resp, started)
     parsed = resp.choices[0].message.parsed
     if parsed is None:
         raise ValueError("LLM이 구조화된 응답을 반환하지 않았습니다(모델 거부 등)")
     return parsed
 
 
-def _call_llm_revise(req: "ReviseRequest") -> LLMReviseOutput:
+def _call_llm_revise(req: "ReviseRequest", trace: dict | None = None) -> LLMReviseOutput:
     current = req.current
     user_prompt = USER_PROMPT_TEMPLATE_REVISE.format(
         merchant=current.merchant,
@@ -181,8 +220,10 @@ def _call_llm_revise(req: "ReviseRequest") -> LLMReviseOutput:
         headcount=current.headcount or 0,
         instruction=req.instruction,
     )
+    _record_call(trace, SYSTEM_PROMPT_REVISE, user_prompt)
+    started = time.perf_counter()
     resp = _get_client().beta.chat.completions.parse(
-        model=_MODEL,
+        model=MODEL,
         temperature=0.3,
         timeout=15,
         messages=[
@@ -191,6 +232,7 @@ def _call_llm_revise(req: "ReviseRequest") -> LLMReviseOutput:
         ],
         response_format=LLMReviseOutput,
     )
+    _record_response(trace, resp, started)
     parsed = resp.choices[0].message.parsed
     if parsed is None:
         raise ValueError("LLM이 구조화된 응답을 반환하지 않았습니다(모델 거부 등)")
@@ -199,10 +241,10 @@ def _call_llm_revise(req: "ReviseRequest") -> LLMReviseOutput:
 
 # ── 생성 모드 ───────────────────────────────────────────────────────────
 
-def run(req: "DraftRequest") -> dict:
+def run(req: "DraftRequest", trace: dict | None = None) -> dict:
     """생성 모드 초안 작성. LLM 호출·응답 처리가 어떤 이유로 실패해도 항상 200 형태로 방어."""
     try:
-        llm_out = _call_llm_create(req)
+        llm_out = _call_llm_create(req, trace)
         draft = {
             "merchant": req.merchant,
             "amount": req.amount,
@@ -218,6 +260,9 @@ def run(req: "DraftRequest") -> dict:
         comments = [c.model_dump() for c in llm_out.comments]
 
     except Exception as exc:  # noqa: BLE001  # OpenAI 호출 실패·응답 처리 오류 등 전부 여기서 흡수
+        if trace is not None:
+            trace["error"] = f"{type(exc).__name__}: {exc}"
+            trace["fallbackUsed"] = True
         comments = [{"icon": "ai", "text": f"LLM 호출/응답 처리에 실패해 기본값으로 채웠습니다: {exc}"}]
         draft = {
             "merchant": req.merchant,
@@ -237,17 +282,17 @@ def run(req: "DraftRequest") -> dict:
         "draft": draft,
         "confidence": confidence,
         "comments": comments,
-        "policyHints": _build_policy_hints(req.amount, req.evidence or "OK", draft["category"]),
+        "policyHints": _build_policy_hints(req.amount, req.evidence or "OK", draft["category"], trace),
     }
 
 
 # ── 수정 모드 ───────────────────────────────────────────────────────────
 
-def revise(req: "ReviseRequest") -> dict:
+def revise(req: "ReviseRequest", trace: dict | None = None) -> dict:
     """자연어 지시로 기존 초안을 수정. 실패 시 기존 값을 그대로 유지해 반환한다(추측으로 덮어쓰지 않음)."""
     current = req.current
     try:
-        llm_out = _call_llm_revise(req)
+        llm_out = _call_llm_revise(req, trace)
         draft = {
             "merchant": current.merchant,
             "amount": llm_out.amount,
@@ -264,6 +309,9 @@ def revise(req: "ReviseRequest") -> dict:
         comments = [c.model_dump() for c in llm_out.comments]
 
     except Exception as exc:  # noqa: BLE001
+        if trace is not None:
+            trace["error"] = f"{type(exc).__name__}: {exc}"
+            trace["fallbackUsed"] = True
         comments = [{"icon": "ai", "text": f"지시를 반영하지 못해 기존 값을 그대로 유지했습니다: {exc}"}]
         draft = {
             "merchant": current.merchant,
@@ -285,5 +333,5 @@ def revise(req: "ReviseRequest") -> dict:
         "confidence": confidence,
         "changes": changes,
         "comments": comments,
-        "policyHints": _build_policy_hints(draft["amount"], draft["evidence"], draft["category"]),
+        "policyHints": _build_policy_hints(draft["amount"], draft["evidence"], draft["category"], trace),
     }

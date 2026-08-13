@@ -74,7 +74,7 @@ class Command(BaseCommand):
         # 인가는 기능 단위(Capability) — 역할 기본값 ∪ extra_capabilities. (accounts.ROLE_DEFAULT_CAPABILITIES)
         #  kim=일반 사원(능력 없음)
         #  acc=회계작업·룰콘솔열람(역할기본) + 팀취합(추가부여)
-        #  acclead=회계작업·룰콘솔열람·룰활성(역할기본) + 거버넌스열람(추가부여)
+        #  acclead=회계작업·룰콘솔열람·룰활성·AI-LAB(역할기본) + 거버넌스열람(추가부여)
         #        — 회계팀장은 룰 활성화 판단에 지표가 필요해 거버넌스 대시보드도 본다.
         kim = User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE, team=sales, first_name="김영업")
         User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD, team=sales, first_name="이팀장")

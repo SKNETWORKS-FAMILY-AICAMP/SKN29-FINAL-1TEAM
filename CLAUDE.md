@@ -35,7 +35,7 @@ daily_scrum/  주차별 진행 보고
 - **룰은 사전 탑재하지 않는다 — 기본 게이트 1개 + 문서에서 생성**: 제품이 미리 준비해 제공하는 것은 **`DEFAULT GATE` 하나**뿐이며, 특정 회사 규정에 종속되지 않는 **범용 default 룰**로 고도화한다. **카테고리별 세부 룰은 고객이 자사 규정 문서를 업로드하면 Rule Agent가 생성**한다(RAG 조항 추출 → 초안 → 시뮬레이션 → ACTIVE 승인). `법인카드_사용규정_기반_RULE_명세서.md`의 58 RULE과 `seed_rules`의 4개 계열 그래프는 **참고용 예시·시연용**이지 기본 제공물이 아니다.
 - **룰 도메인 = 그래프(트리)**: 단건 룰은 `condition+action+next_routings` 노드, 조립된 **룰 그래프(RuleGraph)** 가 최종 상태 도메인. **ACTIVE·버전관리·시뮬레이션·롤백은 그래프 단위**. (기술 §3.1·§4.2 / 요구사항 FR-RB·FR-RV·FR-RA)
 - **룰엔진 = 3단 파이프라인**: ① `build_rule_context(tx_id)`로 **EvalContext(facts 스냅샷)** 조립(모든 I/O·데이터 접근은 여기서만) → ② 그래프 선택(**필수 게이트 GLOBAL → 계정과목별 scope**) → ③ **결정론적 순회**(엔진은 EvalContext만 참조, 외부 I/O 0). 조건은 **JSON-Logic류 DSL**(임의코드 금지). context는 `rule_hits.eval_context`에 스냅샷 저장 → 재현·감사. 상세: `llm_wiki/_context/rule-engine.md`. (기술 §4.2(d) / 요구사항 FR-RA-08~10)
-- **인가 = 기능 단위(Capability) RBAC**: 역할이 아니라 5개 Capability(`team_aggregate`·`accounting_review`·`rule_view`·`rule_activate`·`governance_view`)로 판정. **유효능력 = 역할 기본값 ∪ 개인 추가부여(`users.extra_capabilities`)** — 예: `acc`=회계+룰열람+팀취합, `acclead`=회계+룰열람+룰활성. 룰콘솔은 열람(`rule_view`)/활성(`rule_activate`) 분리. DRF `HasCapability` 파생 권한으로 백엔드 강제, `/api/me`에 `capabilities` 노출, 프론트는 `useCan()`로 게이트. **Django admin에서 사용자별 `extra_capabilities` 체크박스 부여**. (기술 §3.1a)
+- **인가 = 기능 단위(Capability) RBAC**: 역할이 아니라 6개 Capability(`team_aggregate`·`accounting_review`·`rule_view`·`rule_activate`·`governance_view`·`ai_lab`)로 판정. **유효능력 = 역할 기본값 ∪ 개인 추가부여(`users.extra_capabilities`)** — 예: `acc`=회계+룰열람+팀취합, `acclead`=회계+룰열람+룰활성. 룰콘솔은 열람(`rule_view`)/활성(`rule_activate`) 분리. DRF `HasCapability` 파생 권한으로 백엔드 강제, `/api/me`에 `capabilities` 노출, 프론트는 `useCan()`로 게이트. **Django admin에서 사용자별 `extra_capabilities` 체크박스 부여**. (기술 §3.1a)
 
 ---
 
@@ -67,6 +67,7 @@ daily_scrum/  주차별 진행 보고
 | EvalContext 스키마 v3 (다이어트) | ✅ 101 → 46 필드 | **원칙: EvalContext는 '단어'(원자 사실)만, '문장'(판단)은 룰 그래프가 조합한다.** 삭제 기준 4가지 — (a) **판정 필드**(`derived.personal_use_suspected` 등 — 결론을 입력받고 있었다 → 그래프에서 조합) (b) **조합 가능**(`*_missing` 7종 → `participant_count == 0`) (c) **원천 없고 부차적**(`tx.service_charge_ratio`·`is_holiday`·`merchant_grade`) (d) **과세분화**(출장 상세 9·참석자 상세 5·승인 상세 5·세부유형 3). `tables`는 고정 목록 폐지→동적, `policy` 13→8, 금지업종 별표(`forbidden_merchant_table`) 신설. 시드 그래프도 함께 정리(E-005 봉사료·M-004 분할결제·T-101/103/104 노드 삭제). **성과: 막는 필드의 등급이 A1·B7·C1·D1 → A2·B7·C0·D0** — 남은 건 전부 컬럼 추가로 해결 가능. 조립 커버리지 34/101→24/46. 기록·미결 8건 `llm_wiki/_context/eval-context-sourcing.md` §12·§13 |
 | 판정 입력 실 연동 (Settlement 컬럼 + Attachment) | ✅ 1차 완료 | **Settlement 판정 컬럼 9종 신설**(`headcount`·`external_headcount`·`pre_approved`·`actual_user(_recorded)`·`item_type`(=청탁금지 룩업 키)·`kickback_target`·`is_secondary_venue`·`includes_alcohol`) — **전부 null 허용**(None=모름 계약). **`Attachment` 모델 신설**: 첨부 종류(영수증/사전승인/회의록/참석자명단/출장계획서/계약서) + **추출 결과 틀**(`extracted`=EvalContext dot-path→값, `field_confidence`, `evidence_spans`, `extraction_status`) — 채우는 주체는 **증빙자료 추출 Agent**(`llm_wiki/_context/evidence-extraction-agent.md`, 추출 로직 미착수). 조립기가 **첨부 추출 → 화면 입력 순으로 얹고**(빈 컬럼은 추출값을 덮지 않음), 시뮬레이션 실 내역 경로도 조립기 경유로 전환. **실측: 판정 강등 93% → 31%, GLOBAL 게이트 0건.** 남은 강등은 scope 무관 전수 실행 탓이 큼(운영은 scope별 그래프 선택) |
 | EvalContext 사실(fact) 조립 | 🚧 policy 축만 완료 | 미해소 가드를 **전 구간 확장**(`UNRESOLVED_FACT:<path>` 신설, `None`=거짓 아닌 **모름** 계약)하자 실제 규모가 드러남 — **판정 120행 중 112건(93%) 강등**. `policy.*` 13종은 전부 해소되는데도 그렇다: 임계값과 비교할 **사실**(참석 인원·사전승인·카드 구분 등)이 SoR에 없다. 조립 커버리지 **34/101 필드**, ACTIVE 그래프 참조 19개 중 **10개 결측**. 필드별 출처 실현 가능성을 A(데이터 있음·코드만 15)/B(컬럼·입력칸만 12)/C(도메인 신설 13)/D(빼는 게 현실적 38)로 등급화 → `llm_wiki/_context/eval-context-sourcing.md`. **다음**: `Settlement`에 컬럼 6개(headcount·pre_approved·kickback_target·actual_user·item_type·is_secondary/alcohol) + S-01 입력칸 6개면 강등 93%→~8%(추정) |
+| AI-LAB (관리자 실험 화면) | ✅ Draft·RAG 완료 | AI 기능을 **정산 흐름 없이 단독 실행**하는 관리자 화면(`/ai-lab`, Capability `ai_lab`=회계팀장 기본). 5탭: 상태 점검 / ① Draft Agent(생성·수정, 요청 JSON 직접 편집, 세션 이력) / RAG 검색(top-K·부모 확장·질의 접두 토글) / 임베딩 인스펙터(cosine 행렬) / 적재 현황(청크 원본 열람). **운영과 같은 코드를 부르고**(별도 구현 금지) 결과 대신 **근거**를 편다 — 프롬프트 전문·LLM 원본 출력·토큰·지연·정책 조회 출처(실조회/폴백)·검색 점수·메타데이터. 경로 `브라우저→Django /api/ai-lab/*(프록시·인가)→FastAPI /lab/*`. 추적은 `draft_agent.run(req, trace)`의 **선택적 dict 인자**로 모아 운영 응답 셰이프를 건드리지 않는다. 실패는 폴백 없이 사유 그대로(진단 목적). Rule/Risk/증빙추출은 stub이라 "예정"으로 표시. 캐논 `llm_wiki/_context/ai-lab.md` |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 
 다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.
@@ -120,6 +121,13 @@ docker compose config                # compose 문법 검증
 npm install --prefix apps/web
 npm run dev --prefix apps/web        # Vite dev (HMR)
 npm run build --prefix apps/web      # tsc 타입체크 + vite build
+
+# RAG 인덱싱 (관리자 온디맨드 배치) — 파싱덤프→교정→청킹→임베딩→Chroma upsert
+#   덤프(docling_eval/)는 레포 루트라 컨테이너엔 /data/docling_eval:ro 로 마운트된다.
+#   ⚠️ Git Bash는 `/data/...`를 윈도우 경로로 바꿔버린다 → PowerShell을 쓰거나 MSYS_NO_PATHCONV=1.
+docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output --dry-run  # 라우팅만(무과금)
+docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output            # 실적재(OpenAI 과금)
+docker compose exec ai python -m app.rag.embedding.index --peek                                      # 적재 현황
 
 # Django (core)
 docker compose exec core python manage.py migrate
