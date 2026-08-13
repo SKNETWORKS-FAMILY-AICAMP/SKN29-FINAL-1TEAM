@@ -9,6 +9,7 @@ import logging
 from fastapi import FastAPI
 
 from app.api import draft, embeddings, health, ml, risk, rule
+from app.agents.rule_agent_v0 import router as rule_agent_v0_router   # ← 추가
 
 app = FastAPI(title="Settlement AI Orchestrator", version="0.1.0")
 
@@ -19,6 +20,8 @@ app.include_router(rule.router, prefix="/agent", tags=["agent"])
 app.include_router(risk.router, prefix="/agent", tags=["agent"])
 app.include_router(ml.router, prefix="/ml", tags=["ml"])
 app.include_router(embeddings.router, prefix="/embeddings", tags=["rag"])
+app.include_router(rule_agent_v0_router)   # ← 추가 (prefix 없이 — 라우터 자체에 /agent/rule-v0 내장돼 있음)
+
 
 # 단일 FastMCP 서버 마운트 — import/버전 이슈가 있어도 앱은 항상 부팅되도록 guard.
 try:

@@ -11,6 +11,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(DJANGO_DEBUG=(bool, True))
 
+environ.Env.read_env(BASE_DIR / ".env")   # ← 이 줄 추가
+
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-insecure-secret-key-change-me")
 DEBUG = env("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])

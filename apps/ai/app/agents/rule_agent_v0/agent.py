@@ -1,0 +1,421 @@
+# apps/ai/app/agents/rule_agent_v0/agent.py
+"""Rule Agent — 생성(Generate) v0.
+
+기술명세서 §4.2(a) 생성 Flow 구현:
+    search_policy(RAG) → LLM 단건 룰(노드) 초안 → 그래프 조립 → DRAFT 저장
+
+v0 단순화 결정(의도적, GAPS.md 참조):
+  - LLM은 "노드"만 생성한다. 그래프 위상(라우팅)은 파이썬이 결정론적으로 조립한다
+    — 시드 GLOBAL 그래프와 동일한 선형 체인(우선순위순 NO_MATCH→NO_MATCH→…→_PASS 종단).
+    LLM에게 위상까지 맡기면 검증 실패 모드가 늘어난다. "Rule First, AI Assisted."
+  - decision은 노드 생성 시점에 action.decision으로 직접 지정(기술명세서 §4.2 확정,
+    θ_pass/θ_reject 방식은 deprecated).
+  - 2-hop 확장·조건 간 배타그룹 메타는 v1.
+"""
+from __future__ import annotations
+
+import json
+import re
+from typing import Any
+
+from openai import OpenAI
+
+from . import django_client
+from .search import search_policy
+from .settings import settings
+
+_client = OpenAI(api_key=settings.openai_api_key)
+
+DECISIONS = ["PASS", "REJECT", "RETURN", "REVIEW"]
+SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+SEVERITY_PRIORITY = {s: i for i, s in enumerate(SEVERITIES)}  # CRITICAL=0 … INFO=4
+
+_ALLOWED_OPS = {"and", "or", "not", "==", "!=", ">", ">=", "<", "<=", "in", "var"}
+
+
+# ---------------------------------------------------------------- LLM 호출
+
+_SYSTEM_PROMPT = """당신은 법인카드 정산 규정을 실행 가능한 룰(rule)로 변환하는 보조입니다.
+아래에 제공되는 "규정 조항 청크"만 근거로, 결정론적 룰 엔진이 평가할 룰 노드 후보를 생성하세요.
+
+반드시 지켜야 할 규칙:
+1. condition은 재귀 구조화 필드(comparison/group)로 채우세요. JSON 문자열을 직접
+   조립하지 마세요 — 스키마가 이미 구조를 정의합니다.
+   - "kind": "comparison"이면 left_path/op/negate/right_kind와, right_kind에
+     맞는 right_* 필드 하나만 채우세요(나머지 right_*는 null).
+     예: tx.amount > policy.preapproval_threshold
+     → {"kind":"comparison","left_path":"tx.amount","op":">","negate":false,
+        "right_kind":"var","right_var_path":"policy.preapproval_threshold",
+        "right_number":null,"right_string":null,"right_bool":null,"right_string_list":null,
+        "combinator":null,"children":null}
+   - 여러 조건을 and/or로 묶으려면 "kind":"group"과 combinator/children을
+     쓰세요. children은 comparison 또는 group을 재귀적으로 담을 수 있습니다.
+   - in 연산자는 right_kind="string_list", right_string_list에 값 목록을 넣으세요.
+     예: category.ai in [식대,기업업무추진비]
+   - not이 필요하면 negate:true로 표시하세요(연산자를 감쌉니다).
+   - 산술 연산 금지. 필요한 계산값은 이미 컨텍스트에 선계산되어 있다고 가정하세요.
+
+2. var 경로(left_path/right_var_path)는 아래 [허용 경로 목록]에 있는 것만 사용하세요.
+   목록에 없는 사실이 필요하면 그 룰은 생성하지 말고 skipped에 사유를 남기세요.
+3. 임계값 숫자는 조항에 명시된 경우에만 사용하되, 별표(한도표) 조회값이면 숫자 리터럴 대신
+   policy.* 경로(right_kind="var")를 사용하세요.
+4. decision은 PASS/REJECT/RETURN/REVIEW 중 하나를 직접 지정하세요.
+   - 규정상 명백한 금지·위반: REJECT
+   - 기재·증빙 보완이 필요한 경우: RETURN
+   - 사람 검토가 필요한 경우: REVIEW
+   (PASS 노드는 만들지 마세요 — 종단 PASS는 시스템이 자동 추가합니다.)
+5. severity는 CRITICAL/HIGH/MEDIUM/LOW/INFO 중 하나.
+6. source_citation에는 제공된 청크의 citation 문자열을 그대로 복사하세요.
+   「문서명」 제N조 형태 전체를 유지하고, 제공되지 않은 조항을 지어내지 마세요.
+7. when/then은 비개발자(회계 담당자)용 쉬운 문장입니다. DSL 경로·영문 판정코드를 쓰지 마세요.
+   when="언제 걸리나요?"에 대한 답, then="걸리면 어떻게 되나요?"에 대한 답.
+8. 반드시 지정된 JSON 형식으로만 답하세요."""
+
+_CONDITION_NODE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "kind": {"type": "string", "enum": ["comparison", "group"]},
+        "left_path": {"type": ["string", "null"]},
+        "op": {"type": ["string", "null"], "enum": ["==", "!=", ">", ">=", "<", "<=", "in", None]},
+        "negate": {"type": "boolean"},
+        "right_kind": {"type": ["string", "null"], "enum": ["var", "number", "string", "boolean", "string_list", None]},
+        "right_var_path": {"type": ["string", "null"]},
+        "right_number": {"type": ["number", "null"]},
+        "right_string": {"type": ["string", "null"]},
+        "right_bool": {"type": ["boolean", "null"]},
+        "right_string_list": {"type": ["array", "null"], "items": {"type": "string"}},
+        "combinator": {"type": ["string", "null"], "enum": ["and", "or", None]},
+        "children": {
+            "type": ["array", "null"],
+            "items": {"$ref": "#/$defs/condition_node"},
+        },
+    },
+    "required": ["kind", "left_path", "op", "negate", "right_kind",
+                 "right_var_path", "right_number", "right_string",
+                 "right_bool", "right_string_list", "combinator", "children"],
+}
+
+_RESPONSE_SCHEMA = {
+    "name": "rule_nodes",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "$defs": {
+            "condition_node": _CONDITION_NODE_SCHEMA,
+        },
+        "properties": {
+            "nodes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "node_key": {"type": "string"},
+                        "title": {"type": "string"},
+                        "condition": {"$ref": "#/$defs/condition_node"},
+                        "when": {"type": "string"},
+                        "then": {"type": "string"},
+                        "decision": {"type": "string", "enum": ["REJECT", "RETURN", "REVIEW"]},
+                        "severity": {"type": "string", "enum": SEVERITIES},
+                        "flag": {"type": "string"},
+                        "source_citation": {"type": "string"},
+                    },
+                    "required": [
+                        "node_key", "title", "condition", "when", "then",
+                        "decision", "severity", "flag", "source_citation",
+                    ],
+                },
+            },
+            "skipped": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "reason": {"type": "string"},
+                        "source_citation": {"type": "string"},
+                    },
+                    "required": ["reason", "source_citation"],
+                },
+            },
+        },
+        "required": ["nodes", "skipped"],
+    },
+}
+
+
+def _build_user_prompt(scope: str, chunks: list[dict], schema_paths: list[str]) -> str:
+    chunk_lines = []
+    for i, c in enumerate(chunks, 1):
+        chunk_lines.append(f"[청크 {i}] citation: {c['citation']}\n{c['text']}")
+    paths_block = (
+        "\n".join(sorted(schema_paths))
+        if schema_paths
+        else "(목록 조회 실패 — 확실한 경로만 보수적으로 사용하고 불확실하면 skipped 처리)"
+    )
+    return (
+        f"대상 scope(비용 분류): {scope}\n\n"
+        f"[허용 경로 목록 — EvalContext v4]\n{paths_block}\n\n"
+        f"[규정 조항 청크]\n" + "\n\n".join(chunk_lines)
+    )
+
+
+def _call_llm(scope: str, chunks: list[dict], schema_paths: list[str]) -> dict:
+    resp = _client.chat.completions.create(
+        model=settings.model,
+        temperature=0.2,
+        timeout=60,
+        response_format={"type": "json_schema", "json_schema": _RESPONSE_SCHEMA},
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _build_user_prompt(scope, chunks, schema_paths)},
+        ],
+    )
+    return json.loads(resp.choices[0].message.content)
+
+
+# ---------------------------------------------------------------- 1차 방어(FastAPI측)
+
+def _build_condition(node: dict) -> dict:
+    """LLM이 채운 재귀 구조화 조건을 JSON-Logic으로 결정론적으로 조립.
+    rule-engine.md 캐논의 and/or/not/==/!=/>/>=/</<=/in/var 전체를 커버."""
+    if node["kind"] == "group":
+        children = [_build_condition(c) for c in (node["children"] or [])]
+        if len(children) == 1:
+            return children[0]
+        return {node["combinator"]: children}
+
+    left = {"var": node["left_path"]}
+    kind = node["right_kind"]
+    if kind == "var":
+        right = {"var": node["right_var_path"]}
+    elif kind == "number":
+        right = node["right_number"]
+    elif kind == "string":
+        right = node["right_string"]
+    elif kind == "string_list":
+        right = node["right_string_list"]
+    else:
+        right = node["right_bool"]
+
+    result = {node["op"]: [left, right]}
+    if node["negate"]:
+        result = {"not": result}
+    return result
+
+
+def _validate_condition(cond: Any, schema_paths: set[str]) -> list[str]:
+    """DSL 화이트리스트 + 경로 사전검증. 최종 게이트는 Django validate_expr/
+    validate_graph_vars — 여기서는 명백한 불량만 걸러 왕복을 줄인다."""
+    errors: list[str] = []
+
+    def walk(node: Any, depth: int = 0) -> None:
+        if depth > 32:
+            errors.append("중첩 깊이 초과(>32)")
+            return
+        if isinstance(node, dict):
+            if len(node) != 1:
+                errors.append(f"연산자 객체는 키 1개여야 함: {list(node.keys())}")
+                return
+            op, args = next(iter(node.items()))
+            if op not in _ALLOWED_OPS:
+                errors.append(f"허용되지 않은 연산자: {op}")
+                return
+            if op == "var":
+                if not isinstance(args, str):
+                    errors.append("var 인자는 문자열 경로여야 함")
+                elif schema_paths and args not in schema_paths:
+                    errors.append(f"미정의 EvalContext 경로: {args}")
+                return
+            if isinstance(args, list):
+                for a in args:
+                    walk(a, depth + 1)
+            else:
+                walk(args, depth + 1)
+        elif isinstance(node, list):
+            for a in node:
+                walk(a, depth + 1)
+        # 리터럴(number/str/bool/None)은 통과
+
+    walk(cond)
+    return errors
+
+
+_NODE_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_\-]{0,63}$")
+
+
+def _sanitize_nodes(
+    raw_nodes: list[dict], schema_paths: set[str]
+) -> tuple[list[dict], list[dict]]:
+    """LLM 출력 → 저장 후보 노드. 불량은 rejected로 분리(조용한 통과 금지)."""
+    accepted, rejected = [], []
+    seen_keys: set[str] = set()
+    for n in raw_nodes:
+        problems: list[str] = []
+        key = n.get("node_key", "")
+        if not _NODE_KEY_RE.match(key):
+            problems.append(f"node_key 형식 불량: {key!r}")
+        if key in seen_keys:
+            problems.append(f"node_key 중복: {key}")
+        try:
+            cond = _build_condition(n["condition"])
+        except (KeyError, TypeError) as exc:
+            cond = None
+            problems.append(f"condition 조립 실패: {exc}")
+        if cond is not None:
+            problems.extend(_validate_condition(cond, schema_paths))
+        if n.get("decision") not in {"REJECT", "RETURN", "REVIEW"}:
+            problems.append(f"decision 불량: {n.get('decision')}")
+
+        if problems:
+            rejected.append({"node": n, "problems": problems})
+            continue
+        seen_keys.add(key)
+        accepted.append(
+            {
+                "node_key": key,
+                "condition": cond,
+                "condition_text": f"언제 걸리나요? {n['when']}\n걸리면 어떻게 되나요? {n['then']}",
+                "action": {
+                    "decision": n["decision"],
+                    "severity": n["severity"],
+                    "flag": n["flag"],
+                    "title": n["title"],
+                    "source_clause": n["source_citation"],
+                    # 기존 create_node의 기본 action({"origin":"new","workflow_status":"DRAFT"})과
+                    # 정합 — _graph_content()의 dedup 비교에서 origin/source_clause는 무시되므로
+                    # (comparison keys ignored) 안전하게 넣는다.
+                    "origin": "rule-agent-v0",
+                    "workflow_status": "DRAFT",
+                },
+                "priority": SEVERITY_PRIORITY.get(n["severity"], 4),
+            }
+        )
+    return accepted, rejected
+
+
+# ---------------------------------------------------------------- 결정론적 조립
+
+PASS_NODE_KEY = "_SCOPE_PASS"
+
+
+def _assemble_linear_graph(nodes: list[dict]) -> tuple[list[dict], list[dict], str]:
+    """선형 체인 조립 — 시드 GLOBAL 패턴(R-002 →NO_MATCH→ R-003 →NO_MATCH→ 종단)과 동일.
+
+    - severity 우선순위(CRITICAL 먼저) 오름차순 정렬 후 체인 연결
+    - 각 노드 MATCH → 단말(to="") : 해당 노드 action.decision 확정
+    - 각 노드 NO_MATCH → 다음 노드, 마지막 노드 NO_MATCH → _SCOPE_PASS
+    - _SCOPE_PASS: condition=true, action.decision=PASS, MATCH → 단말
+    """
+    ordered = sorted(nodes, key=lambda n: (n["priority"], n["node_key"]))
+    pass_node = {
+        "node_key": PASS_NODE_KEY,
+        "condition": True,  # DSL 리터럴 true — 항상 MATCH
+        "condition_text": "언제 걸리나요? 앞의 모든 확인 항목에 해당하지 않을 때\n걸리면 어떻게 되나요? 규칙 검사를 통과한 것으로 처리합니다",
+        "action": {
+            "decision": "PASS", "severity": "INFO", "flag": "", "title": "게이트 통과",
+            "origin": "rule-agent-v0", "workflow_status": "DRAFT",
+        },
+        "priority": 99,
+    }
+    all_nodes = ordered + [pass_node]
+
+    routings: list[dict] = []
+    for i, n in enumerate(ordered):
+        routings.append(
+            {"from_node_key": n["node_key"], "on_result": "MATCH", "to_node_key": "", "priority": 0}
+        )
+        next_key = ordered[i + 1]["node_key"] if i + 1 < len(ordered) else PASS_NODE_KEY
+        routings.append(
+            {"from_node_key": n["node_key"], "on_result": "NO_MATCH", "to_node_key": next_key, "priority": 0}
+        )
+    routings.append(
+        {"from_node_key": PASS_NODE_KEY, "on_result": "MATCH", "to_node_key": "", "priority": 0}
+    )
+    entry = ordered[0]["node_key"] if ordered else PASS_NODE_KEY
+    return all_nodes, routings, entry
+
+
+# ---------------------------------------------------------------- 진입점
+
+DEFAULT_QUERIES = {
+    # scope → 규칙화 가능 조항을 끌어올 기본 질의. 사용자가 query를 주면 그것을 우선.
+    "GLOBAL": "법인카드 사용 금지 항목 및 결제 수단 제한",
+    "접대": "기업업무추진비 한도 사전승인 증빙 기재사항",
+    "회식": "회식비 한도 승인권자 야간 주류",
+    "식대": "식대 한도 증빙 요건",
+    "출장": "출장비 숙박비 한도 사전승인",
+    "비품": "비품 구매 한도 증빙",
+    "회의": "회의비 한도 증빙 참석자",
+}
+
+
+def _group_routings_by_node(routings: list[dict]) -> dict[str, list[dict[str, str]]]:
+    """flat 라우팅 리스트 → {node_key: [{"onResult":..,"toNodeKey":..}]} (camelCase,
+    기존 update_node action이 request.data를 그대로 읽으므로 프론트와 동일 표기)."""
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for r in routings:
+        grouped.setdefault(r["from_node_key"], []).append(
+            {"onResult": r["on_result"], "toNodeKey": r["to_node_key"]}
+        )
+    return grouped
+
+
+def generate(req: Any) -> dict[str, Any]:
+    """req: api.RuleGenerateRequest (scope, query, top_k, name)
+
+    v0는 항상 새 계열(v1)만 만든다 — family_key로 기존 계열에 버전을 추가하는 것은
+    v1 범위(POST /api/rules/{id}/versions 오케스트레이션 필요, GAPS.md 참조).
+    """
+    query = req.query or DEFAULT_QUERIES.get(req.scope, f"{req.scope} 관련 규정")
+
+    # ① RAG — 규칙화 가능 조항 추출
+    chunks = search_policy(query, top_k=req.top_k)
+    if not chunks:
+        return {
+            "status": "NO_SOURCE",
+            "detail": "policy_docs 검색 결과 0건 — /agent/rule-v0/embeddings/upsert로 규정 문서를 먼저 적재하세요",
+            "query": query,
+        }
+
+    # ② EvalContext 카탈로그 확보(프롬프트 주입 + 1차 경로 검증)
+    schema_paths = django_client.get_eval_context_schema()
+
+    # ③ LLM 노드 초안 생성
+    llm_out = _call_llm(req.scope, chunks, schema_paths)
+    accepted, rejected = _sanitize_nodes(llm_out.get("nodes", []), set(schema_paths))
+
+    if not accepted:
+        return {
+            "status": "NO_VALID_NODES",
+            "detail": "생성된 노드가 전부 검증 탈락 — rejected 참조",
+            "query": query,
+            "rejected_nodes": rejected,
+            "llm_skipped": llm_out.get("skipped", []),
+            "sources": [c["citation"] for c in chunks],
+        }
+
+    # ④ 결정론적 조립 (선형 체인)
+    nodes, routings, entry = _assemble_linear_graph(accepted)
+    routings_by_node = _group_routings_by_node(routings)
+
+    # ⑤ Django 기존 Rule 콘솔 API 3종 오케스트레이션 (drafts → nodes → nodes/{key} PATCH)
+    #    G-16 인증 블로커 미해결 시 여기서 401/403 예외가 날 수 있다 — 그대로 노출한다.
+    saved = django_client.create_rule_graph_draft(
+        name=req.name or f"{req.scope} 자동생성 초안",
+        scope=req.scope,
+        nodes=nodes,
+        routings_by_node=routings_by_node,
+    )
+
+    return {
+        "status": "DRAFT_SAVED",
+        "graph": saved,
+        "entry_node_key": entry,
+        "query": query,
+        "sources": [c["citation"] for c in chunks],
+        "rejected_nodes": rejected,
+        "llm_skipped": llm_out.get("skipped", []),
+    }

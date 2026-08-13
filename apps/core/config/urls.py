@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
+from domain.policies.rule_agent_v0_views import EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import SettlementViewSet, TeamBudgetView
 from domain.transactions.views import ReceiptViewSet, TransactionViewSet
@@ -34,5 +35,6 @@ urlpatterns = [
     # 내부 전용 read API — FastAPI(ai)의 FastMCP 도구가 관계형 데이터를 Django 경유로 조회(CLAUDE.md §1)
     path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
     path("api/internal/rule-context/<int:settlement_id>/", RuleContextView.as_view(), name="internal_rule_context"),
+    path("api/internal/rule-agent-v0/eval-context-schema/", EvalContextSchemaView.as_view(), name="internal_eval_context_schema"),
     path("api/", include(router.urls)),
 ]
