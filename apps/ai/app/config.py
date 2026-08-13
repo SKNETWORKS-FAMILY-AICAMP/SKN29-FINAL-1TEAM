@@ -1,17 +1,12 @@
 """FastAPI(ai) 설정. 환경변수(CORE_BASE_URL, CHROMA_*, OPENAI_API_KEY 등) 로드."""
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# 컨테이너에서는 `/app/.env`, 로컬 CLI에서는 **레포 루트** `.env`가 진짜다.
-# CWD 기준 `.env` 하나만 보면 `apps/ai`에서 실행할 때 조용히 빈 설정으로 뜬다.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
+# 실행 경로는 docker 하나다 — 값은 compose `environment:`(루트 `.env`를 `${}`로 치환)가
+# 주입하고 여기선 `os.environ`만 읽는다. `.env` 파일을 직접 찾아 읽지 않는 이유:
+# 파일 위치가 호스트/컨테이너에서 달라져 경로 계산이 깨진다(컨테이너는 `/app/app/config.py`).
+# docker 밖에서 돌리는 노트북은 자체 `load_dotenv()`로 os.environ을 채우므로 그대로 동작한다.
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=(_REPO_ROOT / ".env", ".env"), extra="ignore"
-    )
+    model_config = SettingsConfigDict(extra="ignore")
 
     # Django 내부 read API (관계형 데이터는 반드시 Django 경유)
     core_base_url: str = "http://core:8000"
