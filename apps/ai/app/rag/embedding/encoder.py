@@ -69,3 +69,11 @@ class OpenAIEncoder:
 
     def encode_queries(self, queries: Sequence[str]) -> list[list[float]]:
         return self._encode([f"{self.config.query_prefix}{q}" for q in queries])
+
+    def encode_texts(self, texts: Sequence[str]) -> list[list[float]]:
+        """원문 그대로 임베딩(문서 헤더 주입도, 질의 접두도 없음).
+
+        운영 경로는 쓰지 않는다 — AI-LAB에서 "이 문장과 저 문장이 얼마나 닮았는지"를
+        직접 재볼 때처럼, 비대칭 입력 규약 밖에서 벡터를 봐야 하는 실험용 통로다.
+        """
+        return self._encode(list(texts))

@@ -22,15 +22,20 @@ class Capability(models.TextChoices):
     RULE_VIEW = "rule_view", "룰 콘솔 열람"
     RULE_ACTIVATE = "rule_activate", "룰 ACTIVE 전환·롤백"
     GOVERNANCE_VIEW = "governance_view", "거버넌스 대시보드 열람"
+    AI_LAB = "ai_lab", "AI-LAB(AI 기능 독립 실행) 사용"
 
 
 # 역할별 기본 부여 능력. 개인 단위로 이 위에 extra_capabilities를 더 얹을 수 있다.
 #  룰 콘솔은 회계 공통 열람(rule_view), ACTIVE 전환만 회계팀장(rule_activate)으로 분리.
+#  AI-LAB(ai_lab)은 프롬프트·모델 내부가 그대로 보이고 LLM 호출 비용이 나가므로 기본은 회계팀장만.
+#  다른 사람에게 필요하면 admin에서 extra_capabilities로 개별 부여한다(슈퍼유저는 항상 보유).
 ROLE_DEFAULT_CAPABILITIES = {
     Role.EMPLOYEE: [],
     Role.TEAM_LEAD: [Capability.TEAM_AGGREGATE],
     Role.ACCOUNTANT: [Capability.ACCOUNTING_REVIEW, Capability.RULE_VIEW],
-    Role.ACCOUNTANT_LEAD: [Capability.ACCOUNTING_REVIEW, Capability.RULE_VIEW, Capability.RULE_ACTIVATE],
+    Role.ACCOUNTANT_LEAD: [
+        Capability.ACCOUNTING_REVIEW, Capability.RULE_VIEW, Capability.RULE_ACTIVATE, Capability.AI_LAB,
+    ],
     Role.EXECUTIVE: [Capability.GOVERNANCE_VIEW],
 }
 

@@ -14,13 +14,19 @@ export const ROLE_LABEL: Record<Role, string> = {
 // ── 기능 단위 권한(Capability) — 백엔드 accounts.Capability와 값 동기화 ──
 //  인가는 역할이 아니라 이 4개 능력으로 판정한다(백 §3.1a). 실 모드는 /api/me의 capabilities,
 //  mock 모드는 아래 역할 기본값을 사용(데모 역할 스위처를 따르도록).
-export type Capability = 'team_aggregate' | 'accounting_review' | 'rule_view' | 'rule_activate' | 'governance_view'
+export type Capability =
+  | 'team_aggregate'
+  | 'accounting_review'
+  | 'rule_view'
+  | 'rule_activate'
+  | 'governance_view'
+  | 'ai_lab'
 
 export const ROLE_DEFAULT_CAPABILITIES: Record<Role, Capability[]> = {
   EMPLOYEE: [],
   TEAM_LEAD: ['team_aggregate'],
   ACCOUNTANT: ['accounting_review', 'rule_view'],
-  ACCOUNTANT_LEAD: ['accounting_review', 'rule_view', 'rule_activate'],
+  ACCOUNTANT_LEAD: ['accounting_review', 'rule_view', 'rule_activate', 'ai_lab'],
   EXECUTIVE: ['governance_view'],
 }
 

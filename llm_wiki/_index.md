@@ -42,7 +42,7 @@ llm_wiki/
 - **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. 룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL. — 기술 §4.2 / `_context/rule-engine.md`
 - **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` 고정 카탈로그. 조립기(`context_builder.build_rule_context`)·미해소 가드(`UNRESOLVED_POLICY_VAR` → REVIEW 강등) 구현 완료. — `_context/policy-domain.md` / 기술 §3.3
 - **가맹점 업종 구분**(캐시→카카오→웹), 비용분류 보조 힌트(세무 아님), MCC는 post-MVP. — 기술 §7-1
-- **인가 = 기능 단위(Capability) RBAC**: `team_aggregate`/`accounting_review`/`rule_activate`/`governance_view` 4종. 유효능력 = 역할 기본 ∪ 개인 추가부여(`extra_capabilities`). — 기술 §3.1a
+- **인가 = 기능 단위(Capability) RBAC**: `team_aggregate`/`accounting_review`/`rule_view`/`rule_activate`/`governance_view`/`ai_lab` 6종. 유효능력 = 역할 기본 ∪ 개인 추가부여(`extra_capabilities`). — 기술 §3.1a
 
 ## 2a. 룰 엔진 영역 현재 상태 — 새 세션 빠른 파악용
 
@@ -78,6 +78,7 @@ llm_wiki/
 | `_context/embedding-strategy.md` | 임베딩 전략 캐논 — `text-embedding-3-large` @ `dimensions=1024` 확정 근거, 정답셋 30건, 평가 함정 4개, 기준선 `bge-m3` 격차(재검토 트리거) | 평가 완료 / Chroma upsert 미착수 |
 | `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 역할 분담·로드맵 — 계약(입출력) 고정, v0/v1 작업 분해. B-1~B-6 전체 완료. 분류 6종 중 잔존 오타(업무활성)를 회식으로 정정 완료 | 완료 |
 | `_context/draft-agent-v0.2.md` | Draft Agent 코드 수준 구현 설계서 — pydantic 스키마·정책 조회·프롬프트·에러 폴백. 분류 6종 정정 완료(업무활성→회식) | 완료 |
+| `_context/ai-lab.md` | AI-LAB(관리자) — AI 기능을 정산 흐름 없이 단독 실행하는 실험 화면. 5개 탭(상태·Draft·RAG 검색·임베딩·적재), Django `/api/ai-lab/*` 프록시 + Capability `ai_lab`, 실행 추적(trace) 수집 방식, 기능 추가 레시피 | 구현 완료 (Draft·RAG) |
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)
 

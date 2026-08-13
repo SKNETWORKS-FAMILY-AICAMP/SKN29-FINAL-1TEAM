@@ -71,6 +71,7 @@ docker compose up --build
 | Django Admin | http://localhost:8000/admin/ | 슈퍼유저 생성 후 |
 | PostgreSQL | localhost:5432 | settlement/settlement |
 | Chroma | http://localhost:8001 | 벡터 스토어 |
+| AI-LAB (관리자) | http://localhost:5173/ai-lab | AI 기능 독립 실행·결과 상세. `ai_lab` 권한 필요(회계팀장 기본) |
 
 ### 4) 종료
 ```bash
@@ -124,6 +125,68 @@ docker compose exec core python manage.py seed
 
 > 프론트 로그인 화면(`/`)은 `VITE_USE_MOCK=false`일 때 **Django 세션 로그인**(사번=username / 비밀번호)으로 동작합니다. mock 모드에서는 역할선택 UI로 대체됩니다. 계정 생성은 회원가입 없이 CLI/Admin에서만.
 
+---
+
+## RAG 인덱싱 (Chroma 적재)
+
+규정 문서를 검색 가능한 상태로 만드는 **관리자 온디맨드 배치**입니다. 한 번 적재해 두면 계속 유지되며,
+Rule/Risk Agent의 근거 검색과 AI-LAB의 RAG 탭이 그때부터 실제 결과를 냅니다.
+
+`app.rag.embedding.index`가 4단을 한 번에 돌립니다:
+**파싱 덤프 로드 → 교정(C1~C7) → 조(條) 단위 청킹 → 임베딩 + Chroma upsert.**
+docling을 재실행하지 않으므로(별도 conda 환경·모델 로딩이 비쌈) 수 초~수십 초면 끝납니다.
+
+### 사전 준비
+- `.env`에 `OPENAI_API_KEY` (임베딩 호출에 필요 — 없으면 4단계에서 멈춥니다)
+- `chroma` 컨테이너 기동 (`docker compose up -d chroma ai`)
+- 입력인 `docling_eval/`은 레포 루트에 있고, compose가 `ai` 컨테이너에 **`/data/docling_eval:ro`** 로 마운트합니다.
+  (마운트를 갓 추가했다면 `docker compose up -d ai`로 컨테이너를 다시 만들어야 반영됩니다.)
+
+### 실행
+```bash
+# ① 무엇이 어디로 갈지만 확인 — API·Chroma 미호출, 과금 없음 (항상 먼저 권장)
+docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output --dry-run
+
+# ② 실제 적재 (OpenAI 임베딩 호출 → 과금)
+docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output
+
+# ③ 적재 결과 확인
+docker compose exec ai python -m app.rag.embedding.index --peek
+```
+
+> ⚠️ **Git Bash에서는 `/data/...`가 윈도우 경로로 자동 변환**되어 "No such file or directory"가 납니다.
+> PowerShell을 쓰거나 앞에 `MSYS_NO_PATHCONV=1`을 붙이세요. (호스트에서 직접 돌릴 땐 `--dump docling_eval/output`)
+
+`--dry-run` 출력 예 (문서 11종 · 888청크):
+
+| 컬렉션 | 청크 | 문서 |
+|---|---|---|
+| `policy_docs` | 103 | 법인카드/업무추진비/출장비/회식 규정 |
+| `tax_refs` | 730 | 법인세법·부가가치세법·여신전문금융업법 |
+| `org_docs` | 55 | 부서소개·조직도·직급체계·조직설계 (판정 근거로는 인용하지 않음) |
+
+전량 1회 약 30만 토큰(`text-embedding-3-large` 기준 수 센트) 수준입니다.
+
+### 데이터는 어디에 남나 (영속성)
+- Chroma는 named volume **`skn-settlement_chromadata`** → 컨테이너 `/data/chroma.sqlite3`에 저장합니다.
+- `docker compose down` / 재부팅 / `up --build` 로는 **유지**됩니다. **`docker compose down -v` 는 삭제**됩니다
+  (Postgres `pgdata`도 같이 날아갑니다 — 그 뒤엔 `migrate`+`seed`와 이 인덱싱을 다시 돌려야 합니다).
+
+### 다시 돌려야 하는 때
+청크 id는 `{doc_id}#{조}#{순번}`으로 **결정론적**이라, 같은 입력을 다시 돌리면 덮어쓰기(upsert)일 뿐 중복이 쌓이지 않습니다.
+아래가 바뀌면 재적재가 필요합니다:
+
+| 바뀐 것 | 왜 |
+|---|---|
+| 임베딩 모델·차원 (`rag/embedding/config.py`) | 벡터 신원(`embedder_version`)이 달라짐 — 섞이면 배치가 멈춥니다 |
+| 청킹 예산·교정 로직 | 청크 경계가 바뀌어 **id가 달라짐 → 옛 청크가 그대로 남습니다**(upsert는 삭제를 안 함) |
+| 규정 문서 자체 | 새 파싱 덤프가 먼저 필요 |
+
+> 같은 문서를 `--dump`와 `--pdf` 두 경로로 번갈아 넣지 마세요. `doc_id`가 각각 `dump:<이름>` / 파일 해시라
+> **같은 내용이 다른 id로 두 벌** 들어갑니다. 한 경로로 통일하고, 바꿀 땐 컬렉션을 비우고 다시 넣는 편이 안전합니다.
+
+적재 후 확인은 `--peek` 외에 **AI-LAB(관리자) → 적재 현황 / RAG 검색** 탭에서도 됩니다.
+
 ### 데모 계정 & 권한(RBAC)
 `seed` 생성 계정 (pw `pass1234`):
 
@@ -132,7 +195,7 @@ docker compose exec core python manage.py seed
 | `kim` | 임직원(영업팀) | 내 지출 / 팀 **예산 현황만**(개별 건 안내문) |
 | `lead` | 팀장(영업팀) | 팀 개별 건 조회 + 제출/보완요청/반려 |
 | `acc` | 회계 담당자 | 검토 워크스페이스·Rule 콘솔 (검토/확정) |
-| `acclead` | **회계팀장** | 회계 권한 + **Rule ACTIVE 승인/롤백** |
+| `acclead` | **회계팀장** | 회계 권한 + **Rule ACTIVE 승인/롤백** + **AI-LAB**(AI 기능 독립 실행) |
 | `exec` | 운영진 | 거버넌스 대시보드 |
 
 > 권한은 서버에서도 강제됩니다 — 검토/확정=`IsAccountant`, Rule 승인/롤백=`IsAccountantLead`. (세션 인증은 dev 편의상 CSRF 생략 — 운영 전 재활성 필요)

@@ -53,6 +53,16 @@ def _level(raw: str) -> int | None:
 
 def load_all(layout_csv: str | Path, tables_dir: str | Path | None = None) -> dict[str, ParsedDoc]:
     """덤프 CSV 한 개에서 문서별 `ParsedDoc`을 만든다."""
+    # 덤프는 레포 루트(`docling_eval/`)에 있고 컨테이너에는 `/data/docling_eval`로 마운트된다.
+    # 맨 FileNotFoundError만 던지면 "상대경로가 틀렸나?"로 헤매게 되므로 어디를 보라고 알려준다.
+    if not Path(layout_csv).is_file():
+        raise FileNotFoundError(
+            f"파싱 덤프를 찾지 못했다: {layout_csv}\n"
+            "  · 호스트에서 실행: --dump docling_eval/output (레포 루트 기준)\n"
+            "  · ai 컨테이너에서 실행: --dump /data/docling_eval/output\n"
+            "    (compose가 `./docling_eval:/data/docling_eval:ro`로 마운트한다. "
+            "마운트를 추가한 뒤에는 `docker compose up -d ai`로 컨테이너를 다시 만들어야 반영된다)"
+        )
     rows_by_doc: dict[str, list[dict]] = {}
     with open(layout_csv, encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
