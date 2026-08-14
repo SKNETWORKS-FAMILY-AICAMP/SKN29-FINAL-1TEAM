@@ -10,7 +10,7 @@ from django.db import models
 
 
 class Category(models.TextChoices):
-    OPERATION = "업무활성", "업무활성"
+    GATHERING = "회식", "회식"
     MEETING = "회의", "회의"
     MEAL = "식대", "식대"
     TRIP = "출장", "출장"

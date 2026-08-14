@@ -19,6 +19,9 @@ class RiskReview(models.Model):
     ai_recommendation = models.CharField(max_length=10, blank=True)  # APPROVE/RETURN/REJECT
     ai_confidence = models.FloatField(default=0.0)
     review_prob = models.FloatField(null=True, blank=True)  # post-MVP 지도학습
+    # 2차 RAG 검증 LLM 구조화 출력 원본(violation_verdict/review_reasons/recommendation/
+    # citations/similar_cases 전체) — 기존 reasons(1차 feature contribs 전용)와 분리해서 보존한다.
+    stage2_verdict = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

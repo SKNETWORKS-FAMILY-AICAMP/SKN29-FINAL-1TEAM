@@ -7,6 +7,8 @@ import { ReviewWorkspace } from './screens/ReviewWorkspace'
 import { RuleConsole } from './screens/rule-console/RuleConsole'
 import { GovernanceDashboard } from './screens/GovernanceDashboard'
 import { AiLab } from './screens/ai-lab/AiLab'
+// Review List v0 — 독립 개발(risk_review_v0), 메인 네비게이션(Sidebar) 미연결. v0→v1 전환 시 정식 편입.
+import { ReviewListV0 } from './risk_review_v0/ReviewListV0'
 // 규정 문서 관리는 임시 비활성화 — 재개 시 아래 import와 /policy-docs 라우트를 함께 복구한다.
 // import { PolicyDocuments } from './screens/PolicyDocuments'
 import { LoginScreen } from './screens/auth/LoginScreen'
@@ -49,6 +51,8 @@ export default function App() {
         <Route path="/governance" element={<GovernanceDashboard />} />
         {/* AI-LAB(관리자) — AI 기능 독립 실행. 사이드바 노출은 Capability `ai_lab`로 게이트. */}
         <Route path="/ai-lab" element={<AiLab />} />
+        {/* Review List v0 — 독립 개발, 사이드바 미연결(직접 URL 접근 전용). v1에서 정식 라우팅 편입. */}
+        <Route path="/risk-review-v0" element={<ReviewListV0 />} />
         <Route path="*" element={<Navigate to="/my-expenses" replace />} />
       </Route>
     </Routes>

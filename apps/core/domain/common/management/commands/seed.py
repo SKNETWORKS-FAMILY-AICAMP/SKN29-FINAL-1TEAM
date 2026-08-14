@@ -17,6 +17,7 @@
 - 룰 그래프는 `seed_rules` 커맨드가 담당(GLOBAL v3·기업업무추진비 v2·회식비 v1+초안·출장비 승인대기)
 """
 import calendar
+import random
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
@@ -118,16 +119,27 @@ class Command(BaseCommand):
 
         # 분류 → 지출 세부유형(청탁금지 한도 룩업 키를 겸한다).
         ITEM_TYPE = {C.MEAL: "식사", C.MEETING: "식사", C.ENTERTAIN: "식사",
-                     C.TRIP: "교통", C.SUPPLIES: "소모품", C.OPERATION: "기타"}
+                     C.TRIP: "교통", C.SUPPLIES: "소모품", C.GATHERING: "행사성"}
+
+        # 일시불할부구분코드: 실거래 데이터엔 없는 카드사 원천 필드라 학습 데이터(AI Hub, 148만 건)
+        # 관측 분포를 그대로 재현해 랜덤 배정한다(apps/ai `app/ml/features.py` CATEGORY_VALUES와
+        # 동일 카테고리). 시연 재현성을 위해 커맨드 전용 Random 인스턴스를 고정 시드로 둔다.
+        _installment_rng = random.Random(20260814)
+        INSTALLMENT_CODES = ["A", "B", "_"]
+        INSTALLMENT_WEIGHTS = [0.981, 0.013, 0.006]  # ml/.data/processed/train_processed.csv 실측 비율
 
         def mk(owner, merchant, amount, card, cat, ai, status, ev, days, hour, purpose="", industry="", risk=None):
-            tx = Transaction.objects.create(card=card, merchant=merchant, amount=amount, ts=at(days, hour))
+            installment_code = _installment_rng.choices(INSTALLMENT_CODES, weights=INSTALLMENT_WEIGHTS)[0]
+            tx = Transaction.objects.create(
+                card=card, merchant=merchant, amount=amount, ts=at(days, hour),
+                raw_payload={"일시불할부구분코드": installment_code},
+            )
             if ev == "OK":
                 Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
             # ── 판정 입력 사실. 결정론적으로 채워 시연 판정이 재현되게 한다.
             #    비워두면 "모름"이 되어 미해소 가드가 REVIEW로 강등한다(그게 계약이다).
             shared = card.card_type in ("SHARED", "TEAM")
-            group = cat in (C.MEAL, C.MEETING, C.ENTERTAIN)
+            group = cat in (C.MEAL, C.MEETING, C.ENTERTAIN, C.GATHERING)
             s = Settlement.objects.create(
                 transaction=tx, category=cat, ai_category=cat, ai_suggested=ai,
                 merchant_industry=industry, purpose=purpose, status=status,
@@ -165,12 +177,12 @@ class Command(BaseCommand):
         mk(acc, "교보문고", 33000, acc_card, C.SUPPLIES, False, S.PENDING_CONFIRM, "OK", 4, 15, "개정세법 실무 서적", "서점")
         mk(acc, "스타벅스 여의도", 21000, acc_card, C.ENTERTAIN, True, S.RETURNED, "OK", 5, 16, "외부 회계법인 미팅 - 목적 보완 필요", "카페")
         mk(acc, "본죽 여의도", 12800, acc_card, C.MEAL, False, S.CONFIRMED, "OK", 9, 12, "주말 결산 근무 식대", "음식점")
-        mk(acc, "우체국 등기", 8000, acc_card, C.OPERATION, False, S.ERP_VOUCHER_DRAFTED, "OK", 13, 11, "회계 원본 증빙 발송", "우편")
+        mk(acc, "우체국 등기", 8000, acc_card, C.SUPPLIES, False, S.ERP_VOUCHER_DRAFTED, "OK", 13, 11, "회계 원본 증빙 발송", "우편")
         mk(acc, "이마트 여의도", 64000, fin_team_card, C.SUPPLIES, False, S.TEAM_COLLECTING, "OK", 2, 18, "결산 기간 팀 간식·비품", "마트")
 
         # ── 재무회계팀 지출 내역 — 결산·세무·감사 대응 업무 지출 ──
         fin_expenses = [
-            (acclead, "삼정회계법인", 550000, fin_team_card, C.OPERATION, False, S.SUBMITTED, "OK", 6, 14,
+            (acclead, "삼정회계법인", 550000, fin_team_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 6, 14,
              "반기 결산 외부 자문료", "회계법인"),
             (u["오세진"], "김가네 여의도", 78000, fin_team_card, C.MEAL, False, S.TEAM_COLLECTING, "OK", 1, 20,
              "월말 결산 야근 팀 식대", "음식점"),
@@ -182,7 +194,7 @@ class Command(BaseCommand):
              "재고실사 출장 숙박", "숙박"),
             (u["오세진"], "스타벅스 IFC", 34500, fin_shared_card, C.MEETING, True, S.TEAM_RETURNED, "OK", 5, 15,
              "세무 자문 미팅 - 실사용자 미기재로 보완요청", "카페"),
-            (acclead, "회계관리 SaaS", 330000, fin_team_card, C.OPERATION, False, S.CONFIRMED, "OK", 20, 10,
+            (acclead, "회계관리 SaaS", 330000, fin_team_card, C.SUPPLIES, False, S.CONFIRMED, "OK", 20, 10,
              "결산 자동화 툴 연간 구독", "소프트웨어"),
             (u["한지민"], "설렁탕집 여의도", 156000, fin_team_card, C.MEAL, False, S.CONFIRMED, "OK", 25, 12,
              "결산 마감 팀 오찬", "음식점"),
@@ -209,7 +221,7 @@ class Command(BaseCommand):
             (u["정하늘"], "오피스디포", 73500, sales_team_card, C.SUPPLIES, False, "OK", 1, 15, "영업 제안서 바인더 및 용지", "사무용품"),
             (u["정하늘"], "카카오T 블랙", 38600, postpaid, C.TRIP, True, "MISSING", 2, 22, "야간 고객사 미팅 복귀", "운수"),
             (u["정하늘"], "한강파크 푸드코트", 66500, sales_prepaid, C.MEAL, False, "OK", 4, 12, "현장 영업팀 오찬", "음식점"),
-            (u["이도윤"], "렌탈프로 행사장비", 680000, sales_team_card, C.OPERATION, True, "MISSING", 1, 16, "제품 시연회 장비 대여", "렌탈"),
+            (u["이도윤"], "렌탈프로 행사장비", 680000, sales_team_card, C.SUPPLIES, True, "MISSING", 1, 16, "제품 시연회 장비 대여", "렌탈"),
             (u["이도윤"], "공용카드 온라인몰", 158000, sales_shared_card, C.SUPPLIES, True, "OK", 2, 14, "고객 증정용 샘플", "전자상거래"),
             (u["이도윤"], "마티나라운지", 91000, postpaid, C.MEAL, True, "MISSING", 5, 6, "조찬 출장 식사", "음식점"),
             (kim, "테크노마트", 245000, kim_card, C.SUPPLIES, False, "OK", 3, 13, "시연용 휴대 기기", "전자기기"),
@@ -253,7 +265,7 @@ class Command(BaseCommand):
              R(("공직자 등 참석 시 1인당 법정 한도 적용", "청탁금지법 제8조", "policy"),
                ("기업업무추진비 건당 50만원 초과 사전결재", "TIGER-REG-2026-003 제12조①", "policy")),
              ["청탁금지법 대상 참석·1인당 한도 초과"], "REJECT", 0.88),
-            (u["서지훈"], "롯데백화점 상품권", 300000, sales_team_card, C.OPERATION, "OK", 7, 15, "명절 거래처 선물", "백화점",
+            (u["서지훈"], "롯데백화점 상품권", 300000, sales_team_card, C.SUPPLIES, "OK", 7, 15, "명절 거래처 선물", "백화점",
              0.83, F(("유가증권 구매", 0.46), ("사전승인 없음", 0.24)),
              R(("상품권 등 유가증권 구매는 사전 승인 필수", "TIGER-REG-2026-003 제9조③", "policy")),
              ["상품권 구매·사전승인 누락"], "RETURN", 0.8),
@@ -280,7 +292,7 @@ class Command(BaseCommand):
              R(("회식 2차 비용은 원칙적 불인정", "TIGER-REG-2026-003 제14조③", "policy"),
                ("회식비 1인당 5만원 한도", "TIGER-REG-2026-003 제14조①", "policy")),
              ["2차 회식·1인당 한도 초과"], "RETURN", 0.69),
-            (u["김철수"], "AWS 클라우드", 892000, devai_team_card, C.OPERATION, "OK", 8, 3, "개발 인프라 월 사용료", "클라우드",
+            (u["김철수"], "AWS 클라우드", 892000, devai_team_card, C.SUPPLIES, "OK", 8, 3, "개발 인프라 월 사용료", "클라우드",
              0.68, F(("월 최고 금액", 0.33), ("심야 자동결제", 0.21), ("전월 대비 증가", 0.14)),
              R(("정기 구독료는 예산 항목 사전 배정 필요", "TIGER-REG-2026-003 제6조", "policy")),
              ["고액 정기결제·전월 대비 증가"], "RETURN", 0.62),
@@ -335,7 +347,7 @@ class Command(BaseCommand):
              0.18, F(("정상 패턴", 0.07)), R(), ["특이사항 없음"], "APPROVE", 0.94),
             (u["박민수"], "본죽", 11000, sales_team_card, C.MEAL, "OK", 13, 12, "출장 중 점심", "음식점",
              0.15, F(("정상 패턴", 0.06)), R(), ["특이사항 없음"], "APPROVE", 0.95),
-            (u["오세진"], "우체국 등기", 7600, fin_team_card, C.OPERATION, "OK", 14, 11, "증빙 원본 발송", "우편",
+            (u["오세진"], "우체국 등기", 7600, fin_team_card, C.SUPPLIES, "OK", 14, 11, "증빙 원본 발송", "우편",
              0.12, F(("정상 패턴", 0.05)), R(), ["특이사항 없음"], "APPROVE", 0.96),
         ]
         review_rows = {}
@@ -373,7 +385,7 @@ class Command(BaseCommand):
             (u["한지민"], "SRT 수서-동대구", 84600, postpaid, C.TRIP, S.PENDING_CONFIRM, "OK", 11, 8,
              "지방사업장 재고실사 이동", "철도", 0.34,
              F(("출장 신청 임박 제출", 0.18)), ["출장 신청 지연(경미)"], "APPROVE", 0.82),
-            (u["김철수"], "GitHub Copilot", 42000, devai_team_card, C.OPERATION, S.PENDING_CONFIRM, "OK", 10, 9,
+            (u["김철수"], "GitHub Copilot", 42000, devai_team_card, C.SUPPLIES, S.PENDING_CONFIRM, "OK", 10, 9,
              "개발 도구 월 구독", "소프트웨어", 0.27,
              F(("정기 결제", 0.11)), ["특이사항 없음"], "APPROVE", 0.9),
             (u["정하늘"], "미스터피자 코엑스", 78000, sales_team_card, C.MEAL, S.CONFIRMED, "OK", 9, 12,
@@ -391,8 +403,43 @@ class Command(BaseCommand):
                risk=dict(anomaly_score=sc, reasons=contrib, rag_refs=[], anomaly_reasons=ar,
                          ai_recommendation=reco, ai_confidence=conf))
 
+        # ── 회식(GATHERING) 규정 검증 시연 3건 — PASS 자동승인 / REVIEW 위반 / Risk Review stage2_verdict ──
+        #  하드코딩 상태가 아니라 seed_rules가 방금 심는 실제 ACTIVE 그래프(GLOBAL v3→회식 v1)로
+        #  진짜 판정한다(아래 _judge_dining_demo, seed_rules 실행 직후). 셋 다 GLOBAL은 통과하도록
+        #  (금지업종·공용카드 미기재·심야 아님) 사실을 맞추고, 회식 scope 그래프에서만 갈린다:
+        #   - pass: 1인당 40,000원(한도 5만원 이내)·2차 아님 → 두 그래프 모두 PASS → 자동 PENDING_CONFIRM
+        #   - review_limit: 1인당 150,000원(한도 초과, M-001) → REVIEW → IN_REVIEW
+        #   - review_secondary: 2차 결제(M-002) → REVIEW → IN_REVIEW, 이어서 Risk Review Agent
+        #     2차(RAG 검증) 실호출까지 태워 stage2_verdict를 실제 LLM 응답으로 채운다.
+        dining_demo = {
+            "pass": mk(u["이영희"], "포차 정든", 280000, devai_team_card, C.GATHERING, True,
+                       S.SUBMITTED, "OK", 3, 19, "스프린트 마감 팀 회식(1차)", "포차"),
+            "review_limit": mk(u["박민수"], "호프 갈매기", 900000, sales_team_card, C.GATHERING, True,
+                                S.SUBMITTED, "OK", 4, 20, "분기 마감 팀 회식", "호프"),
+            "review_secondary": mk(u["최지우"], "이자카야 다시", 350000, devai_team_card, C.GATHERING, True,
+                                    S.SUBMITTED, "OK", 5, 21, "런칭 기념 회식(2차)", "이자카야"),
+        }
+        dining_demo["pass"].headcount, dining_demo["pass"].is_secondary_venue = 7, False
+        dining_demo["pass"].save(update_fields=["headcount", "is_secondary_venue"])
+        dining_demo["review_limit"].headcount, dining_demo["review_limit"].is_secondary_venue = 6, False
+        dining_demo["review_limit"].save(update_fields=["headcount", "is_secondary_venue"])
+        dining_demo["review_secondary"].headcount, dining_demo["review_secondary"].is_secondary_venue = 7, True
+        dining_demo["review_secondary"].save(update_fields=["headcount", "is_secondary_venue"])
+
         # ── 룰 그래프 시드(GLOBAL v3 · 기업업무추진비 v2 · 회식비 v1+초안 · 출장비 승인대기) ──
         call_command("seed_rules")
+
+        # ── 규정 별표(PolicyTable) — 임계값의 단일 출처. `_judge_dining_demo`가 실제 엔진을
+        #  태우려면(policy.dining_per_person_limit 등 참조) 이 시점에 이미 적재돼 있어야 한다 —
+        #  원래 맨 끝에 있던 걸 여기로 옮겼다(실측: 늦게 부르면 UNRESOLVED_POLICY_VAR로 전건
+        #  REVIEW 강등됨 — 기존 `_enrich_demo_cases`는 ctx를 수기로 채워써서 이 순서 의존성이
+        #  가려져 있었을 뿐, `build_rule_context`를 실제로 타는 경로는 원래도 이 순서가 필요했다).
+        #  Draft Agent(get_policy)·룰 엔진 조립기가 모두 이 표를 읽는다. 값 정의는
+        #  `domain/policies/tiger_tables.py` 한 곳뿐이다(_context/policy-domain.md §2).
+        #  ⚠️ TIGER-REG-2026-003 별표 원문 대조는 아직 미완(해당 모듈 docstring 참조).
+        upsert_policy_tables()
+
+        self._judge_dining_demo(dining_demo)
 
         # ── 시연 하이라이트 3건: RAG 내규 검증 보고서 + 실제 EvalContext 스냅샷 ──
         self._enrich_demo_cases(review_rows, now)
@@ -429,16 +476,37 @@ class Command(BaseCommand):
             TeamBudget.objects.create(team=team, year_month=this_month, category="",
                                       limit_amount=sum(limits.values()))
 
-        # ── 규정 별표(PolicyTable) — 임계값의 단일 출처 ──
-        #  Draft Agent(get_policy)·룰 엔진 조립기가 모두 이 표를 읽는다. 값 정의는
-        #  `domain/policies/tiger_tables.py` 한 곳뿐이다(_context/policy-domain.md §2).
-        #  ⚠️ TIGER-REG-2026-003 별표 원문 대조는 아직 미완(해당 모듈 docstring 참조).
-        upsert_policy_tables()
-
         self.stdout.write(self.style.SUCCESS(
             f"시드 완료 - 팀 {Team.objects.count()} / 사용자 {User.objects.count()} / 카드 {Card.objects.count()} / "
             f"정산 {Settlement.objects.count()}(검토 {RiskReview.objects.count()}) / 룰그래프 {RuleGraph.objects.count()} / "
             f"판정로그 {RuleHit.objects.count()} / 예산 {TeamBudget.objects.count()} / 별표 {PolicyTable.objects.count()}"
+        ))
+
+    # ════════════════════════════════════════════════════════════
+    #  회식(GATHERING) 규정 검증 시연 — 실제 상태전이 서비스로 판정
+    # ════════════════════════════════════════════════════════════
+    def _judge_dining_demo(self, rows):
+        """3건을 `services.judge()`(진짜 Rule Agent 오케스트레이션)로 실제 판정한다.
+
+        상태를 손으로 박아넣지 않는다 — 방금 seed_rules가 심은 ACTIVE 그래프(GLOBAL v3→회식 v1)를
+        `domain.policies.orchestrator.judge_settlement`가 그대로 순회해 나온 진짜 결과다.
+        """
+        from domain.settlements import services as settlement_services
+        from domain.settlements.views import SettlementViewSet
+
+        for key, settlement in rows.items():
+            settlement_services.judge(settlement, None)
+            settlement.refresh_from_db()
+            if key == "review_secondary" and settlement.status == "IN_REVIEW":
+                # Risk Review Agent 2차(RAG 검증) 실호출 — stage2_verdict를 실제 LLM 응답으로 채운다.
+                # AI 미기동·OPENAI_API_KEY 없음 등으로 실패해도 조용히 넘어간다(이미 그렇게 구현됨) —
+                # seed 자체가 AI 서비스 가용성에 의존하게 만들지 않는다.
+                SettlementViewSet._run_risk_review(settlement)
+
+        self.stdout.write(self.style.SUCCESS(
+            "회식 규정 시연 3건 판정 완료: "
+            f"pass={rows['pass'].status} / review_limit={rows['review_limit'].status} / "
+            f"review_secondary={rows['review_secondary'].status}"
         ))
 
     # ════════════════════════════════════════════════════════════

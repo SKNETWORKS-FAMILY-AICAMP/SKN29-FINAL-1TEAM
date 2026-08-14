@@ -12,7 +12,7 @@ import {
 import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
 
 const CARD_TYPES = ['PERSONAL', 'TEAM', 'SHARED', 'POST_PAID', 'PREPAID'] as const
-const CATEGORIES: DraftCategory[] = ['업무활성', '회의', '식대', '출장', '접대', '비품']
+const CATEGORIES: DraftCategory[] = ['회식', '회의', '식대', '출장', '접대', '비품']
 
 interface CreateForm {
   merchant: string

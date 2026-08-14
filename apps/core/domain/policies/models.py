@@ -115,7 +115,12 @@ class RuleGraph(models.Model):
                 name="uq_rulegraph_active_scope",
             ),
             models.CheckConstraint(
-                condition=Q(scope__in=["GLOBAL", *Category.values]),
+                # "TEST_DEMO"는 실제 비용분류가 아니다 — seed_rules.py TEST 픽스처(구조 검증용,
+                # "규정 근거 없음") 전용 sentinel. RULE_SCOPE_CHOICES/scope.normalize_scope에는
+                # 없으므로 create_graph_draft() 등 일반 생성 경로로는 만들 수 없고(앱 레벨에서
+                # 걸림), 오직 seed 스크립트의 직접 ORM 조작으로만 존재한다 — 그래도 여기서
+                # 명시적으로 허용해두지 않으면 이 DB 제약 자체가 그 시드를 막는다.
+                condition=Q(scope__in=["GLOBAL", "TEST_DEMO", *Category.values]),
                 name="ck_rulegraph_scope",
             ),
         ]

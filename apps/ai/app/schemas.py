@@ -6,4 +6,4 @@ from typing import Literal
 
 CardType = Literal["PERSONAL", "TEAM", "SHARED", "POST_PAID", "PREPAID"]
 Evidence = Literal["OK", "MISSING"]
-Category = Literal["업무활성", "회의", "식대", "출장", "접대", "비품"]
+Category = Literal["회식", "회의", "식대", "출장", "접대", "비품"]

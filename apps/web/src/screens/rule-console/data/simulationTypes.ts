@@ -33,7 +33,7 @@ export const NUMBER_FACTS = [
   { path: 'policy.settlement_deadline_days', label: '정산 기한(영업일)' },
 ] as const
 
-export const CATEGORIES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
+export const CATEGORIES = ['회식', '회의', '식대', '출장', '접대', '비품'] as const
 
 export interface TestCase {
   id: string

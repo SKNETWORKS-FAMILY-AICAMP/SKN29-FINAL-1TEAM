@@ -29,7 +29,9 @@ type Filter = 'ALL' | Reco
 const riskColor = (score: number) => (score >= 60 ? 'var(--tone-red)' : score >= 30 ? 'var(--tone-amber)' : 'var(--tone-green)')
 
 // 비용분류 2글자 약어(표시용). Category는 고정 enum이라 프론트 매핑으로 충분 — 미지값은 앞 2글자 폴백.
-const CAT_ABBR: Partial<Record<Category, string>> = { 업무활성: '업무' }
+// (2026-08-14: '업무활성'→'회식' 카테고리 교체로 특수 약어가 필요 없어짐 — '회식'은 이미 2글자라
+// 폴백만으로 충분하다. 새로 특수 약어가 필요한 카테고리가 생기면 여기 추가할 것.)
+const CAT_ABBR: Partial<Record<Category, string>> = {}
 const catAbbr = (c: string) => CAT_ABBR[c as Category] ?? c.slice(0, 2)
 
 // 이미 처리된 건의 "실제 결과" — 이전 처리 탭은 AI 권장이 아니라 이 값으로 세고·거르고·표시한다.

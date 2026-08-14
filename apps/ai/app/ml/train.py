@@ -71,6 +71,11 @@ def main(argv: list[str] | None = None) -> None:
     model = AnomalyModel()
     model.fit(X_train.to_numpy(dtype=float))
     model.feature_columns = list(X_train.columns)
+    model.fill_values = fill_values.to_dict()
+    model.feature_stats = {
+        col: {"mean": float(X_train[col].mean()), "std": float(X_train[col].std())}
+        for col in X_train.columns
+    }
 
     print("[3/5] train 점수 분포 → 고정 임계값 계산")
     train_scores = -model.model.decision_function(X_train.to_numpy(dtype=float))
@@ -102,6 +107,8 @@ def main(argv: list[str] | None = None) -> None:
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "hyperparameters": model.model.get_params(),
         "feature_columns": model.feature_columns,
+        "fill_values": model.fill_values,
+        "feature_stats": model.feature_stats,
         "n_train": int(len(X_train)),
         "n_test": int(len(X_test)),
         "threshold_percentile": args.threshold_percentile,

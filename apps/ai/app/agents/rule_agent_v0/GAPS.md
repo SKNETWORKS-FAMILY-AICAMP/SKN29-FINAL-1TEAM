@@ -20,7 +20,7 @@
 | D-4 | **2-hop 확장 미적용** (top-k 순수 검색만) | 선행 조건 미충족 — G-2 참조 |
 | D-5 | **DRAFT 저장 검증 정책**: DSL 화이트리스트 = hard(422), EvalContext 경로 = report-only | ACTIVE 게이트(validate_graph_vars hard)는 기존 구현에 이미 있으므로 이중 차단 대신 DRAFT에서는 리포트로 노출 → 룰 콘솔에서 수정 유도 |
 | D-6 | **쓰기 경로 = Django 내부 API** (FastAPI는 Postgres 무접근) | §5.1 원칙 + rule-engine-design §5.1 배치 결정("쓰기·감사는 Django에"). DRAFT는 확정 상태가 아니므로 "FastAPI never writes confirmed state" 원칙과도 충돌 없음 |
-| D-7 | scope에서 `업무활성` 제외, `회식` 포함 | 계정과목 확정사항(업무활성비 폐기·회식 독립) 반영. 최종 정합은 `normalize_scope` |
+| D-7 | scope에서 `업무활성` 제외, `회식` 포함 | **[2026-08-14 재정정]** 8/13에 "팀 확정"이라 적었던 건 그 시점엔 사실이 아니었다(Category enum이 그대로 `업무활성`이었음, 위 취소선 이력 참조). **8/14에 실제로 팀이 확정**해 `Category.OPERATION("업무활성")`을 `Category.GATHERING("회식")`으로 교체했다 — 이제는 맞는 문장이다. `업무활성`이 맡던 캐치올(미분류 기본값·우체국/택배/인쇄 등)은 `비품`(SUPPLIES)으로 흡수(`draft_agent.py` 양쪽). 회식 규정 그래프도 `scope="식대"`→`scope="회식"`으로 이전(`seed_rules.py` `_seed_dining`). TEST 픽스처는 더 이상 `업무활성`을 빌려 쓸 수 없어(진짜 카테고리가 됨) `scope="TEST_DEMO"`(RULE_SCOPE_CHOICES 밖 값)로 이동 |
 | D-8 | 임베딩 계약 고정: `text-embedding-3-large` @1024, Q_ctx 접두, L2 1회, cosine | embedding-strategy §1 확정 계약 그대로 |
 | D-9 | **신규 로직을 서브패키지 2개로 완전 격리**, 기존 파일 수정은 4줄로 최소화 | 버전업·롤백 시 기존 로직과 꼬이지 않도록. WIRING.md §6 |
 | D-10 | **v0는 `mcp/tools.py`를 경유하지 않고 자체 `search.py`를 직접 호출** | tools.py의 기존 `search_policy` stub을 안 건드리기 위한 격리 선택. 대가: v0의 tool call이 §5 "모든 tool call 로깅" 경로를 안 탄다(G-7 재확인) |

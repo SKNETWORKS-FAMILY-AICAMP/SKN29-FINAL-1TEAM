@@ -12,7 +12,7 @@
 | 기업업무추진비 | 접대 | v1 보관 / **v2 활성** | 규정 개정 반영 이력 |
 | 회식비 | 식대 | **v1 활성** + **v2 수정중(초안)** | 초안 편집·시뮬레이션 시연 |
 | 출장비 | 출장 | **v1 승인대기** | 검토보고서·ACTIVE 승인 시연 |
-| TEST(구조 검증용) | 업무활성 | 초안 | 플로우차트 시각화 시연 |
+| TEST(구조 검증용) | TEST_DEMO | 초안 | 플로우차트 시각화 시연(2026-08-14: `업무활성`→`TEST_DEMO`. `업무활성`은 Category에서 폐지됐고, `회식`이 독립 카테고리가 되며 더 이상 "아무도 안 쓰는 안전한 scope"가 아니게 됐다) |
 
 노드 `action.workflow_status`: `ACTIVE`(활성) / `WAITING`(검증대기) / `VERIFIED`(검증완료) / `DRAFT`(초안).
 """
@@ -728,8 +728,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("기업업무추진비 v1(보관)/v2(활성) + 작성 대화 시드 완료"))
 
     # ── ③ 회식비 ────────────────────────────────────────────────
+    # [2026-08-14] scope="식대"→"회식". 회식이 Category.MEAL의 별칭이던 시절엔 식대 그래프에
+    # 얹혀갈 수밖에 없었지만(그러면 순수 식대 정산까지 전부 이 회식 전용 룰에 걸렸다), 이제
+    # Category.GATHERING("회식")으로 독립했으니 그 scope로 옮긴다.
     def _seed_dining(self, lead, acc):
-        common = dict(name="회식비 검증 그래프", scope="식대", entry="M-003",
+        common = dict(name="회식비 검증 그래프", scope="회식", entry="M-003",
                       clause=f"{REG} 제14조", approver=lead)
         self._upsert(DINING_FAMILY_KEY, 1, status=RuleGraphStatus.ACTIVE, spec=DINING_V1,
                      activated=True, days_ago=45, **common)
@@ -763,8 +766,8 @@ class Command(BaseCommand):
 
     # ── ⑤ TEST 그래프 ───────────────────────────────────────────
     def _seed_test_graph(self):
-        self._upsert(TEST_FAMILY_KEY, 1, name="업무활성비 검증 그래프", scope="업무활성",
-                     entry="T-00", clause="TEST 픽스처 (규정 근거 없음)",
+        self._upsert(TEST_FAMILY_KEY, 1, name="구조 검증용 TEST 그래프", scope="TEST_DEMO",
+                     entry="T-00", clause="TEST 픽스처 (규정 근거 없음, RULE_SCOPE_CHOICES 밖 값이라 실거래와 절대 매칭되지 않는다)",
                      status=RuleGraphStatus.DRAFT, spec=TEST_GRAPH)
         self.stdout.write(self.style.SUCCESS(
             f"TEST 그래프 시드 완료: 노드 {len(TEST_NODES)} / 라우팅 {len(TEST_ROUTINGS)} (전부 검증대기)"

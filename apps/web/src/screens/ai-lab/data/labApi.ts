@@ -31,7 +31,7 @@ export interface LabStatus {
 }
 
 // ── Draft Agent ───────────────────────────────────────
-export type DraftCategory = '업무활성' | '회의' | '식대' | '출장' | '접대' | '비품'
+export type DraftCategory = '회식' | '회의' | '식대' | '출장' | '접대' | '비품'
 
 export interface DraftResult {
   mode: 'create' | 'revise'

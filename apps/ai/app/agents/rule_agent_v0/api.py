@@ -18,9 +18,12 @@ from .vector_store import upsert_chunks
 
 router = APIRouter(prefix="/agent/rule-v0", tags=["rule-agent-v0"])
 
-# scope 허용값: GLOBAL 또는 settlements.Category 실제 값 (rule-seed-plan §3.3).
-# "업무활성"은 폐기, "회식"은 독립 카테고리 확정. 정합 최종 판정은 Django normalize_scope.
-Scope = Literal["GLOBAL", "회의", "식대", "출장", "접대", "비품", "회식"]
+# scope 허용값: GLOBAL 또는 settlements.Category 실제 값(정식 SoT — `domain/policies/models.py`
+# RULE_SCOPE_CHOICES = [GLOBAL, *Category.choices]).
+# [2026-08-14] "업무활성" Category가 실제로 폐지되고 "회식"이 독립 카테고리로 대체됐다(팀 확정 —
+# 이전에 이 파일에 있던 같은 취지의 주장은 그 시점엔 사실이 아니었으나, 지금은 맞다). 회식 규정
+# 그래프도 scope="식대"에서 scope="회식"으로 옮겨졌다(seed_rules.py `_seed_dining`).
+Scope = Literal["GLOBAL", "회식", "회의", "식대", "출장", "접대", "비품"]
 
 
 class RuleGenerateRequest(BaseModel):

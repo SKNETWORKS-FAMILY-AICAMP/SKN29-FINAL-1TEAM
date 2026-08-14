@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { FilePlus2 } from 'lucide-react'
 import { Modal } from '../../components/ui/Modal'
 
-const RULE_SCOPES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
+const RULE_SCOPES = ['회식', '회의', '식대', '출장', '접대', '비품'] as const
 
 export type NewRuleChoice = { kind: 'new'; name: string; scope: string }
 

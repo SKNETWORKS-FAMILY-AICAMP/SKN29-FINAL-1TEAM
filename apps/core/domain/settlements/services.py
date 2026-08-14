@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from domain.common.models import AuditLog
 from domain.erp.models import ErpVoucher
+from domain.policies.orchestrator import judge_settlement
 from domain.risk.models import DecisionLabel
 
 from .models import Settlement, SettlementEvent
@@ -63,14 +64,18 @@ def submit(settlement, actor=None):
     return transition(settlement, S.SUBMITTED, actor, "제출")
 
 
+@db_tx.atomic
 def judge(settlement, actor=None):
-    """RPA 1차판정 자리표시자.
+    """RPA 1차판정 — Rule Agent 오케스트레이션(GLOBAL 필수 게이트 → 계정과목별 scope) 실행(§4.2).
 
-    실제 판정은 ai(FastAPI)가 ACTIVE 룰 그래프를 순회해 수행한다(§4.2).
-    MVP 백엔드에선 활성 그래프가 없다고 보고 SUBMITTED→RPA_JUDGED→IN_REVIEW로 이관한다.
+    ACTIVE 그래프가 GLOBAL·scope 둘 다 없으면(판정 근거 없음) IN_REVIEW로 이관한다 —
+    이전 placeholder와 그 경우엔 동일하게 동작하지만, 그래프가 있으면 실제로 그 그래프의
+    판정(PASS/REJECT/RETURN/REVIEW)을 따른다(`domain.policies.orchestrator.judge_settlement`).
     """
-    transition(settlement, S.RPA_JUDGED, actor, "RPA 1차판정(placeholder)")
-    return transition(settlement, S.IN_REVIEW, actor, "Rule 미매칭 → Risk Review 이관")
+    transition(settlement, S.RPA_JUDGED, actor, "RPA 1차판정")
+    target = judge_settlement(settlement)
+    reason = "Rule 그래프 판정 완료" if target != S.IN_REVIEW else "Rule 미매칭/REVIEW → Risk Review 이관"
+    return transition(settlement, target, actor, reason)
 
 
 @db_tx.atomic
