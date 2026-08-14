@@ -202,7 +202,7 @@ def detect_profile(doc) -> str:
 > - **C2**는 페이지 안에서 요소를 **재배열**만 한다. 텍스트를 붙이거나 자르지 않는다. 실제로 도해 문서의 오배치(`3. 조직 설계 포인트`)를 바르게 고쳤다.
 > - **C3**는 **요소 안에서** 꼬리 마커를 앞으로 옮긴다. 요소 경계를 넘지 않아 표를 흩뜨릴 수 없다. 📏 직급체계에 실제 고아 마커 4건이 있었고 초안대로면 방치될 뻔했다.
 >
-> **따라서 프로파일 게이트가 실제로 막아야 하는 것은 문단 병합/분할 계열이며, 그 계열은 이 파이프라인에 아직 없다.** 도입한다면 그때 DIAGRAM·LAW 금지를 명시한다. 회귀 방지 테스트(`test_diagram_profile_blocks_hierarchy_rewrite`)가 이 경계를 지킨다.
+> **따라서 프로파일 게이트가 실제로 막아야 하는 것은 문단 병합/분할 계열이며, 그 계열은 이 파이프라인에 아직 없다.** 도입한다면 그때 DIAGRAM·LAW 금지를 명시한다. 회귀 방지 테스트(`test_diagram_plan_excludes_content_destroying_steps`)가 이 경계를 지킨다.
 
 ---
 
@@ -405,7 +405,7 @@ class ParsedDoc:
 
 위 표는 **결함 지표**이고, `evaluation_report.md`의 Overall 89.3(부모-자식 0.737, 셀 strict 0.755 등)을 다시 매긴 값이 **아니다.** 재채점은 채점 로직을 `parsing/scoring.py`로 마저 옮긴 뒤 수행한다. 목표치는 그대로 둔다 — 부모-자식 ≥0.95 / 셀 strict ≥0.90 / 요소 탐지 F1 0.929 **유지(회귀 금지)** / Overall ≥93.
 
-### 7.4 회귀 테스트 — `apps/ai/tests/test_parsing_corrections.py` (61건 통과)
+### 7.4 회귀 테스트 — `apps/ai/tests/test_parsing_corrections.py` (66건 통과)
 
 **docling을 재실행하지 않는다.** `docling_eval/output/layout/layout_result.csv`가 11종 4,388요소 전량 덤프이므로, 교정 계층만 이 덤프에 걸어 고정한다(docling은 별도 conda 환경과 모델 로딩을 요구해 CI에서 돌리기에 비싸다). 운영 경로는 `engine.convert()`, 검증 경로는 `dump.load_all()`이며 **교정 계층은 둘이 공유**한다.
 
@@ -419,7 +419,7 @@ class ParsedDoc:
 | `test_circled_clauses_not_auto_numbered` | 법령 자동번호 0. **교정 전 값이 0이면 테스트 자체를 실패**시켜 무의미한 통과를 막는다 |
 | `test_spacing_never_regresses` | 자간은 완전 복원을 요구하지 않는다. **악화되지 않을 것**만 요구 |
 | `test_no_content_loss` | 줄어든 요소는 전부 리포트에 사유가 있어야 한다 |
-| `test_diagram_profile_blocks_hierarchy_rewrite` | 도해형에 표를 흩뜨릴 단계가 들어오면 실패 |
+| `test_diagram_plan_excludes_content_destroying_steps` | 도해형에 표를 흩뜨릴 단계가 들어오면 실패 |
 | `test_report_explains_every_skipped_step` | 건너뛴 단계에 사유 누락 금지 |
 
 **교정 단계는 반드시 "적용 전/후 양쪽을 재고" 개선분을 리포트에 남긴다.** 📏 도해 문서 회귀 사고가 바로 이 대조 없이는 안 보인다.
@@ -502,7 +502,7 @@ apps/ai/tests/test_parsing_corrections.py
 | **P0** | **C3 항/호 마커 복원** | ✅ 완료 — 고아 95→0, 자동번호 882→0 |
 | **P0** | **C1 자간 재결합** | ⚠️ 부분 — 667→372 (△44%). 법령 잔존이 대부분 |
 | **P1** | C4 법령 목차 제거 | ✅ 완료 (unescape는 방어용 no-op — §3.4 정정) |
-| **P1** | `scoring.py` + 회귀 테스트 61건 | ✅ 완료 |
+| **P1** | `scoring.py` + 회귀 테스트 66건 | ✅ 완료 |
 | **P1** | C6 헤딩 정제 · C7 메타 승격 | ✅ 완료 (규정 `doc_no`는 원천 부재 — §5 C7 정정) |
 | **P2** | C5 분할 표 병합 | ✅ 1차 (11건 중 5건 병합) |
 | **P2** | GT 8종 대비 **재채점** | 🔲 미착수 — §7.3 |

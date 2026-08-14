@@ -97,11 +97,12 @@ def test_no_content_loss(corrected, name):
     assert lost <= accounted, f"{name}: 설명되지 않은 요소 소실 {lost}건"
 
 
-def test_diagram_profile_blocks_hierarchy_rewrite(corrected):
+def test_diagram_plan_excludes_content_destroying_steps(corrected):
     """도해형에 문단 병합·분할 계열을 걸어 80%→53%로 회귀시킨 사고의 재발 방지.
 
-    C2(기하 재배열)·C3(요소 내 마커 복원)는 병합·분할이 없어 허용하지만, 표를 흩뜨릴 수
-    있는 단계가 도해형 계획에 들어오면 즉시 실패해야 한다.
+    ⚠️ 이름이 뜻하는 바를 좁게 읽을 것 — 막는 것은 **계층 교정 전반이 아니라 내용을
+    파괴할 수 있는 단계**다. C2(기하 재배열)·C3(요소 내 마커 복원)는 요소 경계를 넘지
+    않아 허용하고(직급체계에 실제 고아 마커 4건), 금지 목록은 현재 C4 하나다.
     """
     forbidden = {"C4"}
     for name, expected in EXPECTED_PROFILE.items():

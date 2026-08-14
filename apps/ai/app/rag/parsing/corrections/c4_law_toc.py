@@ -1,10 +1,16 @@
 """C4. 법령 목차 블록 제거 · HTML unescape — `pdf_parsing_strategy.md` §5 C4. [LAW]
 
 법령 PDF는 앞머리에 **조문 제목 수백 개가 한 줄짜리 코드블록**으로 덤프된다. 그대로 두면
-거대 노이즈 청크가 된다. 그리고 `&lt;개정 2020. 12. 22.&gt;` 형태의 escape가 실측 846건.
+거대 노이즈 청크가 되어 **어떤 질의에나 어중간하게 걸린다**. 이것이 C4의 본체다.
 
 ⚠️ 조건 없는 코드블록 삭제는 금물이다 — 도해 문서의 ASCII 조직도가 같은 타입이고, 그쪽은
 들여쓰기가 곧 조직 계층이다. 아래 3중 조건을 모두 만족할 때만 지운다.
+
+📏 `unescape()`는 **우리 경로에서는 no-op이다.** `&lt;개정 …&gt;` 형태의 escape는 docling의
+`export_to_markdown()` 산물이고, 우리는 `Element.text`를 직접 쓴다. 덤프 실측 —
+`output/markdown/` 1,625건(법인세법 1,039 · 여신법 298 · 부가세법 288) vs
+`output/layout|tables|parsed/` **0건**. 방어적으로 남겨 두었을 뿐이니, 마크다운 경로를
+쓰게 되기 전까지 이 함수의 반환값을 성과 지표로 인용하지 말 것.
 """
 from __future__ import annotations
 
@@ -46,7 +52,7 @@ def drop_toc_blocks(elements: list[Element], report) -> int:
 
 
 def unescape(elements: list[Element]) -> int:
-    """`&lt;` `&gt;` `&amp;` 복원. 실측 846건(법령 3종 한정)."""
+    """`&lt;` `&gt;` `&amp;` 복원. 📏 **현 경로 실측 0건** — 모듈 docstring 참조."""
     changed = 0
     for el in elements:
         restored = html.unescape(el.text)
