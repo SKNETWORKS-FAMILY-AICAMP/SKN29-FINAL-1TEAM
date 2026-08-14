@@ -33,7 +33,7 @@ from pydantic import BaseModel
 
 CardType = Literal["PERSONAL", "TEAM", "SHARED", "POST_PAID", "PREPAID"]
 Evidence = Literal["OK", "MISSING"]
-Category = Literal["업무활성", "회의", "식대", "출장", "접대", "비품"]
+Category = Literal["회식", "회의", "식대", "출장", "접대", "비품"]  # 2026-08-14: 업무활성 폐지 → 회식
 
 class DraftRequest(BaseModel):
     merchant: str
@@ -140,7 +140,7 @@ DoD 조건(정책 힌트 최소 1건 동작)은 검증 샘플 2·3건(320,000원
 당신은 법인카드 정산 초안 작성 보조입니다.
 
 반드시 지켜야 할 규칙:
-1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 업무활성, 회의, 식대, 출장, 접대, 비품.
+1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
 2. 가맹점 업종(merchantIndustry)은 참고용 힌트일 뿐이며, 세무·회계 판단의 근거로 사용하지 마세요.
 3. 판단 확신이 낮으면 aiSuggested를 true로 하고 confidence를 낮게(0.5 이하) 주세요.
    확신이 높으면 aiSuggested는 true로 유지하되(v0는 전부 사람 확인 대상) confidence만 높게 주세요.
@@ -221,7 +221,7 @@ def _call_llm(req: "DraftRequest") -> dict:
 전체 후처리(분류 clamp, 타입 변환 포함)를 `try` 안에 두어, LLM이 예상 밖 타입(예: `confidence`를 문자열로 반환)을 내놓아도 500 없이 항상 200으로 방어한다.
 
 ```python
-VALID_CATEGORIES = {"업무활성", "회의", "식대", "출장", "접대", "비품"}
+VALID_CATEGORIES = {"회식", "회의", "식대", "출장", "접대", "비품"}
 
 def run(req: "DraftRequest") -> dict:
     try:
@@ -230,8 +230,10 @@ def run(req: "DraftRequest") -> dict:
         category = llm_out.get("category")
         comments = list(llm_out.get("comments", []))
         if category not in VALID_CATEGORIES:
-            category = "업무활성"
-            comments.append({"icon": "ai", "text": "분류 추정이 불분명해 기본값(업무활성)으로 조정했습니다."})
+            # 2026-08-14: 미분류 캐치올 기본값은 "회식"이 아니라 "비품"이다 — "회식"은 팀 회식이라는
+            # 구체적 의미를 가진 독립 카테고리로, "판단 불가"의 기본값으로 쓰면 안 된다.
+            category = "비품"
+            comments.append({"icon": "ai", "text": "분류 추정이 불분명해 기본값(비품)으로 조정했습니다."})
 
         draft = {
             "merchant": req.merchant,
@@ -251,8 +253,8 @@ def run(req: "DraftRequest") -> dict:
         draft = {
             "merchant": req.merchant,
             "amount": req.amount,
-            "category": "업무활성",
-            "aiCategory": "업무활성",
+            "category": "비품",
+            "aiCategory": "비품",
             "aiSuggested": True,
             "merchantIndustry": "",
             "purpose": f"{req.merchant} 관련 지출 (초안 자동 생성 실패)",

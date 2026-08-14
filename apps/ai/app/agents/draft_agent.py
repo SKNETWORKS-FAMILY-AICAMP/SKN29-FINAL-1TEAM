@@ -42,7 +42,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-VALID_CATEGORIES = {"업무활성", "회의", "식대", "출장", "접대", "비품"}
+VALID_CATEGORIES = {"회식", "회의", "식대", "출장", "접대", "비품"}
 
 # get_policy(Django 실연동, B-3)가 실패했을 때만 쓰는 최후 폴백값 — 정상 경로에서는 쓰이지 않는다.
 FALLBACK_POLICY = {"limit": 30000, "required_evidence": ["영수증"]}
@@ -83,7 +83,7 @@ class LLMReviseOutput(BaseModel):
 SYSTEM_PROMPT_CREATE = """당신은 법인카드 정산 초안 작성 보조입니다.
 
 반드시 지켜야 할 규칙:
-1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 업무활성, 회의, 식대, 출장, 접대, 비품.
+1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
 2. 가맹점 업종(merchantIndustry)은 참고용 힌트일 뿐이며, 세무·회계 판단의 근거로 사용하지 마세요.
 3. 판단 확신이 낮으면 aiSuggested를 true로 하고 confidence를 낮게(0.5 이하) 주세요.
    확신이 높으면 aiSuggested는 true로 유지하되(사람 확인 대상) confidence만 높게 주세요.
@@ -103,7 +103,7 @@ SYSTEM_PROMPT_REVISE = """당신은 법인카드 정산 초안 수정 보조입�
 
 반드시 지켜야 할 규칙:
 1. 지시에 해당하는 항목만 수정하고, 언급되지 않은 항목은 현재 값을 그대로 유지하세요.
-2. 비용 분류(category)를 바꾸는 경우 다음 6개 중 하나만 선택하세요: 업무활성, 회의, 식대, 출장, 접대, 비품.
+2. 비용 분류(category)를 바꾸는 경우 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
 3. 지시를 해석하지 못했다면 모든 값을 원래대로 유지하고, comments에 어떤 지시를 이해하지 못했는지 안내하세요.
 4. changes에는 실제로 값이 바뀐 항목만 "필드명 → 새 값" 형태의 문장으로 나열하세요. 아무것도 안 바뀌었으면 빈 배열로 두세요.
 5. 정책 한도·규정 문구는 절대 스스로 계산하거나 만들어내지 마세요."""
@@ -267,8 +267,8 @@ def run(req: "DraftRequest", trace: dict | None = None) -> dict:
         draft = {
             "merchant": req.merchant,
             "amount": req.amount,
-            "category": "업무활성",
-            "aiCategory": "업무활성",
+            "category": "비품",
+            "aiCategory": "비품",
             "aiSuggested": True,
             "merchantIndustry": "",
             "purpose": f"{req.merchant} 관련 지출 (초안 자동 생성 실패)",

@@ -27,12 +27,12 @@ export const CATEGORY_SPEND: Record<Category, number[]> = {
   식대:   [380, 402, 395, 430, 455, 412, 388, 405, 441, 468, 452, 489, 501],
   출장:   [290, 315, 342, 301, 288, 275, 330, 358, 372, 395, 410, 438, 472],
   접대:   [180, 205, 232, 198, 176, 165, 210, 244, 268, 291, 322, 358, 431],
-  업무활성: [210, 225, 218, 240, 252, 231, 245, 260, 272, 285, 298, 310, 336],
+  회식:   [210, 225, 218, 240, 252, 231, 245, 260, 272, 285, 298, 310, 336],
   비품:   [140, 132, 155, 148, 139, 144, 151, 138, 146, 159, 142, 150, 148],
   회의:   [88, 92, 85, 90, 96, 84, 89, 93, 87, 95, 91, 88, 79],
 }
 
-export const CATEGORY_ORDER: Category[] = ['접대', '출장', '식대', '업무활성', '비품', '회의']
+export const CATEGORY_ORDER: Category[] = ['접대', '출장', '식대', '회식', '비품', '회의']
 
 export const monthTotal = (index: number) =>
   CATEGORY_ORDER.reduce((sum, cat) => sum + CATEGORY_SPEND[cat][index], 0)
@@ -101,7 +101,7 @@ export interface BudgetPatternRow {
 export const OFTEN_SURPLUS: BudgetPatternRow[] = [
   { category: '회의', months: 6, avgGap: 38, amount: 204 },
   { category: '비품', months: 5, avgGap: 26, amount: 158 },
-  { category: '업무활성', months: 3, avgGap: 11, amount: 62 },
+  { category: '회식', months: 3, avgGap: 11, amount: 62 },
 ]
 
 export const OFTEN_SHORT: BudgetPatternRow[] = [

@@ -32,6 +32,23 @@ class AnomalyModel:
         self.threshold: float | None = None
         self.calibration_table: list[dict] | None = None
         self.feature_columns: list[str] | None = None
+        # train 기준 콜드스타트 NaN 대체값(features.compute_fill_values 결과). get_tx_features가
+        # 단건 서빙 시 학습 때와 동일한 median으로 결측을 채우려면 이 값이 모델과 함께 저장돼야 한다
+        # (없으면 서빙마다 임의로 다른 값을 쓰게 되어 학습-서빙 불일치가 생긴다).
+        self.fill_values: dict[str, float] | None = None
+        # train 기준 컬럼별 평균/표준편차. Risk Review 2차 검증 입력으로 쓰는 "어느 피처가
+        # 튀었는지"(feature_contribs)를 계산하려면 IsolationForest 자체엔 없는 이 통계가 필요하다.
+        self.feature_stats: dict[str, dict[str, float]] | None = None
+
+    def __setstate__(self, state: dict) -> None:
+        """pickle.load는 __init__을 건너뛰고 __dict__를 그대로 복원한다 — 그 시점 이후 새로 추가된
+        속성(fill_values·feature_stats 등)은 옛 pkl에 아예 없어 평범한 getattr 기본값도 못 받고
+        AttributeError가 난다. 새 속성을 추가할 때마다 여기 기본값을 함께 채워, 학습 시점이 다른
+        pkl을 로드해도 서빙 경로가 죽지 않고 "그 정보 없이" 동작하도록 한다.
+        """
+        self.__dict__.update(state)
+        self.__dict__.setdefault("fill_values", None)
+        self.__dict__.setdefault("feature_stats", None)
 
     def fit(self, X) -> "AnomalyModel":
         self.model.fit(np.asarray(X, dtype=float))
@@ -61,3 +78,24 @@ class AnomalyModel:
             result["calibrated_rate"] = band["observed_rate"]
 
         return result
+
+    def feature_contribs(self, x: list[float], top_n: int = 3) -> list[dict]:
+        """train 분포 대비 |z-score| 상위 top_n 피처 — "어느 피처가 튀었는지"(Risk Review 2차 입력).
+
+        IsolationForest는 사이킷런 기본 API로 샘플별 피처 기여도를 주지 않는다(SHAP 등 별도
+        라이브러리 없이 v0 범위). z-score는 근사치이지 진짜 기여도가 아니라는 점을 호출부(LLM
+        프롬프트)에 그대로 노출해야 한다 — 과장된 설명력을 주장하지 않는다.
+        """
+        if not self.feature_columns or not self.feature_stats:
+            return []
+        devs = []
+        for name, val in zip(self.feature_columns, x):
+            stats = self.feature_stats.get(name)
+            if not stats or not stats.get("std"):
+                continue
+            z = abs((val - stats["mean"]) / stats["std"])
+            devs.append((name, z))
+        devs.sort(key=lambda pair: -pair[1])
+        top = devs[:top_n]
+        total = sum(z for _, z in top) or 1.0
+        return [{"feature": name, "weight": round(z / total, 3)} for name, z in top]

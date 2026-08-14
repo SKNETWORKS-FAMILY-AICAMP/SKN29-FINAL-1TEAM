@@ -57,10 +57,11 @@ llm_wiki/
 | **미해소 가드** | 구현 | `None`=모름 계약. 참조 경로가 null이면 `REVIEW` 강등 + `UNRESOLVED_POLICY_VAR`/`UNRESOLVED_FACT` |
 | **판정 강등률 실측치** | ⚠️ 문서 간 불일치 | `policy-domain.md`·`eval-context-sourcing.md`는 93%(112/120건), `eval-context-guide.md`는 31%(37/120건)로 서로 다른 수치를 확정값처럼 기재하고 있음. 같은 날짜·같은 표본인데 수치가 갈려 원인 재확인 필요. 발표·QA 자료에 인용 전 재검증 권장 |
 | **증빙자료 추출 Agent** | 미착수 | 저장 구조·조립기 연결은 완료. 실제 문서 판독 미구현 |
-| **`orchestrator.py`** | 구현 완료 | GLOBAL 게이트 → 과목별 그래프 선택 · 엔진 순회 · `rule_hits` 기록(그래프당 1행). 상태 전이는 `settlements/services.judge`가 맡아 분리 — 상태를 건드리지 않고 재판정 가능(`record=False`). 제출이 판정을 자동으로 이어 돌린다. 회귀 21건 |
+| **`orchestrator.py`** | ✅ 구현 완료(2026-08-14) | `domain/policies/orchestrator.py::judge()` — GLOBAL(ACTIVE) 게이트 먼저 실행 → PASS 아니면 그 결과가 최종 → PASS했거나 GLOBAL 자체가 없으면 scope(`normalize_scope`) ACTIVE 그래프 실행 → 둘 다 없으면 IN_REVIEW(+`NO_ACTIVE_RULE_GRAPH`). 그래프당 `RuleHit` 1행 기록(그래프 없어도 `graph=None`으로 1행). 상태 전이는 `settlements/services.judge`가 맡아 분리 — 상태를 건드리지 않고 재판정 가능(`record=False`), IN_REVIEW 귀결 시 Risk Review Agent(`/agent/risk-review`) 자동 호출까지 연결됨. 제출이 판정을 자동으로 이어 돌린다. 시뮬레이션 경로(`simulation.py`)와는 별개 진입점(스냅샷 변환은 `snapshot.py`로 일원화). 회귀 21건 |
 | **Rule Agent(생성)** | 통합 완료 | 규정 문서 → 룰 그래프 DRAFT. RAG→LLM→조립→저장→룰 콘솔 전 구간 연결. 인증=서비스 계정 JWT, RAG=팀 정본 재사용, scope=`Category`. 상세 `_context/rule-agent-v0.md` |
 | **규정 문서 업로드** | 구현 완료 | 화면 업로드 → 백그라운드 파싱·청킹·임베딩·적재 → 상태 폴링. Rule Agent 앞단이 열렸다. 상세 `_context/rag-ingestion.md` |
 | **적재→룰 자동 생성 트리거** | 틀만 | 호출 지점은 있고 "개발 중" 안내를 반환한다. 켜기 전 범위·재색인 정책 결정 필요 |
+| **`get_tx_features`(Risk 1차 이상탐지 입력)** | ✅ 구현 완료(2026-08-14) | 이전엔 stub(`feature_vector: []`). `transactions/features.py::build_tx_features`(Django, 카드별 과거 거래 집계) → FastAPI `app.ml.features.build_feature_matrix`(원-핫 인코딩, 카테고리 고정)로 15개 원본 피처를 24컬럼 벡터로 변환, 학습된 모델의 `feature_columns`에 정렬. `ml_infer`에 형상 검증(빈 벡터·컬럼 수 불일치 시 명시적 에러) 추가 |
 
 ## 3. 파생 컨텍스트 (`_context/`) — AI 관리
 
@@ -79,11 +80,12 @@ llm_wiki/
 | `_context/pdf_parsing_strategy.md` | PDF RAG 파싱 전략 캐논(docling 기반) — engine 2단 폴백·문서 프로파일(REGULATION/LAW/DIAGRAM/GENERIC)·교정 C1~C7·`ParsedDoc` | 구현 완료(회귀 61건). 재채점·자간 잔존은 남음 |
 | `_context/chunking-strategy.md` | 청킹 전략 캐논 — 자르는 단위는 문자 수가 아니라 **조(條)**, 분할 사다리(조→항→호→문장→문자), 표는 독립 청크, 계층 헤더+부모 확장+이웃 링크 | 구현 + 평가 완료(888청크, 종합 98.5/100) |
 | `_context/embedding-strategy.md` | 임베딩 전략 캐논 — `text-embedding-3-large` @ `dimensions=1024` 확정 근거, 정답셋 30건, 평가 함정 4개, 기준선 `bge-m3` 격차(재검토 트리거) | 평가 완료 / Chroma upsert 미착수 |
-| `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 역할 분담·로드맵 — 계약(입출력) 고정, v0/v1 작업 분해. B-1~B-6 전체 완료. 분류 6종 중 잔존 오타(업무활성)를 회식으로 정정 완료 | 완료 |
-| `_context/draft-agent-v0.2.md` | Draft Agent 코드 수준 구현 설계서 — pydantic 스키마·정책 조회·프롬프트·에러 폴백. 분류 6종 정정 완료(업무활성→회식) | 완료 |
+| `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 역할 분담·로드맵 — 계약(입출력) 고정, v0/v1 작업 분해. B-1~B-6 전체 완료. 분류 6종(회식 포함) | 완료 — **2026-08-14 정정**: "정정 완료"로 표기돼 있었지만 실제로는 "업무활성" 문자열이 예시·프롬프트에 그대로 남아있었다(§9.1/§1.3 등 `docs/`는 이미 정합이었는데 이 파일만 안 고쳐져 있었음). 이번에 실제로 치환·확인 완료 |
+| `_context/draft-agent-v0.2.md` | Draft Agent 코드 수준 구현 설계서 — pydantic 스키마·정책 조회·프롬프트·에러 폴백. 분류 6종(회식 포함), 미분류 캐치올은 "비품" | 완료 — **2026-08-14 정정**: 위와 같은 이유로 "업무활성" 잔존(Category Literal·프롬프트·`VALID_CATEGORIES`·에러 폴백 기본값 5곳)을 실제로 치환. 캐치올(분류 불명 시 기본값)은 "회식"이 아니라 "비품"으로 — "회식"은 팀 회식이라는 구체 의미의 독립 카테고리라 "판단 불가"의 기본값으로 쓸 수 없다(실제 구현 `apps/ai/app/agents/draft_agent.py`와 동일 결정) |
 | `_context/rag-ingestion.md` | **규정 문서 적재 파이프라인 캐논** — 업로드→파싱→청킹→임베딩→Chroma 흐름, 설계 결정 I-1~I-8(비동기 방식·볼륨 공유·콜백 인증·인가), 알고 쓰는 한계(재시작 유실·개정판 구청크 잔존), 룰 트리거 틀의 위치와 켤 때 정할 것 | 적재 완료 / 트리거 틀만 (2026-08-14) |
 | `_context/rule-agent-v0.md` | **Rule Agent(생성) 구현 캐논** — 규정 문서 → 룰 그래프 DRAFT. 실행 방법(규정 적재 → 서비스 계정 → 화면), 설계 결정 D-1~D-21, 통합에서 고친 것(RAG 사본 3개·403 인증·죽은 코드), 남은 갭 G. 룰 생성 작업은 여기부터 | 통합 완료 (2026-08-14) |
 | `_context/ai-lab.md` | AI-LAB(관리자) — AI 기능을 정산 흐름 없이 단독 실행하는 실험 화면. 5개 탭(상태·Draft·RAG 검색·임베딩·적재), Django `/api/ai-lab/*` 프록시 + Capability `ai_lab`, 실행 추적(trace) 수집 방식, 기능 추가 레시피 | 구현 완료 (Draft·RAG) |
+| `_context/case-history-golden-data-note.md` | `case_history` 컬렉션(Risk Review 2차 검증의 유사사례 근거)이 실 결정이력 배치가 아니라 수동 골든데이터 10건(`app/rag/golden_cases.py`)뿐이라는 메모. 원래 `docs/RAG_전략_종합.md`(팀원 원본 작성 중과 중복돼 삭제)에 있던 내용을 보존 | 임시 메모 — 팀원 RAG 전략 원본에 병합되면 폐기 가능 |
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)
 

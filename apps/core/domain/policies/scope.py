@@ -10,16 +10,17 @@ from domain.settlements.models import Category
 GLOBAL = "GLOBAL"
 
 # 룰 명세서 과목명/별칭 → 정산 비용분류(Category) 값.
-#  회식은 별도 Category가 없어 식대(MEAL) scope 그래프에 함께 편성한다(회식 RULE은 그래프 내 노드로 구분).
+#  [2026-08-14 정정] 회식은 더 이상 식대(MEAL)에 얹혀가는 별칭이 아니다 — Category.GATHERING("회식")
+#  으로 독립했다. "업무활성"은 폐지(Category.GATHERING으로 슬롯 대체, 값은 무관한 개념이라
+#  재사용 캐치올은 SUPPLIES로 흡수 — draft_agent.py 참조). 매핑에 없는 값은 normalize_scope가
+#  원문 그대로 통과시키므로("회식"→"회식") 자기 자신을 가리키는 항목은 여기 안 둔다.
 RULE_SUBJECT_TO_CATEGORY = {
     "기업업무추진비": Category.ENTERTAIN,
     "접대": Category.ENTERTAIN,
-    "회식": Category.MEAL,
     "식대": Category.MEAL,
     "출장": Category.TRIP,
     "회의": Category.MEETING,
     "비품": Category.SUPPLIES,
-    "업무활성": Category.OPERATION,
 }
 
 

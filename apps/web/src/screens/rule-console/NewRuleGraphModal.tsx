@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { FilePlus2, Sparkles } from 'lucide-react'
 import { Modal } from '../../components/ui/Modal'
 
-// GLOBAL ∪ settlements.Category. SoT는 Django `Category`이며 규정 표기(기업업무추진비·회식)는
-// 백엔드 `normalize_scope`가 접는다 — 회식은 식대 scope 그래프에 편성된다.
-const RULE_SCOPES = ['업무활성', '회의', '식대', '출장', '접대', '비품'] as const
+// GLOBAL ∪ settlements.Category. SoT는 Django `Category`이며 [2026-08-14] "업무활성"은
+// 폐지되고 "회식"이 독립 카테고리로 대체됐다(회식 규정 그래프도 scope="회식"으로 이전).
+const RULE_SCOPES = ['회식', '회의', '식대', '출장', '접대', '비품'] as const
 
 export type NewRuleChoice =
   | { kind: 'new'; name: string; scope: string }

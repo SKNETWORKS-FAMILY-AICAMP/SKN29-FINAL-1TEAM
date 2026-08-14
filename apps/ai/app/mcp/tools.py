@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import logging
 
+import pandas as pd
+
 from app.clients import core_client
+from app.ml import features as ml_features
 from app.ml.registry import get_active_model
 
 logger = logging.getLogger(__name__)
@@ -37,11 +40,15 @@ def get_card_context(card_id: int) -> dict:
     return {"card_id": card_id, "card_type": None, "required_inputs": []}
 
 
-def search_policy(query: str, top_k: int = 6, include_law: bool = False) -> dict:
+def search_policy(
+    query: str, top_k: int = 6, include_law: bool = False, filters: dict | None = None
+) -> dict:
     """규정 청크 RAG 검색 (Chroma 직접). Rule/Risk 공용 tool.
 
     구현 실체는 `agents/rule_agent_v0/search.py` — 그쪽이 팀 RAG 정본
-    (`rag/embedding/store.search`)을 부모 필터·부모 확장·컬렉션 라우팅까지 그대로 쓴다.
+    (`rag/embedding/store.search`, `policy_docs` 운영 인덱스)을 부모 필터·부모 확장·컬렉션
+    라우팅까지 그대로 쓴다. `agents/rule_agent_v0/vector_store.py`는 격리된 로컬 실험
+    스토어라 여기서 쓰지 않는다(승격하면 2차 검증이 빈 결과만 도는 죽은 경로가 된다).
     Risk Review Agent도 **이 tool을 거쳐** 같은 검색 경로·로깅을 공유해야 한다(§5).
 
     조회 실패는 감추지 않고 올린다 — 빈 결과와 장애를 구분해야 "규정이 아직 안 실렸다"와
@@ -49,14 +56,34 @@ def search_policy(query: str, top_k: int = 6, include_law: bool = False) -> dict
     """
     from app.agents.rule_agent_v0.search import search_policy as _search
 
-    chunks = _search(query, top_k=top_k, include_law=include_law)
-    logger.info("search_policy q=%r top_k=%d hits=%d", query, top_k, len(chunks))
-    return {"query": query, "chunks": chunks}
+    hits = _search(query, top_k=top_k, include_law=include_law)
+    if filters:
+        hits = [h for h in hits if all(h.get("metadata", {}).get(k) == v for k, v in filters.items())]
+    logger.info("search_policy q=%r top_k=%d hits=%d", query, top_k, len(hits))
+    return {"query": query, "chunks": hits}
 
 
 def search_cases(query: str) -> dict:
-    """유사 과거 승인/반려 사례 검색 (Chroma 직접). Risk."""
-    return {"query": query, "similar_cases": []}
+    """유사 과거 승인/반려 사례 검색 (Chroma 직접, `case_history`). Risk.
+
+    `case_history`는 아직 실 결정이력 적재 파이프라인이 없다(post-MVP) — 비어 있으면
+    `app/rag/case_store.py`가 빈 리스트를 돌려주고, 호출부는 그걸 "근거 없음"으로 다뤄야
+    한다(임의로 지어내지 않는다).
+    """
+    from app.rag.case_store import search_cases as _search_cases
+
+    hits = _search_cases(query, top_k=5)
+    similar_cases = [
+        {
+            "case_id": h["case_id"],
+            "citation": h.get("metadata", {}).get("citation") or h["case_id"],
+            "outcome": h.get("metadata", {}).get("outcome", ""),
+            "text": h["text"],
+            "score": h["score"],
+        }
+        for h in hits
+    ]
+    return {"query": query, "similar_cases": similar_cases}
 
 
 def fetch_historical_tx(period: str, filters: dict | None = None) -> dict:
@@ -86,13 +113,40 @@ def run_rule_engine(settlement_id: int) -> dict:
 
 
 def get_tx_features(tx_id: int) -> dict:
-    """거래 feature 조립 (Django 경유). Risk 1차 이상탐지 입력."""
-    return {"tx_id": tx_id, "feature_vector": []}
+    """거래 feature 조립 (Django 경유 + 원-핫 인코딩). Risk 1차 이상탐지 입력.
+
+    관계형 조회(카드별 과거 거래 집계)는 Django `build_tx_features`가 전부 끝낸다 — 여기서는
+    그 결과(15개 원본 피처, 행 1건)를 학습과 동일한 `app.ml.features.build_feature_matrix`로
+    변환하고, 활성 모델이 있으면 그 `feature_columns` 순서에 맞춰 정렬한다.
+    """
+    raw = core_client.get_tx_features(tx_id)["features"]
+    df = pd.DataFrame([raw])
+
+    model = get_active_model()
+    fill_values = pd.Series(model.fill_values) if (model and model.fill_values) else pd.Series(dtype=float)
+    X = ml_features.build_feature_matrix(df, fill_values)
+
+    if model and model.feature_columns:
+        X = ml_features.align_to_model(X, model.feature_columns)
+
+    return {"tx_id": tx_id, "feature_vector": X.iloc[0].astype(float).tolist()}
 
 
 def ml_infer(feature_vector: list[float]) -> dict:
-    """이상탐지 추론 (MVP: 비지도만). review_prob는 post-MVP."""
+    """이상탐지 추론 (MVP: 비지도만). review_prob는 post-MVP.
+
+    형상 검증: 빈 벡터나 학습된 model.feature_columns와 길이가 다른 벡터를 조용히 잘못된 점수로
+    흘려보내지 않는다 — get_tx_features 쪽 구현이 어긋났을 때 여기서 바로 드러나야 한다.
+    """
     model = get_active_model()
     if not model or not model.fitted:
         return {"anomaly_score": 0.0, "contribs": {}, "note": "no trained model (stub)"}
-    return {**model.score(feature_vector), "contribs": {}}
+    if not feature_vector:
+        raise ValueError("ml_infer: feature_vector가 비어 있습니다 — get_tx_features 결과를 확인하세요.")
+    if model.feature_columns is not None and len(feature_vector) != len(model.feature_columns):
+        raise ValueError(
+            f"ml_infer: feature_vector 길이({len(feature_vector)})가 학습된 모델의 "
+            f"feature_columns 길이({len(model.feature_columns)})와 다릅니다."
+        )
+    contribs = model.feature_contribs(feature_vector)
+    return {**model.score(feature_vector), "contribs": contribs}

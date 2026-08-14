@@ -83,8 +83,8 @@ export const CARD_NEEDS_EXTRA_INPUT: Record<CardType, boolean> = {
 }
 
 // ── 비용 분류(6종 기본) ───────────────────
-export type Category = '업무활성' | '회의' | '식대' | '출장' | '접대' | '비품'
-export const CATEGORIES: Category[] = ['업무활성', '회의', '식대', '출장', '접대', '비품']
+export type Category = '회식' | '회의' | '식대' | '출장' | '접대' | '비품'
+export const CATEGORIES: Category[] = ['회식', '회의', '식대', '출장', '접대', '비품']
 
 // ── 엔티티 ────────────────────────────────
 export interface Settlement {

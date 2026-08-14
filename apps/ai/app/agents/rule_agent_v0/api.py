@@ -28,10 +28,12 @@ from .django_client import ServiceAuthError
 
 router = APIRouter(prefix="/agent/rule-v0", tags=["rule-agent"])
 
-# scope 허용값 = GLOBAL ∪ settlements.Category. **SoT는 Django 코드**(`Category`)다.
-# 규정 문서 표기(기업업무추진비·회식 등)는 여기가 아니라 Django `normalize_scope`가
-# Category 값으로 접는다 — 회식은 별도 Category가 없어 식대 그래프에 편성된다(scope.py).
-Scope = Literal["GLOBAL", "업무활성", "회의", "식대", "출장", "접대", "비품"]
+# scope 허용값: GLOBAL 또는 settlements.Category 실제 값(정식 SoT — `domain/policies/models.py`
+# RULE_SCOPE_CHOICES = [GLOBAL, *Category.choices]).
+# [2026-08-14] "업무활성" Category가 실제로 폐지되고 "회식"이 독립 카테고리로 대체됐다(팀 확정 —
+# 이전에 이 파일에 있던 같은 취지의 주장은 그 시점엔 사실이 아니었으나, 지금은 맞다). 회식 규정
+# 그래프도 scope="식대"에서 scope="회식"으로 옮겨졌다(seed_rules.py `_seed_dining`).
+Scope = Literal["GLOBAL", "회식", "회의", "식대", "출장", "접대", "비품"]
 
 
 class RuleGenerateRequest(BaseModel):

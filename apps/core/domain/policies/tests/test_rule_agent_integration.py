@@ -86,11 +86,12 @@ class ScopeNormalizationTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["scope"], "접대")
 
-    def test_hoesik_lands_on_meal_scope(self):
-        # 회식은 독립 Category가 아니다 — 식대 그래프에 편성된다(scope.py가 SoT).
+    def test_hoesik_lands_on_own_scope(self):
+        # [2026-08-14] 회식은 더 이상 식대 그래프에 얹혀가는 별칭이 아니다 — Category.GATHERING("회식")로
+        # 독립 승격됐고, 자기 자신을 가리키는 scope로 원문 그대로 통과한다(scope.py가 SoT).
         resp = self._create("회식")
         self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.data["scope"], "식대")
+        self.assertEqual(resp.data["scope"], "회식")
 
     def test_global_gate_scope_is_preserved(self):
         resp = self._create("GLOBAL")

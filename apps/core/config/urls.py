@@ -10,8 +10,9 @@ from domain.erp.views import ErpVoucherViewSet
 from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSet
 from domain.policies.rule_agent_v0_views import EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
-from domain.settlements.views import SettlementViewSet, TeamBudgetView
-from domain.transactions.views import ReceiptViewSet, TransactionViewSet
+from domain.risk_review_v0.views import ReviewDecisionView, ReviewListView   # v0 격리 서브패키지
+from domain.settlements.views import SettlementSummaryView, SettlementViewSet, TeamBudgetView
+from domain.transactions.views import ReceiptViewSet, TransactionViewSet, TxFeaturesView
 
 router = DefaultRouter()
 router.register("transactions", TransactionViewSet)
@@ -39,8 +40,14 @@ urlpatterns = [
     # 내부 전용 read API — FastAPI(ai)의 FastMCP 도구가 관계형 데이터를 Django 경유로 조회(CLAUDE.md §1)
     path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
     path("api/internal/rule-context/<int:settlement_id>/", RuleContextView.as_view(), name="internal_rule_context"),
+    path("api/internal/tx-features/<int:tx_id>/", TxFeaturesView.as_view(), name="internal_tx_features"),
+    path("api/internal/settlement-summary/<int:settlement_id>/", SettlementSummaryView.as_view(), name="internal_settlement_summary"),
     path("api/internal/rule-agent-v0/eval-context-schema/", EvalContextSchemaView.as_view(), name="internal_eval_context_schema"),
     # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.
     path("api/internal/policy-docs/<int:pk>/ingest-result/", IngestCallbackView.as_view(), name="internal_ingest_result"),
     path("api/", include(router.urls)),
+    # Review List v0 — 독립 개발 서브패키지(domain/risk_review_v0). v1에서 정식 URL 네임스페이스로
+    # 정리 예정, 지금은 v0 전용 경로로만 노출(메인 라우팅 정식 편입 전).
+    path("api/risk-review-v0/reviews/", ReviewListView.as_view(), name="risk_review_v0_list"),
+    path("api/risk-review-v0/reviews/<int:settlement_id>/decision/", ReviewDecisionView.as_view(), name="risk_review_v0_decision"),
 ]

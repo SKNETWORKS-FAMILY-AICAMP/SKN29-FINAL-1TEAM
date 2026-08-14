@@ -21,13 +21,16 @@ from typing import Any
 from domain.transactions.models import MerchantCategory
 
 # 업종·가맹점명 키워드 → 비용분류 추론 (가맹점 업종 캐시가 없을 때의 폴백)
+#  [2026-08-14] "업무활성"(캐치올) 폐지 → 비품(SUPPLIES)으로 흡수. "회식"은 새 독립 카테고리라
+#  회식성 업소(포차·호프·노래방 등, 식당/카페 키워드와 겹치지 않는 것 위주) 키워드를 추가했다.
 KEYWORD_CATEGORY = [
     (("호텔", "리조트", "스테이", "항공", "KTX", "코레일", "렌터카", "주유"), "출장", "숙박·교통"),
     (("한우", "일식", "룸", "다이닝", "라운지", "바"), "접대", "접대성 업소"),
+    (("포차", "호프", "노래방", "코인노래"), "회식", "회식성 업소"),
     (("카페", "커피", "스타벅스", "투썸", "메가"), "회의", "카페·다과"),
     (("김밥", "백반", "국밥", "식당", "분식", "배달", "푸드"), "식대", "일반 식사"),
     (("문구", "오피스", "다이소", "쿠팡", "마트", "이마트", "전자"), "비품", "소모품·비품"),
-    (("우체국", "등기", "택배", "인쇄", "복사"), "업무활성", "일반 업무비"),
+    (("우체국", "등기", "택배", "인쇄", "복사"), "비품", "일반 업무비"),
 ]
 
 # 규정 임계값은 **별표(PolicyTable)에서 읽는다** — 여기에 숫자를 두지 않는다.
@@ -48,7 +51,7 @@ PURPOSE_TEMPLATE = {
     "식대": "{merchant} — {topic} 관련 팀 식대 (참석 {headcount}명)",
     "출장": "{merchant} — {region} 출장 {expense_kind}",
     "비품": "{merchant} — {topic} 용도 소모품 구매",
-    "업무활성": "{merchant} — {topic} 관련 일반 업무비",
+    "회식": "{merchant} — {topic} 팀 회식 (참석 {headcount}명)",
 }
 
 
@@ -77,7 +80,7 @@ def _guess_category(merchant: str, industry: str) -> tuple[str, float, str]:
             confidence = 0.93 if industry else 0.78
             source = f"가맹점 업종 '{industry}'" if industry else f"가맹점명 키워드"
             return category, confidence, f"{source} 기준 {label}로 판단해 '{category}'로 분류했습니다."
-    return "업무활성", 0.52, "업종·가맹점명으로 분류를 특정하지 못해 기본값으로 두었습니다. 직접 확인해주세요."
+    return "비품", 0.52, "업종·가맹점명으로 분류를 특정하지 못해 기본값으로 두었습니다. 직접 확인해주세요."
 
 
 def _resolve_hint_limits(category: str) -> dict[str, tuple[int, str, str]]:
@@ -176,7 +179,7 @@ def suggest_draft(payload: dict[str, Any]) -> dict[str, Any]:
 # 자연어 지시 → 초안 필드 패치 규칙 (Draft Agent 수정 모드의 계약 예시)
 _AMOUNT = re.compile(r"([\d,]+)\s*(만원|원)")
 _HEADCOUNT = re.compile(r"(?:참석|인원)\s*([\d]+)\s*명")
-_CATEGORIES = ("접대", "회의", "식대", "출장", "비품", "업무활성")
+_CATEGORIES = ("접대", "회의", "식대", "출장", "비품", "회식")
 
 
 def revise_draft(payload: dict[str, Any]) -> dict[str, Any]:
@@ -220,7 +223,7 @@ def revise_draft(payload: dict[str, Any]) -> dict[str, Any]:
             changes.append("지출 목적 직접 반영")
 
     amount = _clean_amount(current.get("amount"))
-    category = str(current.get("category") or "업무활성")
+    category = str(current.get("category") or "비품")
     headcount = int(current.get("headcount") or 0)
     has_receipt = str(current.get("evidence", "OK")) == "OK"
 
