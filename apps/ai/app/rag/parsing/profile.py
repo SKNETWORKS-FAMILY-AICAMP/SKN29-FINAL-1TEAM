@@ -48,7 +48,10 @@ def detect(elements: list[Element]) -> Profile:
         return "REGULATION"
 
     # 조문이 없고, 표가 내용의 실체이거나 계층이 얕으면 도해형.
-    # 도해형은 마커 교정(C3)을 걸면 안 되는 문서다 — 요소 일치율 회귀 실측.
+    # ⚠️ 도해형이 막는 것은 "문서 종류"가 아니라 **연산의 성격**이다 — 요소 일치율을
+    # 80%→53%로 되돌린 것은 문단 병합/분할 계열이었다. 재배열(C2)·요소 내 마커 이동(C3)은
+    # 요소 경계를 넘지 않아 표를 흩뜨릴 수 없으므로 `PLANS["DIAGRAM"]`에서 켜 둔다
+    # (직급체계에 실제 고아 마커 4건이 있다). 도해형에서 끄는 것은 C4·C7뿐이다.
     tables = sum(1 for e in body if e.type == "table")
     depth = max((e.level or 0) for e in body)
     if tables / len(body) >= _DIAGRAM_TABLE_RATIO or depth <= 1:
