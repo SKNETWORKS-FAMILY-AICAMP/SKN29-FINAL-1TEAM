@@ -62,9 +62,13 @@ export const endpoints = {
   dashboard: (role: string) => api.get(`/dashboard/${role}/`),
   // S-02 팀 예산 현황 — 한도(DB) + 사용액(Settlement 집계). {total, used, categories:[{label,limit,used}]}
   teamBudget: (team: string | number, month: string) => api.get('/team-budget/', { params: { team, month } }),
-  // 규정 문서 관리 (S-05 규정문서) — RAG 소스 문서 CRUD
+  // 규정 문서 관리 — RAG 소스 문서 업로드·적재. 업로드는 접수만 하고 파싱·임베딩은
+  // 백그라운드로 도므로, 화면은 목록을 폴링해 status가 DONE/FAILED가 되는 걸 지켜본다.
   policyDocs: () => api.get('/policy-docs/'),
-  uploadPolicyDoc: (data: FormData) => api.post('/policy-docs/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadPolicyDoc: (data: FormData) => api.post('/policy-docs/', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,   // 업로드 자체(수십 MB)에 걸리는 시간. 적재는 여기 포함되지 않는다.
+  }),
   reembedPolicyDoc: (id: string) => api.post(`/policy-docs/${id}/reembed/`),
   deletePolicyDoc: (id: string) => api.delete(`/policy-docs/${id}/`),
   // Rule 버전 관리

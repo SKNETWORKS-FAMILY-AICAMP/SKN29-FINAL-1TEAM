@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import AiLabProxyView, DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
+from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSet
 from domain.policies.rule_agent_v0_views import EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import SettlementViewSet, TeamBudgetView
@@ -17,6 +18,7 @@ router.register("transactions", TransactionViewSet)
 router.register("receipts", ReceiptViewSet)
 router.register("settlements", SettlementViewSet)
 router.register("rules", RuleGraphViewSet)          # 룰 그래프(최종 상태 도메인)
+router.register("policy-docs", PolicyDocViewSet)    # RAG 소스 규정 문서(업로드·적재)
 router.register("erp/vouchers", ErpVoucherViewSet)
 
 urlpatterns = [
@@ -38,5 +40,7 @@ urlpatterns = [
     path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
     path("api/internal/rule-context/<int:settlement_id>/", RuleContextView.as_view(), name="internal_rule_context"),
     path("api/internal/rule-agent-v0/eval-context-schema/", EvalContextSchemaView.as_view(), name="internal_eval_context_schema"),
+    # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.
+    path("api/internal/policy-docs/<int:pk>/ingest-result/", IngestCallbackView.as_view(), name="internal_ingest_result"),
     path("api/", include(router.urls)),
 ]

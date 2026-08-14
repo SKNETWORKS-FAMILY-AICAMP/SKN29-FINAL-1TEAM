@@ -73,9 +73,16 @@ def build_rule_context(settlement_id: int) -> dict:
     return core_client.build_rule_context(settlement_id)
 
 
-def run_rule_engine(tx: dict, ruleset: str | None = None) -> dict:
-    """결정론적 Rule 엔진 실행. Rule 적용(RPA 1차판정)."""
-    return {"decision": None, "confidence": 0.0, "hits": []}
+def run_rule_engine(settlement_id: int) -> dict:
+    """결정론적 Rule 엔진 실행 — RPA 1차판정 (Django 경유).
+
+    엔진 실체는 Django `policies/engine.py`(순수함수)이고, 그래프 선택·`rule_hits` 기록·
+    상태 전이는 `policies/orchestrator.py`+`settlements/services.judge`가 한 트랜잭션으로
+    묶는다. 셋 다 Postgres를 쓰므로 FastAPI는 위임만 한다(§5.1: 관계형은 Django 경유).
+
+    반환은 정산 상세 + `ruleResult`(decision·path·flags·그래프별 내역).
+    """
+    return core_client.judge_settlement(settlement_id)
 
 
 def get_tx_features(tx_id: int) -> dict:

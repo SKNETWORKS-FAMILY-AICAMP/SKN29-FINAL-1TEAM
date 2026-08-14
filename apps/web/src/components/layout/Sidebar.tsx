@@ -14,12 +14,13 @@ interface MenuItem {
 //  · 검토 워크스페이스: accounting_review
 //  · Rule 콘솔: rule_view(열람) — ACTIVE 전환 버튼만 rule_activate로 별도 게이트  · 거버넌스: governance_view
 //  · AI-LAB(AI 기능 독립 실행): ai_lab — 프롬프트·모델 내부가 보이고 LLM 비용이 나가는 관리자 도구
-//  · 규정 문서 관리(/policy-docs): 임시 비활성화 — 실 API 미연동(mock 전용). 재개 시 아래 줄과 App.tsx 라우트를 함께 복구.
+//  · 규정 문서 관리(/policy-docs): rule_view — 규정은 룰의 원천이고, 적재는 임베딩 비용을 쓰면서
+//    모든 판정이 인용하는 코퍼스를 바꾼다. 백엔드 `PolicyDocViewSet`도 같은 capability를 요구한다.
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '내 지출' },
   { to: '/team', label: '팀 현황' },
   { to: '/review', label: '검토 워크스페이스', capability: 'accounting_review' },
-  // { to: '/policy-docs', label: '규정 문서 관리', capability: 'accounting_review' },
+  { to: '/policy-docs', label: '규정 문서 관리', capability: 'rule_view' },
   { to: '/rules', label: 'Rule 콘솔', capability: 'rule_view' },
   { to: '/governance', label: '거버넌스 대시보드', capability: 'governance_view' },
   { to: '/ai-lab', label: 'AI-LAB (관리자)', capability: 'ai_lab' },

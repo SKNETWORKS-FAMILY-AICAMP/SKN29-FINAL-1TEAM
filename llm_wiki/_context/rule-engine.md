@@ -102,17 +102,35 @@ GLOBAL 게이트:
 결과: decision=PASS · conf ≥ θ_pass → 정산 상태 PENDING_CONFIRM (사람 확정 대기)
 ```
 
-## 6. 결정 → 상태 매핑 & 로그
+## 6. 결정 → 상태 매핑 & 로그  _(구현 완료 — `policies/orchestrator.py`)_
 
-| decision | 조건 | 정산 상태 |
+decision은 노드 생성 시점의 `action.decision`으로 확정된다. **판정 시점 확신도 계산·임계치
+비교는 없다**(FR-RA-07) — 이 표에 있던 `conf ≥ θ_pass` 조건은 폐기됐다.
+
+| decision | 정산 상태 | 왜 |
 |---|---|---|
-| PASS | conf ≥ θ_pass | PENDING_CONFIRM (사람 확정 필수, 제16조) |
-| REJECT | conf ≥ θ_reject | RETURNED (보완요청 자동 안내) |
-| RETURN | — | RETURNED |
-| REVIEW | 그 외 | IN_REVIEW (Risk Review 이관) |
+| PASS | `PENDING_CONFIRM` | 상세검토는 생략하되 **사람 확정 없이 CONFIRMED는 없다**(FR-RA-02·FR-ST-03) |
+| RETURN | `RETURNED` | 기재·증빙 보완요청 |
+| REJECT | `RETURNED` | **엔진은 최종반려를 만들지 않는다.** `REJECT` 상태는 재제출 불가 단말이라 규칙이 내리면 되돌릴 방법이 없다 — 최종반려는 회계 담당자의 `review()`만 할 수 있다. 규칙이 본 위반 사유는 `rule_hits.flags`로 검토 화면에 전달된다 |
+| REVIEW | `IN_REVIEW` | Risk Review 이관 |
+| (ACTIVE 그래프 없음) | `IN_REVIEW` | **"검사할 규칙이 없다"를 "검사해보니 문제없다"로 바꾸지 않는다.** 플래그 `NO_ACTIVE_RULE_GRAPH` |
 
-`rule_hits` 저장: `{ tx_id, graph_id, graph_version, path, eval_context(스냅샷), decision, confidence, flags }`
-→ "이 판정에 어떤 값이 쓰였나"를 그대로 재현·감사할 수 있다.
+전이는 `SUBMITTED → RPA_JUDGED → (위 표)` 2단이다. `RPA_JUDGED`를 건너뛰면 "언제 룰이 봤는지"가
+상태 이력에서 사라진다. 전이 사유에는 판정·그래프명·플래그가 한 줄로 남는다.
+
+**게이트 우선(FR-RA-10)**: GLOBAL이 `PASS`가 아니면 과목별 그래프는 **아예 돌지 않는다**.
+게이트를 통과했는데 그 과목의 ACTIVE 그래프가 없으면 판정은 PASS를 유지하되
+`NO_SCOPE_RULE_GRAPH` 플래그를 남긴다(게이트가 필수 검사를 이미 다 봤으므로 뒤집지 않는다).
+
+**언제 도는가**: 제출(`POST /api/settlements/submit/`)이 곧바로 판정을 이어 돌린다 — 상태머신상
+제출의 다음 단계가 룰 판정이고, 사람이 누르는 단계가 아니다. 판정만 실패하면 제출은 유지되고
+(`judgeFailed`로 보고) `POST /api/settlements/{id}/judge/`로 다시 돌릴 수 있다.
+
+`rule_hits` 저장: **그래프당 한 행** — `{ tx_id, settlement_id, graph_id, graph_version, path,
+eval_context(스냅샷), decision, confidence, flags }`. 합쳐서 한 행에 넣으면 게이트와 과목 판정이
+섞여 경로를 되짚을 수 없다. 돌릴 그래프가 없었을 때도 `graph=None`으로 한 행 남긴다 —
+판정을 시도했고 규칙이 없었다는 사실과 그때의 EvalContext가 감사 대상이기 때문이다.
+그때의 사실(EvalContext)과 그때의 규칙(snapshot)이 **둘 다** 있어야 판정을 재현할 수 있다.
 
 ## 7. 룰이 아닌 것(→ Risk Review / 대시보드)
 - 항목 구분 모호(추진비 vs 복리후생 vs 회의비, 제15조) → Risk Review 1차 분류 + 사람 최종

@@ -125,8 +125,13 @@ class SettlementSerializer(serializers.ModelSerializer):
         return r.anomaly_reasons if r else []
 
     def get_evalContext(self, obj):
-        hits = list(obj.rule_hits.all())
-        return hits[0].eval_context if hits and hits[0].eval_context else None
+        """검토 화면이 보는 "판정 시점 사실" — **가장 최근 판정**의 스냅샷이다.
+
+        보완요청 후 재제출되면 판정이 다시 돌아 `rule_hits`가 쌓인다. 예전엔 첫 행을
+        집어 **옛 스냅샷**을 보여줬는데, 그러면 담당자가 이미 고쳐진 값을 보고 판단한다.
+        """
+        latest = max(obj.rule_hits.all(), key=lambda hit: hit.pk, default=None)
+        return latest.eval_context if latest and latest.eval_context else None
 
 
 class SettlementDetailSerializer(SettlementSerializer):

@@ -76,11 +76,16 @@ services:
       RULE_AGENT_SERVICE_USER: ${RULE_AGENT_SERVICE_USER:-rule-agent}
       RULE_AGENT_SERVICE_PASSWORD: ${RULE_AGENT_SERVICE_PASSWORD:-}
       RULE_AGENT_MODEL: ${RULE_AGENT_MODEL:-gpt-4o-mini}
+      # 업로드된 규정 PDF를 읽을 위치(아래 media 볼륨). docling이 파일 경로를 요구해서
+      # 바이트를 HTTP로 되넘기는 대신 core와 같은 볼륨을 공유한다.
+      RAG_MEDIA_ROOT: /data/media
     volumes:
       - ./apps/ai:/app
       # RAG 인덱싱 배치의 입력(파싱 덤프). 레포 루트에 있어 `/app` 마운트로는 안 보인다 —
       # 컨테이너는 읽기만 하므로 :ro. 사용: `--dump /data/docling_eval/output`
       - ./docling_eval:/data/docling_eval:ro
+      # core가 저장한 업로드 원본(규정 PDF). ai는 읽기만 한다 — 파일의 SoR은 Django다.
+      - media:/data/media:ro
     ports:
       - "9000:9000"
     depends_on:

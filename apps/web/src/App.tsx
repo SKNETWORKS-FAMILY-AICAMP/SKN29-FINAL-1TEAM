@@ -7,8 +7,7 @@ import { ReviewWorkspace } from './screens/ReviewWorkspace'
 import { RuleConsole } from './screens/rule-console/RuleConsole'
 import { GovernanceDashboard } from './screens/GovernanceDashboard'
 import { AiLab } from './screens/ai-lab/AiLab'
-// 규정 문서 관리는 임시 비활성화 — 재개 시 아래 import와 /policy-docs 라우트를 함께 복구한다.
-// import { PolicyDocuments } from './screens/PolicyDocuments'
+import { PolicyDocuments } from './screens/PolicyDocuments'
 import { LoginScreen } from './screens/auth/LoginScreen'
 import { RoleSelectScreen } from './screens/auth/RoleSelectScreen'
 import { OnboardingWizard } from './screens/onboarding/OnboardingWizard'
@@ -45,7 +44,8 @@ export default function App() {
         <Route path="/team" element={<TeamAggregation />} />
         <Route path="/review" element={<ReviewWorkspace />} />
         <Route path="/rules" element={<RuleConsole />} />
-        {/* <Route path="/policy-docs" element={<PolicyDocuments />} /> — 임시 비활성화(아래 catch-all이 /my-expenses로 보냄) */}
+        {/* 규정 문서(RAG 소스) 업로드·적재. 인가는 사이드바·백엔드 모두 `rule_view`. */}
+        <Route path="/policy-docs" element={<PolicyDocuments />} />
         <Route path="/governance" element={<GovernanceDashboard />} />
         {/* AI-LAB(관리자) — AI 기능 독립 실행. 사이드바 노출은 Capability `ai_lab`로 게이트. */}
         <Route path="/ai-lab" element={<AiLab />} />

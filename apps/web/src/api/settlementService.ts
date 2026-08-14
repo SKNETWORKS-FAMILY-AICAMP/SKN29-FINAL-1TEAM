@@ -34,14 +34,39 @@ export async function raiseSettlements(ids: string[]): Promise<SettlementStatus>
   return 'TEAM_COLLECTING'
 }
 
-/** S-02: 팀 제출(TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출(RETURNED → SUBMITTED). */
-export async function submitSettlements(ids: string[]): Promise<SettlementStatus> {
+/**
+ * S-02: 팀 제출(TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출(RETURNED → SUBMITTED).
+ *
+ * 제출 직후 **룰 엔진 1차판정이 이어서 돌기 때문에** 최종 상태는 건마다 다르다
+ * (PASS→`PENDING_CONFIRM` / RETURN·REJECT→`RETURNED` / REVIEW→`IN_REVIEW`).
+ * 그래서 단일 상태가 아니라 id별 결과를 돌려준다 — 예전처럼 `'SUBMITTED'`를 그대로
+ * 돌려주면 화면이 실제 상태와 다른 값을 그린다. 판정이 실패한 건은 `SUBMITTED`에 남는다.
+ */
+export type SubmitOutcome = {
+  status: Record<string, SettlementStatus>
+  /** 룰 판정 결정 — 검토 사유 표시용. */
+  decision: Record<string, string>
+  /** 판정에 실패한 건(제출 자체는 성공). 재판정이 필요하다. */
+  failed: Record<string, string>
+}
+
+export async function submitSettlements(ids: string[]): Promise<SubmitOutcome> {
   if (USE_MOCK) {
     await mockDelay()
-    return 'SUBMITTED'
+    return {
+      status: Object.fromEntries(ids.map((id) => [id, 'SUBMITTED' as SettlementStatus])),
+      decision: {}, failed: {},
+    }
   }
-  await endpoints.submit(ids)
-  return 'SUBMITTED'
+  const { data } = await endpoints.submit(ids)
+  const judged: Record<string, { decision: string; status: SettlementStatus }> = data?.judged ?? {}
+  const status: Record<string, SettlementStatus> = {}
+  const decision: Record<string, string> = {}
+  for (const id of ids) {
+    status[id] = judged[id]?.status ?? 'SUBMITTED'
+    if (judged[id]) decision[id] = judged[id].decision
+  }
+  return { status, decision, failed: data?.judgeFailed ?? {} }
 }
 
 /** S-03/S-06: 회계 담당자의 승인·보완요청·반려 결정(FR-ST-03: 사람 확정 필수). */

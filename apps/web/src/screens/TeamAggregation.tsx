@@ -114,11 +114,13 @@ export function TeamAggregation() {
     setBusy(false)
   }
 
+  // 제출 직후 룰 엔진 1차판정이 이어 돌아 건마다 도착 상태가 다르다
+  //  (통과→승인대기 / 보완·위반→보완요청 / 검토필요→검토중). 일괄 제출이라도 한 상태로 뭉치면 안 된다.
   const submitIds = async (ids: string[]) => {
     if (ids.length === 0) return
     setBusy(true)
-    const status = await submitSettlements(ids)
-    ids.forEach((id) => updateStatus(id, status))
+    const outcome = await submitSettlements(ids)
+    ids.forEach((id) => updateStatus(id, outcome.status[id] ?? 'SUBMITTED'))
     setBusy(false)
   }
 

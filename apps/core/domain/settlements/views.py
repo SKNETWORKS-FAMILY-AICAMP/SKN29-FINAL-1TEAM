@@ -160,15 +160,36 @@ class SettlementViewSet(viewsets.ModelViewSet):
     # POST /api/settlements/submit/  {ids:[...]}  팀 제출(TEAM_COLLECTING → SUBMITTED)·재제출(RETURNED → SUBMITTED)
     @action(detail=False, methods=["post"])
     def submit(self, request):
+        """제출 후 곧바로 RPA 1차판정을 돌린다 (SUBMITTED → RPA_JUDGED → …).
+
+        판정을 따로 떼어 두면 아무도 부르지 않아 정산이 SUBMITTED에 고인다 — 상태머신상
+        제출의 다음 단계는 룰 판정이고, 그건 사람이 누르는 단계가 아니다.
+
+        판정 실패는 제출을 되돌리지 않는다. 제출은 이미 성공했고 판정은 다시 돌릴 수 있다
+        (`POST /settlements/{id}/judge/`). 실패를 감추면 SUBMITTED에 고인 건이 왜 안 넘어가는지
+        알 수 없으므로 `judgeFailed`로 함께 돌려준다.
+        """
         ids = request.data.get("ids", [])
-        submitted, skipped = [], []
+        actor = _actor(request)
+        submitted, skipped, judged, judge_failed = [], [], {}, {}
         for s in Settlement.objects.filter(id__in=ids):
             try:
-                services.submit(s, _actor(request))
-                submitted.append(s.id)
+                services.submit(s, actor)
             except services.TransitionError:
                 skipped.append(s.id)
-        return Response({"submitted": submitted, "skipped": skipped})
+                continue
+            submitted.append(s.id)
+            try:
+                result = services.judge(s, actor)
+            except Exception as exc:  # noqa: BLE001  # 조립기·엔진·DB 어느 쪽이든
+                logger.warning("정산 %s 판정 실패: %s", s.id, exc, exc_info=True)
+                judge_failed[str(s.id)] = f"{type(exc).__name__}: {exc}"
+                continue
+            judged[str(s.id)] = {"decision": result.decision, "status": s.status, "flags": result.flags}
+        return Response({
+            "submitted": submitted, "skipped": skipped,
+            "judged": judged, "judgeFailed": judge_failed,
+        })
 
     # POST /api/settlements/{id}/confirm/  (사람 최종 확정, FR-ST-03)
     @action(detail=True, methods=["post"])
@@ -202,15 +223,17 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
 
-    # POST /api/settlements/{id}/judge/  (RPA 1차판정 placeholder → IN_REVIEW)
+    # POST /api/settlements/{id}/judge/  (RPA 1차판정 — 재판정·수동 실행용)
     @action(detail=True, methods=["post"])
     def judge(self, request, pk=None):
+        """단건 RPA 1차판정. 제출 시 자동으로 돌지만, 판정이 실패했거나 룰 그래프를
+        바꾼 뒤 다시 돌려야 할 때 쓴다. 판정 근거(`ruleResult`)를 응답에 함께 싣는다."""
         s = self.get_object()
         try:
-            services.judge(s, _actor(request))
+            result = services.judge(s, _actor(request))
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
-        return Response(self.get_serializer(s).data)
+        return Response({**self.get_serializer(s).data, "ruleResult": result.to_dict()})
 
 
 # 팀 사용액은 진행 상태와 무관하게 "이미 쓴 돈"으로 잡는다.

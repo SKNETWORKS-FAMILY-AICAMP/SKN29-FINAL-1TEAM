@@ -214,11 +214,12 @@ export function SettlementDetailModal({
   }
 
   // 팀 제출 (TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출 (RETURNED → SUBMITTED)
+  //  제출 직후 룰 엔진 1차판정이 이어 돌아 실제 도착 상태는 건마다 다르다 — 그 값을 그대로 반영한다.
   const submit = async () => {
     if (!item) return
     setPending(true)
-    const status = await submitSettlements([item.id])
-    onStatusChange?.(item.id, status)
+    const outcome = await submitSettlements([item.id])
+    onStatusChange?.(item.id, outcome.status[item.id] ?? 'SUBMITTED')
     setPending(false)
     onClose()
   }

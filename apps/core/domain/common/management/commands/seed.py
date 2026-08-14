@@ -29,6 +29,7 @@ from domain.cards.models import Card, CardType
 from domain.policies.engine import run_rule_engine
 from domain.policies.eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION, empty_eval_context
 from domain.policies.models import PolicyTable, RuleGraph, RuleGraphStatus, RuleHit
+from domain.policies.snapshot import graph_snapshot
 from domain.policies.tiger_tables import DEMO_POLICY, upsert_all as upsert_policy_tables
 from domain.risk.models import RiskReview
 from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
@@ -475,12 +476,9 @@ class Command(BaseCommand):
                      or RuleGraph.objects.filter(scope=scope).order_by("-version").first())
             if graph is None:
                 continue
-            snapshot = {
-                "nodes": list(graph.nodes.values("node_key", "condition", "action", "priority")),
-                "routings": list(graph.routings.values("from_node_key", "on_result", "to_node_key", "priority")),
-                "entry_node_key": graph.entry_node_key,
-            }
-            result = run_rule_engine(context, snapshot)
+            # 스냅샷 변환은 실판정(`policies/snapshot.py`)과 같은 것을 쓴다 — 시드가 자기
+            # 사본으로 펴면 시연 데이터의 판정이 실제 판정과 조용히 달라진다.
+            result = run_rule_engine(context, graph_snapshot(graph))
             RuleHit.objects.create(
                 transaction=settlement.transaction, settlement=settlement, graph=graph,
                 graph_version=graph.version, path=result.path, eval_context=context,

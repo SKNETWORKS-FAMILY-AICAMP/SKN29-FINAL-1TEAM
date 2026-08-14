@@ -135,24 +135,41 @@ export interface AuditEvent {
   note?: string
 }
 
-// ── 규정 문서 관리 (S-05 규정문서) ─────────────
-export type EmbeddingStatus = 'EMBEDDING' | 'DONE' | 'FAILED'
+// ── 규정 문서 관리 (RAG 소스) ─────────────
+// 백엔드 `PolicyDoc.IngestStatus`와 같은 값이다. 진행 단계를 둘로 나눠 두는 이유는
+// 파싱(수십 초)과 임베딩(API 호출)이 실패 원인이 달라서 — 어디서 막혔는지가 보여야 한다.
+export type EmbeddingStatus = 'PENDING' | 'PARSING' | 'INDEXING' | 'DONE' | 'FAILED'
 
 export const EMBEDDING_STATUS_META: Record<EmbeddingStatus, { label: string; tone: 'amber' | 'green' | 'red' }> = {
-  EMBEDDING: { label: '처리중', tone: 'amber' },
-  DONE: { label: '임베딩 완료', tone: 'green' },
-  FAILED: { label: '임베딩 실패', tone: 'red' },
+  PENDING: { label: '대기', tone: 'amber' },
+  PARSING: { label: '파싱·청킹 중', tone: 'amber' },
+  INDEXING: { label: '임베딩·적재 중', tone: 'amber' },
+  DONE: { label: '적재 완료', tone: 'green' },
+  FAILED: { label: '실패', tone: 'red' },
 }
 
-export type PolicyDocType = '법인카드 사용규정' | '세법 시행령' | '사내 정책'
+/** 진행 중 — 화면이 폴링을 계속해야 하는 상태. */
+export const EMBEDDING_IN_PROGRESS: EmbeddingStatus[] = ['PENDING', 'PARSING', 'INDEXING']
 
 export interface PolicyDocument {
   id: string
-  filename: string
-  docType: PolicyDocType
-  uploadedAt: string
+  title: string
+  fileName: string
+  /** 파서가 판정한 문서 유형 — REGULATION/LAW/DIAGRAM/GENERIC. */
+  profile: string
+  /** 적재된 Chroma 컬렉션. `org_docs`는 판정 근거로 검색되지 않는다. */
+  collection: string
   status: EmbeddingStatus
-  extractedClauses: number
-  linkedRules: number
-  fileFormat: 'PDF' | 'DOC' | 'XLSX'
+  statusLabel: string
+  chunkCount: number
+  /** 검색 대상(부모 제외) 청크 수 — 실제로 검색에 걸리는 건 이 수다. */
+  leafCount: number
+  /** 실패 사유 또는 적재 경고. 감추지 않는다. */
+  error: string
+  ruleScope: string
+  /** 적재 후 룰 생성 트리거 결과. 자동 생성은 아직 개발 중이라 안내만 들어온다. */
+  ruleTrigger: { status?: string; detail?: string; hint?: string; scope?: string } | null
+  uploadedAt: string
+  indexedAt: string | null
+  uploadedBy: string
 }

@@ -19,14 +19,59 @@ from domain.settlements.models import Category
 RULE_SCOPE_CHOICES = [("GLOBAL", "공통 필수 게이트"), *Category.choices]
 
 
+class IngestStatus(models.TextChoices):
+    """규정 문서 적재 진행 상태.
+
+    `PENDING`과 `FAILED`를 구분하는 이유: 파싱은 문서당 수십 초가 걸려서 "아직 도는 중"과
+    "실패했다"를 화면이 가려낼 수 있어야 재색인 버튼을 언제 눌러야 할지 판단할 수 있다.
+    """
+    PENDING = "PENDING", "대기"
+    PARSING = "PARSING", "파싱·청킹 중"
+    INDEXING = "INDEXING", "임베딩·적재 중"
+    DONE = "DONE", "적재 완료"
+    FAILED = "FAILED", "실패"
+
+
 class PolicyDoc(models.Model):
-    """RAG 소스 규정 문서 메타. 실제 임베딩(Chroma)은 ai(FastAPI)가 수행."""
+    """RAG 소스 규정 문서 — 원본 파일 + 적재 결과 메타.
+
+    **원본 파일은 Django(SoR)가 갖고, 벡터는 Chroma가 갖는다.** 적재(파싱→청킹→임베딩→upsert)는
+    ai(FastAPI)가 수행하고 결과만 여기로 돌려준다 — FastAPI는 Postgres에 직접 접근하지
+    않는다(기술명세서 §5.1). 진행 상태를 여기 두는 이유는 화면이 폴링할 곳이 필요해서다.
+    """
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=20, blank=True)
     version = models.CharField(max_length=20, blank=True)
     effective_date = models.DateField(null=True, blank=True)
-    file_ref = models.CharField(max_length=300, blank=True)
+    # 업로드 원본. ai 컨테이너는 같은 media 볼륨을 읽기전용으로 마운트해 이 경로를 연다
+    # (docling이 파일 경로를 요구하고, 바이트를 HTTP로 되넘기는 것보다 싸다).
+    file = models.FileField("원본 파일", upload_to="policy_docs/%Y%m/", blank=True)
+
+    # ── 적재 결과 (ai가 콜백으로 채운다) ─────────────────────────
+    status = models.CharField(max_length=12, choices=IngestStatus.choices, default=IngestStatus.PENDING)
+    # 파일 내용 해시(파서가 계산). 같은 파일이면 같은 값이라 재적재가 멱등 upsert가 된다.
+    doc_id = models.CharField(max_length=32, blank=True, db_index=True)
+    profile = models.CharField("문서 유형", max_length=16, blank=True)  # REGULATION/LAW/DIAGRAM/GENERIC
+    collection = models.CharField(max_length=32, blank=True)           # policy_docs/tax_refs/org_docs
+    chunk_count = models.PositiveIntegerField(default=0)
+    leaf_count = models.PositiveIntegerField(default=0)   # 검색 대상(부모 제외) 청크 수
+    error = models.TextField(blank=True)                  # 실패 사유 — 감추지 않는다
+    indexed_at = models.DateTimeField(null=True, blank=True)
+
+    # 적재 완료 후 룰 생성 트리거 결과. 아직 자동 생성을 켜지 않아 "개발 중" 응답이 들어온다.
+    rule_trigger = models.JSONField(default=dict, blank=True)
+    # 트리거 대상 비용분류(GLOBAL ∪ Category). 비면 문서에서 정하지 못한 것.
+    rule_scope = models.CharField(max_length=20, blank=True)
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="uploaded_policy_docs",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
 
     def __str__(self):
         return self.title

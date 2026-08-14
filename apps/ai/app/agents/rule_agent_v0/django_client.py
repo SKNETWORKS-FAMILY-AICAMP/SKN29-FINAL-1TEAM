@@ -9,100 +9,24 @@
     PATCH /api/rules/{id}/nodes/{node_key}/       condition/conditionText/action/routings 채움
 
 인증: 위 3개는 `CanViewRule`(capability `rule_view`)을 요구한다 — 사람이 룰 콘솔에
-로그인해 쓰는 걸 전제로 만든 권한이다. Rule Agent는 세션이 없으므로 **전용 서비스
-계정으로 JWT를 받아** Bearer로 붙인다. access 토큰 수명이 짧아(SimpleJWT 기본 5분)
-정적 토큰을 env에 박아두는 방식은 못 쓴다 — 그래서 여기서 직접 발급하고, 만료로
-401이 오면 한 번 재발급해 재시도한다.
+로그인해 쓰는 걸 전제로 만든 권한이다. Rule Agent는 세션이 없으므로 전용 서비스 계정으로
+JWT를 받아 붙인다. 그 발급·갱신 로직은 `app/clients/core_auth.py`가 갖고 있다(적재 결과
+회신 등 다른 쓰기 경로와 공유).
 
 계정 준비: `docker compose exec core python manage.py ensure_service_account`
 """
 from __future__ import annotations
 
-import threading
 from typing import Any
 
 import httpx
 
-from app.config import settings as core_settings
+from app.clients import core_auth
+from app.clients.core_auth import ServiceAuthError  # noqa: F401  — 기존 호출부 호환
 
-from .settings import settings
-
-_TIMEOUT = 20.0
-
-
-def _base() -> str:
-    """Django 주소는 중앙 설정(compose `CORE_BASE_URL`)을 쓴다 — 사본을 두지 않는다."""
-    return core_settings.core_base_url.rstrip("/")
-
-
-class ServiceAuthError(RuntimeError):
-    """서비스 계정 인증 실패 — 익명으로 조용히 진행하지 않고 여기서 멈춘다."""
-
-
-# ---------------------------------------------------------------- JWT 토큰 관리
-
-_lock = threading.Lock()
-_access_token: str | None = None
-
-
-def _mint_token() -> str:
-    """서비스 계정으로 access 토큰 발급. 실패 사유를 삼키지 않는다."""
-    if not settings.service_password:
-        raise ServiceAuthError(
-            f"RULE_AGENT_SERVICE_PASSWORD 가 비어 있다 — 서비스 계정({settings.service_user})으로 "
-            "로그인할 수 없어 룰 콘솔 API가 403을 낸다. 레포 루트 `.env`에 값을 넣고 "
-            "`manage.py ensure_service_account`로 계정을 만들 것"
-        )
-    try:
-        r = httpx.post(
-            f"{_base()}/api/auth/token/",
-            json={"username": settings.service_user, "password": settings.service_password},
-            timeout=_TIMEOUT,
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise ServiceAuthError(f"Django({_base()}) 연결 실패: {type(exc).__name__}: {exc}") from exc
-    if r.status_code != 200:
-        raise ServiceAuthError(
-            f"서비스 계정 인증 실패({r.status_code}) — 계정 `{settings.service_user}`가 있는지, "
-            f"비밀번호가 맞는지 확인할 것. 응답: {r.text[:200]}"
-        )
-    token = r.json().get("access")
-    if not token:
-        raise ServiceAuthError(f"토큰 응답에 access 없음: {r.text[:200]}")
-    return token
-
-
-def _token(refresh: bool = False) -> str:
-    global _access_token
-    with _lock:
-        if refresh or _access_token is None:
-            _access_token = _mint_token()
-        return _access_token
-
-
-def _request(method: str, path: str, **kwargs) -> httpx.Response:
-    """인증 붙여 호출하고, 만료(401)면 **한 번만** 재발급해 재시도한다.
-
-    재시도를 1회로 묶는 이유: 자격증명이 틀린 경우와 토큰이 만료된 경우를 구분 못 한 채
-    반복하면 로그인 실패를 무한 재시도하게 된다.
-    """
-    url = f"{_base()}{path}"
-    resp = httpx.request(
-        method, url, headers={"Authorization": f"Bearer {_token()}"}, timeout=_TIMEOUT, **kwargs
-    )
-    if resp.status_code == 401:
-        resp = httpx.request(
-            method, url,
-            headers={"Authorization": f"Bearer {_token(refresh=True)}"},
-            timeout=_TIMEOUT, **kwargs,
-        )
-    if resp.status_code == 403:
-        raise ServiceAuthError(
-            f"권한 부족(403) {path} — 서비스 계정 `{settings.service_user}`에 capability "
-            "`rule_view`가 없다. `manage.py ensure_service_account`로 부여할 것"
-        )
-    resp.raise_for_status()
-    return resp
+_TIMEOUT = core_auth.TIMEOUT
+_base = core_auth.base
+_request = core_auth.request
 
 
 # ---------------------------------------------------------------- 조회

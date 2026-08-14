@@ -1,6 +1,31 @@
 from rest_framework import serializers
 
-from .models import RuleGraph, RuleGraphVersion, RuleNode, RuleRouting
+from .models import PolicyDoc, RuleGraph, RuleGraphVersion, RuleNode, RuleRouting
+
+
+class PolicyDocSerializer(serializers.ModelSerializer):
+    """규정 문서 + 적재 결과. 화면은 `status`를 폴링해 진행을 본다."""
+    statusLabel = serializers.CharField(source="get_status_display", read_only=True)
+    fileName = serializers.SerializerMethodField()
+    chunkCount = serializers.IntegerField(source="chunk_count", read_only=True)
+    leafCount = serializers.IntegerField(source="leaf_count", read_only=True)
+    ruleScope = serializers.CharField(source="rule_scope", read_only=True)
+    # 적재 후 룰 생성 트리거 결과 — 지금은 "개발 중" 안내가 들어온다.
+    ruleTrigger = serializers.JSONField(source="rule_trigger", read_only=True)
+    indexedAt = serializers.DateTimeField(source="indexed_at", read_only=True)
+    uploadedAt = serializers.DateTimeField(source="created_at", read_only=True)
+    uploadedBy = serializers.CharField(source="uploaded_by.first_name", read_only=True, default="")
+
+    class Meta:
+        model = PolicyDoc
+        fields = [
+            "id", "title", "category", "version", "fileName", "profile", "collection",
+            "status", "statusLabel", "chunkCount", "leafCount", "error",
+            "ruleScope", "ruleTrigger", "indexedAt", "uploadedAt", "uploadedBy",
+        ]
+
+    def get_fileName(self, obj):
+        return obj.file.name.rsplit("/", 1)[-1] if obj.file else ""
 
 
 class RuleNodeSerializer(serializers.ModelSerializer):

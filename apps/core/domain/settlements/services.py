@@ -63,14 +63,47 @@ def submit(settlement, actor=None):
     return transition(settlement, S.SUBMITTED, actor, "제출")
 
 
-def judge(settlement, actor=None):
-    """RPA 1차판정 자리표시자.
+# 룰 판정 → 정산 상태 (기술명세서 §4.2(c), FR-RA-02).
+#
+# **엔진은 최종반려(REJECT)를 만들지 않는다.** 룰 노드가 `decision=REJECT`를 내도 상태는
+# `RETURNED`(보완요청)다 — `REJECT`는 재제출이 불가능한 단말이고, 사람이 아닌 규칙이
+# 그런 결정을 내리면 되돌릴 방법이 없다. 최종반려는 회계 담당자의 `review()`만 할 수 있다
+# ("사람 확정 원칙"). 규칙이 본 위반 사유는 `rule_hits.flags`에 남아 검토 화면에 뜬다.
+JUDGE_MAP = {
+    "PASS": S.PENDING_CONFIRM,   # 상세검토 생략, 사람 최종확정 대기 (FR-RA-02)
+    "RETURN": S.RETURNED,        # 기재·증빙 보완요청
+    "REJECT": S.RETURNED,        # 규정 위반 — 보완요청으로 안내(최종반려는 사람만)
+    "REVIEW": S.IN_REVIEW,       # Risk Review 이관
+}
 
-    실제 판정은 ai(FastAPI)가 ACTIVE 룰 그래프를 순회해 수행한다(§4.2).
-    MVP 백엔드에선 활성 그래프가 없다고 보고 SUBMITTED→RPA_JUDGED→IN_REVIEW로 이관한다.
+
+def _judge_reason(result) -> str:
+    """감사 로그·상태 이력에 남길 한 줄. 왜 그렇게 판정됐는지가 여기서 보여야 한다."""
+    where = " → ".join(result.graph_names) or "활성 룰 그래프 없음"
+    because = f" · 사유 {', '.join(result.flags)}" if result.flags else ""
+    return f"룰 판정 {result.decision} ({where}){because}"[:400]
+
+
+@db_tx.atomic
+def judge(settlement, actor=None):
+    """RPA 1차판정 — ACTIVE 룰 그래프를 순회해 상태를 정한다 (FR-RA-10).
+
+    판정 자체(그래프 선택·엔진 순회·`rule_hits` 기록)는 `policies.orchestrator`가 하고,
+    여기서는 그 결정을 상태로 옮기기만 한다. 둘을 갈라 두면 상태를 건드리지 않고
+    "지금 규칙으로 다시 돌리면?"을 볼 수 있다.
+
+    LLM은 개입하지 않는다 — 적용 단계는 결정론적 엔진만 쓴다(FR-RA-06 재현성).
+    돌릴 ACTIVE 그래프가 없으면 통과가 아니라 `IN_REVIEW`다(사람에게 넘긴다).
+
+    Returns: `policies.orchestrator.JudgeResult` — 호출부가 판정 근거를 그대로 쓸 수 있다.
     """
-    transition(settlement, S.RPA_JUDGED, actor, "RPA 1차판정(placeholder)")
-    return transition(settlement, S.IN_REVIEW, actor, "Rule 미매칭 → Risk Review 이관")
+    from domain.policies import orchestrator
+
+    result = orchestrator.judge(settlement)
+    reason = _judge_reason(result)
+    transition(settlement, S.RPA_JUDGED, actor, reason)
+    transition(settlement, JUDGE_MAP.get(result.decision, S.IN_REVIEW), actor, reason)
+    return result
 
 
 @db_tx.atomic

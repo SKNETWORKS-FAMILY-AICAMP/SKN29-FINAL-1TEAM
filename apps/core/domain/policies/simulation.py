@@ -11,8 +11,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import timedelta
 from typing import Any
 
@@ -27,6 +25,8 @@ from .eval_context import empty_eval_context
 from .models import (
     RuleGraph, RuleSimulationResult, RuleSimulationRun, RuleTestCase, SimulationSource,
 )
+from .snapshot import graph_snapshot as _graph_snapshot
+from .snapshot import snapshot_hash as _snapshot_hash
 
 HISTORY_LIMIT = 40
 REVIEW_DECISIONS = {"REVIEW"}
@@ -248,17 +248,10 @@ def _graph_shape(graph: RuleGraph) -> dict[str, Any]:
     }
 
 
-def graph_snapshot(graph: RuleGraph) -> dict[str, Any]:
-    return {
-        "nodes": list(graph.nodes.values("node_key", "condition", "action", "priority")),
-        "routings": list(graph.routings.values("from_node_key", "on_result", "to_node_key", "priority")),
-        "entry_node_key": graph.entry_node_key,
-    }
-
-
-def snapshot_hash(snapshot: dict[str, Any]) -> str:
-    payload = json.dumps(snapshot, sort_keys=True, ensure_ascii=False, default=str)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+# 스냅샷 변환은 `snapshot.py`가 소유한다 — 실판정(orchestrator)과 같은 모양이어야
+# "시뮬은 통과인데 실판정은 다르다"가 생기지 않는다. 기존 호출부 호환을 위해 재노출한다.
+graph_snapshot = _graph_snapshot
+snapshot_hash = _snapshot_hash
 
 
 def simulate(graph: RuleGraph, test_cases: list[dict[str, Any]] | None = None) -> dict[str, Any]:

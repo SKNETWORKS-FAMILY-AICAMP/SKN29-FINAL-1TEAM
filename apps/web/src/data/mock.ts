@@ -1,5 +1,5 @@
 // 화면 렌더 확인용 목업 데이터. 백엔드 API 연동 전 임시 사용.
-import type { PolicyDocument, ReviewItem, Settlement } from '../types/domain'
+import type { ReviewItem, Settlement } from '../types/domain'
 
 export const myExpenses: Settlement[] = [
   // ── 이번 달(2026-08) ──
@@ -201,15 +201,8 @@ export const riskAlerts = [
   { title: '심야 고액 접대', detail: '정하윤 — 골든테이블 88만원 23:40 (7/17)', target: 'S-03' },
 ]
 
-// ── 규정 문서 관리 (S-05, main) ─────────────
-export const policyDocuments: PolicyDocument[] = [
-  { id: 'PD-001', filename: '법인카드_사용규정_v2.pdf', docType: '법인카드 사용규정', uploadedAt: '2026-07-22', status: 'EMBEDDING', extractedClauses: 0, linkedRules: 0, fileFormat: 'PDF' },
-  { id: 'PD-002', filename: '법인카드_사용규정_v1.pdf', docType: '법인카드 사용규정', uploadedAt: '2026-07-01', status: 'DONE', extractedClauses: 42, linkedRules: 18, fileFormat: 'PDF' },
-  { id: 'PD-003', filename: '세법_시행령_발췌.docx', docType: '세법 시행령', uploadedAt: '2026-06-15', status: 'DONE', extractedClauses: 27, linkedRules: 9, fileFormat: 'DOC' },
-  { id: 'PD-004', filename: '출장_경비_사내지침.pdf', docType: '사내 정책', uploadedAt: '2026-05-20', status: 'DONE', extractedClauses: 15, linkedRules: 4, fileFormat: 'PDF' },
-  { id: 'PD-005', filename: '경조사비_지급기준.pdf', docType: '사내 정책', uploadedAt: '2026-04-10', status: 'DONE', extractedClauses: 8, linkedRules: 3, fileFormat: 'PDF' },
-  { id: 'PD-006', filename: '복리후생_규정_v3.pdf', docType: '사내 정책', uploadedAt: '2026-03-02', status: 'FAILED', extractedClauses: 0, linkedRules: 0, fileFormat: 'PDF' },
-]
+// 규정 문서 목록의 mock은 제거했다 — 화면이 실 API(`/api/policy-docs/`)를 보고, 적재 상태는
+// 백엔드가 실제로 진행시키는 값이라 흉내낸 데이터가 오히려 오해를 만든다.
 
 // ── S-05 거버넌스 대시보드 갱신 수치 (main) ─────────────
 export const governanceKpi = {
