@@ -37,9 +37,21 @@ def get_card_context(card_id: int) -> dict:
     return {"card_id": card_id, "card_type": None, "required_inputs": []}
 
 
-def search_policy(query: str, filters: dict | None = None) -> dict:
-    """규정 청크 RAG 검색 (Chroma 직접). Rule/Risk."""
-    return {"query": query, "chunks": []}
+def search_policy(query: str, top_k: int = 6, include_law: bool = False) -> dict:
+    """규정 청크 RAG 검색 (Chroma 직접). Rule/Risk 공용 tool.
+
+    구현 실체는 `agents/rule_agent_v0/search.py` — 그쪽이 팀 RAG 정본
+    (`rag/embedding/store.search`)을 부모 필터·부모 확장·컬렉션 라우팅까지 그대로 쓴다.
+    Risk Review Agent도 **이 tool을 거쳐** 같은 검색 경로·로깅을 공유해야 한다(§5).
+
+    조회 실패는 감추지 않고 올린다 — 빈 결과와 장애를 구분해야 "규정이 아직 안 실렸다"와
+    "Chroma가 죽었다"를 화면에서 가려낼 수 있다.
+    """
+    from app.agents.rule_agent_v0.search import search_policy as _search
+
+    chunks = _search(query, top_k=top_k, include_law=include_law)
+    logger.info("search_policy q=%r top_k=%d hits=%d", query, top_k, len(chunks))
+    return {"query": query, "chunks": chunks}
 
 
 def search_cases(query: str) -> dict:

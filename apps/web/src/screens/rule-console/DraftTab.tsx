@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Code2, Plus, Send, Trash2 } from 'lucide-react'
 import { endpoints } from '../../api/client'
+import { generateRuleGraph } from '../../api/ruleService'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
@@ -29,6 +30,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const [chat, setChat] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [deleteMode, setDeleteMode] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -92,7 +94,36 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     ]).catch(() => undefined)
   }
 
+  /** Rule Agent 생성 — 그래프·노드·라우팅이 전부 서버에서 만들어지므로 목록을 다시 읽어 붙인다. */
+  const generateRule = async (choice: Extract<NewRuleChoice, { kind: 'generate' }>) => {
+    setGenerating(true)
+    setError('')
+    try {
+      const result = await generateRuleGraph(choice)
+      const { data } = await endpoints.rules()
+      const loaded = (data as ApiGraph[]).map(toGraph)
+      setGraphs(loaded)
+      const created = loaded.find((graph) => graph.id === result.graphId)
+      setExpanded((previous) => new Set(previous).add(result.graphId))
+      setSel(created?.nodes.length ? { graphId: created.id, nodeKey: created.nodes[0].nodeKey } : null)
+      setChat([])
+      setNewRuleOpen(false)
+      if (result.rejectedCount > 0) {
+        // 조용히 넘기지 않는다 — 생성 시도했지만 검증에서 떨어진 룰이 있다는 사실 자체가
+        // 담당자가 규정 원문과 대조해봐야 할 신호다.
+        setError(`초안을 만들었습니다(근거 조문 ${result.sources.length}건). `
+          + `다만 ${result.rejectedCount}개 노드가 검증에서 제외됐습니다 — 규정 원문과 대조해주세요.`)
+      }
+    } catch (exc) {
+      const detail = (exc as { response?: { data?: { detail?: string } }; message?: string })
+      setError(detail.response?.data?.detail || detail.message || '규정에서 룰을 생성하지 못했습니다.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const createRule = async (choice: NewRuleChoice) => {
+    if (choice.kind === 'generate') return generateRule(choice)
     const key = `R-N${seq}`
     setSeq((value) => value + 1)
     try {
@@ -282,7 +313,13 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
         </div>
       </div>
 
-      {newRuleOpen && <NewRuleGraphModal onClose={() => setNewRuleOpen(false)} onConfirm={createRule} />}
+      {newRuleOpen && (
+        <NewRuleGraphModal
+          onClose={() => setNewRuleOpen(false)}
+          onConfirm={createRule}
+          busy={generating}
+        />
+      )}
     </>
   )
 }

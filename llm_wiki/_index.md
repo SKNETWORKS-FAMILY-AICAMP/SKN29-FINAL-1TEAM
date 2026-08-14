@@ -37,7 +37,7 @@ llm_wiki/
 
 - **정산 상태머신(4단계)**: 개인 보유(`DRAFT`) → 팀 취합(`TEAM_COLLECTING`/`TEAM_RETURNED`/`TEAM_REJECTED`) → 회계 제출·룰엔진(`SUBMITTED`/`RPA_JUDGED`) → 회계 검토·확정(`PENDING_CONFIRM`/`RETURNED`/`IN_REVIEW`/`REJECT`/`CONFIRMED`/`ERP_VOUCHER_DRAFTED`). 팀 수준(`TEAM_*`)과 회계 수준(`RETURNED`/`REJECT`) 구분. — 요구사항 §4.4·§5.6 / 기술 §3.3
 - **Rule decision 결정 방식**: decision(PASS/REJECT/RETURN/REVIEW)은 룰 노드 생성 시 `action.decision`으로 직접 지정하며, 판정 시점의 확신도 계산·임계치 비교는 사용하지 않는다. — 요구사항 FR-RA-07 / 기술 §4.2(c)
-- **비용 분류 6종은 서로 독립**: 기업업무추진비(=접대)·회식비(=회식)·출장비(=출장)·회의비(=회의)·식대비(=식대)·비품비(=비품). 회식과 식대는 별개 카테고리이며 서로 흡수·통합하지 않는다. — 요구사항 §4.2·§9.2 Open #8 / 기술 §3.3
+- **비용 분류 6종 = `settlements.Category`가 SoT**: 업무활성·회의·식대·출장·접대·비품. 룰 그래프 scope도 `GLOBAL ∪ Category`이며(`RULE_SCOPE_CHOICES`), 규정 문서 표기(기업업무추진비·회식 등)는 `policies/scope.normalize_scope`가 Category 값으로 접는다 — **회식은 독립 Category가 아니라 식대 scope에 편성**된다(그래프 내 노드로 구분). ⚠️ 2026-08-14 정정: 이 줄은 이전에 "회식 독립·업무활성 폐기"로 적혀 있었으나 **코드 전 구간(`Category`·`draft_agent`·`seed_rules`·프론트 `RULE_SCOPES`)과 어긋나** 룰 에이전트가 `scope:"회식"`을 보내면 400이 나던 원인이었다. 정본을 코드로 확정했다. 되돌리려면 `Category` 마이그레이션이 선행돼야 한다. — 요구사항 §4.2·§9.2 Open #8 / 기술 §3.3
 - **Risk Review = MVP 2단계**(이상탐지→RAG 내규검증), 지도학습은 post-MVP. — 요구사항 §6
 - **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. 룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL. — 기술 §4.2 / `_context/rule-engine.md`
 - **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` 고정 카탈로그. 조립기(`context_builder.build_rule_context`)·미해소 가드(`UNRESOLVED_POLICY_VAR` → REVIEW 강등) 구현 완료. — `_context/policy-domain.md` / 기술 §3.3
@@ -57,7 +57,9 @@ llm_wiki/
 | **미해소 가드** | 구현 | `None`=모름 계약. 참조 경로가 null이면 `REVIEW` 강등 + `UNRESOLVED_POLICY_VAR`/`UNRESOLVED_FACT` |
 | **판정 강등률 실측치** | ⚠️ 문서 간 불일치 | `policy-domain.md`·`eval-context-sourcing.md`는 93%(112/120건), `eval-context-guide.md`는 31%(37/120건)로 서로 다른 수치를 확정값처럼 기재하고 있음. 같은 날짜·같은 표본인데 수치가 갈려 원인 재확인 필요. 발표·QA 자료에 인용 전 재검증 권장 |
 | **증빙자료 추출 Agent** | 미착수 | 저장 구조·조립기 연결은 완료. 실제 문서 판독 미구현 |
-| **`orchestrator.py`** | 미구현 | GLOBAL→scope 그래프 선택·`RuleHit` 기록이 아직 시뮬레이션 경로에만 있다 |
+| **`orchestrator.py`** | 미구현 | GLOBAL→scope 그래프 선택·`RuleHit` 기록이 아직 시뮬레이션 경로에만 있다 — 생성·승인된 그래프가 **실 정산 판정에서는 아직 안 돈다** |
+| **Rule Agent(생성)** | 통합 완료 | 규정 문서 → 룰 그래프 DRAFT. RAG→LLM→조립→저장→룰 콘솔 전 구간 연결. 인증=서비스 계정 JWT, RAG=팀 정본 재사용, scope=`Category`. 상세 `_context/rule-agent-v0.md` |
+| **규정 문서 업로드** | 미구현 | 적재 경로가 관리자 CLI(미리 만든 docling 덤프 입력) 하나뿐 — 사용자가 올린 PDF를 받는 경로가 없다. Rule Agent의 **앞단 공백** |
 
 ## 3. 파생 컨텍스트 (`_context/`) — AI 관리
 
@@ -68,7 +70,7 @@ llm_wiki/
 | `_context/eval-context-guide.md` | EvalContext 읽는 법(사람용 안내서) — 판정이 어떻게 이뤄지는지 한 문서로. PART 1 쉬운 설명(3단 흐름·표 예시·핵심 규칙 4개·값의 출처·현재 진척) → PART 2 상세(46필드 카탈로그·조립 파이프라인·충돌 규칙·별표 폴백·엔진/가드·코드와 테스트 위치·스키마 버전 이력). 새로 합류하면 여기부터 | 스키마 v4 기준 |
 | `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루 | θ_pass/θ_reject 폐기 반영 완료 |
 | `_context/rule-engine-design.md` | 룰엔진 엔지니어링 설계 원안 — DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. 본문 일부(필드 카탈로그·모듈·로드맵)는 설계 당시 기준이라 현행과 다른 부분이 있어 상단 대조표로 구분해뒀다. 현재 상태는 `eval-context-guide.md`가 정본 | θ_pass/θ_reject 폐기 반영 완료 |
-| `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. §3.3 그래프 분할표에서 회식(R-2xx)이 식대로 잘못 매핑돼 있던 오류 정정 완료(회식은 독립 scope) | 조립기 완료 반영 |
+| `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. §3.3 그래프 분할표 | 조립기 완료 반영. ⚠️ 본문의 "회식은 독립 scope" 서술은 §2 정정(2026-08-14)에 따라 무효 — 회식은 식대 scope 그래프에 편성된다 |
 | `_context/policy-domain.md` | 규정 임계값(policy) 도메인 캐논 — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그)/해소 규약 2층 구조, 미해소 가드 | 구현 완료 (`policies/context_builder.py`·`tiger_tables.py`, EvalContext v2) |
 | `_context/evidence-extraction-agent.md` | 증빙자료 추출 Agent — 첨부 다종 문서(사전승인·회의록·출장계획서·영수증) → 판정 사실(EvalContext dot-path). Draft/Rule/Risk와의 경계, 관측 계약(부재 확인=명시값 / 미관측=경로 생략), 우선순위, `chunk_pdf`·비전 재사용, 종류별 추출 대상, 미결 5건 | 저장 구조·조립기 연결 완료 / 추출 로직 미착수 |
 | `_context/eval-context-sourcing.md` | EvalContext 데이터 출처 점검 + v3 다이어트 기록 — 필드를 A(데이터 있음·코드만)/B(컬럼·입력칸만)/C(도메인 신설)/D(제외)로 등급화, 부분 조립 실측·GLOBAL 게이트 병목, 첨부 문서 추출 축, v3 다이어트 101→46 실행 기록, 미결 쟁점 | 다이어트 실행 완료 |
@@ -78,6 +80,7 @@ llm_wiki/
 | `_context/embedding-strategy.md` | 임베딩 전략 캐논 — `text-embedding-3-large` @ `dimensions=1024` 확정 근거, 정답셋 30건, 평가 함정 4개, 기준선 `bge-m3` 격차(재검토 트리거) | 평가 완료 / Chroma upsert 미착수 |
 | `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 역할 분담·로드맵 — 계약(입출력) 고정, v0/v1 작업 분해. B-1~B-6 전체 완료. 분류 6종 중 잔존 오타(업무활성)를 회식으로 정정 완료 | 완료 |
 | `_context/draft-agent-v0.2.md` | Draft Agent 코드 수준 구현 설계서 — pydantic 스키마·정책 조회·프롬프트·에러 폴백. 분류 6종 정정 완료(업무활성→회식) | 완료 |
+| `_context/rule-agent-v0.md` | **Rule Agent(생성) 구현 캐논** — 규정 문서 → 룰 그래프 DRAFT. 실행 방법(규정 적재 → 서비스 계정 → 화면), 설계 결정 D-1~D-21, 통합에서 고친 것(RAG 사본 3개·403 인증·죽은 코드), 남은 갭 G. 룰 생성 작업은 여기부터 | 통합 완료 (2026-08-14) |
 | `_context/ai-lab.md` | AI-LAB(관리자) — AI 기능을 정산 흐름 없이 단독 실행하는 실험 화면. 5개 탭(상태·Draft·RAG 검색·임베딩·적재), Django `/api/ai-lab/*` 프록시 + Capability `ai_lab`, 실행 추적(trace) 수집 방식, 기능 추가 레시피 | 구현 완료 (Draft·RAG) |
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)

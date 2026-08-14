@@ -45,6 +45,16 @@ export const endpoints = {
   discardRuleDraft: (id: string) => api.delete(`/rules/${id}/draft/`),
   deleteRuleGraph: (id: string) => api.delete(`/rules/${id}/delete/`),
   createRuleGraph: (name: string, scope: string) => api.post('/rules/drafts/', { name, scope }),
+  // 규정 문서(RAG)에서 룰 그래프 DRAFT 자동 생성 — Django가 FastAPI Rule Agent로 전달한다.
+  // LLM+임베딩+저장이 직렬로 얹혀 수십 초가 걸릴 수 있어 axios 기본 타임아웃을 늘려 잡는다.
+  generateRuleGraph: (data: { scope: string; name?: string; query?: string; topK?: number; includeLaw?: boolean }) =>
+    api.post('/rules/generate/', {
+      scope: data.scope,
+      name: data.name,
+      query: data.query || undefined,
+      top_k: data.topK ?? 6,
+      include_law: data.includeLaw ?? false,
+    }, { timeout: 150_000 }),
   createRuleNode: (graphId: string, nodeKey: string) => api.post(`/rules/${graphId}/nodes/`, { nodeKey }),
   saveRuleNode: (graphId: string, nodeKey: string, data: Record<string, unknown>) =>
     api.patch(`/rules/${graphId}/nodes/${nodeKey}/`, data),

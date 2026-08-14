@@ -39,7 +39,7 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-12_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-14_
 
 작업 진행/추적용. **의미 있는 진척마다 이 섹션을 갱신**한다.
 
@@ -68,9 +68,11 @@ daily_scrum/  주차별 진행 보고
 | 판정 입력 실 연동 (Settlement 컬럼 + Attachment) | ✅ 1차 완료 | **Settlement 판정 컬럼 9종 신설**(`headcount`·`external_headcount`·`pre_approved`·`actual_user(_recorded)`·`item_type`(=청탁금지 룩업 키)·`kickback_target`·`is_secondary_venue`·`includes_alcohol`) — **전부 null 허용**(None=모름 계약). **`Attachment` 모델 신설**: 첨부 종류(영수증/사전승인/회의록/참석자명단/출장계획서/계약서) + **추출 결과 틀**(`extracted`=EvalContext dot-path→값, `field_confidence`, `evidence_spans`, `extraction_status`) — 채우는 주체는 **증빙자료 추출 Agent**(`llm_wiki/_context/evidence-extraction-agent.md`, 추출 로직 미착수). 조립기가 **첨부 추출 → 화면 입력 순으로 얹고**(빈 컬럼은 추출값을 덮지 않음), 시뮬레이션 실 내역 경로도 조립기 경유로 전환. **실측: 판정 강등 93% → 31%, GLOBAL 게이트 0건.** 남은 강등은 scope 무관 전수 실행 탓이 큼(운영은 scope별 그래프 선택) |
 | EvalContext 사실(fact) 조립 | 🚧 policy 축만 완료 | 미해소 가드를 **전 구간 확장**(`UNRESOLVED_FACT:<path>` 신설, `None`=거짓 아닌 **모름** 계약)하자 실제 규모가 드러남 — **판정 120행 중 112건(93%) 강등**. `policy.*` 13종은 전부 해소되는데도 그렇다: 임계값과 비교할 **사실**(참석 인원·사전승인·카드 구분 등)이 SoR에 없다. 조립 커버리지 **34/101 필드**, ACTIVE 그래프 참조 19개 중 **10개 결측**. 필드별 출처 실현 가능성을 A(데이터 있음·코드만 15)/B(컬럼·입력칸만 12)/C(도메인 신설 13)/D(빼는 게 현실적 38)로 등급화 → `llm_wiki/_context/eval-context-sourcing.md`. **다음**: `Settlement`에 컬럼 6개(headcount·pre_approved·kickback_target·actual_user·item_type·is_secondary/alcohol) + S-01 입력칸 6개면 강등 93%→~8%(추정) |
 | AI-LAB (관리자 실험 화면) | ✅ Draft·RAG 완료 | AI 기능을 **정산 흐름 없이 단독 실행**하는 관리자 화면(`/ai-lab`, Capability `ai_lab`=회계팀장 기본). 5탭: 상태 점검 / ① Draft Agent(생성·수정, 요청 JSON 직접 편집, 세션 이력) / RAG 검색(top-K·부모 확장·질의 접두 토글) / 임베딩 인스펙터(cosine 행렬) / 적재 현황(청크 원본 열람). **운영과 같은 코드를 부르고**(별도 구현 금지) 결과 대신 **근거**를 편다 — 프롬프트 전문·LLM 원본 출력·토큰·지연·정책 조회 출처(실조회/폴백)·검색 점수·메타데이터. 경로 `브라우저→Django /api/ai-lab/*(프록시·인가)→FastAPI /lab/*`. 추적은 `draft_agent.run(req, trace)`의 **선택적 dict 인자**로 모아 운영 응답 셰이프를 건드리지 않는다. 실패는 폴백 없이 사유 그대로(진단 목적). Rule/Risk/증빙추출은 stub이라 "예정"으로 표시. 캐논 `llm_wiki/_context/ai-lab.md` |
+| Rule Agent (생성) 통합 | ✅ 전 구간 연결 | 규정 문서 → 룰 그래프 DRAFT. `룰 콘솔 Tab1 → Django /api/rules/generate/(rule_view) → FastAPI /agent/rule-v0/generate → RAG → LLM → 결정론적 조립 → 룰 콘솔 API 3종으로 저장`. **v0의 "격리 우선"이 통합 시점에 그대로 결함이었다** — ① **RAG 사본 3개 제거**: 자체 `embedding.py`/`vector_store.py`가 정본과 달라 부모 청크를 안 걸렀고(조 전문이라 top-k 잠식) 부모 확장·컬렉션 라우팅·`embedder_version`·`embedding_function=None`이 전부 빠져 있었다. 결정적으로 `RULE_AGENT_V0_CHROMA_HOST` 기본값이 빈 문자열인데 compose가 안 주입해 **docker에선 빈 로컬 DB로 조용히 폴백 → 검색 0건**(성공 실측은 전부 호스트 export 상태였음). 이제 `app.rag.embedding.store` 정본만 쓴다 ② **403의 실제 원인**: `django_client`가 보내던 Bearer 토큰을 **검증할 인증 클래스가 없었다**(DRF는 세션+SimpleJWT뿐) → 전용 서비스 계정 `rule-agent`(capability `rule_view` **하나만**) + 런타임 JWT 발급·401 시 1회 재발급. `manage.py ensure_service_account` ③ **scope 400**: 문서·`Category`·프론트·Agent가 서로 달라 `scope:"회식"`이 무조건 400이었다 → 정본을 `Category`로 확정, `create_graph`가 `normalize_scope` 경유(회식→식대) ④ `RuleGraph.generation_meta` 신설(모델·질의·근거 인용) — 다음 버전으로 **복제하지 않는다** ⑤ 죽은 코드 제거: ai 패키지 안의 Django 앱 트리(`validate_expr` 반환값을 검사해 DSL 검증을 **항상 통과**시키던 코드)·커밋된 Chroma 바이너리 423KB·`apps/main.py` ⑥ `mcp/tools.py: search_policy` 실구현(Risk와 tool 경로 공유). 회귀 12건. 캐논 `llm_wiki/_context/rule-agent-v0.md` |
+| 규정 문서 업로드 → 인덱싱 | 🔲 미착수 | **Rule Agent의 앞단 공백.** 적재 경로가 관리자 CLI(`app.rag.embedding.index --dump`, 입력이 미리 만든 docling 덤프) 하나뿐이라 사용자가 올린 PDF를 못 받는다. 프론트 `PolicyDocuments.tsx`는 mock 전용·비활성이고 그것이 부르는 `/policy-docs/`는 Django에 라우트가 없다(모델 `PolicyDoc`만 존재). 필요: `PolicyDoc` CRUD + 파일 저장 + `parse→chunk→embed→upsert` 단일 파이프라인 + 재색인 |
 | 기능 단위(Capability) RBAC | ✅ 백엔드+프론트 완료 | `Capability` 4종·`extra_capabilities`·`HasCapability` 권한·`/api/me` 노출·seed 반영. 프론트: `useCan()`로 Sidebar·팀취합·검토·룰활성 게이트 전환(role 문자열 제거). mock은 역할 기본값, 실 모드는 `/api/me` capabilities |
 
-다음 후보: 도메인 모델·마이그레이션 → 정산 상태전이 서비스 → Draft Agent(비전) → Risk Review 2단계 실동작.
+다음 후보: **`orchestrator.py`**(GLOBAL→scope 그래프 선택·`RuleHit` 기록 — 승인된 그래프가 실 정산 판정에서 돌게) → **규정 문서 업로드→인덱싱 파이프라인**(Rule Agent 앞단) → Draft Agent(비전) → Risk Review 2단계 실동작.
 
 ---
 
@@ -136,6 +138,10 @@ docker compose exec ai python -m app.rag.embedding.index --peek                 
 # Django (core)
 docker compose exec core python manage.py migrate
 docker compose exec core python manage.py createsuperuser
+
+# Rule Agent 서비스 계정 (규정 문서 → 룰 생성에 필수) — .env의 RULE_AGENT_SERVICE_PASSWORD 선행
+#   capability `rule_view` 하나만 가진 전용 계정. seed --fresh가 비슈퍼유저를 지우므로 seed도 이걸 부른다.
+docker compose exec core python manage.py ensure_service_account
 ```
 
 ---

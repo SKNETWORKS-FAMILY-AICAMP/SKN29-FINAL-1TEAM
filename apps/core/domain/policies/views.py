@@ -1,3 +1,5 @@
+import httpx
+from django.conf import settings as django_settings
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -10,6 +12,7 @@ from . import services, simulation
 from .context_builder import load_tables, lookup
 from .eval_context import empty_eval_context
 from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .scope import normalize_scope
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
 
@@ -120,9 +123,9 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         # Rule ACTIVE 승인/롤백은 룰 활성 권한 보유자만 (Capability RBAC)
         if self.action in ("activate", "rollback", "rollback_to", "reject_activation"):
             return [CanActivateRule()]
-        if self.action in ("create_version", "create_graph", "create_node", "update_node",
-                           "discard_draft", "delete_graph", "simulate", "test_cases",
-                           "simulation_report", "request_activation", "messages"):
+        if self.action in ("create_version", "create_graph", "generate_graph", "create_node",
+                           "update_node", "discard_draft", "delete_graph", "simulate",
+                           "test_cases", "simulation_report", "request_activation", "messages"):
             return [CanViewRule()]
         return super().get_permissions()
 
@@ -235,14 +238,47 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         graph.delete()
         return Response(status=204)
 
+    @action(detail=False, methods=["post"], url_path="generate")
+    def generate_graph(self, request):
+        """POST /api/rules/generate/ — 규정 문서(RAG)에서 룰 그래프 DRAFT를 생성한다.
+
+        FastAPI는 내부 전용이라(CLAUDE.md §1) 브라우저가 직접 부르지 않는다. 여기서 하는
+        일은 **인가(`rule_view`)와 전달뿐**이고, 실제 저장은 FastAPI가 서비스 계정 JWT로
+        이 ViewSet의 `drafts`/`nodes` 액션을 다시 부르면서 일어난다 — 즉 사람이 만들든
+        Agent가 만들든 **같은 서비스 레이어·같은 감사로그**를 탄다.
+
+        실패는 감추지 않는다(AI-LAB 프록시와 같은 원칙): 연결 실패는 503, 나머지는
+        FastAPI 상태코드·본문 그대로. 룰 생성이 왜 안 됐는지가 화면에 그대로 보여야 한다.
+        """
+        url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/generate"
+        try:
+            # LLM + 임베딩 + Django 재호출이 직렬로 얹힌다 — 일반 API보다 넉넉히.
+            resp = httpx.post(url, json=request.data, timeout=httpx.Timeout(120.0, connect=5.0))
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": f"AI 서비스({django_settings.AI_BASE_URL})에 연결하지 못했습니다 — "
+                           f"{type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {"detail": resp.text[:2000]}
+        return Response(payload, status=resp.status_code)
+
     @action(detail=False, methods=["post"], url_path="drafts")
     def create_graph(self, request):
         name = str(request.data.get("name", "")).strip()
-        scope = str(request.data.get("scope", "")).strip()
+        # 규정 문서 표기(기업업무추진비·회식 등)를 Category 값으로 접는다 — Rule Agent가
+        # 조문에서 뽑은 과목명을 그대로 보내도 400으로 튕기지 않게 한다(scope.py가 SoT).
+        scope = normalize_scope(str(request.data.get("scope", "")).strip())
         if not name:
             return Response({"detail": "그래프 이름이 필요합니다."}, status=400)
         try:
-            graph = services.create_graph_draft(name, scope, _actor(request))
+            graph = services.create_graph_draft(
+                name, scope, _actor(request),
+                generation_meta=request.data.get("generationMeta") or {},
+            )
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(RuleGraphSerializer(graph).data, status=201)

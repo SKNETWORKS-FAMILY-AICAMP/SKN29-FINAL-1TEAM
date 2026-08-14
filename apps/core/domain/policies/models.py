@@ -94,6 +94,10 @@ class RuleGraph(models.Model):
     entry_node_key = models.CharField(max_length=64, blank=True)
     sim_result = models.JSONField(default=dict, blank=True)  # 최신 시뮬레이션 요약(통계·등급) 캐시
     source_clause = models.CharField(max_length=200, blank=True)
+    # Rule Agent가 이 그래프를 만든 근거 — 모델·질의·검색 출처(citation)·탈락 노드.
+    # 노드별 출처는 action.source_clause에 있지만 **그래프 단위** 생성 이력은 여기 남는다.
+    # 사람이 직접 만든 그래프는 빈 dict(= AI 생성물이 아님).
+    generation_meta = models.JSONField(default=dict, blank=True)
     # 검토자(Active 요청자) 추적 — 시뮬레이션 보고서를 확인하고 활성화를 요청한 사람.
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,

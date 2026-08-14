@@ -37,6 +37,8 @@ def create_draft_version(graph: RuleGraph, actor=None) -> RuleGraph:
         version=next_version,
         entry_node_key=graph.entry_node_key,
         source_clause=graph.source_clause,
+        # generation_meta는 **복제하지 않는다** — 그 이력은 원본 버전을 Agent가 만들었다는
+        # 기록이지, 사람이 손대 만든 다음 버전의 출처가 아니다(빈 dict = 사람 작성).
     )
     RuleNode.objects.bulk_create([
         RuleNode(
@@ -78,16 +80,26 @@ def create_draft_version(graph: RuleGraph, actor=None) -> RuleGraph:
 
 
 @db_tx.atomic
-def create_graph_draft(name: str, scope: str, actor=None) -> RuleGraph:
-    """실제 정산 Category 또는 GLOBAL scope로 새 v1 그래프를 만든다."""
+def create_graph_draft(name: str, scope: str, actor=None, generation_meta: dict | None = None) -> RuleGraph:
+    """실제 정산 Category 또는 GLOBAL scope로 새 v1 그래프를 만든다.
+
+    ``generation_meta``는 Rule Agent가 채우는 그래프 단위 생성 이력(모델·질의·출처)이다.
+    사람이 룰 콘솔에서 만들면 비어 있다 — 그 자체가 "AI 생성물이 아님"의 표시다.
+    """
     if scope not in _valid_scopes():
         raise ValueError("scope는 GLOBAL 또는 정산 비용분류 값이어야 합니다.")
-    graph = RuleGraph.objects.create(name=name.strip(), scope=scope, status=RuleGraphStatus.DRAFT, version=1)
+    graph = RuleGraph.objects.create(
+        name=name.strip(), scope=scope, status=RuleGraphStatus.DRAFT, version=1,
+        generation_meta=generation_meta or {},
+    )
     AuditLog.objects.create(
         actor=actor,
         action="rulegraph.create",
         target=f"rulegraph:{graph.id}",
-        after={"family_key": str(graph.family_key), "version": 1, "scope": scope},
+        after={
+            "family_key": str(graph.family_key), "version": 1, "scope": scope,
+            "generated_by": (generation_meta or {}).get("agent") or "human",
+        },
     )
     return graph
 

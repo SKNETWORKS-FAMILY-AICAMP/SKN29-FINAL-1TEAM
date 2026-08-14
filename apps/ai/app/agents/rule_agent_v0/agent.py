@@ -18,13 +18,31 @@ import json
 import re
 from typing import Any
 
-from openai import OpenAI
-
 from . import django_client
 from .search import search_policy
 from .settings import settings
 
-_client = OpenAI(api_key=settings.openai_api_key)
+_client = None
+
+
+def _openai():
+    """OpenAI 클라이언트는 **첫 호출 때** 만든다.
+
+    import 시점에 만들면 `OPENAI_API_KEY`가 비어 있는 환경에서 라우터 import가 터져
+    FastAPI 전체가 안 뜬다 — 룰 생성과 무관한 화면까지 같이 죽는다. 팀 정본
+    (`rag/embedding/encoder.py`)이 지연 생성 + 명시적 에러 메시지를 쓰는 이유와 같다.
+    """
+    global _client
+    if _client is None:
+        from openai import OpenAI
+
+        from app.config import settings as core_settings
+
+        if not core_settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY 가 비어 있다 — 레포 루트 `.env`에 넣을 것")
+        _client = OpenAI(api_key=core_settings.openai_api_key)
+    return _client
+
 
 DECISIONS = ["PASS", "REJECT", "RETURN", "REVIEW"]
 SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
@@ -149,7 +167,12 @@ _RESPONSE_SCHEMA = {
 def _build_user_prompt(scope: str, chunks: list[dict], schema_paths: list[str]) -> str:
     chunk_lines = []
     for i, c in enumerate(chunks, 1):
-        chunk_lines.append(f"[청크 {i}] citation: {c['citation']}\n{c['text']}")
+        block = f"[청크 {i}] citation: {c['citation']}\n{c['text']}"
+        # 부모(조 전문)는 항 단위 조각이 놓친 맥락을 채운다 — 다만 인용은 잎의 citation을
+        # 쓰게 해야 한다(부모를 인용하면 "제N조" 통째로가 근거로 찍혀 근거가 뭉툭해진다).
+        if c.get("parent_text") and c["parent_text"] != c["text"]:
+            block += f"\n  (같은 조 전문 — 맥락 참고용, 인용은 위 citation을 쓸 것)\n  {c['parent_text']}"
+        chunk_lines.append(block)
     paths_block = (
         "\n".join(sorted(schema_paths))
         if schema_paths
@@ -163,7 +186,7 @@ def _build_user_prompt(scope: str, chunks: list[dict], schema_paths: list[str]) 
 
 
 def _call_llm(scope: str, chunks: list[dict], schema_paths: list[str]) -> dict:
-    resp = _client.chat.completions.create(
+    resp = _openai().chat.completions.create(
         model=settings.model,
         temperature=0.2,
         timeout=60,
@@ -183,8 +206,14 @@ def _build_condition(node: dict) -> dict:
     rule-engine.md 캐논의 and/or/not/==/!=/>/>=/</<=/in/var 전체를 커버."""
     if node["kind"] == "group":
         children = [_build_condition(c) for c in (node["children"] or [])]
+        if not children:
+            # Django dsl은 빈 and/or를 거부한다. 여기서 잡아야 rejected 사유가 남는다 —
+            # 그대로 보내면 저장 단계에서 422가 나고 어느 노드 탓인지 흐려진다.
+            raise ValueError(f"group 조건에 children이 없음(combinator={node.get('combinator')})")
         if len(children) == 1:
             return children[0]
+        if node["combinator"] not in ("and", "or"):
+            raise ValueError(f"group combinator 불량: {node.get('combinator')}")
         return {node["combinator"]: children}
 
     left = {"var": node["left_path"]}
@@ -261,7 +290,7 @@ def _sanitize_nodes(
             problems.append(f"node_key 중복: {key}")
         try:
             cond = _build_condition(n["condition"])
-        except (KeyError, TypeError) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             cond = None
             problems.append(f"condition 조립 실패: {exc}")
         if cond is not None:
@@ -342,13 +371,15 @@ def _assemble_linear_graph(nodes: list[dict]) -> tuple[list[dict], list[dict], s
 
 DEFAULT_QUERIES = {
     # scope → 규칙화 가능 조항을 끌어올 기본 질의. 사용자가 query를 주면 그것을 우선.
+    # 키는 GLOBAL ∪ settlements.Category — scope Literal(api.py)과 같은 집합이어야 한다.
     "GLOBAL": "법인카드 사용 금지 항목 및 결제 수단 제한",
     "접대": "기업업무추진비 한도 사전승인 증빙 기재사항",
-    "회식": "회식비 한도 승인권자 야간 주류",
-    "식대": "식대 한도 증빙 요건",
+    # 식대 Category는 회식을 함께 담는다(회식 Category 부재 — scope.py). 질의도 둘 다 끌어온다.
+    "식대": "식대 한도 증빙 요건 회식비 승인권자 야간 주류",
     "출장": "출장비 숙박비 한도 사전승인",
     "비품": "비품 구매 한도 증빙",
     "회의": "회의비 한도 증빙 참석자",
+    "업무활성": "업무활성비 사용 범위 한도 증빙",
 }
 
 
@@ -372,11 +403,16 @@ def generate(req: Any) -> dict[str, Any]:
     query = req.query or DEFAULT_QUERIES.get(req.scope, f"{req.scope} 관련 규정")
 
     # ① RAG — 규칙화 가능 조항 추출
-    chunks = search_policy(query, top_k=req.top_k)
+    chunks = search_policy(query, top_k=req.top_k, include_law=req.include_law)
     if not chunks:
         return {
             "status": "NO_SOURCE",
-            "detail": "policy_docs 검색 결과 0건 — /agent/rule-v0/embeddings/upsert로 규정 문서를 먼저 적재하세요",
+            "detail": (
+                "policy_docs 검색 결과 0건 — 규정 문서가 아직 적재되지 않았습니다. "
+                "관리자 배치로 먼저 인덱싱하세요: "
+                "`docker compose exec ai python -m app.rag.embedding.index "
+                "--dump /data/docling_eval/output`"
+            ),
             "query": query,
         }
 
@@ -401,13 +437,29 @@ def generate(req: Any) -> dict[str, Any]:
     nodes, routings, entry = _assemble_linear_graph(accepted)
     routings_by_node = _group_routings_by_node(routings)
 
-    # ⑤ Django 기존 Rule 콘솔 API 3종 오케스트레이션 (drafts → nodes → nodes/{key} PATCH)
-    #    G-16 인증 블로커 미해결 시 여기서 401/403 예외가 날 수 있다 — 그대로 노출한다.
+    # ⑤ Django 룰 콘솔 API 3종 오케스트레이션 (drafts → nodes → nodes/{key} PATCH).
+    #    인증은 서비스 계정 JWT(django_client) — 실패는 감추지 않고 그대로 올린다.
+    generation_meta = {
+        "agent": "rule-agent-v0",
+        "model": settings.model,
+        "query": query,
+        "requested_scope": req.scope,
+        "include_law": req.include_law,
+        # 노드별 출처는 action.source_clause에 있다. 여기 남기는 건 **그래프 단위**
+        # 근거 — 어떤 조문 묶음을 보고 이 그래프가 나왔는지.
+        "sources": [
+            {"citation": c["citation"], "chunk_id": c["chunk_id"], "score": c["score"]}
+            for c in chunks
+        ],
+        "rejected_node_count": len(rejected),
+        "llm_skipped": llm_out.get("skipped", []),
+    }
     saved = django_client.create_rule_graph_draft(
         name=req.name or f"{req.scope} 자동생성 초안",
         scope=req.scope,
         nodes=nodes,
         routings_by_node=routings_by_node,
+        generation_meta=generation_meta,
     )
 
     return {

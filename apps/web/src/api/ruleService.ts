@@ -22,3 +22,43 @@ export async function rollbackRuleTo(id: string): Promise<void> {
   if (USE_MOCK) { await mockDelay(); return }
   await endpoints.rollbackRuleTo(id)
 }
+
+/** Rule Agent가 생성한 DRAFT 그래프의 요약 — 화면은 graphId로 그 그래프를 열면 된다. */
+export type GeneratedRuleGraph = {
+  graphId: string
+  version: number
+  scope: string
+  /** 근거로 쓰인 조문 인용(「문서명」 제N조 …). */
+  sources: string[]
+  /** LLM이 만들었지만 검증에서 탈락한 노드 수 — 0이 아니면 담당자가 확인해야 한다. */
+  rejectedCount: number
+}
+
+/**
+ * Tab1: 규정 문서(RAG)에서 룰 그래프 DRAFT를 자동 생성한다.
+ *
+ * 생성물은 **항상 DRAFT**다 — 자동 승인은 없다(FR-RV-04). 담당자가 룰 콘솔에서 내용을
+ * 검토·수정하고 시뮬레이션을 돌린 뒤에야 Active 요청으로 넘어간다.
+ * 실패 사유(규정 미적재·인증·scope 불량)는 그대로 올려 화면이 이유를 보여주게 한다.
+ */
+export async function generateRuleGraph(
+  input: { scope: string; name?: string; query?: string; includeLaw?: boolean },
+): Promise<GeneratedRuleGraph> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return { graphId: 'mock-generated', version: 1, scope: input.scope, sources: [], rejectedCount: 0 }
+  }
+  const { data } = await endpoints.generateRuleGraph(input)
+  if (data?.status !== 'DRAFT_SAVED') {
+    // NO_SOURCE(규정 미적재) / NO_VALID_NODES(생성 노드 전건 탈락) — 둘 다 정상 응답이라
+    // 여기서 예외로 바꿔야 화면이 성공으로 오해하지 않는다.
+    throw new Error(data?.detail || '룰 생성에 실패했습니다.')
+  }
+  return {
+    graphId: String(data.graph?.graph_id ?? ''),
+    version: Number(data.graph?.version ?? 1),
+    scope: String(data.graph?.scope ?? input.scope),
+    sources: Array.isArray(data.sources) ? data.sources : [],
+    rejectedCount: Array.isArray(data.rejected_nodes) ? data.rejected_nodes.length : 0,
+  }
+}

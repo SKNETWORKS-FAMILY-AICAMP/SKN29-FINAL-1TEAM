@@ -36,6 +36,8 @@ class RuleGraphSerializer(serializers.ModelSerializer):
     statusLabel = serializers.CharField(source="get_status_display", read_only=True)
     entryNodeKey = serializers.CharField(source="entry_node_key", read_only=True)
     simResult = serializers.JSONField(source="sim_result", read_only=True)
+    # Rule Agent 생성 이력(모델·질의·출처). 비어 있으면 사람이 만든 그래프다.
+    generationMeta = serializers.JSONField(source="generation_meta", read_only=True)
     sourceClause = serializers.CharField(source="source_clause", read_only=True)
     familyKey = serializers.UUIDField(source="family_key", read_only=True)
     nodes = RuleNodeSerializer(many=True, read_only=True)
@@ -51,7 +53,7 @@ class RuleGraphSerializer(serializers.ModelSerializer):
         model = RuleGraph
         fields = [
             "id", "familyKey", "name", "scope", "status", "statusLabel", "version",
-            "entryNodeKey", "simResult", "sourceClause", "activated_at",
+            "entryNodeKey", "simResult", "sourceClause", "generationMeta", "activated_at",
             "reviewedBy", "reviewedAt", "reviewComment", "activatedBy",
             "nodes", "routings", "versions",
         ]
@@ -61,6 +63,8 @@ class RuleGraphListSerializer(serializers.ModelSerializer):
     statusLabel = serializers.CharField(source="get_status_display", read_only=True)
     sourceClause = serializers.CharField(source="source_clause", read_only=True)
     simResult = serializers.JSONField(source="sim_result", read_only=True)
+    # Rule Agent 생성 이력(모델·질의·출처). 비어 있으면 사람이 만든 그래프다.
+    generationMeta = serializers.JSONField(source="generation_meta", read_only=True)
     nodeCount = serializers.IntegerField(source="nodes.count", read_only=True)
     familyKey = serializers.UUIDField(source="family_key", read_only=True)
     entryNodeKey = serializers.CharField(source="entry_node_key", read_only=True)
@@ -76,7 +80,7 @@ class RuleGraphListSerializer(serializers.ModelSerializer):
         model = RuleGraph
         fields = [
             "id", "familyKey", "name", "scope", "status", "statusLabel", "version",
-            "entryNodeKey", "sourceClause", "simResult", "nodeCount", "activated_at",
+            "entryNodeKey", "sourceClause", "simResult", "generationMeta", "nodeCount", "activated_at",
             "reviewedBy", "reviewedAt", "reviewComment", "activatedBy",
             "nodes", "routings", "versions",
         ]

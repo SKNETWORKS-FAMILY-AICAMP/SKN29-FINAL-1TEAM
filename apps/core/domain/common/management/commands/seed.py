@@ -85,6 +85,12 @@ class Command(BaseCommand):
                                            extra_capabilities=[Capability.GOVERNANCE_VIEW.value])
         User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영")
 
+        # Rule Agent 서비스 계정 — 사람이 아니라 FastAPI가 쓰는 계정(capability는 rule_view 하나).
+        #  --fresh가 비슈퍼유저를 전부 지우므로 여기서 다시 만들어 준다. 비밀번호는
+        #  RULE_AGENT_SERVICE_PASSWORD(.env)에서 읽고, 없으면 로그인 불가 상태로 둔다.
+        from .ensure_service_account import ensure_service_account
+        ensure_service_account()
+
         def emp(name, team):
             return User.objects.create_user(name, password="pass1234", role=Role.EMPLOYEE, team=team)
 

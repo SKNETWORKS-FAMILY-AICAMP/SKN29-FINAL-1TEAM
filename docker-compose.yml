@@ -49,6 +49,10 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       AI_BASE_URL: http://ai:9000
+      # Rule Agent 서비스 계정 — `manage.py ensure_service_account`(및 seed)가 이 값으로
+      # 계정 비밀번호를 설정하고, ai 컨테이너가 같은 값으로 JWT를 받는다. 양쪽이 같아야 한다.
+      RULE_AGENT_SERVICE_USER: ${RULE_AGENT_SERVICE_USER:-rule-agent}
+      RULE_AGENT_SERVICE_PASSWORD: ${RULE_AGENT_SERVICE_PASSWORD:-}
     volumes:
       - ./apps/core:/app
       - media:/app/media
@@ -68,6 +72,10 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Rule Agent — 룰 콘솔 API에 DRAFT를 쓰려면 서비스 계정 JWT가 필요하다(core와 동일 값).
+      RULE_AGENT_SERVICE_USER: ${RULE_AGENT_SERVICE_USER:-rule-agent}
+      RULE_AGENT_SERVICE_PASSWORD: ${RULE_AGENT_SERVICE_PASSWORD:-}
+      RULE_AGENT_MODEL: ${RULE_AGENT_MODEL:-gpt-4o-mini}
     volumes:
       - ./apps/ai:/app
       # RAG 인덱싱 배치의 입력(파싱 덤프). 레포 루트에 있어 `/app` 마운트로는 안 보인다 —
