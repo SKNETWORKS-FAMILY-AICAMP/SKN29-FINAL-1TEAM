@@ -86,7 +86,7 @@ llm_wiki/
 | `_context/rule-agent-v0.md` | **Rule Agent(생성) 구현 캐논** — 규정 문서 → 룰 그래프 DRAFT. 실행 방법(규정 적재 → 서비스 계정 → 화면), 설계 결정 D-1~D-21, 통합에서 고친 것(RAG 사본 3개·403 인증·죽은 코드), 남은 갭 G. 룰 생성 작업은 여기부터 | 통합 완료 (2026-08-14) |
 | `_context/ai-lab.md` | AI-LAB(관리자) — AI 기능을 정산 흐름 없이 단독 실행하는 실험 화면. 5개 탭(상태·Draft·RAG 검색·임베딩·적재), Django `/api/ai-lab/*` 프록시 + Capability `ai_lab`, 실행 추적(trace) 수집 방식, 기능 추가 레시피 | 구현 완료 (Draft·RAG) |
 | `_context/case-history-golden-data-note.md` | `case_history` 컬렉션(Risk Review 2차 검증의 유사사례 근거)이 실 결정이력 배치가 아니라 수동 골든데이터 10건(`app/rag/golden_cases.py`)뿐이라는 메모. 원래 `docs/RAG_전략_종합.md`(팀원 원본 작성 중과 중복돼 삭제)에 있던 내용을 보존 | 임시 메모 — 팀원 RAG 전략 원본에 병합되면 폐기 가능 |
-| `_context/agent-v1-upgrade-plan.md` | **Rule Agent·Risk Review Agent v1 고도화 범위 정리** — 두 에이전트 구현/미구현 항목표, MCP 서버는 있으나 툴콜링 루프는 없다는 실측(§0), v1 필요 항목의 의존 순서, 기존 v0 경로를 안 깨기 위한 비침습 체크리스트, **프론트 연동 병행 작업과의 격리 전략(§3a)**, 미결정 사항 5건 | 범위 정리 완료 — 상세 설계·구현은 미착수(2026-08-14) |
+| `_context/agent-v1-upgrade-plan.md` | **Rule Agent·Risk Review Agent v1 고도화 범위 정리** — 두 에이전트 구현/미구현 항목표, MCP 서버는 있으나 툴콜링 루프는 없다는 실측(§0), v1 필요 항목의 의존 순서, 기존 v0 경로를 안 깨기 위한 비침습 체크리스트, 프론트 연동 병행 작업과의 격리 전략(§3a), **Rule Agent 검증→재생성 루프 구현 완료 기록(§5)** | Rule Agent §1.2-3·4 구현+실동작 검증 완료(`feature/rule-agent-v1`) / 나머지 미착수(2026-08-16) |
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)
 

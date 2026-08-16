@@ -2,6 +2,67 @@
 
 > 이 문서는 **설계 캐논이 아니라 v1 착수 전 범위 정리 문서**다. "무엇을 만들지"는 각 항목 아래 한 줄 방향성만 적고, 상세 설계는 착수 시 `_context/rule-agent-v0.md`(생성 파이프라인)·`_context/rag-ingestion.md`(적재 파이프라인) 갱신 또는 신규 캐논으로 따로 뗀다. 원칙: **미구현 항목을 켜는 작업이 이미 동작 중인 v0 경로를 절대 깨지 않는다** — 대부분 "새 진입점 추가" 또는 "기존 흐름 뒤에 옵션 스텝 삽입"이지, 기존 함수 시그니처/응답 계약을 바꾸는 작업이 아니다.
 
+> **진행 상태(2026-08-16)**: §1.2 항목 중 3(검증 툴)·4(검증→재생성 루프)를 `feature/rule-agent-v1` 브랜치에 구현 완료(로컬 커밋, 원격 미push). 상세는 §5.
+
+---
+
+## 5. 구현 완료 기록 — 검증→재생성 루프 (2026-08-16, `feature/rule-agent-v1`)
+
+§1.2-3·4에서 확정한 설계를 그대로 구현. **PR 리뷰/머지 담당자용 요약.**
+
+### 변경 파일 4개 (커밋 `a215643`)
+
+| 파일 | 변경 내용 |
+|---|---|
+| [`apps/ai/app/agents/rule_agent_v0/django_client.py`](../../apps/ai/app/agents/rule_agent_v0/django_client.py) | `simulate_graph(graph_id)`·`discard_draft(graph_id)` 함수 추가. 새 엔드포인트 아님 — 기존 `POST /api/rules/{id}/simulate/`·`DELETE /api/rules/{id}/draft/`(프론트 `client.ts`가 이미 쓰는 것과 동일 경로) 재사용 |
+| [`apps/ai/app/agents/rule_agent_v0/agent.py`](../../apps/ai/app/agents/rule_agent_v0/agent.py) | `generate()`를 단발 실행 → 최대 3회 검증→재생성 루프로 재작성. `_call_llm`/`_build_user_prompt`에 `feedback` 파라미터 추가, `_build_sanitize_feedback`/`_build_structure_feedback` 신설 |
+| [`apps/core/domain/policies/views.py`](../../apps/core/domain/policies/views.py) | `generate_graph` 액션의 Django→FastAPI 프록시 타임아웃 120s→300s (재시도로 총 소요시간이 늘어난 데 대응) |
+| `llm_wiki/_index.md`, `llm_wiki/_context/agent-v1-upgrade-plan.md` | 이 계획 문서 자체 |
+
+### 동작 방식
+
+```
+for attempt in 1..3:
+    LLM 호출(feedback=이전 시도 실패 사유, 최초엔 None)   # RAG 청크는 최초 1회만 조회, 이후 재사용
+    sanitize → accepted/rejected
+    if accepted 없음:
+        attempt==3? → status="NO_VALID_NODES_EXHAUSTED"로 최종 종료
+        아니면      → rejected 사유를 feedback으로 다음 loop
+        continue
+    조립 → create_rule_graph_draft() 저장(실제 DRAFT 그래프 생성됨)
+    simulate_graph() 호출 → structureError 확인
+    if structureError 없음 → status="DRAFT_SAVED"로 성공 종료 (기존 응답 계약 그대로)
+    structureError 있음:
+        discard_draft() 로 방금 저장한 그래프 삭제
+        attempt==3? → status="STRUCTURE_INVALID_EXHAUSTED"로 최종 종료(흔적 없음)
+        아니면      → structureError를 feedback으로 다음 loop
+```
+
+### 상태값
+
+- 기존 유지(비침습): `NO_SOURCE`(RAG 검색 0건), `DRAFT_SAVED`(성공 — 응답 필드 동일)
+- 신규: `NO_VALID_NODES_EXHAUSTED`, `STRUCTURE_INVALID_EXHAUSTED` — 둘 다 실패 시 `attempts`(시도별 이력 배열)를 응답에 포함. 기존 `NO_VALID_NODES`는 **더는 안 씀**(1차 실패=하드스탑이던 구 동작을 상속하지 않도록 이름을 새로 팠다, §1.2-4 참고).
+
+### 확인 완료 / 미완료
+
+- ✅ 문법 체크(`py_compile`) 3개 파일 통과
+- ✅ 권한 확인: `simulate`/`draft`(DELETE) 액션 모두 기존 서비스 계정 capability(`rule_view`)로 호출 가능 — 신규 권한 부여 불필요
+- ✅ URL 경로 확인: 프론트 `client.ts`가 쓰는 `/rules/{id}/simulate/`·`/rules/{id}/draft/`와 동일 경로 사용
+- ✅ **실동작 검증 완료(2026-08-16, docker 환경)** — 5가지 케이스 전부 확인:
+  1. 정상 생성(실제 LLM·실제 RAG, scope=회의) → `DRAFT_SAVED`/`attempts:1`, DB에 그래프+`RuleSimulationRun` 실제 저장 확인
+  2. `discard_draft()` 단독 호출 → 실제 그래프 삭제 확인
+  3. sanitize 전멸(1차, 존재하지 않는 EvalContext 경로) → feedback 포함 재시도 → 2차 성공(`attempts:2`, 1차엔 feedback 없음/2차엔 반려 사유 정확히 전달)
+  4. sanitize 3회 전부 전멸 → `NO_VALID_NODES_EXHAUSTED`, LLM 정확히 3회 호출, DB에 그래프 없음(저장 전 단계라 정리 불필요 자체 확인)
+  5. 구조검증 실패(1차, `simulate_graph` 응답 주입) → `discard_draft` 실제 호출로 1차 그래프 삭제 → 2차 재시도 성공(`attempts:2`)
+  - 3·4·5는 실제 OpenAI 과금을 피하려고 `_call_llm`/`simulate_graph`만 결정론적으로 주입했고, `create_rule_graph_draft`/`discard_draft`는 실제 Django HTTP 호출 그대로 태웠다(모킹 아님).
+  - 테스트로 만든 그래프(id 40~43) 전부 최종적으로 DB에 안 남은 것까지 확인.
+  - 로컬 개발 환경에 `RULE_AGENT_SERVICE_PASSWORD`가 아예 없어서(서비스 계정 인증 자체가 막혀 있었음) 검증 전에 `.env`에 값을 추가하고 `ensure_service_account` 재실행 + `docker compose up -d --force-recreate ai core` 필요했다 — 다른 환경(팀원 로컬/CI)에도 이 값이 없으면 동일하게 막힘.
+- 🔲 룰 콘솔 화면에서 `attempts`/신규 status 값을 사람이 보게 노출할지는 프론트 쪽 결정 사항 — 지금은 API 응답에만 있음(§3a 계약: 새 필드 추가는 비침습이라 프론트가 안 봐도 안 깨짐).
+
+### §1.2 나머지 항목과의 관계
+
+이번 구현은 §1.2의 **3번(검증 툴)**·**4번(재생성 루프)**만 다룬다. 1번(MCP 툴콜링 전환)·2번(자동트리거 연결)·5번(대화형 에이전트)은 미착수 상태 그대로.
+
 ## 0. 공통 결정 사항 — MCP는 배관과 루프를 분리해서 본다
 
 실측(2026-08-14 세션): `apps/ai/app/mcp/server.py`에 FastMCP 서버가 실제로 떠 있고(`/mcp` 마운트, `main.py:4,30-36`) 9개 툴이 등록돼 있다. 하지만:
