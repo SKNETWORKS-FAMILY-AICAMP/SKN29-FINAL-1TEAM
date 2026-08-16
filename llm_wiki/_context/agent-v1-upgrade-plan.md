@@ -1,189 +1,110 @@
 # Rule Agent / Risk Review Agent — v1 고도화 계획
 
-> 이 문서는 **설계 캐논이 아니라 v1 착수 전 범위 정리 문서**다. "무엇을 만들지"는 각 항목 아래 한 줄 방향성만 적고, 상세 설계는 착수 시 `_context/rule-agent-v0.md`(생성 파이프라인)·`_context/rag-ingestion.md`(적재 파이프라인) 갱신 또는 신규 캐논으로 따로 뗀다. 원칙: **미구현 항목을 켜는 작업이 이미 동작 중인 v0 경로를 절대 깨지 않는다** — 대부분 "새 진입점 추가" 또는 "기존 흐름 뒤에 옵션 스텝 삽입"이지, 기존 함수 시그니처/응답 계약을 바꾸는 작업이 아니다.
+> 이 문서는 **설계 캐논이 아니라 v1 범위 정리 문서**다. "무엇을 만들지"는 각 항목 아래 한 줄 방향성만 적고, 상세 설계·구현 코드·실동작 검증 결과는 `_context/rule-agent-v1-implementation.md`로 뗐다. 원칙: **미구현 항목을 켜는 작업이 이미 동작 중인 v0 경로를 절대 깨지 않는다** — 대부분 "새 진입점 추가" 또는 "기존 흐름 뒤에 옵션 스텝 삽입"이지, 기존 함수 시그니처/응답 계약을 바꾸는 작업이 아니다.
 
-> **진행 상태(2026-08-16)**: §1.2 항목 중 3(검증 툴)·4(검증→재생성 루프)를 `feature/rule-agent-v1` 브랜치에 구현 완료(로컬 커밋, 원격 미push). 상세는 §5.
+> **진행 상태(2026-08-16)**: Rule Agent §1.2 6개 항목 **전부 구현+실동작 검증 완료**(`feature/rule-agent-v1` 브랜치, 로컬 커밋). Risk Review Agent §2.2는 전부 미착수. 구현 코드·검증 결과는 `_context/rule-agent-v1-implementation.md`.
 
 ---
 
-## 5. 구현 완료 기록 — 검증→재생성 루프 (2026-08-16, `feature/rule-agent-v1`)
-
-§1.2-3·4에서 확정한 설계를 그대로 구현. **PR 리뷰/머지 담당자용 요약.**
-
-### 변경 파일 4개 (커밋 `a215643`)
-
-| 파일 | 변경 내용 |
-|---|---|
-| [`apps/ai/app/agents/rule_agent_v0/django_client.py`](../../apps/ai/app/agents/rule_agent_v0/django_client.py) | `simulate_graph(graph_id)`·`discard_draft(graph_id)` 함수 추가. 새 엔드포인트 아님 — 기존 `POST /api/rules/{id}/simulate/`·`DELETE /api/rules/{id}/draft/`(프론트 `client.ts`가 이미 쓰는 것과 동일 경로) 재사용 |
-| [`apps/ai/app/agents/rule_agent_v0/agent.py`](../../apps/ai/app/agents/rule_agent_v0/agent.py) | `generate()`를 단발 실행 → 최대 3회 검증→재생성 루프로 재작성. `_call_llm`/`_build_user_prompt`에 `feedback` 파라미터 추가, `_build_sanitize_feedback`/`_build_structure_feedback` 신설 |
-| [`apps/core/domain/policies/views.py`](../../apps/core/domain/policies/views.py) | `generate_graph` 액션의 Django→FastAPI 프록시 타임아웃 120s→300s (재시도로 총 소요시간이 늘어난 데 대응) |
-| `llm_wiki/_index.md`, `llm_wiki/_context/agent-v1-upgrade-plan.md` | 이 계획 문서 자체 |
-
-### 동작 방식
-
-```
-for attempt in 1..3:
-    LLM 호출(feedback=이전 시도 실패 사유, 최초엔 None)   # RAG 청크는 최초 1회만 조회, 이후 재사용
-    sanitize → accepted/rejected
-    if accepted 없음:
-        attempt==3? → status="NO_VALID_NODES_EXHAUSTED"로 최종 종료
-        아니면      → rejected 사유를 feedback으로 다음 loop
-        continue
-    조립 → create_rule_graph_draft() 저장(실제 DRAFT 그래프 생성됨)
-    simulate_graph() 호출 → structureError 확인
-    if structureError 없음 → status="DRAFT_SAVED"로 성공 종료 (기존 응답 계약 그대로)
-    structureError 있음:
-        discard_draft() 로 방금 저장한 그래프 삭제
-        attempt==3? → status="STRUCTURE_INVALID_EXHAUSTED"로 최종 종료(흔적 없음)
-        아니면      → structureError를 feedback으로 다음 loop
-```
-
-### 상태값
-
-- 기존 유지(비침습): `NO_SOURCE`(RAG 검색 0건), `DRAFT_SAVED`(성공 — 응답 필드 동일)
-- 신규: `NO_VALID_NODES_EXHAUSTED`, `STRUCTURE_INVALID_EXHAUSTED` — 둘 다 실패 시 `attempts`(시도별 이력 배열)를 응답에 포함. 기존 `NO_VALID_NODES`는 **더는 안 씀**(1차 실패=하드스탑이던 구 동작을 상속하지 않도록 이름을 새로 팠다, §1.2-4 참고).
-
-### 확인 완료 / 미완료
-
-- ✅ 문법 체크(`py_compile`) 3개 파일 통과
-- ✅ 권한 확인: `simulate`/`draft`(DELETE) 액션 모두 기존 서비스 계정 capability(`rule_view`)로 호출 가능 — 신규 권한 부여 불필요
-- ✅ URL 경로 확인: 프론트 `client.ts`가 쓰는 `/rules/{id}/simulate/`·`/rules/{id}/draft/`와 동일 경로 사용
-- ✅ **실동작 검증 완료(2026-08-16, docker 환경)** — 5가지 케이스 전부 확인:
-  1. 정상 생성(실제 LLM·실제 RAG, scope=회의) → `DRAFT_SAVED`/`attempts:1`, DB에 그래프+`RuleSimulationRun` 실제 저장 확인
-  2. `discard_draft()` 단독 호출 → 실제 그래프 삭제 확인
-  3. sanitize 전멸(1차, 존재하지 않는 EvalContext 경로) → feedback 포함 재시도 → 2차 성공(`attempts:2`, 1차엔 feedback 없음/2차엔 반려 사유 정확히 전달)
-  4. sanitize 3회 전부 전멸 → `NO_VALID_NODES_EXHAUSTED`, LLM 정확히 3회 호출, DB에 그래프 없음(저장 전 단계라 정리 불필요 자체 확인)
-  5. 구조검증 실패(1차, `simulate_graph` 응답 주입) → `discard_draft` 실제 호출로 1차 그래프 삭제 → 2차 재시도 성공(`attempts:2`)
-  - 3·4·5는 실제 OpenAI 과금을 피하려고 `_call_llm`/`simulate_graph`만 결정론적으로 주입했고, `create_rule_graph_draft`/`discard_draft`는 실제 Django HTTP 호출 그대로 태웠다(모킹 아님).
-  - 테스트로 만든 그래프(id 40~43) 전부 최종적으로 DB에 안 남은 것까지 확인.
-  - 로컬 개발 환경에 `RULE_AGENT_SERVICE_PASSWORD`가 아예 없어서(서비스 계정 인증 자체가 막혀 있었음) 검증 전에 `.env`에 값을 추가하고 `ensure_service_account` 재실행 + `docker compose up -d --force-recreate ai core` 필요했다 — 다른 환경(팀원 로컬/CI)에도 이 값이 없으면 동일하게 막힘.
-- 🔲 룰 콘솔 화면에서 `attempts`/신규 status 값을 사람이 보게 노출할지는 프론트 쪽 결정 사항 — 지금은 API 응답에만 있음(§3a 계약: 새 필드 추가는 비침습이라 프론트가 안 봐도 안 깨짐).
-
-### §1.2 나머지 항목과의 관계
-
-이번 구현은 §1.2의 **3번(검증 툴)**·**4번(재생성 루프)**만 다룬다. 1번(MCP 툴콜링 전환)·2번(자동트리거 연결)·5번(대화형 에이전트)은 미착수 상태 그대로.
-
 ## 0. 공통 결정 사항 — MCP는 배관과 루프를 분리해서 본다
 
-실측(2026-08-14 세션): `apps/ai/app/mcp/server.py`에 FastMCP 서버가 실제로 떠 있고(`/mcp` 마운트, `main.py:4,30-36`) 9개 툴이 등록돼 있다. 하지만:
+실측(2026-08-14 세션, 이후 2026-08-16 재확인): `apps/ai/app/mcp/server.py`에 FastMCP 서버가 등록돼 있었지만 실제로는 **두 겹으로 깨져 있었다** — ① `mcp.tool(_fn)` 호출 방식이 fastmcp 2.x API(데코레이터 팩토리, `mcp.tool()(_fn)`이어야 함)와 안 맞아 툴 등록 자체가 조용히 실패 ② 그걸 고치고 나니 `main.py`의 `mcp.http_app()` 호출도 설치된 fastmcp==2.1.2엔 없는 메서드(이 버전엔 `sse_app()`만 있음)라 마운트가 또 실패. `main.py`의 예외 가드가 둘 다 삼켜서 앱은 계속 부팅됐고, 아무도 몰랐다.
 
-- Risk Review Agent(`agents/risk_review_agent.py`)는 `from app.mcp import tools`로 이 모듈의 함수를 **파이썬 직접 호출**로 씀(정해진 순서: `get_tx_features`→`ml_infer`→`search_policy`+`search_cases`→LLM 1회).
-- Rule Agent(`agents/rule_agent_v0/agent.py`)는 `app.mcp.tools`조차 안 쓰고 자체 `search.py`로 병렬 구현.
-- 즉 **MCP 서버(배관)는 있지만, LLM이 상황을 보고 툴 호출 여부/순서를 스스로 판단하는 에이전틱 루프는 둘 다 없음** — 현재는 "코드가 정해진 순서로 툴을 부른 뒤 LLM을 단발 구조화출력으로 1회 호출"하는 고정 파이프라인.
+- Risk Review Agent(`agents/risk_review_agent.py`)는 `from app.mcp import tools`로 이 모듈의 함수를 **파이썬 직접 호출**로 씀.
+- Rule Agent(`agents/rule_agent_v0/agent.py`)는 v1 이전엔 `app.mcp.tools`조차 안 쓰고 자체 `search.py`로 병렬 구현이었음.
+- **v1에서 Rule Agent는 이 상태를 완전히 벗어났다** — 마운트 버그 2건을 고치고, `fastmcp.Client`로 MCP 서버에 in-process 접속해 `search_policy`를 실제 MCP 프로토콜로 호출하며, LLM 호출 자체도 단발 구조화출력에서 **진짜 멀티턴 tool-calling 루프**로 재작성했다(§1.2-1). Risk Review Agent는 아직 손대지 않아 여전히 직접 호출 상태.
 
-**v1 스코프 결정**: 이 전환(MCP 클라이언트 배선 + LLM 툴콜링 루프 재작성)은 Rule/Risk 각 항목을 개별로 손대는 것보다 먼저 깔아두면 나머지 항목(검증 루프, 대화형 라우팅, 3범주 분류)이 "새 툴 추가"로 자연스럽게 얹히는 구조가 된다. 그래서 **v1의 선행 기반 작업**으로 편입한다(별도 트랙 아님). 단 두 단계로 쪼갠다:
-  1. MCP 클라이언트 배선(배관 교체 — 상대적으로 기계적)
-  2. 에이전트별 LLM 호출부를 단발 구조화출력 → 멀티턴 툴콜링 루프로 재작성(항목별 실질 설계 필요)
+**v1 스코프 결정**: 이 전환을 Rule Agent 먼저 전체 재작성으로 진행했다(§1.2-1). Risk Review Agent 전환은 별도 작업으로 남아 있다.
 
 ---
 
 ## 1. Rule Agent
 
-### 1.1 구현 상태
+### 1.1 구현 상태 — 전부 완료
 
-| 워크플로우 단계 (사용자 원안) | 상태 | 근거 |
-|---|---|---|
-| ① 테스트 검증 | ✅ 구현 | `policies/engine.py:55 validate_graph()`(구조검증) + `policies/simulation.py:335 run_and_save()`(테스트셋+지난달 실적). `POST /api/rules/{id}/simulate`로 수동 트리거. 보고서 서술은 **LLM 미개입, 룰 기반 템플릿**(자체 docstring에 placeholder 명시) |
-| ② 문서 업로드 시 초안 자동생성 | 🚧 부분 | 적재(파싱→청킹→임베딩→Chroma)는 실동작(`rag/ingest.py`). 생성 자체(`rule_agent_v0/agent.py:399 generate()`: RAG→LLM 구조화출력→결정론적 체인 조립)도 수동 호출 시 동작. **자동 트리거만 스텁**: `rag/rule_trigger.py:35-56`이 항상 `NOT_IMPLEMENTED` 반환 |
-| 생성→검증→재생성 루프 | ❌ 미구현 | `generate()`가 화이트리스트 sanitize는 하지만 `validate_graph()`/시뮬레이션을 호출하지 않음. 전부 거부되면 `NO_VALID_NODES`로 중단, 재시도 없음(`agent.py:428-436`) |
-| ③ 대화형 자연어 수정(의도 파악→액션 라우팅) | ❌ 미구현 | `RuleAuthoringMessage`(`policies/models.py:276`) + `/api/rules/{id}/messages`는 **로그 저장소일 뿐**. `apps/ai` 어디서도 이 테이블에 읽고 쓰는 로직 없음. NL→액션 라우팅 로직 자체가 코드베이스에 없음 |
-| ④ 검토/시뮬레이션 보고서 | 🚧 부분 | ①과 동일 산출물. LLM 서술 없이 룰 기반 |
-| 룰생성/전체그래프검증 MCP 툴 | ❌ 미구현 | 등록된 9개 MCP 툴(§0)에 이 두 개는 없음 |
+| 워크플로우 단계 (사용자 원안) | 상태 |
+|---|---|
+| ① 테스트 검증 | ✅ 기존부터 구현(`policies/engine.py`/`simulation.py`, 수동 트리거). LLM 서술은 팀 결정으로 추가 안 함(§1.2-6) |
+| ② 문서 업로드 시 초안 자동생성 | ✅ **v1 구현 완료** — §1.2-2 |
+| 생성→검증→재생성 루프 | ✅ **v1 구현 완료** — §1.2-4 |
+| ③ 대화형 자연어 수정 | ✅ **v1 구현 완료** — §1.2-5 |
+| ④ 검토/시뮬레이션 보고서 | 🚧 기존 상태 유지(LLM 서술 없음) — 팀 결정으로 안 바꾸기로 확정(§1.2-6) |
+| 룰생성/전체그래프검증 MCP 툴 | ✅ **v1 구현 완료(형태 변경)** — 새 MCP 툴이 아니라 기존 `/simulate` 재사용(§1.2-3) |
+| MCP 툴콜링 루프 전환 | ✅ **v1 구현 완료** — §1.2-1 |
 
-### 1.2 v1에 필요한 것 (의존 순서대로)
+상세 코드·실동작 검증은 전부 `_context/rule-agent-v1-implementation.md`.
 
-1. **[기반] MCP 클라이언트 배선 + 툴콜링 루프** — §0. Rule Agent가 `app/mcp/tools`를 직접 import하는 대신 MCP 경유로 붙게(선택), 이후 항목들의 실행 기반.
-2. **적재→생성 자동 트리거 연결** — `rule_trigger.py`를 실제로 `rule_agent_v0.generate()` 호출로 채움. **선결 결정 2건**(`rag-ingestion.md`에 이미 기록됨, 재확인만 하면 됨):
-   - 범위: 업로드 시 고른 scope 1개만 생성 vs 문서에서 탐지되는 전 scope 생성(후자는 LLM 호출 배수 증가 + 미요청 DRAFT 누적)
-   - 재색인 시에도 자동 생성할지(매번 새 계열이 생기면 룰 콘솔이 초안으로 뒤덮임 — 기존 계열에 버전 얹는 경로가 선행돼야 함)
-   - **비침습 원칙**: `trigger()`의 반환 계약(`PolicyDoc.rule_trigger`에 저장되는 status 값)은 유지하고 `NOT_IMPLEMENTED` 자리에 실제 결과 상태를 채우는 방식으로 — 호출부(ingest 파이프라인)는 안 건드림.
-3. **"그래프 검증" MCP 툴은 신규 개발이 아니라 기존 엔드포인트 재사용** — 실측 확인(2026-08-16): `simulation.simulate()`(`policies/simulation.py:257`)가 이미 내부에서 `engine.validate_graph()`를 호출하고 결과를 `structureError`로 캡처한다. 이 로직은 HTTP `POST /api/rules/{id}/simulate`(`views.py:185`)로 이미 노출돼 있고, Rule Agent 서비스 계정은 이 액션에 필요한 `CanViewRule`(`rule_view`)을 이미 갖고 있다(권한 신규 부여 불필요). **새 검증 엔드포인트를 만드는 게 아니라, `django_client.py`에 이 엔드포인트를 호출하는 함수 하나만 추가하면 된다.**
-4. **생성→검증→재생성 루프 — 설계 확정(2026-08-16)**:
-   - **A안 채택**: 저장 전 dry-validate 엔드포인트는 새로 안 만든다. 매 시도마다 `create_rule_graph_draft()`로 실제 저장 → `/simulate` 호출 → 실패 시 기존 `discard_draft`(`DELETE /api/rules/{id}/draft`, `views.py`)로 삭제하고 재시도. 최종 실패해도 흔적을 안 남긴다.
-   - **재시도 범위**: sanitize 단계 전멸(`NO_VALID_NODES`)과 저장 후 구조검증(`/simulate`) 실패, **두 실패 지점을 하나의 재시도 루프·하나의 카운터로 묶는다.** 지금처럼 sanitize 전멸을 즉시 하드스탑으로 두지 않는다 — 그러면 피드백을 줘도 재시도할 기회 자체가 없어짐. `NO_VALID_NODES`는 "1차 실패"가 아니라 **"N회 다 실패한 최종 상태"**로 의미가 바뀐다.
-   - **최대 시도 횟수: 총 3회**(최초 1회 + 재시도 2회, 첫 시도 포함). LLM 자기수정은 2~3회 이후 수확체감이 커서 그 이상은 비용 대비 이득이 적다고 판단.
-   - **재시도 시 LLM 프롬프트에 실패 사유 피드백 필요** — `_call_llm(scope, chunks, schema_paths)`에 이전 시도의 `rejected_nodes`/`structureError`를 실어줄 파라미터가 없음(신규 추가 필요). 이게 없으면 재시도가 그냥 같은 실패를 반복할 위험이 큼.
-   - **RAG 청크는 재사용, 재조회 안 함 — 결정 완료(2026-08-16)**: 재시도할 때마다 `search_policy()`를 다시 부르지 않고 최초 시도의 `chunks`를 그대로 재사용한다. **이유**: 이 루프의 목적은 "같은 근거를 주고 LLM 해석을 교정하는 것"이지 "검색 결과를 바꿔가며 운 좋게 맞는 조합을 찾는 것"이 아니다. 매번 청크를 바꾸면 재시도가 성공했을 때 그게 "피드백이 통해서"인지 "우연히 다른 청크가 걸려서"인지 구분할 수 없어져 루프의 신뢰성 자체가 무너진다. **부수 효과**: 같은 청크로 3회 다 실패하면, 그건 "LLM이 못 하는 것"과 "애초에 청크 안에 규칙화할 정보가 부족한 것"(RAG 커버리지 문제)을 구분 못 하는 채로 최종 실패 처리된다 — 이 구분이 필요해지면 별도로 RAG 청킹/검색 품질을 점검하는 트랙이지, 이 루프의 책임 범위가 아니다.
-   - **종료 상태값 이름 — 기존 상태값과 안 겹치게 신규 도입, 결정 완료(2026-08-16)**: 현재 `generate()`가 쓰는 상태값은 `NO_SOURCE`/`NO_VALID_NODES`/`DRAFT_SAVED` 3종뿐(`agent.py:411,430,468`). 재시도 루프가 들어가면 `NO_VALID_NODES`의 의미가 "1차 시도 실패"에서 "N회 다 실패"로 바뀌므로, **기존 이름을 재활용해 의미만 슬쩍 바꾸지 않고 새 이름을 쓴다**(안 그러면 이 상태값을 이미 보고 있던 사람/코드가 "왜 항상 재시도까지 다 하고 나서야 실패로 뜨지?"를 오해할 여지가 생김):
-     - `NO_VALID_NODES_EXHAUSTED` — sanitize 단계가 N회 다 전멸
-     - `STRUCTURE_INVALID_EXHAUSTED` — 저장은 됐지만 구조검증(`/simulate`)이 N회 다 실패, `discard_draft`로 정리 완료
-     - 기존 `NO_SOURCE`/`DRAFT_SAVED`는 그대로 유지(비침습).
-   - **구현 시 변수명도 기존 지역변수와 충돌하지 않게** — `agent.py` 안에 이미 시도 1회분의 `accepted`/`rejected`(`_sanitize_nodes` 반환값)가 지역변수로 쓰이고 있으므로, 루프가 여러 시도에 걸쳐 누적하는 실패 이력은 다른 이름(예: `attempt_history`/`retry_feedback` 등, 최종 이름은 구현 시 확정)을 써서 "이번 시도의 rejected"와 "지금까지 시도들의 실패 이력"을 헷갈리지 않게 한다.
-   - **비침습 원칙**: 기존 `generate()`가 반환하던 성공 케이스의 응답 계약은 그대로 두고, 실패 시 종료 지점만 "N회 재시도 후 최종 실패"로 확장.
-   - **[구현하면서 결정]** 재시도 과정을 어딘가에 기록할지(로그 vs AI-LAB trace 패턴 재사용) — 코딩 시점에 해당 부분에서 판단.
-   - **[구현하면서 결정]** 이 루프가 §1.2-2 자동트리거(현재 스텁)에도 그대로 상속될지 — `generate()` 내부에 넣으면 자동 상속되므로 큰 이슈는 아니나, 트리거 연결 시점에 재확인.
-5. **대화형 자연어 수정 에이전트** — 신규 엔드포인트/신규 에이전트 모듈로 구현(기존 `generate()`와 분리된 별도 진입점). `RuleAuthoringMessage` 저장은 그대로 두고, 그 위에 "사용자 발화 → 의도 분류(조건수정/노드추가/재생성/질문) → 해당 액션 호출"을 얹는 것. **비침습 원칙**: 그래프 CRUD API(룰 콘솔이 이미 쓰는 저장 API 3종)는 그대로 재사용 — 새 CRUD를 만들지 않음.
-6. **[결정 대기] 시뮬레이션 보고서에 LLM 서술 추가할지** — 현재 룰 기반 템플릿이 "의도된 placeholder"인지 팀 확인 필요. 안 바꿔도 v1 다른 항목에 영향 없음(독립적).
+### 1.2 구현된 6개 항목 요약
+
+1. **MCP 툴콜링 전면 재작성 — ✅ 구현 완료.** 마운트 버그 2건 수정 + `fastmcp.Client` in-process 클라이언트(`mcp_client.py` 신설) + `agent.py`의 LLM 호출을 단발 구조화출력 → `search_policy`(MCP)/`submit_rule_nodes`(종료 툴) 멀티턴 루프로 전면 교체. 기존 "RAG 청크는 시도 전체 재사용" 결정(§1.2-4)과 충돌하지 않도록, outer 재시도 루프가 재사용하는 최초 청크는 그대로 두고 **모델이 부족하다고 판단할 때만 추가 검색**하게 설계. 실측: 3회 연속 실호출에서 모델이 스스로 `search_policy`를 2회씩 추가 호출하는 진짜 에이전틱 동작 확인.
+2. **적재→생성 자동 트리거 — ✅ 구현 완료(트리거 로직), ⚠️ 실사용 경로는 별개 버그로 현재 막혀 있음.** `rule_trigger.py`가 실제로 `rule_agent_v0.agent.generate()`를 호출. 확정 스코프: 업로드 시 고른 scope 1개만, **재색인 때는 자동 생성 안 함**(Django `policy_doc_views.py`가 `create`/`reembed` 경로를 구분해 `isReindex` 플래그를 FastAPI로 넘김). 트리거 판단 로직 자체는 직접 호출로 검증됐지만, **지금은 docling 버전 드리프트 버그(무관한 사전 결함, `rule-agent-v1-implementation.md` §10) 때문에 실제 업로드 자체가 파싱 단계에서 전부 실패해 트리거가 실전에서 불릴 일이 없다** — 그 버그가 고쳐지기 전까지는 아래 §3a의 "자동으로 DRAFT가 쌓인다" 경고가 실제로는 발동하지 않는다.
+3. **"그래프 검증" — ✅ 구현 완료.** 새 MCP 툴이 아니라 기존 `POST /api/rules/{id}/simulate` 재사용(`django_client.simulate_graph`).
+4. **생성→검증→재생성 루프 — ✅ 구현 완료.** A안(저장→검증→실패시 discard) 채택, 최대 3회, 신규 종료 상태값(`NO_VALID_NODES_EXHAUSTED`/`STRUCTURE_INVALID_EXHAUSTED`) 도입. 실제 LLM(gpt-4o-mini) 16회 호출로 통계 검증(1차 성공률 100%, Rule of Three로 통계적 한계도 명시).
+5. **대화형 자연어 수정 에이전트 — ✅ 구현 완료.** 신규 모듈 `chat.py` + 신규 엔드포인트(`POST /agent/rule-v0/converse`, Django `POST /api/rules/{id}/converse/`). MCP 툴콜링 패턴 재사용(`update_node`/`create_node`/`delete_node`/`search_policy`/`answer` 툴). 기존 그래프 CRUD API 3종을 그대로 재사용(신규 CRUD 없음, 비침습 원칙 준수). `RuleAuthoringMessage`(그동안 아무도 안 쓰던 로그 테이블)의 **첫 실제 쓰기 경로**가 됨.
+6. **시뮬레이션 보고서 LLM 서술 — 결정: 추가 안 함(팀 확인, 2026-08-16).** 코드 변경 없음, 현재 룰 기반 템플릿 유지로 확정.
+
+전부 `rule-agent-v1-implementation.md`에 구현 코드 위치·설계 근거·실동작 검증 결과가 있다.
 
 ---
 
-## 2. Risk Review Agent
+## 2. Risk Review Agent — 전부 미착수
 
 ### 2.1 구현 상태
 
 | 항목 | 상태 | 근거 |
 |---|---|---|
-| anomaly score → RAG → 보고서 2단계 파이프라인 | ✅ 구현 | `agents/risk_review_agent.py`: Stage1(`_stage1` L119, `get_tx_features`→`ml_infer`) → Stage2(`_stage2` L128, `search_policy`+`search_cases`→LLM 1회→`RiskVerdict`) |
-| anomaly score 높을 때 3범주 분류 | ❌ 미구현 | `RiskVerdict` 스키마(`agent.py:52`)에 해당 필드 없음. `risk/models.py` grep에도 없음. 유일한 버킷 개념은 무관한 것 — 원시 점수의 10분위 보정 밴드(`ml/calibration.py:34`, `percentile_band`)뿐, 보고서 3분류 아님 |
-| 분류(판단)와 액션(실행) 분리 | 🚧 부분 | Stage1/Stage2는 분리돼 있으나, Stage2 내부에서 `violation_verdict`(분류)와 `recommendation`(액션)이 **한 LLM 호출·한 스키마**로 동시 산출 |
+| anomaly score → RAG → 보고서 2단계 파이프라인 | ✅ 구현 | `agents/risk_review_agent.py`: Stage1(`_stage1`, `get_tx_features`→`ml_infer`) → Stage2(`_stage2`, `search_policy`+`search_cases`→LLM 1회→`RiskVerdict`) |
+| anomaly score 높을 때 3범주 분류 | ❌ 미구현 | `RiskVerdict` 스키마에 해당 필드 없음. 유일한 버킷 개념은 무관한 것 — 원시 점수의 10분위 보정 밴드(`ml/calibration.py`, `percentile_band`)뿐 |
+| 분류(판단)와 액션(실행) 분리 | 🚧 부분 | Stage1/Stage2는 분리돼 있으나, Stage2 내부에서 `violation_verdict`(분류)와 `recommendation`(액션)이 한 LLM 호출·한 스키마로 동시 산출 |
 | Rule Agent와 공유하는 MCP 툴 사용 | ✅ 일부 | `from app.mcp import tools`로 공용 함수 재사용(단 직접 호출, 툴콜링 아님 — §0) |
 
-### 2.2 v1에 필요한 것
+### 2.2 v1에 필요한 것 (전부 미착수)
 
-1. **[기반] MCP 툴콜링 루프 전환** — §0과 동일 작업 공유. Rule Agent와 같이 진행하면 중복 작업 없음.
-2. **3범주 분류 스키마 신설** — anomaly score가 높은 건에 한정해 도는 서브스텝. `RiskVerdict`에 필드 추가가 아니라 **별도 단계**로 두는 걸 권장(아래 3번과 연결 — 분류를 별도 LLM 호출로 떼면 이 항목도 같이 해결됨). **비침습 원칙**: `RiskVerdict` 기존 필드(`violation_verdict`/`review_reasons`/`recommendation`/`citations`/`similar_cases`)는 유지, 신규 필드는 추가만(Django `RiskReview.stage2_verdict`가 JSONField라 스키마 확장에 열려 있음).
-3. **분류 단계와 액션(recommendation) 단계 분리** — Stage2를 "① 위반여부·근거 분류(LLM)" → "② 분류 결과 기반 권고 액션 결정(LLM 또는 결정론적 매핑)" 2단으로 쪼갬. 위 3범주 분류를 ①에 자연스럽게 얹을 수 있음.
-4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — 3범주 분류 근거로 피처 기여도를 쓰려면 필요. 현재 `anomaly.pkl`은 `feature_stats` 없이 학습된 모델이라 `feature_contribs`가 항상 빈 배열(`registry.py`/`train.py` 기록, CLAUDE.md 상태보드). **재학습 필요** — 이건 ML 파이프라인 작업이라 Agent 코드 변경과 무관하게 독립적으로 진행 가능.
-5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — 현재 10건 수동 시드뿐(`case-history-golden-data-note.md`). 3범주 분류·유사사례 근거 품질에 영향. 실 결정이력 적재 파이프라인은 post-MVP로 보류돼 있었음 — v1에서 손댈지 별도 확인 필요.
+1. **[기반] MCP 툴콜링 루프 전환** — §0. Rule Agent의 `mcp_client.py`/전환 패턴을 그대로 재사용 가능(신규 설계 불필요, 이식만 하면 됨).
+2. **3범주 분류 스키마 신설** — anomaly score가 높은 건에 한정해 도는 서브스텝. `RiskVerdict` 기존 필드는 유지, 신규 필드는 추가만.
+3. **분류 단계와 액션(recommendation) 단계 분리** — Stage2를 "① 분류" → "② 액션 결정" 2단으로 쪼갬.
+4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — `anomaly.pkl` 재학습 필요(ML 파이프라인 작업, Agent 코드와 무관).
+5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — 현재 10건 수동 시드뿐.
 
 ---
 
-## 3. 비침습 체크리스트 (착수 전 재확인용)
+## 3. 비침습 체크리스트 (착수 전 재확인용, 구현 완료 후 회고용으로도 유효)
 
-새 기능을 켤 때 아래를 만족하는지 확인:
-
-- [ ] 기존 함수의 **반환 계약(응답 shape)**을 바꾸지 않고 확장만 하는가 (Rule: `generate()` 성공 케이스 그대로 / Risk: `RiskVerdict` 필드 유지)
-- [ ] 새 자동 트리거(적재→생성)가 실패해도 **기존 수동 경로(룰 콘솔 수동 생성)는 그대로 동작**하는가
-- [ ] 대화형 에이전트가 **기존 그래프 CRUD API를 재사용**하고 새 저장 경로를 만들지 않는가
-- [ ] MCP 툴콜링 전환이 **기존 단발 호출 경로를 완전히 대체하지 않고**, 실패 시 폴백 가능한가(적어도 이행 기간 동안)
+- [x] 기존 함수의 **반환 계약(응답 shape)**을 바꾸지 않고 확장만 하는가 — `generate()` 성공 케이스(`DRAFT_SAVED`) 응답 필드 동일 확인
+- [x] 새 자동 트리거(적재→생성)가 실패해도 **기존 수동 경로(룰 콘솔 수동 생성)는 그대로 동작**하는가 — 룰 콘솔 "규정 문서에서 생성" 버튼은 안 건드림
+- [x] 대화형 에이전트가 **기존 그래프 CRUD API를 재사용**하고 새 저장 경로를 만들지 않는가 — `update_node`/`create_node`/`delete_node` 재사용 확인
+- [x] MCP 툴콜링 전환이 **기존 단발 호출 경로를 완전히 대체하지 않고**, 실패 시 폴백 가능한가 — 아웃터 재시도 루프(§1.2-4)가 안전판으로 유지됨
 
 ---
 
 ## 3a. 프론트 연동 작업과의 격리 전략
 
-**배경**: 프론트-에이전트 연동을 다른 팀원이 병행 작업 중. v1 고도화가 그 작업과 코드/동작이 겹치면 꼬임. 격리 지점은 "코드 위치"가 아니라 **계약(contract)** — 프론트가 실제로 붙는 건 Django API 엔드포인트(룰 콘솔 API 3종, `/api/settlements/{id}/judge` 등)지 `apps/ai` 내부 함수가 아니다. 그 계약만 안 건드리면 `apps/ai` 내부는 자유롭게 갈아엎어도 프론트는 안 깨진다.
+**배경**: 프론트-에이전트 연동을 다른 팀원이 병행 작업 중. 격리 지점은 "코드 위치"가 아니라 **계약(contract)** — 프론트가 실제로 붙는 건 Django API 엔드포인트지 `apps/ai` 내부 함수가 아니다.
 
-**레포 전례**: `Review List v0`를 만들 때 운영 모델(`Settlement`/`RiskReview`)은 그대로 import하되 **별도 서브패키지(`apps/core/domain/risk_review_v0/`) + 별도 라우트(`/risk-review-v0`, Sidebar 미연결)**로 격리했다(상태 보드 "Review List v0" 항목). v1도 동일 패턴을 따른다.
+**레포 전례**: `Review List v0`를 만들 때 운영 모델은 그대로 import하되 별도 서브패키지+별도 라우트로 격리했다. v1도 동일 패턴 — 신규 엔드포인트(`/converse` 등)로 노출하고 기존 엔드포인트 응답 shape는 동결.
 
-**적용 방법:**
-
-1. **신규 기능 = 새 엔드포인트, 기존 엔드포인트는 응답 shape 동결** — §1.2·§2.2의 신규 항목(자동트리거, 검증루프, 대화형 에이전트, 3범주 분류)은 새 경로로 노출하거나, 기존 응답에 옵션 필드만 추가(§3 체크리스트와 동일 원칙). 프론트 팀원이 지금 바인딩 중인 기존 필드/구조는 손대지 않는다.
-2. **git 브랜치 분리 + 접점만 사전 공유** — 프론트 연동 브랜치와 v1 에이전트 브랜치를 나누고, 전 범위를 조율할 필요는 없다. 아래 3번(트리거 활성화) 같은 **동작이 바뀌는 지점만** 미리 알린다.
-3. **`rule_trigger.py` 활성화는 코드 충돌이 아니라 타이밍 조율 대상** — 프론트가 직접 호출하는 API가 아니라 백그라운드 트리거라 코드는 안 겹치지만, 켜는 순간 룰 콘솔에 DRAFT 그래프가 자동으로 쌓이기 시작해 **화면에 보이는 데이터가 바뀐다**. 팀원이 룰 콘솔 화면 작업 중이면 켜는 시점을 미리 얘기해야 함.
-4. **MCP 툴콜링 전환(§0)은 순수 내부 구현 교체**라 프론트 연동과 무관 — 조율 없이 진행 가능.
+**적재→생성 자동 트리거(§1.2-2)가 코드상 켜졌다는 게 이번 격리 전략에서 가장 중요한 지점이다** — 문서를 새로 업로드(scope 지정)하면 룰 콘솔에 DRAFT 그래프가 자동으로 쌓이는 동작이 이제 코드에 들어가 있다. **단, 지금 당장은 무관한 docling 버전 드리프트 버그(§1.2-2 각주, `rule-agent-v1-implementation.md` §10) 때문에 업로드 자체가 파싱 단계에서 죽어 트리거가 실제로는 안 불린다** — 그 버그가 고쳐지는 순간부터 이 리스크가 살아나므로, 그 버그 수정 시점에 프론트 팀원과 다시 한번 확인이 필요하다.
 
 ### 3a.1 브랜치·PR 전략 (Rule Agent v1)
 
-- **브랜치**: `feature/rule-agent-v1` — 작업자는 이 브랜치에 커밋만 올리고, **머지는 다른 팀원이 수행**(작업자 본인은 머지하지 않음).
-- **커밋/PR은 §1.2 항목 단위로 쪼갠다** — 하나로 몰아서 올리지 않는다. 각 항목(MCP 검증 툴 신설 / 검증→재생성 루프 / 자동트리거 배선 / 대화형 에이전트)이 서로 순차 의존은 하지만 개별적으로 addable이라, 항목별로 나눠 올려야 머지 담당자가 어디까지 반영할지 판단하기 쉽고 프론트 브랜치와의 충돌 창도 줄어든다.
-- **`rule_trigger.py` 활성화는 특히 명시적으로 표시** — 코드 반영과 실제 활성화(동작 변경)를 분리해야 함을 머지 담당자에게 커밋 메시지/PR 설명으로 명확히 전달한다(§3a-3: 켜는 순간 프론트에 보이는 데이터가 바뀜). 코드는 올려도 되지만, 실제로 켜는 시점(env flag 등으로 on/off)은 프론트 팀원과 타이밍이 맞을 때까지 머지 담당자가 판단하도록 남긴다.
+- **브랜치**: `feature/rule-agent-v1` — 작업자는 이 브랜치에 커밋만 올리고, **머지는 다른 팀원이 수행**.
+- **커밋/PR은 §1.2 항목 단위로 쪼갠다.**
+- **`rule_trigger.py` 활성화(§1.2-2)는 특히 명시적으로 표시** — 이제 실제로 자동생성이 동작하므로, 머지 담당자가 프론트 팀원과 타이밍을 맞출 시점을 판단해야 한다(§3a 참조).
 
 ---
 
-## 4. 미결정 사항 (팀 확인 필요)
+## 4. 결정 사항 종합 (전부 확정)
 
-**✅ 결정 완료(2026-08-16, 검증→재생성 루프)**: A안(저장→검증→실패시 discard_draft) 채택 / 재시도 범위는 sanitize 전멸+구조검증 실패 통합 단일 카운터 / 최대 시도 총 3회(최초 1회+재시도 2회) / "그래프 검증 MCP 툴"은 신규 개발 아님, 기존 `/simulate` 재사용 / RAG 청크는 재조회 없이 재사용 / 종료 상태값은 기존과 안 겹치는 신규 이름(`NO_VALID_NODES_EXHAUSTED`/`STRUCTURE_INVALID_EXHAUSTED`) 도입. 상세는 §1.2-3·4.
+**Rule Agent §1.2 전 항목 결정 완료(2026-08-16):**
 
-**남은 미결정 (팀 확인 필요):**
+1. 적재→생성 자동트리거 scope 범위 → **업로드 시 선택 1개만**
+2. 재색인 시 자동 생성 재실행 여부 → **최초 적재 시에만, 재색인 제외**
+3. 시뮬레이션 보고서 LLM 서술 → **추가 안 함(현행 유지)**
+4. 검증→재생성 루프 설계(A안/재시도 범위/횟수/RAG 재사용/상태값 이름) → **전부 확정, 구현 완료**
+5. MCP 툴콜링 범위 → **전체 재작성**(마운트 수정+배선+실제 tool-calling 루프)
+6. 재시도 시 LLM 프롬프트 피드백 포맷 → **단순 텍스트 나열**(`_build_sanitize_feedback`/`_build_structure_feedback`)로 구현, 이 이상 정교화는 보류
 
-1. 적재→생성 자동트리거의 scope 범위 (업로드 시 선택 1개 vs 문서 탐지 전체)
-2. 재색인 시 자동 생성 재실행 여부
-3. 시뮬레이션 보고서에 LLM 서술을 추가할지, 룰 기반 템플릿으로 v1도 유지할지
-4. Risk Review 3범주 분류의 정의 자체(어떤 기준으로 3개로 나누는지 — anomaly score 구간? 위반 확신도? 아직 미정의, 이 문서 범위 밖)
-5. `case_history` 실 이력 적재 파이프라인을 v1에 포함할지, post-MVP로 유지할지
-6. 재시도 시 LLM 프롬프트에 넣을 실패 피드백의 구체적 포맷 — `rejected_nodes`(사유 목록)와 `structureError`(문자열)를 그대로 붙일지, 요약해서 넣을지. 프롬프트 설계 시점에 결정.
+**남은 미결정 (Risk Review Agent 범위, 이 브랜치 밖):**
 
-**구현하면서 그 자리에서 결정(팀 확인 불필요, §1.2-4에 이미 표시):**
-
-- 재시도 과정 기록 방식(로그 vs AI-LAB trace 패턴)
-- 이 루프가 §1.2-2 자동트리거에도 그대로 상속되는지 재확인
+1. Risk Review 3범주 분류의 정의 자체(어떤 기준으로 3개로 나누는지 — anomaly score 구간? 위반 확신도? 아직 미정의)
+2. `case_history` 실 이력 적재 파이프라인을 v1에 포함할지, post-MVP로 유지할지

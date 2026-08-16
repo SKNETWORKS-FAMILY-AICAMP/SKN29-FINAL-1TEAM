@@ -2,12 +2,25 @@
 """Rule Agent — 생성(Generate) v0/v1.
 
 기술명세서 §4.2(a) 생성 Flow 구현:
-    search_policy(RAG) → LLM 노드 초안 → 그래프 조립 → DRAFT 저장 → 구조검증 →
-    (실패 시) 이전 실패 사유를 피드백으로 재시도, 최대 MAX_GENERATE_ATTEMPTS회
+    search_policy(MCP 툴콜링) → LLM 노드 초안(submit_rule_nodes 툴 호출로 종료) →
+    그래프 조립 → DRAFT 저장 → 구조검증 → (실패 시) 이전 실패 사유를 피드백으로
+    재시도, 최대 MAX_GENERATE_ATTEMPTS회
 
-검증→재생성 루프(v1, `llm_wiki/_context/agent-v1-upgrade-plan.md` §1.2-4):
-  - RAG 청크는 시도 전체에서 재사용(재조회 안 함) — "피드백이 통했는지"와 "우연히
-    다른 청크가 걸렸는지"를 구분하기 위함.
+MCP 툴콜링 전환(v1, `llm_wiki/_context/agent-v1-upgrade-plan.md` §1.2-1):
+  - RAG 검색은 더 이상 파이썬이 미리 실행해 프롬프트에 박아넣지 않는다. LLM이
+    `search_policy` MCP 툴을 직접 호출해 근거를 가져온다(부족하면 다른 질의로
+    추가 호출 가능) — `mcp_client.call_tool()`이 `fastmcp.Client`로 `app.mcp.server`에
+    in-process 접속한다(HTTP 왕복 없음, `/mcp` 마운트와는 별개 경로).
+  - 최종 결과는 `response_format=json_schema` 단발 출력이 아니라 **`submit_rule_nodes`
+    툴 호출**로 받는다 — 이 툴이 호출돼야 루프가 끝난다(최대 MAX_TOOL_TURNS 턴, 초과
+    시 빈 결과로 안전 종료).
+  - 단, "RAG 청크는 시도 전체(재시도 3회)에서 재사용"이라는 기존 결정(§1.2-4)은 유지한다
+    — outer 재시도 루프가 넘겨주는 `initial_chunks`를 대화 맥락에 고정으로 심어두고,
+    모델이 부족하다고 판단할 때만 **추가** 검색을 하게 한다. 매 outer 시도마다 처음부터
+    다른 검색 결과로 시작하면 "피드백이 통했는지 vs 우연히 다른 근거가 걸렸는지"를
+    구분할 수 없어져 재시도 루프의 신뢰성이 무너지기 때문.
+
+검증→재생성 루프(v1, §1.2-4, MCP 전환과 별개로 유지):
   - sanitize 전멸과 저장 후 구조검증(`/simulate`) 실패를 하나의 시도 카운터로 묶는다.
   - 새 검증 엔드포인트는 만들지 않는다 — 기존 `POST /api/rules/{id}/simulate`를
     재사용(`django_client.simulate_graph`). 구조검증 실패 시 `discard_draft`로 그
@@ -30,8 +43,7 @@ import json
 import re
 from typing import Any
 
-from . import django_client
-from .search import search_policy
+from . import django_client, mcp_client
 from .settings import settings
 
 _client = None
@@ -65,6 +77,11 @@ _ALLOWED_OPS = {"and", "or", "not", "==", "!=", ">", ">=", "<", "<=", "in", "var
 # 검증→재생성 루프 최대 시도 횟수(최초 1회 + 재시도 2회). agent-v1-upgrade-plan.md §1.2-4
 # 결정 근거: LLM 자기수정은 2~3회 이후 수확체감이 커서 그 이상은 비용 대비 이득이 적다.
 MAX_GENERATE_ATTEMPTS = 3
+
+# MCP 툴콜링 루프(§1.2-1) 안전판 — 모델이 몇 턴 안에 submit_rule_nodes를 호출해야
+# 하는지 상한. search_policy 추가 호출 2~3번 + 최종 제출 정도면 충분하다고 보고 여유
+# 있게 잡음. 초과하면 빈 결과로 종료해 outer 재생성 루프(§1.2-4)가 이어받는다.
+MAX_TOOL_TURNS = 6
 
 
 # ---------------------------------------------------------------- LLM 호출
@@ -180,9 +197,7 @@ _RESPONSE_SCHEMA = {
 }
 
 
-def _build_user_prompt(
-    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
-) -> str:
+def _format_chunks(chunks: list[dict]) -> str:
     chunk_lines = []
     for i, c in enumerate(chunks, 1):
         block = f"[청크 {i}] citation: {c['citation']}\n{c['text']}"
@@ -191,6 +206,12 @@ def _build_user_prompt(
         if c.get("parent_text") and c["parent_text"] != c["text"]:
             block += f"\n  (같은 조 전문 — 맥락 참고용, 인용은 위 citation을 쓸 것)\n  {c['parent_text']}"
         chunk_lines.append(block)
+    return "\n\n".join(chunk_lines) if chunk_lines else "(없음)"
+
+
+def _build_user_prompt(
+    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+) -> str:
     paths_block = (
         "\n".join(sorted(schema_paths))
         if schema_paths
@@ -199,27 +220,121 @@ def _build_user_prompt(
     prompt = (
         f"대상 scope(비용 분류): {scope}\n\n"
         f"[허용 경로 목록 — EvalContext v4]\n{paths_block}\n\n"
-        f"[규정 조항 청크]\n" + "\n\n".join(chunk_lines)
+        f"[규정 조항 청크 — 1차 검색 결과]\n{_format_chunks(chunks)}\n\n"
+        "위 청크만으로 부족하면 `search_policy` 툴을 다른 질의로 호출해 추가 근거를 "
+        "확보하세요. 준비되면 `submit_rule_nodes` 툴을 호출해 최종 결과를 제출하세요 "
+        "— 이 툴을 호출해야 생성이 끝납니다."
     )
     if feedback:
         prompt += f"\n\n[이전 시도 피드백 — 아래 문제를 반복하지 말 것]\n{feedback}"
     return prompt
 
 
-def _call_llm(
-    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+_SEARCH_POLICY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_policy",
+        "description": (
+            "사내 규정 조항을 RAG로 검색한다(MCP `search_policy` 경유). "
+            "1차 검색 결과만으로 조건을 만들기 부족할 때, 다른 질의로 다시 불러 "
+            "추가 근거를 확보하는 용도."
+        ),
+        "parameters": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "query": {"type": "string", "description": "검색 질의"},
+                "top_k": {"type": "integer", "minimum": 1, "maximum": 20},
+                "include_law": {"type": "boolean", "description": "세법(tax_refs)도 함께 검색할지"},
+            },
+            "required": ["query", "top_k", "include_law"],
+        },
+    },
+}
+
+_SUBMIT_NODES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "submit_rule_nodes",
+        "description": "최종 룰 노드 목록을 제출한다. 이 툴을 호출해야 생성이 끝난다.",
+        "strict": True,
+        "parameters": _RESPONSE_SCHEMA["schema"],
+    },
+}
+
+
+def _run_generation_loop(
+    scope: str, initial_chunks: list[dict], schema_paths: list[str], feedback: str | None = None
 ) -> dict:
-    resp = _openai().chat.completions.create(
-        model=settings.model,
-        temperature=0.2,
-        timeout=60,
-        response_format={"type": "json_schema", "json_schema": _RESPONSE_SCHEMA},
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(scope, chunks, schema_paths, feedback)},
-        ],
-    )
-    return json.loads(resp.choices[0].message.content)
+    """MCP 툴콜링 멀티턴 루프. `submit_rule_nodes` 호출 시 그 인자를 최종 결과로 반환.
+
+    `initial_chunks`는 outer 재시도 루프(§1.2-4)가 재사용하는 고정 근거 — 대화 맥락에
+    박아두고, 모델이 부족하다고 판단할 때만 `search_policy`로 추가 검색하게 한다.
+    """
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": _build_user_prompt(scope, initial_chunks, schema_paths, feedback)},
+    ]
+
+    for _ in range(MAX_TOOL_TURNS):
+        resp = _openai().chat.completions.create(
+            model=settings.model,
+            temperature=0.2,
+            timeout=60,
+            tools=[_SEARCH_POLICY_TOOL, _SUBMIT_NODES_TOOL],
+            tool_choice="auto",
+            messages=messages,
+        )
+        msg = resp.choices[0].message
+        tool_calls = msg.tool_calls or []
+
+        if not tool_calls:
+            # 모델이 툴 호출 없이 일반 텍스트로 답함 — 반드시 submit_rule_nodes를
+            # 호출하라고 다시 알려주고 한 턴 더 준다(카운터는 그대로 소모).
+            messages.append({"role": "assistant", "content": msg.content or ""})
+            messages.append({
+                "role": "user",
+                "content": "반드시 `submit_rule_nodes` 툴을 호출해 최종 결과를 제출하세요.",
+            })
+            continue
+
+        messages.append({
+            "role": "assistant", "content": msg.content,
+            "tool_calls": [
+                {"id": tc.id, "type": "function",
+                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                for tc in tool_calls
+            ],
+        })
+
+        for tc in tool_calls:
+            args = json.loads(tc.function.arguments or "{}")
+            if tc.function.name == "submit_rule_nodes":
+                return args
+            if tc.function.name == "search_policy":
+                result = mcp_client.call_tool(
+                    "search_policy",
+                    query=args.get("query", scope),
+                    top_k=args.get("top_k") or 6,
+                    include_law=bool(args.get("include_law")),
+                )
+                chunks = result.get("chunks", [])
+                tool_content = (
+                    f"검색 결과 {len(chunks)}건:\n\n{_format_chunks(chunks)}" if chunks
+                    else "검색 결과 0건 — 다른 질의를 시도하거나, 그 조항은 skipped 처리하세요."
+                )
+            else:
+                tool_content = f"알 수 없는 툴: {tc.function.name}"
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": tool_content})
+
+    # 턴 소진 — outer 재시도 루프가 "노드 없음"으로 이어받게 안전 종료.
+    return {
+        "nodes": [],
+        "skipped": [{
+            "reason": f"모델이 {MAX_TOOL_TURNS}턴 안에 submit_rule_nodes를 호출하지 않음",
+            "source_citation": "",
+        }],
+    }
 
 
 def _build_sanitize_feedback(rejected: list[dict]) -> str:
@@ -443,8 +558,12 @@ def generate(req: Any) -> dict[str, Any]:
     """
     query = req.query or DEFAULT_QUERIES.get(req.scope, f"{req.scope} 관련 규정")
 
-    # ① RAG — 규칙화 가능 조항 추출
-    chunks = search_policy(query, top_k=req.top_k, include_law=req.include_law)
+    # ① RAG — 규칙화 가능 조항 추출. MCP `search_policy` 툴을 in-process로 호출한다
+    #    (§1.2-1) — outer 재시도 루프가 재사용할 "1차 근거"만 여기서 확보하고, 부족하면
+    #    LLM이 `_run_generation_loop` 안에서 같은 툴을 추가로 호출한다.
+    chunks = mcp_client.call_tool(
+        "search_policy", query=query, top_k=req.top_k, include_law=req.include_law
+    ).get("chunks", [])
     if not chunks:
         return {
             "status": "NO_SOURCE",
@@ -470,7 +589,7 @@ def generate(req: Any) -> dict[str, Any]:
     attempt_history: list[dict[str, Any]] = []
 
     for attempt_no in range(1, MAX_GENERATE_ATTEMPTS + 1):
-        llm_out = _call_llm(req.scope, chunks, schema_paths, feedback)
+        llm_out = _run_generation_loop(req.scope, chunks, schema_paths, feedback)
         accepted, rejected = _sanitize_nodes(llm_out.get("nodes", []), set(schema_paths))
 
         if not accepted:

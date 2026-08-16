@@ -125,7 +125,8 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             return [CanActivateRule()]
         if self.action in ("create_version", "create_graph", "generate_graph", "create_node",
                            "update_node", "discard_draft", "delete_graph", "simulate",
-                           "test_cases", "simulation_report", "request_activation", "messages"):
+                           "test_cases", "simulation_report", "request_activation", "messages",
+                           "converse"):
             return [CanViewRule()]
         return super().get_permissions()
 
@@ -257,6 +258,36 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             # 직렬로 돌 수 있어(각 시도 = LLM 호출 + 저장 API 왕복 + /simulate) 1회 기준
             # 120초로는 부족할 수 있다.
             resp = httpx.post(url, json=request.data, timeout=httpx.Timeout(300.0, connect=5.0))
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": f"AI 서비스({django_settings.AI_BASE_URL})에 연결하지 못했습니다 — "
+                           f"{type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {"detail": resp.text[:2000]}
+        return Response(payload, status=resp.status_code)
+
+    @action(detail=True, methods=["post"], url_path="converse")
+    def converse(self, request, pk=None):
+        """POST /api/rules/{id}/converse/ — 대화형 자연어 수정(§1.2-5).
+
+        `generate_graph`와 같은 얇은 프록시 원칙: 인가·전달만 하고, 실제 그래프 수정은
+        FastAPI가 서비스 계정 JWT로 이 ViewSet의 `nodes` 액션들을 다시 부르며 일어난다.
+        """
+        message = str(request.data.get("message", "")).strip()
+        if not message:
+            return Response({"detail": "message가 필요합니다."}, status=400)
+        graph = self.get_object()
+        url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/converse"
+        try:
+            # LLM 툴콜링 여러 턴 + Django 재호출 왕복 — generate와 비슷하게 넉넉히.
+            resp = httpx.post(
+                url, json={"graph_id": str(graph.pk), "message": message},
+                timeout=httpx.Timeout(180.0, connect=5.0),
+            )
         except Exception as exc:  # noqa: BLE001
             return Response(
                 {"detail": f"AI 서비스({django_settings.AI_BASE_URL})에 연결하지 못했습니다 — "

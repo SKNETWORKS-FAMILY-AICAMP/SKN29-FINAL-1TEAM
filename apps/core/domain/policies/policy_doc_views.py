@@ -42,11 +42,15 @@ _DISPATCH_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 ALLOWED_SUFFIXES = (".pdf",)
 
 
-def _dispatch(doc: PolicyDoc) -> str:
+def _dispatch(doc: PolicyDoc, *, is_reindex: bool) -> str:
     """ai에 적재를 요청한다. 실패 사유를 문자열로 돌려준다(성공이면 빈 문자열).
 
     여기서 예외를 올리지 않는 이유: 업로드 자체는 이미 성공했다. ai가 안 떠 있다고 파일을
     되돌리면 사용자는 올린 걸 또 올려야 한다. 대신 문서를 FAILED로 두어 재색인을 유도한다.
+
+    `is_reindex`: 룰 자동생성 트리거(§1.2-2) 켤 때 필요해진 구분 — 최초 적재에서만 자동
+    생성하고 재색인에서는 안 한다(재색인마다 새 계열이 쌓이는 걸 막기 위함, 기존 계열에
+    버전을 얹는 경로가 아직 없어서). ai 쪽 `rule_trigger.trigger()`가 이 값으로 분기한다.
     """
     try:
         resp = httpx.post(
@@ -56,6 +60,7 @@ def _dispatch(doc: PolicyDoc) -> str:
                 "filePath": doc.file.name,      # media 볼륨 기준 상대경로 (ai가 :ro로 마운트)
                 "name": doc.title,
                 "ruleScope": doc.rule_scope,
+                "isReindex": is_reindex,
             },
             timeout=_DISPATCH_TIMEOUT,
         )
@@ -66,14 +71,14 @@ def _dispatch(doc: PolicyDoc) -> str:
         return f"AI 서비스({settings.AI_BASE_URL}) 호출 실패 — {type(exc).__name__}: {exc}"
 
 
-def _start(doc: PolicyDoc) -> PolicyDoc:
-    """적재를 시작 상태로 돌리고 요청을 보낸다. 재색인도 같은 경로를 탄다."""
+def _start(doc: PolicyDoc, *, is_reindex: bool) -> PolicyDoc:
+    """적재를 시작 상태로 돌리고 요청을 보낸다."""
     doc.status = IngestStatus.PENDING
     doc.error = ""
     doc.rule_trigger = {}
     doc.save(update_fields=["status", "error", "rule_trigger", "updated_at"])
 
-    failure = _dispatch(doc)
+    failure = _dispatch(doc, is_reindex=is_reindex)
     if failure:
         doc.status = IngestStatus.FAILED
         doc.error = failure
@@ -114,7 +119,7 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
             file=upload,
             uploaded_by=request.user if request.user.is_authenticated else None,
         )
-        _start(doc)
+        _start(doc, is_reindex=False)
         return Response(self.get_serializer(doc).data, status=http.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
@@ -127,7 +132,7 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
         if not doc.file:
             return Response({"detail": "원본 파일이 없어 재색인할 수 없습니다."},
                             status=http.HTTP_400_BAD_REQUEST)
-        return Response(self.get_serializer(_start(doc)).data)
+        return Response(self.get_serializer(_start(doc, is_reindex=True)).data)
 
 
 class IngestCallbackView(APIView):

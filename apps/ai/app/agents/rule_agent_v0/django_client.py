@@ -112,3 +112,56 @@ def simulate_graph(graph_id: str) -> dict[str, Any]:
 def discard_draft(graph_id: str) -> None:
     """DRAFT 그래프 폐기. 검증 실패로 재생성해야 할 때 이전 시도의 그래프를 지운다."""
     _request("DELETE", f"/api/rules/{graph_id}/draft/")
+
+
+# ------------------------------------------------------- 대화형 수정(§1.2-5)용
+
+def get_graph(graph_id: str) -> dict[str, Any]:
+    """그래프 현재 상태(노드·라우팅·entry) 조회. `RuleGraphSerializer` 그대로."""
+    return _request("GET", f"/api/rules/{graph_id}/").json()
+
+
+def create_node(graph_id: str, node_key: str) -> dict[str, Any]:
+    """빈 노드 생성. 바로 뒤에 `update_node`로 내용을 채워야 한다(콘솔과 같은 2단계)."""
+    return _request("POST", f"/api/rules/{graph_id}/nodes/", json={"nodeKey": node_key}).json()
+
+
+def update_node(
+    graph_id: str,
+    node_key: str,
+    *,
+    condition: Any = None,
+    condition_text: str | None = None,
+    action: dict[str, Any] | None = None,
+    routings: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """노드 내용 갱신 — 넘긴 필드만 반영(camelCase, `update_node` 액션이 request.data를
+    그대로 읽으므로 프론트와 같은 표기)."""
+    payload: dict[str, Any] = {}
+    if condition is not None:
+        payload["condition"] = condition
+    if condition_text is not None:
+        payload["conditionText"] = condition_text
+    if action is not None:
+        payload["action"] = action
+    if routings is not None:
+        payload["routings"] = routings
+    return _request("PATCH", f"/api/rules/{graph_id}/nodes/{node_key}/", json=payload).json()
+
+
+def delete_node(graph_id: str, node_key: str) -> None:
+    """노드 삭제. 참조하던 라우팅도 Django 쪽에서 같이 정리된다(`update_node` DELETE 분기)."""
+    _request("DELETE", f"/api/rules/{graph_id}/nodes/{node_key}/")
+
+
+def post_messages(
+    graph_id: str, entries: list[dict[str, Any]], node_key: str = ""
+) -> dict[str, Any]:
+    """대화 로그 적재 — 기존 `RuleAuthoringMessage` 저장소 재사용(신규 저장 경로 아님).
+
+    entries: [{"role": "user"|"ai", "text": ..., "appliedNote": ...}]
+    """
+    return _request(
+        "POST", f"/api/rules/{graph_id}/messages/",
+        json={"nodeKey": node_key, "messages": entries},
+    ).json()
