@@ -77,7 +77,15 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
   busy: boolean
 }) {
   const [skipping, setSkipping] = useState(false)
-  const heading = `${clause.articleLabel}${clause.articleTitle ? `(${clause.articleTitle.replace(/^\(|\)$/g, '')})` : ''}`
+  // 청킹이 주는 `articleTitle`은 조 라벨을 **이미 포함한 전체 헤딩**이다("제1조 (목적)").
+  // 그걸 모르고 `라벨 + (제목)`으로 조합하면 "제1조(제1조 (목적))"이 된다(실측으로 잡음).
+  // 라벨이 빠진 제목이 올 수도 있으므로 양쪽 모양을 다 받는다.
+  const title = clause.articleTitle?.trim() ?? ''
+  const heading = !title
+    ? clause.articleLabel
+    : title.startsWith(clause.articleLabel)
+      ? title
+      : `${clause.articleLabel} ${title.startsWith('(') ? title : `(${title})`}`
 
   return (
     <div className="pd-clause">

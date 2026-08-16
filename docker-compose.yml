@@ -87,6 +87,11 @@ services:
       # 업로드된 규정 PDF를 읽을 위치(아래 media 볼륨). docling이 파일 경로를 요구해서
       # 바이트를 HTTP로 되넘기는 대신 core와 같은 볼륨을 공유한다.
       RAG_MEDIA_ROOT: /data/media
+      # 개발용: docling 파싱만 미리 떠둔 덤프로 대체한다(아래 docling_eval 마운트).
+      # 켜면 업로드 **파일 내용이 무시되고 문서명으로만** 덤프를 고른다 — 운영에선 절대 켜지 말 것.
+      # 기본값 비어 있음 = 꺼짐. 켤 때는 .env에 DOCLING_MOCK=1.
+      DOCLING_MOCK: ${DOCLING_MOCK:-}
+      DOCLING_MOCK_DUMP: ${DOCLING_MOCK_DUMP:-/data/docling_eval/output}
     volumes:
       - ./apps/ai:/app
       # RAG 인덱싱 배치의 입력(파싱 덤프). 레포 루트에 있어 `/app` 마운트로는 안 보인다 —

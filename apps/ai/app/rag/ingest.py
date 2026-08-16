@@ -25,6 +25,7 @@ from app.rag.chunking.chunker import chunk_document
 from app.rag.embedding import config as emb_config
 from app.rag.embedding import store
 from app.rag.parsing import engine
+from app.rag.parsing import mock
 from app.rag.parsing.corrections import pipeline
 
 logger = logging.getLogger(__name__)
@@ -126,8 +127,18 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
     if not path.exists():
         return IngestResult(ok=False, name=name or str(path), error=f"파일이 없습니다: {path}")
 
+    # 파싱만 갈아끼우는 지점. 모킹이 꺼져 있으면(기본) 이 분기는 없는 것과 같다.
+    # 모킹 실패는 **폴백하지 않고** 그대로 실패시킨다 — 조용히 실물 파싱으로 넘어가면
+    # "모킹이 켜졌는데 왜 느리지"를 아무도 모른다.
+    mock_warning = ""
     try:
-        doc = engine.convert(path, converters=_get_converters())
+        if mock.enabled():
+            doc, mock_warning = mock.parse(path, name=name)
+        else:
+            doc = engine.convert(path, converters=_get_converters())
+    except mock.MockDocumentNotFound as exc:
+        logger.warning("docling 모킹 대상 없음 %s: %s", path, exc)
+        return IngestResult(ok=False, name=name or path.stem, error=str(exc))
     except Exception as exc:  # noqa: BLE001
         logger.exception("파싱 실패 %s", path)
         return IngestResult(ok=False, name=name or path.stem, error=f"파싱 실패: {exc}")
@@ -162,7 +173,10 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
 
     leaves = sum(1 for c in chunks if c.chunk_role != "parent")
     clauses, orphans = build_clauses(chunks)
-    warnings = list(doc.report.warnings) + list(getattr(report, "warnings", []))
+    # 모킹 경고를 **맨 앞에** 둔다 — 화면 경고 배너가 앞쪽 몇 줄만 보여주므로,
+    # 뒤에 두면 "이건 실제 파싱 결과가 아니다"라는 사실이 잘려 안 보일 수 있다.
+    warnings = ([mock_warning] if mock_warning else [])
+    warnings += list(doc.report.warnings) + list(getattr(report, "warnings", []))
     if orphans:
         warnings.append(
             f"조에 속하지 않은 청크 {orphans}개(별표 등) — 검색에는 걸리지만 조항 목록에는 뜨지 않는다."
