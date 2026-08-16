@@ -1,8 +1,20 @@
 # apps/ai/app/agents/rule_agent_v0/agent.py
-"""Rule Agent — 생성(Generate) v0.
+"""Rule Agent — 생성(Generate) v0/v1.
 
 기술명세서 §4.2(a) 생성 Flow 구현:
-    search_policy(RAG) → LLM 단건 룰(노드) 초안 → 그래프 조립 → DRAFT 저장
+    search_policy(RAG) → LLM 노드 초안 → 그래프 조립 → DRAFT 저장 → 구조검증 →
+    (실패 시) 이전 실패 사유를 피드백으로 재시도, 최대 MAX_GENERATE_ATTEMPTS회
+
+검증→재생성 루프(v1, `llm_wiki/_context/agent-v1-upgrade-plan.md` §1.2-4):
+  - RAG 청크는 시도 전체에서 재사용(재조회 안 함) — "피드백이 통했는지"와 "우연히
+    다른 청크가 걸렸는지"를 구분하기 위함.
+  - sanitize 전멸과 저장 후 구조검증(`/simulate`) 실패를 하나의 시도 카운터로 묶는다.
+  - 새 검증 엔드포인트는 만들지 않는다 — 기존 `POST /api/rules/{id}/simulate`를
+    재사용(`django_client.simulate_graph`). 구조검증 실패 시 `discard_draft`로 그
+    시도의 그래프를 지우고 재시도, 최종 실패해도 흔적을 안 남긴다(A안).
+  - 종료 상태값은 기존(`NO_SOURCE`/`DRAFT_SAVED`)과 겹치지 않는 신규 이름을 쓴다:
+    `NO_VALID_NODES_EXHAUSTED`(sanitize 전멸이 N회 반복)/
+    `STRUCTURE_INVALID_EXHAUSTED`(구조검증 실패가 N회 반복).
 
 v0 단순화 결정(의도적, GAPS.md 참조):
   - LLM은 "노드"만 생성한다. 그래프 위상(라우팅)은 파이썬이 결정론적으로 조립한다
@@ -49,6 +61,10 @@ SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 SEVERITY_PRIORITY = {s: i for i, s in enumerate(SEVERITIES)}  # CRITICAL=0 … INFO=4
 
 _ALLOWED_OPS = {"and", "or", "not", "==", "!=", ">", ">=", "<", "<=", "in", "var"}
+
+# 검증→재생성 루프 최대 시도 횟수(최초 1회 + 재시도 2회). agent-v1-upgrade-plan.md §1.2-4
+# 결정 근거: LLM 자기수정은 2~3회 이후 수확체감이 커서 그 이상은 비용 대비 이득이 적다.
+MAX_GENERATE_ATTEMPTS = 3
 
 
 # ---------------------------------------------------------------- LLM 호출
@@ -164,7 +180,9 @@ _RESPONSE_SCHEMA = {
 }
 
 
-def _build_user_prompt(scope: str, chunks: list[dict], schema_paths: list[str]) -> str:
+def _build_user_prompt(
+    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+) -> str:
     chunk_lines = []
     for i, c in enumerate(chunks, 1):
         block = f"[청크 {i}] citation: {c['citation']}\n{c['text']}"
@@ -178,14 +196,19 @@ def _build_user_prompt(scope: str, chunks: list[dict], schema_paths: list[str]) 
         if schema_paths
         else "(목록 조회 실패 — 확실한 경로만 보수적으로 사용하고 불확실하면 skipped 처리)"
     )
-    return (
+    prompt = (
         f"대상 scope(비용 분류): {scope}\n\n"
         f"[허용 경로 목록 — EvalContext v4]\n{paths_block}\n\n"
         f"[규정 조항 청크]\n" + "\n\n".join(chunk_lines)
     )
+    if feedback:
+        prompt += f"\n\n[이전 시도 피드백 — 아래 문제를 반복하지 말 것]\n{feedback}"
+    return prompt
 
 
-def _call_llm(scope: str, chunks: list[dict], schema_paths: list[str]) -> dict:
+def _call_llm(
+    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+) -> dict:
     resp = _openai().chat.completions.create(
         model=settings.model,
         temperature=0.2,
@@ -193,10 +216,26 @@ def _call_llm(scope: str, chunks: list[dict], schema_paths: list[str]) -> dict:
         response_format={"type": "json_schema", "json_schema": _RESPONSE_SCHEMA},
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(scope, chunks, schema_paths)},
+            {"role": "user", "content": _build_user_prompt(scope, chunks, schema_paths, feedback)},
         ],
     )
     return json.loads(resp.choices[0].message.content)
+
+
+def _build_sanitize_feedback(rejected: list[dict]) -> str:
+    """sanitize 반려 사유를 다음 LLM 호출 피드백 문장으로 변환."""
+    lines = ["생성한 노드 중 아래 항목이 검증에서 반려됐습니다:"]
+    for r in rejected:
+        node = r["node"]
+        problems = "; ".join(r["problems"])
+        lines.append(f"- node_key={node.get('node_key')!r}: {problems}")
+    lines.append("특히 존재하지 않는 EvalContext 경로를 참조하지 않았는지 다시 확인하세요.")
+    return "\n".join(lines)
+
+
+def _build_structure_feedback(structure_error: str) -> str:
+    """구조검증(validate_graph) 실패 사유를 다음 LLM 호출 피드백 문장으로 변환."""
+    return f"직전 시도로 조립한 그래프가 구조검증에 실패했습니다: {structure_error}"
 
 
 # ---------------------------------------------------------------- 1차 방어(FastAPI측)
@@ -421,55 +460,97 @@ def generate(req: Any) -> dict[str, Any]:
     # ② EvalContext 카탈로그 확보(프롬프트 주입 + 1차 경로 검증)
     schema_paths = django_client.get_eval_context_schema()
 
-    # ③ LLM 노드 초안 생성
-    llm_out = _call_llm(req.scope, chunks, schema_paths)
-    accepted, rejected = _sanitize_nodes(llm_out.get("nodes", []), set(schema_paths))
+    # ③~⑤ 검증→재생성 루프 (agent-v1-upgrade-plan.md §1.2-4, A안).
+    #   - RAG 청크(①)는 시도 전체에서 재사용한다 — 재조회하면 "피드백이 통했는지"와
+    #     "우연히 다른 청크가 걸렸는지"를 구분할 수 없어져 루프의 신뢰성이 무너진다.
+    #   - sanitize 전멸(노드 후보가 전부 반려)과 저장 후 구조검증(/simulate) 실패를
+    #     하나의 카운터로 묶는다. 둘 다 "이번 시도가 실패해서 LLM을 다시 부른다"는
+    #     본질이 같다.
+    feedback: str | None = None
+    attempt_history: list[dict[str, Any]] = []
 
-    if not accepted:
-        return {
-            "status": "NO_VALID_NODES",
-            "detail": "생성된 노드가 전부 검증 탈락 — rejected 참조",
+    for attempt_no in range(1, MAX_GENERATE_ATTEMPTS + 1):
+        llm_out = _call_llm(req.scope, chunks, schema_paths, feedback)
+        accepted, rejected = _sanitize_nodes(llm_out.get("nodes", []), set(schema_paths))
+
+        if not accepted:
+            attempt_history.append({
+                "attempt": attempt_no, "stage": "sanitize",
+                "rejected_nodes": rejected, "llm_skipped": llm_out.get("skipped", []),
+            })
+            if attempt_no == MAX_GENERATE_ATTEMPTS:
+                return {
+                    "status": "NO_VALID_NODES_EXHAUSTED",
+                    "detail": f"{MAX_GENERATE_ATTEMPTS}회 시도 모두 유효한 노드를 생성하지 못함 — attempts 참조",
+                    "query": query,
+                    "attempts": attempt_history,
+                    "sources": [c["citation"] for c in chunks],
+                }
+            feedback = _build_sanitize_feedback(rejected)
+            continue
+
+        # ④ 결정론적 조립 (선형 체인)
+        nodes, routings, entry = _assemble_linear_graph(accepted)
+        routings_by_node = _group_routings_by_node(routings)
+
+        # ⑤ Django 룰 콘솔 API 3종 오케스트레이션 (drafts → nodes → nodes/{key} PATCH).
+        #    인증은 서비스 계정 JWT(django_client) — 실패는 감추지 않고 그대로 올린다.
+        generation_meta = {
+            "agent": "rule-agent-v0",
+            "model": settings.model,
             "query": query,
-            "rejected_nodes": rejected,
+            "requested_scope": req.scope,
+            "include_law": req.include_law,
+            # 노드별 출처는 action.source_clause에 있다. 여기 남기는 건 **그래프 단위**
+            # 근거 — 어떤 조문 묶음을 보고 이 그래프가 나왔는지.
+            "sources": [
+                {"citation": c["citation"], "chunk_id": c["chunk_id"], "score": c["score"]}
+                for c in chunks
+            ],
+            "rejected_node_count": len(rejected),
             "llm_skipped": llm_out.get("skipped", []),
-            "sources": [c["citation"] for c in chunks],
+            "generation_attempts": attempt_no,
         }
+        saved = django_client.create_rule_graph_draft(
+            name=req.name or f"{req.scope} 자동생성 초안",
+            scope=req.scope,
+            nodes=nodes,
+            routings_by_node=routings_by_node,
+            generation_meta=generation_meta,
+        )
 
-    # ④ 결정론적 조립 (선형 체인)
-    nodes, routings, entry = _assemble_linear_graph(accepted)
-    routings_by_node = _group_routings_by_node(routings)
+        # ⑥ 구조검증 — 저장된 그래프를 대상으로만 돌릴 수 있다(사전 dry-validate
+        #    엔드포인트는 없음, §1.2-3). 실패하면 이 시도의 그래프를 지우고 재시도.
+        sim = django_client.simulate_graph(saved["graph_id"])
+        structure_error = sim.get("structureError", "")
 
-    # ⑤ Django 룰 콘솔 API 3종 오케스트레이션 (drafts → nodes → nodes/{key} PATCH).
-    #    인증은 서비스 계정 JWT(django_client) — 실패는 감추지 않고 그대로 올린다.
-    generation_meta = {
-        "agent": "rule-agent-v0",
-        "model": settings.model,
-        "query": query,
-        "requested_scope": req.scope,
-        "include_law": req.include_law,
-        # 노드별 출처는 action.source_clause에 있다. 여기 남기는 건 **그래프 단위**
-        # 근거 — 어떤 조문 묶음을 보고 이 그래프가 나왔는지.
-        "sources": [
-            {"citation": c["citation"], "chunk_id": c["chunk_id"], "score": c["score"]}
-            for c in chunks
-        ],
-        "rejected_node_count": len(rejected),
-        "llm_skipped": llm_out.get("skipped", []),
-    }
-    saved = django_client.create_rule_graph_draft(
-        name=req.name or f"{req.scope} 자동생성 초안",
-        scope=req.scope,
-        nodes=nodes,
-        routings_by_node=routings_by_node,
-        generation_meta=generation_meta,
-    )
+        if not structure_error:
+            return {
+                "status": "DRAFT_SAVED",
+                "graph": saved,
+                "entry_node_key": entry,
+                "query": query,
+                "sources": [c["citation"] for c in chunks],
+                "rejected_nodes": rejected,
+                "llm_skipped": llm_out.get("skipped", []),
+                "attempts": attempt_no,
+            }
 
-    return {
-        "status": "DRAFT_SAVED",
-        "graph": saved,
-        "entry_node_key": entry,
-        "query": query,
-        "sources": [c["citation"] for c in chunks],
-        "rejected_nodes": rejected,
-        "llm_skipped": llm_out.get("skipped", []),
-    }
+        attempt_history.append({
+            "attempt": attempt_no, "stage": "structure",
+            "structure_error": structure_error, "graph_id": saved["graph_id"],
+        })
+        django_client.discard_draft(saved["graph_id"])
+
+        if attempt_no == MAX_GENERATE_ATTEMPTS:
+            return {
+                "status": "STRUCTURE_INVALID_EXHAUSTED",
+                "detail": f"{MAX_GENERATE_ATTEMPTS}회 시도 모두 구조검증 실패 — attempts 참조",
+                "query": query,
+                "attempts": attempt_history,
+                "sources": [c["citation"] for c in chunks],
+            }
+        feedback = _build_structure_feedback(structure_error)
+
+    # 루프는 항상 위에서 return 한다 — 도달 불가(방어적 표기).
+    raise AssertionError("generate() 재시도 루프가 값을 반환하지 않고 종료됨")

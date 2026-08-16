@@ -253,7 +253,10 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/generate"
         try:
             # LLM + 임베딩 + Django 재호출이 직렬로 얹힌다 — 일반 API보다 넉넉히.
-            resp = httpx.post(url, json=request.data, timeout=httpx.Timeout(120.0, connect=5.0))
+            # v1: 검증→재생성 루프(agent-v1-upgrade-plan.md §1.2-4)가 최대 3회 시도를
+            # 직렬로 돌 수 있어(각 시도 = LLM 호출 + 저장 API 왕복 + /simulate) 1회 기준
+            # 120초로는 부족할 수 있다.
+            resp = httpx.post(url, json=request.data, timeout=httpx.Timeout(300.0, connect=5.0))
         except Exception as exc:  # noqa: BLE001
             return Response(
                 {"detail": f"AI 서비스({django_settings.AI_BASE_URL})에 연결하지 못했습니다 — "

@@ -97,3 +97,18 @@ def create_rule_graph_draft(
         "status": graph.get("status"),
         "created_nodes": created_nodes,
     }
+
+
+def simulate_graph(graph_id: str) -> dict[str, Any]:
+    """검증 시뮬레이션 실행 — 구조검증(`validate_graph`) + 검증셋/직전달 내역 판정.
+
+    `simulate()`(Django, 저장 없음)를 감싸는 `POST /api/rules/{id}/simulate` 액션이
+    실행 결과를 `RuleSimulationRun`으로 **저장**한다(호출할 때마다 실행 이력에 남음).
+    응답의 `structureError`가 빈 문자열이면 구조적으로 유효한 그래프.
+    """
+    return _request("POST", f"/api/rules/{graph_id}/simulate/", json={}).json()
+
+
+def discard_draft(graph_id: str) -> None:
+    """DRAFT 그래프 폐기. 검증 실패로 재생성해야 할 때 이전 시도의 그래프를 지운다."""
+    _request("DELETE", f"/api/rules/{graph_id}/draft/")
