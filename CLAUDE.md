@@ -14,6 +14,7 @@ apps/
   core/     Django + DRF — System of Record(SoR): 도메인·상태머신·RBAC·ERP전표(안)
   ai/       FastAPI — AI Orchestrator: 3-Agent + 단일 FastMCP 서버 + 비지도 이상탐지
 infra/nginx/  리버스 프록시(/ → web, /api → core)
+logs/         컨테이너 로그 바인드(core.log·ai.log) — git 미추적, 디버깅 시 여기부터 본다
 docker-compose.yml  로컬 개발 오케스트레이션 (db·chroma·core·ai·web·nginx)
 llm_wiki/     설계·기획 산출물(아래 §4)
 tiger_inc/    RAG 소스 데이터 — §5 열람 규칙 주의
@@ -150,9 +151,18 @@ docker compose exec ai python -m app.rag.embedding.index --peek                 
 docker compose exec core python manage.py migrate
 docker compose exec core python manage.py createsuperuser
 
-# Rule Agent 서비스 계정 (규정 문서 → 룰 생성에 필수) — .env의 RULE_AGENT_SERVICE_PASSWORD 선행
-#   capability `rule_view` 하나만 가진 전용 계정. seed --fresh가 비슈퍼유저를 지우므로 seed도 이걸 부른다.
+# AI 서비스 계정 (ai → core 쓰기: 룰 DRAFT 저장·규정 적재 회신) — .env의 AI_SERVICE_PASSWORD 선행
+#   **Agent별로 나누지 않은 계정 하나.** capability는 `rule_view` 뿐.
+#   env를 바꿨으면 컨테이너 재생성이 먼저다 — 안 하면 core만 옛 env로 돌아 401이 난다.
+docker compose up -d --force-recreate core ai
 docker compose exec core python manage.py ensure_service_account
+docker compose exec core python manage.py ensure_service_account --check   # 401 날 때 진단
+
+# 로그 — 두 컨테이너가 호스트 ./logs/ 에 파일로도 남긴다(5MB×3 로테이션, git 미추적)
+#   logs/core.log  Django(요청 실패·domain 로거 포함)
+#   logs/ai.log    FastAPI + uvicorn(access/error)
+#   LOG_LEVEL=DEBUG 로 올리려면 .env에서 바꾸고 컨테이너 재생성.
+docker compose logs -f core ai       # 실시간(표준출력)
 ```
 
 ---

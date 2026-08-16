@@ -87,11 +87,19 @@ class Command(BaseCommand):
                                            extra_capabilities=[Capability.GOVERNANCE_VIEW.value])
         User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영")
 
-        # Rule Agent 서비스 계정 — 사람이 아니라 FastAPI가 쓰는 계정(capability는 rule_view 하나).
-        #  --fresh가 비슈퍼유저를 전부 지우므로 여기서 다시 만들어 준다. 비밀번호는
-        #  RULE_AGENT_SERVICE_PASSWORD(.env)에서 읽고, 없으면 로그인 불가 상태로 둔다.
-        from .ensure_service_account import ensure_service_account
-        ensure_service_account()
+        # ai(FastAPI)용 서비스 계정 — Agent별로 나누지 않은 **하나**(capability는 rule_view 뿐).
+        #  --fresh가 비슈퍼유저를 전부 지우므로 여기서 다시 만들어 준다.
+        from .ensure_service_account import SERVICE_USERNAME, ensure_service_account
+
+        _, _, password_set = ensure_service_account()
+        if not password_set:
+            # 조용히 넘어가면 나중에 ai가 원인과 동떨어진 401("No active account found")을 받는다.
+            self.stdout.write(self.style.WARNING(
+                f"⚠ 서비스 계정 `{SERVICE_USERNAME}`의 비밀번호를 설정하지 못했다 "
+                "(AI_SERVICE_PASSWORD 가 비어 있음) — AI의 룰 생성·규정 적재가 401로 실패한다.\n"
+                "  .env에 AI_SERVICE_PASSWORD를 넣고 `docker compose up -d --force-recreate core ai` 후\n"
+                "  `manage.py ensure_service_account`를 실행할 것."
+            ))
 
         def emp(name, team):
             return User.objects.create_user(name, password="pass1234", role=Role.EMPLOYEE, team=team)

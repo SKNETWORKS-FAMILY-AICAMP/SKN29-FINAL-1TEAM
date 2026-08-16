@@ -117,3 +117,49 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # ── 내부 서비스 ─────────────────────────────────────────────────
 AI_BASE_URL = env("AI_BASE_URL", default="http://ai:9000")  # FastAPI(AI) 위임 대상
+
+# ── 로깅 ────────────────────────────────────────────────────────
+# `LOG_DIR`이 설정되면 파일에도 남긴다(compose가 `/logs`를 호스트 `./logs`에 바인드).
+# **비어 있으면 콘솔만** — 로컬 `manage.py test`가 컨테이너 경로(`/logs`)를 못 만들어
+# 죽는 것을 막는다. 즉 파일 로깅은 docker 실행에서만 켜진다.
+LOG_DIR = env("LOG_DIR", default="")
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+
+_handlers = ["console"]
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        # 컨테이너 2개가 각자 파일에 쓰므로 어느 쪽 로그인지 파일명으로 갈린다.
+        # 여기서는 "언제·어디서·무엇"만 고정한다.
+        "standard": {
+            "format": "%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
+    },
+    "root": {"handlers": _handlers, "level": LOG_LEVEL},
+    "loggers": {
+        # 요청 실패(4xx/5xx)를 파일에서 보려면 이 로거가 필요하다. propagate로 root에 얹는다.
+        "django.request": {"level": "WARNING", "propagate": True},
+        "django.server": {"level": "INFO", "propagate": True},
+        "domain": {"level": LOG_LEVEL, "propagate": True},
+    },
+}
+
+if LOG_DIR:
+    from pathlib import Path as _Path
+
+    _Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    LOGGING["handlers"]["file"] = {
+        # 무한히 커지면 볼륨을 채운다 — 5MB × 3개로 묶는다.
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(_Path(LOG_DIR) / "core.log"),
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 3,
+        "encoding": "utf-8",
+        "formatter": "standard",
+    }
+    _handlers.append("file")
