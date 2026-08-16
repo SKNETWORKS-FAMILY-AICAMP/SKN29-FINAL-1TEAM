@@ -32,6 +32,31 @@ class IngestStatus(models.TextChoices):
     FAILED = "FAILED", "실패"
 
 
+class PolicyFolder(models.Model):
+    """규정 문서 정리용 폴더(트리).
+
+    벡터 검색에는 아무 영향이 없다 — 순전히 **사람이 문서를 찾기 위한** 분류다. 그래서
+    컬렉션 라우팅(프로파일이 결정)과 섞지 않는다. 폴더를 지워도 문서는 남는다(미분류로).
+    """
+    name = models.CharField(max_length=80)
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="children",
+    )
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["parent", "name"], name="uq_policyfolder_parent_name",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class PolicyDoc(models.Model):
     """RAG 소스 규정 문서 — 원본 파일 + 적재 결과 메타.
 
@@ -46,6 +71,15 @@ class PolicyDoc(models.Model):
     # 업로드 원본. ai 컨테이너는 같은 media 볼륨을 읽기전용으로 마운트해 이 경로를 연다
     # (docling이 파일 경로를 요구하고, 바이트를 HTTP로 되넘기는 것보다 싸다).
     file = models.FileField("원본 파일", upload_to="policy_docs/%Y%m/", blank=True)
+    file_size = models.PositiveIntegerField("원본 크기(byte)", default=0)
+    folder = models.ForeignKey(
+        PolicyFolder, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents",
+    )
+    # 개정으로 대체된 구판. null이면 현행본이다 — 화면의 "이전 버전" 배지가 이 값을 본다.
+    # 구판도 지우지 않는 이유: 과거 판정이 인용한 조항이 사라지면 감사 추적이 끊긴다.
+    superseded_by = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="supersedes",
+    )
 
     # ── 적재 결과 (ai가 콜백으로 채운다) ─────────────────────────
     status = models.CharField(max_length=12, choices=IngestStatus.choices, default=IngestStatus.PENDING)
@@ -75,6 +109,77 @@ class PolicyDoc(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ClauseDecision(models.TextChoices):
+    """조항에 대한 **사람의 결정**. 룰 연결 여부(파생)와 다른 축이다."""
+    NONE = "", "미결정"
+    SKIP = "SKIP", "규칙 생성 안 함"
+
+
+class PolicyClause(models.Model):
+    """규정 문서의 조(條) 하나 — 화면이 보여주고 사람이 결정을 내리는 단위.
+
+    **왜 Postgres에도 두는가**: 조항 본문은 Chroma에도 있지만 그건 *검색용 사본*이다.
+    조항은 판정이 인용하는 근거이자 **사람이 "이건 규칙으로 만들지 않겠다"고 결정하는
+    대상**이라, 그 결정을 붙일 자리가 SoR에 있어야 한다(CLAUDE.md §1 — SoR은 Postgres 하나).
+
+    **상태를 저장하지 않는 이유**: "규칙 연결됨/확인 필요/생성 안 함"은 셋 중 둘이 파생이다.
+    룰은 나중에 생기고 나중에 지워지므로, 상태를 컬럼에 굳히면 곧 실제와 어긋난다.
+    저장하는 건 사람의 결정(`decision`)뿐이고 나머지는 `rule_status()`가 그때그때 계산한다.
+    """
+    doc = models.ForeignKey(PolicyDoc, on_delete=models.CASCADE, related_name="clauses")
+    order = models.PositiveIntegerField(default=0)
+    article_no = models.PositiveIntegerField(null=True, blank=True)
+    article_label = models.CharField("조 라벨", max_length=32, blank=True)   # "제9조" / "제55조의2"
+    article_title = models.CharField(max_length=200, blank=True)             # "(사용 한도)"
+    # 인용 문자열("법인카드_사용규정 제9조"). 룰 노드의 action.source_clause와 맞춰 연결을 찾는다.
+    citation = models.CharField(max_length=300, blank=True, db_index=True)
+    body = models.TextField("원문(Markdown)", blank=True)
+    page_start = models.PositiveIntegerField(default=0)
+    page_end = models.PositiveIntegerField(default=0)
+    chunk_ids = models.JSONField(default=list, blank=True)   # 이 조항을 이루는 Chroma 청크
+
+    # ── 사람의 결정 ─────────────────────────────────────────────
+    decision = models.CharField(max_length=8, choices=ClauseDecision.choices, blank=True, default="")
+    decision_reason = models.TextField("결정 사유", blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="decided_clauses",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["doc", "article_label"], name="uq_clause_doc_article"),
+        ]
+
+    def __str__(self):
+        return f"{self.doc.title} {self.article_label}"
+
+    def linked_nodes(self):
+        """이 조항을 근거로 만들어진 룰 노드 — `action.source_clause` 일치로 찾는다.
+
+        문자열 매칭인 이유: 룰 노드는 Agent가 만들 수도 사람이 만들 수도 있고, 조항 행이
+        생기기 전에 만들어졌을 수도 있다. FK로 묶으면 그 경우들이 전부 예외가 된다.
+        """
+        if not self.citation:
+            return RuleNode.objects.none()
+        return RuleNode.objects.filter(action__source_clause=self.citation).select_related("graph")
+
+    def rule_status(self, linked_count: int | None = None) -> str:
+        """LINKED / SKIPPED / NEEDS_REVIEW — 저장하지 않고 계산한다.
+
+        `linked_count`를 받는 이유는 목록 조회에서 N+1을 피하기 위해서다(호출부가 한 번에
+        세어 넘긴다). 없으면 여기서 직접 센다.
+        """
+        count = self.linked_nodes().count() if linked_count is None else linked_count
+        if count:
+            return "LINKED"
+        if self.decision == ClauseDecision.SKIP:
+            return "SKIPPED"
+        return "NEEDS_REVIEW"
 
 
 class PolicyTable(models.Model):

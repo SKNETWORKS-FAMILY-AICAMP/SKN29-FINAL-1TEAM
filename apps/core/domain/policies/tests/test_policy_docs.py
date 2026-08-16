@@ -16,7 +16,10 @@ from domain.accounts.models import Role, User
 from domain.common.management.commands.ensure_service_account import (
     SERVICE_USERNAME, ensure_service_account,
 )
-from domain.policies.models import IngestStatus, PolicyDoc
+from domain.policies.models import (
+    ClauseDecision, IngestStatus, PolicyClause, PolicyDoc, PolicyFolder, RuleGraph, RuleNode,
+)
+from domain.policies.policy_doc_views import _replace_clauses
 
 
 def pdf(name="규정.pdf"):
@@ -139,3 +142,130 @@ class IngestCallbackTests(TestCase):
         self.client.login(username=SERVICE_USERNAME, password="pw")
         resp = self.client.post(self._url(), {"status": "WAT"}, format="json")
         self.assertEqual(resp.status_code, 400)
+
+    def test_clauses_are_stored_on_success(self):
+        self.client.login(username=SERVICE_USERNAME, password="pw")
+        self.client.post(self._url(), {
+            "status": "DONE", "clauses": [
+                {"articleLabel": "제9조", "articleTitle": "(사용 한도)", "articleNo": 9,
+                 "citation": "법인카드_사용규정 제9조", "body": "### 제9조", "order": 0,
+                 "chunkIds": ["c1", "c2"]},
+                # 조 라벨이 없는 행(별표 등)은 조항이 되지 않는다.
+                {"articleLabel": "", "body": "별표1"},
+            ],
+        }, format="json")
+        self.assertEqual(self.doc.clauses.count(), 1)
+        clause = self.doc.clauses.first()
+        self.assertEqual(clause.article_label, "제9조")
+        self.assertEqual(clause.chunk_ids, ["c1", "c2"])
+
+
+@override_settings(MEDIA_ROOT="/tmp/skn-test-media")
+class ClauseDecisionTests(TestCase):
+    """조항 상태는 저장하지 않고 계산한다 — 룰은 나중에 생기고 지워진다."""
+
+    def setUp(self):
+        self.doc = PolicyDoc.objects.create(title="법인카드 사용규정", status=IngestStatus.DONE)
+        self.clause = PolicyClause.objects.create(
+            doc=self.doc, article_label="제9조", article_title="(사용 한도)",
+            citation="법인카드_사용규정 제9조", body="### 제9조 ...",
+        )
+        ensure_service_account(password="pw")
+        self.client = APIClient()
+        self.client.login(username=SERVICE_USERNAME, password="pw")
+
+    def _decide(self, decision, reason=None):
+        return self.client.post(
+            f"/api/policy-docs/{self.doc.pk}/clauses/{self.clause.pk}/decision/",
+            {"decision": decision, **({"reason": reason} if reason else {})}, format="json",
+        )
+
+    def test_untouched_clause_needs_review(self):
+        resp = self.client.get(f"/api/policy-docs/{self.doc.pk}/clauses/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data[0]["ruleStatus"], "NEEDS_REVIEW")
+
+    def test_linked_when_a_rule_node_cites_it(self):
+        """상태가 계산값이라, 룰을 만들기만 해도 조항이 '규칙 연결됨'이 된다."""
+        graph = RuleGraph.objects.create(name="법인카드 한도", scope="접대", entry_node_key="n1")
+        RuleNode.objects.create(
+            graph=graph, node_key="n1", condition=True, condition_text="1회 300만원 초과 시",
+            action={"decision": "REVIEW", "title": "한도 초과", "source_clause": "법인카드_사용규정 제9조"},
+        )
+        resp = self.client.get(f"/api/policy-docs/{self.doc.pk}/clauses/")
+        row = resp.data[0]
+        self.assertEqual(row["ruleStatus"], "LINKED")
+        self.assertEqual(row["linkedRules"][0]["graphName"], "법인카드 한도")
+        self.assertEqual(row["linkedRules"][0]["conditionText"], "1회 300만원 초과 시")
+
+    def test_skip_requires_a_reason(self):
+        # 나중에 "왜 이 조항엔 규칙이 없지"를 묻는 사람이 반드시 나온다.
+        self.assertEqual(self._decide("SKIP").status_code, 400)
+        self.clause.refresh_from_db()
+        self.assertEqual(self.clause.decision, "")
+
+    def test_skip_with_reason_is_recorded(self):
+        resp = self._decide("SKIP", "예외 승인 절차라 담당자 확인이 더 적절해요")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["ruleStatus"], "SKIPPED")
+        self.clause.refresh_from_db()
+        self.assertEqual(self.clause.decision, ClauseDecision.SKIP)
+        self.assertIsNotNone(self.clause.decided_at)
+        self.assertEqual(self.clause.decided_by.username, SERVICE_USERNAME)
+
+    def test_reset_returns_to_needs_review(self):
+        self._decide("SKIP", "사유")
+        resp = self._decide("RESET")
+        self.assertEqual(resp.data["ruleStatus"], "NEEDS_REVIEW")
+        self.clause.refresh_from_db()
+        self.assertEqual(self.clause.decision_reason, "")
+
+    def test_reembed_keeps_the_human_decision(self):
+        """재색인은 흔하다 — 그때마다 사람의 판단이 날아가면 같은 검토를 반복하게 된다."""
+        self._decide("SKIP", "담당자 확인이 더 적절해요")
+        _replace_clauses(self.doc, [
+            {"articleLabel": "제9조", "articleTitle": "(사용 한도)", "body": "개정된 본문", "order": 0},
+            {"articleLabel": "제10조", "body": "새 조항", "order": 1},
+        ])
+        kept = self.doc.clauses.get(article_label="제9조")
+        self.assertEqual(kept.decision, ClauseDecision.SKIP)
+        self.assertEqual(kept.decision_reason, "담당자 확인이 더 적절해요")
+        self.assertEqual(kept.body, "개정된 본문")          # 본문은 새것으로 교체
+        self.assertEqual(self.doc.clauses.get(article_label="제10조").decision, "")
+
+
+@override_settings(MEDIA_ROOT="/tmp/skn-test-media")
+class FolderTreeTests(TestCase):
+    def setUp(self):
+        ensure_service_account(password="pw")
+        self.client = APIClient()
+        self.client.login(username=SERVICE_USERNAME, password="pw")
+        self.root = PolicyFolder.objects.create(name="사용정책")
+        self.child = PolicyFolder.objects.create(name="법인카드", parent=self.root)
+
+    def test_tree_counts_documents_including_children(self):
+        PolicyDoc.objects.create(title="법인카드 사용규정", folder=self.child)
+        PolicyDoc.objects.create(title="정책 개요", folder=self.root)
+        resp = self.client.get("/api/policy-docs/folders/")
+        self.assertEqual(resp.status_code, 200)
+        root = resp.data["folders"][0]
+        self.assertEqual(root["name"], "사용정책")
+        self.assertEqual(root["docCount"], 2)          # 자기 1 + 하위 1
+        self.assertEqual(root["children"][0]["docCount"], 1)
+
+    def test_unfiled_documents_are_not_hidden(self):
+        """폴더에 안 넣었다고 목록에서 사라지면 문서를 잃어버린다."""
+        PolicyDoc.objects.create(title="미분류 규정")
+        resp = self.client.get("/api/policy-docs/folders/")
+        self.assertEqual([d["title"] for d in resp.data["unfiled"]], ["미분류 규정"])
+
+    def test_move_document_between_folders(self):
+        doc = PolicyDoc.objects.create(title="출장비 지침")
+        resp = self.client.post(f"/api/policy-docs/{doc.pk}/move/", {"folderId": self.child.pk}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        doc.refresh_from_db()
+        self.assertEqual(doc.folder_id, self.child.pk)
+
+        self.client.post(f"/api/policy-docs/{doc.pk}/move/", {"folderId": None}, format="json")
+        doc.refresh_from_db()
+        self.assertIsNone(doc.folder_id)

@@ -95,6 +95,8 @@ def _run(req: IngestRequest) -> None:
         "leafCount": result.leaf_count,
         "error": "\n".join(result.warnings[:5]),   # 경고는 실패가 아니지만 보여야 한다
         "ruleTrigger": trigger,
+        # 조 단위 조항 — 화면이 보여주고 사람이 "규칙 만들지 말지"를 결정하는 단위.
+        "clauses": result.clauses,
     })
 
 
