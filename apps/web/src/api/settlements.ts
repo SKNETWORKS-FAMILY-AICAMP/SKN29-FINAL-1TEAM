@@ -31,6 +31,8 @@ function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
     aiRecommendation: row.aiRecommendation ?? 'APPROVE',
     aiConfidence: row.aiConfidence ?? 0,
     anomalyReasons: row.anomalyReasons ?? [],
+    // Risk Review가 아직 안 돈 건은 빈 문자열 — '문제없음'으로 접으면 안 된다.
+    violationVerdict: row.violationVerdict ?? '',
   }
 }
 

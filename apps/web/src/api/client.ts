@@ -55,6 +55,10 @@ export const endpoints = {
       top_k: data.topK ?? 6,
       include_law: data.includeLaw ?? false,
     }, { timeout: 150_000 }),
+  // 대화형 룰 수정 — 자연어 지시로 Agent가 그래프를 직접 고친다(LLM 툴콜링 여러 턴).
+  // 대화 로그는 Agent가 서버에서 남기므로 화면은 addRuleMessages를 또 부르면 안 된다.
+  converseRule: (graphId: string, message: string) =>
+    api.post(`/rules/${graphId}/converse/`, { message }, { timeout: 200_000 }),
   createRuleNode: (graphId: string, nodeKey: string) => api.post(`/rules/${graphId}/nodes/`, { nodeKey }),
   saveRuleNode: (graphId: string, nodeKey: string, data: Record<string, unknown>) =>
     api.patch(`/rules/${graphId}/nodes/${nodeKey}/`, data),

@@ -120,6 +120,12 @@ export interface ReviewItem extends Settlement {
   aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
   aiConfidence: number // 0~1
   anomalyReasons: string[]
+  /**
+   * 2차 RAG 내규검증의 **판정**. 권고(`aiRecommendation`)와 다른 축이다 —
+   * `INSUFFICIENT_INFO`는 "문제없음"이 아니라 **판단 보류**라서, 권고만 보면 그 구분이 사라진다.
+   * Risk Review가 아직 안 돈 건은 빈 문자열.
+   */
+  violationVerdict?: 'VIOLATION' | 'NO_VIOLATION' | 'INSUFFICIENT_INFO' | ''
   /** 판정 시점 EvalContext 스냅샷(rule_hits). 있으면 fact.json이 이 원본을 보여준다. */
   evalContext?: Record<string, Record<string, unknown>> | null
   dept?: string // 부서

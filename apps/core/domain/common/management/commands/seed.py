@@ -504,19 +504,18 @@ class Command(BaseCommand):
         """3건을 `services.judge()`(진짜 Rule Agent 오케스트레이션)로 실제 판정한다.
 
         상태를 손으로 박아넣지 않는다 — 방금 seed_rules가 심은 ACTIVE 그래프(GLOBAL v3→회식 v1)를
-        `domain.policies.orchestrator.judge_settlement`가 그대로 순회해 나온 진짜 결과다.
+        `domain.policies.orchestrator.judge()`가 그대로 순회해 나온 진짜 결과다.
         """
         from domain.settlements import services as settlement_services
-        from domain.settlements.views import SettlementViewSet
 
-        for key, settlement in rows.items():
+        # Risk Review Agent(2차 RAG 검증) 호출은 **여기서 하지 않는다** — `services.judge()`가
+        # IN_REVIEW로 끝난 건에 대해 `transaction.on_commit`으로 예약한다. seed는 atomic 블록이
+        # 아니라 judge의 트랜잭션이 최외곽이므로, judge가 반환하는 시점에 콜백이 이미 발화해
+        # `stage2_verdict`가 채워진다. 여기서 또 부르면 RiskReview 행이 두 번 쌓인다.
+        # AI 미기동·키 없음으로 실패해도 조용히 넘어간다 — seed가 AI 가용성에 의존하지 않는다.
+        for settlement in rows.values():
             settlement_services.judge(settlement, None)
             settlement.refresh_from_db()
-            if key == "review_secondary" and settlement.status == "IN_REVIEW":
-                # Risk Review Agent 2차(RAG 검증) 실호출 — stage2_verdict를 실제 LLM 응답으로 채운다.
-                # AI 미기동·OPENAI_API_KEY 없음 등으로 실패해도 조용히 넘어간다(이미 그렇게 구현됨) —
-                # seed 자체가 AI 서비스 가용성에 의존하게 만들지 않는다.
-                SettlementViewSet._run_risk_review(settlement)
 
         self.stdout.write(self.style.SUCCESS(
             "회식 규정 시연 3건 판정 완료: "

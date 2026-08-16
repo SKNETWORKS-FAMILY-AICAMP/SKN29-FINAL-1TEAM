@@ -276,11 +276,20 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
 
         `generate_graph`와 같은 얇은 프록시 원칙: 인가·전달만 하고, 실제 그래프 수정은
         FastAPI가 서비스 계정 JWT로 이 ViewSet의 `nodes` 액션들을 다시 부르며 일어난다.
+
+        **대화 로그는 Agent가 직접 남긴다**(`django_client.post_messages`) — 화면은 응답으로
+        로그를 다시 저장하지 말고 `messages`를 다시 읽어야 한다. 양쪽에서 저장하면 같은
+        대화가 두 번 쌓인다.
         """
         message = str(request.data.get("message", "")).strip()
         if not message:
             return Response({"detail": "message가 필요합니다."}, status=400)
         graph = self.get_object()
+        if graph.status != RuleGraphStatus.DRAFT:
+            # ACTIVE를 대화로 직접 고치면 시뮬레이션·승인 절차를 통째로 우회하게 된다.
+            # 노드 CRUD 액션도 DRAFT만 허용하므로, 여기서 막지 않으면 Agent가 툴을 부르다
+            # 400을 받고 "왜 안 됐는지 모르는" 응답이 화면에 뜬다.
+            return Response({"detail": "DRAFT 그래프만 대화로 수정할 수 있습니다."}, status=400)
         url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/converse"
         try:
             # LLM 툴콜링 여러 턴 + Django 재호출 왕복 — generate와 비슷하게 넉넉히.
