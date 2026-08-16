@@ -92,7 +92,7 @@ class PolicyDoc(models.Model):
     error = models.TextField(blank=True)                  # 실패 사유 — 감추지 않는다
     indexed_at = models.DateTimeField(null=True, blank=True)
 
-    # 적재 완료 후 룰 생성 트리거 결과. 아직 자동 생성을 켜지 않아 "개발 중" 응답이 들어온다.
+    # 적재 완료 후 룰 자동 생성 트리거 결과(성공/건너뜀/실패 사유). ai가 콜백으로 채운다.
     rule_trigger = models.JSONField(default=dict, blank=True)
     # 트리거 대상 비용분류(GLOBAL ∪ Category). 비면 문서에서 정하지 못한 것.
     rule_scope = models.CharField(max_length=20, blank=True)

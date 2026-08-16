@@ -2,7 +2,8 @@
 
     core: 업로드 수신 ─► POST /embeddings/ingest ─(즉시 202)─► 백그라운드
                                                                  파싱→청킹→임베딩→적재
-                                                                 → 룰 트리거(현재 개발 중)
+                                                                 → 룰 트리거(§1.2-2, 최초
+                                                                   적재+scope 지정 시만)
                                                                  → core 콜백으로 결과 회신
 
 **즉시 반환하는 이유**: docling 파싱은 모델을 올리고 문서당 수십 초~분이 걸린다. 요청 안에서
@@ -49,6 +50,9 @@ class IngestRequest(BaseModel):
     filePath: str = Field(description="media 볼륨 기준 상대경로 (`PolicyDoc.file.name`)")
     name: str | None = None
     ruleScope: str = ""
+    # 룰 자동생성 트리거(§1.2-2)는 최초 적재에서만 돈다 — 재색인마다 새 계열이 쌓이는 걸
+    # 막기 위함(Django `policy_doc_views.py`가 create/reembed 경로로 이 값을 결정해 보냄).
+    isReindex: bool = False
 
 
 def _report(doc_id: int, payload: dict) -> None:
@@ -81,6 +85,7 @@ def _run(req: IngestRequest) -> None:
         trigger = rule_trigger.trigger(
             doc_id=result.doc_id, doc_name=result.name,
             scope=req.ruleScope, collection=result.collection,
+            is_reindex=req.isReindex,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("룰 트리거 실패 doc=%s: %s", req.policyDocId, exc)

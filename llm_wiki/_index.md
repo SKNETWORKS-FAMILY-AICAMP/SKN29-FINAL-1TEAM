@@ -60,7 +60,7 @@ llm_wiki/
 | **`orchestrator.py`** | ✅ 구현 완료(2026-08-14) | `domain/policies/orchestrator.py::judge()` — GLOBAL(ACTIVE) 게이트 먼저 실행 → PASS 아니면 그 결과가 최종 → PASS했거나 GLOBAL 자체가 없으면 scope(`normalize_scope`) ACTIVE 그래프 실행 → 둘 다 없으면 IN_REVIEW(+`NO_ACTIVE_RULE_GRAPH`). 그래프당 `RuleHit` 1행 기록(그래프 없어도 `graph=None`으로 1행). 상태 전이는 `settlements/services.judge`가 맡아 분리 — 상태를 건드리지 않고 재판정 가능(`record=False`), IN_REVIEW 귀결 시 Risk Review Agent(`/agent/risk-review`) 자동 호출까지 연결됨. 제출이 판정을 자동으로 이어 돌린다. 시뮬레이션 경로(`simulation.py`)와는 별개 진입점(스냅샷 변환은 `snapshot.py`로 일원화). 회귀 21건 |
 | **Rule Agent(생성)** | 통합 완료 | 규정 문서 → 룰 그래프 DRAFT. RAG→LLM→조립→저장→룰 콘솔 전 구간 연결. 인증=서비스 계정 JWT, RAG=팀 정본 재사용, scope=`Category`. 상세 `_context/rule-agent-v0.md` |
 | **규정 문서 업로드** | 구현 완료 | 화면 업로드 → 백그라운드 파싱·청킹·임베딩·적재 → 상태 폴링. Rule Agent 앞단이 열렸다. 상세 `_context/rag-ingestion.md` |
-| **적재→룰 자동 생성 트리거** | 틀만 | 호출 지점은 있고 "개발 중" 안내를 반환한다. 켜기 전 범위·재색인 정책 결정 필요 |
+| **적재→룰 자동 생성 트리거** | 구현 완료 | 적재 후 `rule_agent.generate()` 실호출(v1). 범위=업로드 시 고른 scope 1개, 재색인은 건너뜀(`SKIPPED_REINDEX`). 트리거 실패가 적재를 실패로 만들지 않는다 |
 | **`get_tx_features`(Risk 1차 이상탐지 입력)** | ✅ 구현 완료(2026-08-14) | 이전엔 stub(`feature_vector: []`). `transactions/features.py::build_tx_features`(Django, 카드별 과거 거래 집계) → FastAPI `app.ml.features.build_feature_matrix`(원-핫 인코딩, 카테고리 고정)로 15개 원본 피처를 24컬럼 벡터로 변환, 학습된 모델의 `feature_columns`에 정렬. `ml_infer`에 형상 검증(빈 벡터·컬럼 수 불일치 시 명시적 에러) 추가 |
 
 ## 3. 파생 컨텍스트 (`_context/`) — AI 관리
@@ -77,15 +77,17 @@ llm_wiki/
 | `_context/evidence-extraction-agent.md` | 증빙자료 추출 Agent — 첨부 다종 문서(사전승인·회의록·출장계획서·영수증) → 판정 사실(EvalContext dot-path). Draft/Rule/Risk와의 경계, 관측 계약(부재 확인=명시값 / 미관측=경로 생략), 우선순위, `chunk_pdf`·비전 재사용, 종류별 추출 대상, 미결 5건 | 저장 구조·조립기 연결 완료 / 추출 로직 미착수 |
 | `_context/eval-context-sourcing.md` | EvalContext 데이터 출처 점검 + v3 다이어트 기록 — 필드를 A(데이터 있음·코드만)/B(컬럼·입력칸만)/C(도메인 신설)/D(제외)로 등급화, 부분 조립 실측·GLOBAL 게이트 병목, 첨부 문서 추출 축, v3 다이어트 101→46 실행 기록, 미결 쟁점 | 다이어트 실행 완료 |
 | `_context/policy-domain-plan.md` | 위 캐논의 구현 PLAN + 인수 결과 — STEP 1 미해소 가드 → 2 카탈로그 재정의 → 3 `policy_tables` 적재 → 4 조립기(`build_rule_context`) → 5 SoT 일원화 | STEP 1~5 완료, 인수조건 5개 실측 통과 |
-| `_context/pdf_parsing_strategy.md` | PDF RAG 파싱 전략 캐논(docling 기반) — engine 2단 폴백·문서 프로파일(REGULATION/LAW/DIAGRAM/GENERIC)·교정 C1~C7·`ParsedDoc` | 구현 완료(회귀 61건). 재채점·자간 잔존은 남음 |
+| `_context/pdf_parsing_strategy.md` | PDF RAG 파싱 전략 캐논(docling 기반) — engine 2단 폴백·문서 프로파일(REGULATION/LAW/DIAGRAM/GENERIC)·교정 C1~C7·`ParsedDoc` | 구현 완료(회귀 61건). 재채점·자간 잔존은 남음. ⚠️ **2026-08-16 실측**: 설치된 `docling==2.87.0`에서 `engine.py`가 참조하는 `PdfPipelineOptions.heading_hierarchy_options`가 사라져 **실제 업로드 파싱이 현재 전부 FAILED로 죽는다**(라이브러리 버전 드리프트, 이 문서의 코드/전략 자체 결함 아님). 상세는 `_context/rule-agent-v1-implementation.md` §10 |
 | `_context/chunking-strategy.md` | 청킹 전략 캐논 — 자르는 단위는 문자 수가 아니라 **조(條)**, 분할 사다리(조→항→호→문장→문자), 표는 독립 청크, 계층 헤더+부모 확장+이웃 링크 | 구현 + 평가 완료(888청크, 종합 98.5/100) |
 | `_context/embedding-strategy.md` | 임베딩 전략 캐논 — `text-embedding-3-large` @ `dimensions=1024` 확정 근거, 정답셋 30건, 평가 함정 4개, 기준선 `bge-m3` 격차(재검토 트리거) | 평가 완료 / Chroma upsert 미착수 |
 | `_context/draft-agent-plan.md` | Draft Agent(초안 작성) 구현 역할 분담·로드맵 — 계약(입출력) 고정, v0/v1 작업 분해. B-1~B-6 전체 완료. 분류 6종(회식 포함) | 완료 — **2026-08-14 정정**: "정정 완료"로 표기돼 있었지만 실제로는 "업무활성" 문자열이 예시·프롬프트에 그대로 남아있었다(§9.1/§1.3 등 `docs/`는 이미 정합이었는데 이 파일만 안 고쳐져 있었음). 이번에 실제로 치환·확인 완료 |
 | `_context/draft-agent-v0.2.md` | Draft Agent 코드 수준 구현 설계서 — pydantic 스키마·정책 조회·프롬프트·에러 폴백. 분류 6종(회식 포함), 미분류 캐치올은 "비품" | 완료 — **2026-08-14 정정**: 위와 같은 이유로 "업무활성" 잔존(Category Literal·프롬프트·`VALID_CATEGORIES`·에러 폴백 기본값 5곳)을 실제로 치환. 캐치올(분류 불명 시 기본값)은 "회식"이 아니라 "비품"으로 — "회식"은 팀 회식이라는 구체 의미의 독립 카테고리라 "판단 불가"의 기본값으로 쓸 수 없다(실제 구현 `apps/ai/app/agents/draft_agent.py`와 동일 결정) |
-| `_context/rag-ingestion.md` | **규정 문서 적재 파이프라인 캐논** — 업로드→파싱→청킹→임베딩→Chroma 흐름, 설계 결정 I-1~I-8(비동기 방식·볼륨 공유·콜백 인증·인가), 알고 쓰는 한계(재시작 유실·개정판 구청크 잔존), 룰 트리거 틀의 위치와 켤 때 정할 것 | 적재 완료 / 트리거 틀만 (2026-08-14) |
+| `_context/rag-ingestion.md` | **규정 문서 적재 파이프라인 캐논** — 업로드→파싱→청킹→임베딩→Chroma 흐름, 설계 결정 I-1~I-8(비동기 방식·볼륨 공유·콜백 인증·인가), 알고 쓰는 한계(재시작 유실·개정판 구청크 잔존), 룰 트리거의 위치·확정된 범위 | 적재·트리거 모두 구현 완료 (2026-08-16) |
 | `_context/rule-agent-v0.md` | **Rule Agent(생성) 구현 캐논** — 규정 문서 → 룰 그래프 DRAFT. 실행 방법(규정 적재 → 서비스 계정 → 화면), 설계 결정 D-1~D-21, 통합에서 고친 것(RAG 사본 3개·403 인증·죽은 코드), 남은 갭 G. 룰 생성 작업은 여기부터 | 통합 완료 (2026-08-14) |
 | `_context/ai-lab.md` | AI-LAB(관리자) — AI 기능을 정산 흐름 없이 단독 실행하는 실험 화면. 5개 탭(상태·Draft·RAG 검색·임베딩·적재), Django `/api/ai-lab/*` 프록시 + Capability `ai_lab`, 실행 추적(trace) 수집 방식, 기능 추가 레시피 | 구현 완료 (Draft·RAG) |
 | `_context/case-history-golden-data-note.md` | `case_history` 컬렉션(Risk Review 2차 검증의 유사사례 근거)이 실 결정이력 배치가 아니라 수동 골든데이터 10건(`app/rag/golden_cases.py`)뿐이라는 메모. 원래 `docs/RAG_전략_종합.md`(팀원 원본 작성 중과 중복돼 삭제)에 있던 내용을 보존 | 임시 메모 — 팀원 RAG 전략 원본에 병합되면 폐기 가능 |
+| `_context/agent-v1-upgrade-plan.md` | **Rule Agent·Risk Review Agent v1 고도화 계획(설계 전용)** — Rule Agent §1.2 6개 항목 전부 결정 완료·구현 완료 상태 반영, Risk Review Agent §2.2는 전부 미착수, 프론트 연동 병행 작업과의 격리 전략(§3a). 실제 구현 내역은 별도 문서로 분리 | 계획 확정, Rule Agent 구현은 아래 구현 기록 문서(2026-08-16) |
+| `_context/rule-agent-v1-implementation.md` | **Rule Agent v1 구현 기록 — §1.2 6개 항목 전부** — ① MCP 마운트 버그 2건 수정+`fastmcp.Client` in-process 전환+LLM 호출을 진짜 멀티턴 tool-calling 루프로 전면 재작성(실측: 모델이 스스로 추가 검색하는 에이전틱 동작 확인) ② 적재→생성 자동 트리거 실구현(Django가 최초업로드/재색인 구분해 전달) ③④ 검증 재사용+검증→재생성 루프(gpt-4o-mini 16회 실호출 통계) ⑤ 대화형 자연어 수정 에이전트 신규 구현(`RuleAuthoringMessage` 첫 실사용, 검증 중 action 필드 유실 버그 발견·수정) ⑥ 시뮬레이션 LLM 서술은 팀 결정으로 보류. JWT 만료→403 오판정 버그도 별도 발견·수정. **§10**: nginx 경유 실제 업로드로 전체 체인 닫기를 시도하다 무관한 docling 버전 드리프트 버그로 파싱 단계에서 막힘(트리거 로직 자체는 별도 검증 유효). **§11**: 구현 후 전수 검토에서 chat 버그 3건(dedup 원복 미처리·중복 키 덮어쓰기·반쪽 노드 잔존) 추가 발견·수정 + 모델명 오기(gpt-5-mini→실제 gpt-4o-mini) 정정 | 전 항목 구현+실동작 검증+전수 검토 완료, `feature/rule-agent-v1`(2026-08-16). 실업로드 최종 고리는 사전 버그로 미해결 |
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)
 

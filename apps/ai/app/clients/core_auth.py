@@ -91,14 +91,29 @@ def token(refresh: bool = False) -> str:
         return _access_token
 
 
+def _is_expired_token(resp: httpx.Response) -> bool:
+    """이 배포의 SimpleJWT는 만료된 토큰도 401이 아니라 **403**으로 응답한다
+    (`{"code": "token_not_valid", ...}`). 진짜 capability 부족(403, 다른 detail —
+    예: "룰 콘솔 권한이 필요합니다.")과 구분해야 한다 — 구분 없이 모든 403을 재시도하면
+    진짜 권한 문제까지 뭉뚱그려 재시도하게 되고, 반대로 구분 없이 401만 재시도하면
+    (기존 동작) 만료된 토큰이 영원히 재발급되지 않아 서버가 재시작 전까지 계속
+    403만 내는 상태로 고착된다(실측: 2026-08-16, 5분 TTL 만료 후 재현).
+    """
+    try:
+        return resp.json().get("code") == "token_not_valid"
+    except ValueError:
+        return False
+
+
 def request(method: str, path: str, **kwargs) -> httpx.Response:
-    """인증을 붙여 core를 호출한다. 만료(401)면 한 번만 재발급해 재시도."""
+    """인증을 붙여 core를 호출한다. 만료(401, 또는 이 배포에서 실제로 관측되는
+    403 token_not_valid)면 한 번만 재발급해 재시도."""
     url = f"{base()}{path}"
     timeout = kwargs.pop("timeout", TIMEOUT)
     resp = httpx.request(
         method, url, headers={"Authorization": f"Bearer {token()}"}, timeout=timeout, **kwargs
     )
-    if resp.status_code == 401:
+    if resp.status_code == 401 or (resp.status_code == 403 and _is_expired_token(resp)):
         resp = httpx.request(
             method, url, headers={"Authorization": f"Bearer {token(refresh=True)}"},
             timeout=timeout, **kwargs,

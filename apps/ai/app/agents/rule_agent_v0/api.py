@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from . import agent as rule_agent
+from . import chat as rule_chat
 from .django_client import ServiceAuthError
 
 router = APIRouter(prefix="/agent/rule-v0", tags=["rule-agent"])
@@ -67,3 +68,28 @@ def generate_rules(req: RuleGenerateRequest):
         raise HTTPException(status_code=503, detail=f"내부 서비스 연결 실패: {exc}") from exc
     except Exception as exc:                # noqa: BLE001  # Chroma·OpenAI 등
         raise HTTPException(status_code=502, detail=f"rule generate 실패: {type(exc).__name__}: {exc}") from exc
+
+
+class RuleConverseRequest(BaseModel):
+    graph_id: str
+    message: str
+
+
+@router.post("/converse")
+def converse_rule(req: RuleConverseRequest):
+    """대화형 자연어 수정(§1.2-5) — MCP 툴콜링으로 의도를 해석해 기존 그래프 CRUD API를
+    직접 호출한다. 실패 처리 방침은 `/generate`와 동일(원인별 상태코드를 그대로 올림)."""
+    try:
+        return rule_chat.converse(req.graph_id, req.message)
+    except ServiceAuthError as exc:
+        raise HTTPException(status_code=401, detail=f"서비스 계정 인증 실패: {exc}") from exc
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:500]
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Django 호출 실패({exc.request.url.path}): {detail}",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail=f"내부 서비스 연결 실패: {exc}") from exc
+    except Exception as exc:                # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"rule converse 실패: {type(exc).__name__}: {exc}") from exc

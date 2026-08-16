@@ -39,6 +39,11 @@ app.include_router(lab.router, prefix="/lab", tags=["lab"])
 try:
     from app.mcp.server import mcp
 
-    app.mount("/mcp", mcp.http_app())
+    # 설치된 fastmcp==2.1.2에는 `http_app()`(Streamable HTTP, 이후 버전에 추가)이 없다 —
+    # 이 버전에서 ASGI 앱을 얻는 방법은 `sse_app()`(SSE 트랜스포트)뿐이다. 참고: Rule Agent
+    # 등 같은 프로세스 안에서 도구를 부르는 내부 호출자는 이 HTTP 마운트를 거치지 않고
+    # `fastmcp.Client(mcp)`(in-process 트랜스포트)로 직접 붙는다 — 이 마운트는 외부
+    # MCP 클라이언트(예: Claude Desktop)를 위한 것.
+    app.mount("/mcp", mcp.sse_app())
 except Exception as exc:  # noqa: BLE001  # pragma: no cover
     logging.getLogger("uvicorn.error").warning("FastMCP mount skipped: %s", exc)

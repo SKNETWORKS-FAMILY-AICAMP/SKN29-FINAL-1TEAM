@@ -20,4 +20,8 @@ for _fn in (
     tools.get_tx_features,
     tools.ml_infer,
 ):
-    mcp.tool(_fn)
+    # fastmcp 2.x의 FastMCP.tool()은 데코레이터 팩토리라 `()`로 먼저 호출해야 한다.
+    # `mcp.tool(_fn)`은 _fn을 `name` 위치인자로 넘기는 꼴이라 조용히 실패하고,
+    # main.py의 마운트 가드가 예외를 삼켜서 `/mcp` 전체가 안 뜨는데도 앱은 부팅됐다
+    # (실측 2026-08-16: `FastMCP mount skipped` 경고로만 남아 있었음).
+    mcp.tool()(_fn)

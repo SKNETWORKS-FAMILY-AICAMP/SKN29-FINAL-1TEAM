@@ -10,7 +10,7 @@ class PolicyDocSerializer(serializers.ModelSerializer):
     chunkCount = serializers.IntegerField(source="chunk_count", read_only=True)
     leafCount = serializers.IntegerField(source="leaf_count", read_only=True)
     ruleScope = serializers.CharField(source="rule_scope", read_only=True)
-    # 적재 후 룰 생성 트리거 결과 — 지금은 "개발 중" 안내가 들어온다.
+    # 적재 후 룰 자동 생성 트리거 결과 — 생성기의 status를 그대로(뭉개지 않고) 노출한다.
     ruleTrigger = serializers.JSONField(source="rule_trigger", read_only=True)
     indexedAt = serializers.DateTimeField(source="indexed_at", read_only=True)
     uploadedAt = serializers.DateTimeField(source="created_at", read_only=True)

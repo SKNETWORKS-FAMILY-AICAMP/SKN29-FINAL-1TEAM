@@ -176,7 +176,11 @@ export interface PolicyDocument {
   /** 개정으로 대체된 구판. 지우지 않는 이유는 과거 판정이 인용한 조항 보존. */
   superseded: boolean
   ruleScope: string
-  /** 적재 후 룰 생성 트리거 결과. 자동 생성은 아직 개발 중이라 안내만 들어온다. */
+  /**
+   * 적재 후 룰 자동 생성 트리거 결과. `status`는 생성기의 것을 그대로 받는다
+   * (`DRAFT_SAVED` / `NO_SOURCE` / `SKIPPED_NO_SCOPE`(비용분류 미지정) /
+   *  `SKIPPED_REINDEX`(재색인은 자동 생성 안 함) / `ERROR` …).
+   */
   ruleTrigger: { status?: string; detail?: string; hint?: string; scope?: string } | null
   uploadedAt: string
   indexedAt: string | null

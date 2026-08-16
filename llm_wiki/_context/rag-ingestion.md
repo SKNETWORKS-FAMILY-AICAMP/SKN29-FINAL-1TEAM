@@ -1,6 +1,7 @@
 # 규정 문서 적재 파이프라인 — 구현 캐논
 
-> 최종 갱신: 2026-08-14 · 상태: **적재 구현 완료 / 룰 자동 생성 트리거는 틀만**
+> 최종 갱신: 2026-08-16 · 상태: **적재·룰 자동 생성 트리거 모두 구현 완료**
+> (트리거는 `feature/rule-agent-v1`에서 실구현됐다 — 상세 `rule-agent-v1-implementation.md`)
 > 권위 스펙: `docs/기술명세서.md §4.2·§6.1·§6.2` · 전략 캐논 `pdf_parsing_strategy.md` ·
 > `chunking-strategy.md` · `embedding-strategy.md`
 
@@ -16,14 +17,14 @@
    │ multipart POST /api/policy-docs/   (PDF)
    ▼
 [core] 파일 저장(media) + PolicyDoc(status=PENDING) 생성
-   │ POST {AI}/embeddings/ingest {policyDocId, filePath, name, ruleScope}
-   ▼ 202 즉시 반환
+   │ POST {AI}/embeddings/ingest {policyDocId, filePath, name, ruleScope, isReindex}
+   ▼ 202 즉시 반환                                  ↑ create=false / reembed=true
 [ai]  BackgroundTasks
    │  ① 파싱   engine.convert(pdf)            docling + pypdfium2 2단 폴백
    │  ② 교정   corrections.pipeline.run(doc)  C1~C7, 프로파일별 계획
    │  ③ 청킹   chunk_document(doc)            조(條) 단위, 표는 독립 청크
    │  ④ 임베딩 store.upsert_chunks(...)       3-large@1024, 프로파일→컬렉션 라우팅
-   │  ⑤ 트리거 rule_trigger.trigger(...)      ← 지금은 "개발 중" 안내만
+   │  ⑤ 트리거 rule_trigger.trigger(...)      rule_agent.generate() 실호출(최초 적재 한정)
    │ POST /api/internal/policy-docs/{id}/ingest-result/   (서비스 계정 JWT)
    ▼
 [core] PolicyDoc.status = DONE|FAILED + 청크수·컬렉션·오류·트리거결과
@@ -64,23 +65,29 @@
 
 ---
 
-## 3. 룰 자동 생성 트리거 — 틀만 있는 상태
+## 3. 룰 자동 생성 트리거 — 구현 완료
 
-`rag/rule_trigger.py`. 호출은 되고 **"개발 중" 안내를 반환**하며, 그 값이
-`PolicyDoc.rule_trigger`에 저장돼 화면에 그대로 뜬다.
+`rag/rule_trigger.py`가 적재 완료 후 `rule_agent.generate()`를 **실제로 호출**한다.
+결과(성공이든 실패든)는 `PolicyDoc.rule_trigger`에 저장돼 규정 문서 화면에 그대로 뜬다.
 
 **순서 의존이 이 자리의 존재 이유다**: 적재가 끝난 뒤에 불려야 한다. 그 전이면
 `search_policy`가 0건이라 Rule Agent가 `NO_SOURCE`로 조용히 끝난다. 적재와 같은
 백그라운드 태스크가 체인 전체를 소유하므로 순서가 공짜로 보장된다 — 이벤트로 각자
 구독했다면 순서 보장이 곧 우리 문제가 됐을 것이다.
 
-**켤 때 정해야 할 것 2가지** (둘 다 제품 판단이라 코드로 정하지 않았다):
-1. **범위** — 업로드 시 고른 scope 1개만? 문서에서 탐지된 전 scope? 후자는 LLM 호출이
-   곱절이 되고 아무도 요청하지 않은 DRAFT가 쌓인다.
-2. **재색인 때도 돌릴지** — 매번 새 계열이 생기면 룰 콘솔이 초안으로 뒤덮인다. 기존
-   계열에 버전을 얹는 경로(`POST /api/rules/{id}/versions` 오케스트레이션)가 선행돼야 한다.
+**미결이던 2건은 이렇게 확정됐다** (`agent-v1-upgrade-plan.md` §1.2-2):
 
-켜는 방법은 `rule_trigger.py` docstring에 코드 스니펫으로 남겨뒀다.
+| 결정 | 값 | 왜 |
+|---|---|---|
+| 생성 범위 | **업로드 시 고른 scope 1개만** | 문서에서 탐지된 전 scope를 만들면 LLM 호출이 곱절이 되고 아무도 요청하지 않은 DRAFT가 쌓인다. scope 미지정이면 `SKIPPED_NO_SCOPE`로 건너뛴다 |
+| 재색인 | **자동 생성 안 함** (`SKIPPED_REINDEX`) | 같은 문서를 다시 넣을 때마다 새 계열이 생기면 룰 콘솔이 초안으로 뒤덮인다. 기존 계열에 버전을 얹는 경로가 아직 없다 |
+
+최초 업로드인지 재색인인지는 Django가 안다 — `policy_doc_views._dispatch(doc, is_reindex=)`가
+`create`/`reembed` 경로를 보고 `isReindex`로 넘기고, ai의 `IngestRequest.isReindex`가 받는다.
+
+**트리거 실패는 적재를 실패로 만들지 않는다.** 문서는 이미 검색 가능한 상태이고, 룰 생성은
+룰 콘솔에서 수동으로 다시 시도할 수 있다. 상태값은 뭉개지 않고 `generate()`의 것
+(`DRAFT_SAVED`/`NO_SOURCE`/`NO_VALID_NODES_EXHAUSTED`/`STRUCTURE_INVALID_EXHAUSTED`)을 그대로 노출한다.
 
 ---
 

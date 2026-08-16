@@ -117,7 +117,7 @@ class IngestCallbackTests(TestCase):
         resp = self.client.post(self._url(), {
             "status": "DONE", "docId": "abc123", "profile": "REGULATION",
             "collection": "policy_docs", "chunkCount": 103, "leafCount": 90,
-            "ruleTrigger": {"status": "NOT_IMPLEMENTED", "detail": "룰 자동 생성은 개발 중입니다"},
+            "ruleTrigger": {"status": "DRAFT_SAVED", "detail": "자동 생성 완료 — 그래프 #7 (DRAFT)"},
         }, format="json")
         self.assertEqual(resp.status_code, 200)
 
@@ -127,8 +127,8 @@ class IngestCallbackTests(TestCase):
         self.assertEqual(self.doc.leaf_count, 90)
         self.assertEqual(self.doc.collection, "policy_docs")
         self.assertIsNotNone(self.doc.indexed_at)
-        # 트리거 틀이 돌려준 "개발 중" 안내가 그대로 화면까지 간다.
-        self.assertEqual(self.doc.rule_trigger["status"], "NOT_IMPLEMENTED")
+        # 트리거 결과는 뭉개지 않고 그대로 저장돼 화면까지 간다(성공/건너뜀/실패 구분).
+        self.assertEqual(self.doc.rule_trigger["status"], "DRAFT_SAVED")
 
     def test_failure_reason_is_kept(self):
         self.client.login(username=SERVICE_USERNAME, password="pw")
