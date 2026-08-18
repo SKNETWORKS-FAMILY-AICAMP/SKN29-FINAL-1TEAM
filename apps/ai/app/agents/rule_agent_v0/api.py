@@ -25,6 +25,8 @@ from pydantic import BaseModel, Field
 
 from . import agent as rule_agent
 from . import chat as rule_chat
+from . import narrate as rule_narrate
+from . import testcases as rule_testcases
 from .django_client import ServiceAuthError
 
 router = APIRouter(prefix="/agent/rule-v0", tags=["rule-agent"])
@@ -73,6 +75,9 @@ def generate_rules(req: RuleGenerateRequest):
 class RuleConverseRequest(BaseModel):
     graph_id: str
     message: str
+    # 화면에서 지금 선택 중인 노드 — 모호한 지시를 엉뚱한 노드에 적용하지 않도록 하는
+    # 힌트(2026-08-18 추가, chat.py 모듈 docstring 참조). 없어도 동작은 한다.
+    node_key: Optional[str] = None
 
 
 @router.post("/converse")
@@ -80,7 +85,7 @@ def converse_rule(req: RuleConverseRequest):
     """대화형 자연어 수정(§1.2-5) — MCP 툴콜링으로 의도를 해석해 기존 그래프 CRUD API를
     직접 호출한다. 실패 처리 방침은 `/generate`와 동일(원인별 상태코드를 그대로 올림)."""
     try:
-        return rule_chat.converse(req.graph_id, req.message)
+        return rule_chat.converse(req.graph_id, req.message, node_key=req.node_key)
     except ServiceAuthError as exc:
         raise HTTPException(status_code=401, detail=f"서비스 계정 인증 실패: {exc}") from exc
     except httpx.HTTPStatusError as exc:
@@ -93,3 +98,39 @@ def converse_rule(req: RuleConverseRequest):
         raise HTTPException(status_code=503, detail=f"내부 서비스 연결 실패: {exc}") from exc
     except Exception as exc:                # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"rule converse 실패: {type(exc).__name__}: {exc}") from exc
+
+
+class GenerateTestCasesRequest(BaseModel):
+    graph_id: str
+
+
+@router.post("/test-cases/generate")
+def generate_test_cases(req: GenerateTestCasesRequest):
+    """검증셋 자동생성(§4) — 대화형 아님, 완제품을 한 번에 만들어 기존 검증셋에 추가한다.
+    실패 처리 방침은 `/generate`와 동일."""
+    try:
+        return rule_testcases.generate_test_cases(req.graph_id)
+    except ServiceAuthError as exc:
+        raise HTTPException(status_code=401, detail=f"서비스 계정 인증 실패: {exc}") from exc
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:500]
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Django 호출 실패({exc.request.url.path}): {detail}",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail=f"내부 서비스 연결 실패: {exc}") from exc
+    except Exception as exc:                # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"test-case 생성 실패: {type(exc).__name__}: {exc}") from exc
+
+
+class NarrateReportRequest(BaseModel):
+    facts: dict
+
+
+@router.post("/narrate-report")
+def narrate_report(req: NarrateReportRequest):
+    """시뮬레이션 결과 서술 생성(§13.3) — Django가 이미 계산한 통계/판정(`facts`)을 문장으로
+    풀어쓴다. LLM 호출이 실패해도 500을 주지 않고 `report: null`을 돌려준다 — 호출부(Django)가
+    템플릿 폴백을 유지하는 정상 경로이지 에러가 아니다."""
+    return {"report": rule_narrate.narrate_report(req.facts)}

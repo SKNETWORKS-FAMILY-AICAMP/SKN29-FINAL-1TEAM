@@ -1,6 +1,6 @@
 // 검증 시뮬레이션 보고서 — 실행 전 빈 상태 / 실행 결과(통계 · Agent 의견 · 결과 리스트).
 import { useState } from 'react'
-import { ArrowRight, FlaskConical, Play, RotateCw, Sliders } from 'lucide-react'
+import { ArrowRight, FlaskConical, Play, RotateCw, Sliders, Sparkles } from 'lucide-react'
 import { Markdown } from '../../components/ui/Markdown'
 import { won } from '../../lib/format'
 import {
@@ -11,8 +11,9 @@ import {
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`
 const decisionText = (decision: string) => DECISION_LABEL[decision as Decision] ?? decision ?? '미처리'
 
-export function SimulationEmptyState({ caseCount, running, error, onRun, onEditCases }: {
-  caseCount: number; running: boolean; error: string; onRun: () => void; onEditCases: () => void
+export function SimulationEmptyState({ caseCount, running, generating, error, onRun, onEditCases, onAutoGenerate }: {
+  caseCount: number; running: boolean; generating: boolean; error: string
+  onRun: () => void; onEditCases: () => void; onAutoGenerate: () => void
 }) {
   return (
     <div className="card">
@@ -22,12 +23,15 @@ export function SimulationEmptyState({ caseCount, running, error, onRun, onEditC
         <b style={{ fontSize: 14 }}>아직 시뮬레이션을 실행하지 않았습니다.</b>
         <div className="text-meta" style={{ maxWidth: 560, lineHeight: 1.7 }}>
           선택한 그래프를 <b>커스텀 검증셋</b>과 <b>직전 달 실제 정산 내역</b>에 적용해 판정 결과·통계·Agent 의견을 만듭니다.
-          결과를 확인한 뒤에만 승인대기로 전환할 수 있습니다.
+          결과를 확인한 뒤에만 승인대기로 전환할 수 있습니다. 검증셋이 비어 있다면 <b>자동생성</b>으로 먼저 채워두는 걸 권장합니다.
         </div>
         {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)' }}>{error}</div>}
         <div className="row" style={{ gap: 8, marginTop: 6 }}>
           <button className="btn primary" onClick={onRun} disabled={running}>
             <Play size={13} /> {running ? '실행 중…' : '시뮬레이션 실행하기'}
+          </button>
+          <button className="btn" onClick={onAutoGenerate} disabled={running || generating}>
+            <Sparkles size={13} /> {generating ? '생성 중…' : '검증셋 자동생성'}
           </button>
           <button className="btn" onClick={onEditCases} disabled={running}>
             <Sliders size={13} /> 테스트케이스(커스텀 검증셋) 만들기 ({caseCount})
@@ -38,8 +42,9 @@ export function SimulationEmptyState({ caseCount, running, error, onRun, onEditC
   )
 }
 
-export function SimulationReportView({ report, caseCount, running, error, onRun, onEditCases }: {
-  report: SimReport; caseCount: number; running: boolean; error: string; onRun: () => void; onEditCases: () => void
+export function SimulationReportView({ report, caseCount, running, generating, error, onRun, onEditCases, onAutoGenerate }: {
+  report: SimReport; caseCount: number; running: boolean; generating: boolean; error: string
+  onRun: () => void; onEditCases: () => void; onAutoGenerate: () => void
 }) {
   const { stats } = report
   return (
@@ -52,6 +57,9 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
           {report.stale && <span className="tag warn" style={{ marginLeft: 6 }}>실행 이후 그래프 변경됨 — 다시 실행 필요</span>}
         </span>
         <span className="row" style={{ gap: 8 }}>
+          <button className="btn sm" onClick={onAutoGenerate} disabled={running || generating}>
+            <Sparkles size={12} /> {generating ? '생성 중…' : '검증셋 자동생성'}
+          </button>
           <button className="btn sm" onClick={onEditCases} disabled={running}><Sliders size={12} /> 검증셋 수정 ({caseCount})</button>
           <button className="btn sm" onClick={onRun} disabled={running}><RotateCw size={12} /> {running ? '실행 중…' : '다시 실행'}</button>
         </span>
@@ -243,7 +251,11 @@ function TestResultList({ rows, stats }: { rows: SimResultRow[]; stats: SimRepor
                   <b style={{ fontSize: 12.5 }}>{row.label}</b>
                   <div className="text-meta">{row.merchant}</div>
                 </td>
-                <td className="num">{won(row.amount)}</td>
+                {/* 검증셋 자동생성 케이스는 노드 조건 하나만 골라 값을 역산한다 — 그 조건이
+                    금액과 무관하면(예: 참석자 수·2차 여부) tx.amount 자체를 안 다뤄 0으로
+                    남는다. 실제 0원 지출이 아니라 "이 케이스에서 금액은 판정 근거가 아님"
+                    이므로 ₩0으로 보이면 데이터 오류처럼 오해된다 — 구분해 보여준다. */}
+                <td className="num">{row.amount > 0 ? won(row.amount) : <span className="text-meta">해당없음</span>}</td>
                 <td className="text-meta">{row.category || '-'}</td>
                 <td>{row.expected
                   ? <span className="tag">{decisionText(row.expected)}</span>

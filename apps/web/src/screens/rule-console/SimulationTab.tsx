@@ -38,6 +38,8 @@ export function SimulationTab() {
   const [report, setReport] = useState<SimReport | null>(null)
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [genNote, setGenNote] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null)
   const [activationOpen, setActivationOpen] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [requestError, setRequestError] = useState('')
@@ -72,6 +74,7 @@ export function SimulationTab() {
     setTestCases([])
     setRunError('')
     setRequested('')
+    setGenNote(null)
     endpoints.ruleTestCases(graphId).then(({ data }) => {
       if (cancelled) return
       const saved = (data as ApiTestCase[]).map(fromApiCase)
@@ -102,6 +105,42 @@ export function SimulationTab() {
       setRunError('시뮬레이션을 실행하지 못했습니다. Core API 연결과 권한을 확인해주세요.')
     } finally {
       setRunning(false)
+    }
+  }
+
+  // 검증셋 자동생성 — 대화형 아님, 완제품을 한 번에 만들어 기존 검증셋에 추가(append)한다.
+  // 응답에 최신 시뮬레이션 보고서가 이미 포함돼 있어 별도 실행 없이 바로 결과를 보여준다.
+  const autoGenerate = async () => {
+    if (!graph) return
+    setGenerating(true)
+    setRunError('')
+    setGenNote(null)
+    try {
+      const { data } = await endpoints.generateRuleTestCases(graph.id)
+      const result = data as {
+        status: string; detail?: string; generated?: number
+        unresolved?: { nodeKey: string; kind: string; reason: string }[]
+        skippedNodes?: { node_key: string; reason: string }[]
+        simulationReport?: SimReport
+      }
+      if (result.status !== 'DONE') {
+        setGenNote({ tone: 'warn', text: result.detail || '역산 가능한 노드가 없어 생성하지 못했습니다.' })
+        return
+      }
+      const { data: casesData } = await endpoints.ruleTestCases(graph.id)
+      setTestCases((casesData as ApiTestCase[]).map(fromApiCase))
+      if (result.simulationReport) setReport(result.simulationReport)
+      const unresolvedCount = result.unresolved?.length ?? 0
+      const skippedCount = result.skippedNodes?.length ?? 0
+      const parts = [`${result.generated ?? 0}건 생성`]
+      if (unresolvedCount) parts.push(`${unresolvedCount}건은 자체검증 실패로 제외`)
+      if (skippedCount) parts.push(`${skippedCount}개 노드는 지원 범위 밖 조건이라 건너뜀`)
+      setGenNote({ tone: unresolvedCount || skippedCount ? 'warn' : 'ok', text: parts.join(' · ') })
+    } catch (failure) {
+      const detail = (failure as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      setGenNote({ tone: 'warn', text: detail || '검증셋 자동생성에 실패했습니다. 권한과 그래프 상태(초안)를 확인해주세요.' })
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -188,12 +227,22 @@ export function SimulationTab() {
               : <div className="card"><div className="card-body text-meta">표시할 노드가 없습니다.</div></div>}
           </div>
 
-          {/* ③ 검증 시뮬레이션 보고서 — 실행 전에는 빈 상태 + 실행/검증셋 버튼만 */}
+          {genNote && (
+            <div className="note" style={{
+              marginBottom: 12,
+              color: genNote.tone === 'ok' ? 'var(--tone-green)' : 'var(--tone-amber)',
+              borderColor: genNote.tone === 'ok' ? 'var(--tone-green)' : 'var(--tone-amber)',
+            }}>
+              검증셋 자동생성: {genNote.text}
+            </div>
+          )}
+
+          {/* ③ 검증 시뮬레이션 보고서 — 실행 전에는 빈 상태 + 실행/검증셋/자동생성 버튼만 */}
           {report
-            ? <SimulationReportView report={report} caseCount={testCases.length} running={running}
-                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} />
-            : <SimulationEmptyState caseCount={testCases.length} running={running}
-                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} />}
+            ? <SimulationReportView report={report} caseCount={testCases.length} running={running} generating={generating}
+                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} onAutoGenerate={() => void autoGenerate()} />
+            : <SimulationEmptyState caseCount={testCases.length} running={running} generating={generating}
+                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} onAutoGenerate={() => void autoGenerate()} />}
 
           {report && (
             <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>

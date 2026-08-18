@@ -122,7 +122,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     // 낙관적 표시 — 사용자 발화만. AI 답은 실제 응답이 와야 붙인다.
     setChat((previous) => [...previous, { role: 'user', text }])
     try {
-      const result = await converseRule(graphId, text)
+      const result = await converseRule(graphId, text, nodeKey)
       // 서버가 남긴 로그가 정본이다. 실패하면 방금 받은 답이라도 화면에 남긴다.
       // 저장도 조회도 **그래프 단위** — Agent가 node_key="" 로 남기기 때문(위 useEffect 참조).
       try {

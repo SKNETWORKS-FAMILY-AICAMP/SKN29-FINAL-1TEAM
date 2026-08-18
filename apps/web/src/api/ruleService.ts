@@ -38,12 +38,12 @@ export type RuleConverseResult = {
  * 다시 읽어야 한다. 대화 로그도 서버가 남기므로 화면은 저장하지 말고 다시 읽는다
  * — 양쪽에서 저장하면 같은 대화가 두 번 쌓인다.
  */
-export async function converseRule(graphId: string, message: string): Promise<RuleConverseResult> {
+export async function converseRule(graphId: string, message: string, nodeKey?: string): Promise<RuleConverseResult> {
   if (USE_MOCK) {
     await mockDelay()
     return { answer: '(목업) 요청을 반영했다고 가정합니다.', appliedChanges: [], graph: null }
   }
-  const { data } = await endpoints.converseRule(graphId, message)
+  const { data } = await endpoints.converseRule(graphId, message, nodeKey)
   return {
     answer: String(data?.answer ?? ''),
     appliedChanges: Array.isArray(data?.applied_changes) ? data.applied_changes : [],

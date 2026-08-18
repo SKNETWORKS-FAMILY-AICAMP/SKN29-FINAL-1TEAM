@@ -154,6 +154,11 @@ def delete_node(graph_id: str, node_key: str) -> None:
     _request("DELETE", f"/api/rules/{graph_id}/nodes/{node_key}/")
 
 
+def get_messages(graph_id: str) -> list[dict[str, Any]]:
+    """대화 로그 조회 — 기존 `RuleAuthoringMessage` 저장소. `[{"role","text","appliedNote",...}]`."""
+    return _request("GET", f"/api/rules/{graph_id}/messages/").json()
+
+
 def post_messages(
     graph_id: str, entries: list[dict[str, Any]], node_key: str = ""
 ) -> dict[str, Any]:
@@ -165,3 +170,16 @@ def post_messages(
         "POST", f"/api/rules/{graph_id}/messages/",
         json={"nodeKey": node_key, "messages": entries},
     ).json()
+
+
+# ------------------------------------------------------- 검증셋 자동생성용
+
+def get_test_cases(graph_id: str) -> list[dict[str, Any]]:
+    """저장된 검증셋 조회. `RuleTestCase` 그대로(camelCase)."""
+    return _request("GET", f"/api/rules/{graph_id}/test-cases/").json()
+
+
+def put_test_cases(graph_id: str, cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """검증셋 통째로 교체. append로 쓰려면 호출 전에 기존 것과 합쳐서 넘겨야 한다
+    (`replace_test_cases`가 전체 교체라 Django API 자체엔 append가 없음)."""
+    return _request("PUT", f"/api/rules/{graph_id}/test-cases/", json={"testCases": cases}).json()

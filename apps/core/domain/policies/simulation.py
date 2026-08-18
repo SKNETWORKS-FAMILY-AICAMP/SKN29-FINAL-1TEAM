@@ -21,6 +21,7 @@ from domain.settlements.models import Settlement, SettlementStatus
 
 from .context_builder import apply_facts, build_rule_context, load_tables, resolve_policy
 from .engine import GraphValidationError, run_rule_engine, validate_graph
+from . import scope as policies_scope
 from .eval_context import empty_eval_context
 from .models import (
     RuleGraph, RuleSimulationResult, RuleSimulationRun, RuleTestCase, SimulationSource,
@@ -187,19 +188,24 @@ def _change_comment(baseline: str, decision: str, case: dict[str, Any],
             "의도한 규정 변화인지 확인하세요.", "intended")
 
 
-def _previous_month_cases() -> tuple[list[dict[str, Any]], str]:
-    """직전 달 정산 내역. 없으면 최근 내역으로 대체한다(시연 데이터 보호)."""
+def _previous_month_cases(scope: str = policies_scope.GLOBAL) -> tuple[list[dict[str, Any]], str]:
+    """직전 달 정산 내역. 없으면 최근 내역으로 대체한다(시연 데이터 보호).
+
+    `scope`가 GLOBAL이 아니면(=과목별 그래프) 그 과목(`Settlement.category`)의 정산만
+    본다 — 실제 운영에서 이 그래프는 해당 과목 정산에만 적용되기 때문이다(`orchestrator.py`
+    의 scope 게이팅과 같은 전제). 필터 없이 돌리면 무관한 과목 정산까지 이 그래프에 억지로
+    태워 REVIEW·위험변경이 과대계상된다(실사용 중 발견, 2026-08-18 — 회식 scope 그래프를
+    비품·식대·출장 정산까지 섞어 돌려 자동처리율이 실제보다 훨씬 낮게 나왔다)."""
     now = timezone.localtime()
     first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     start = (first_of_this_month - timedelta(days=1)).replace(day=1)
-    queryset = (
-        Settlement.objects.select_related("transaction")
-        .filter(created_at__gte=start, created_at__lt=first_of_this_month)
-        .order_by("-created_at")
-    )
+    base = Settlement.objects.select_related("transaction")
+    if scope != policies_scope.GLOBAL:
+        base = base.filter(category=scope)
+    queryset = base.filter(created_at__gte=start, created_at__lt=first_of_this_month).order_by("-created_at")
     label = start.strftime("%Y-%m")
     if not queryset.exists():
-        queryset = Settlement.objects.select_related("transaction").order_by("-created_at")
+        queryset = base.order_by("-created_at")
         label = "최근"
     return [case_from_settlement(s) for s in queryset[:HISTORY_LIMIT]], label
 
@@ -264,7 +270,7 @@ def simulate(graph: RuleGraph, test_cases: list[dict[str, Any]] | None = None) -
         structure_error = str(exc)
 
     test_rows = _run_rows(snapshot, list(test_cases or []), "test")
-    history_cases, period_label = _previous_month_cases()
+    history_cases, period_label = _previous_month_cases(graph.scope)
     history_rows = _run_rows(snapshot, history_cases, "history")
 
     shape = _graph_shape(graph)
@@ -278,6 +284,8 @@ def simulate(graph: RuleGraph, test_cases: list[dict[str, Any]] | None = None) -
         "graphVersion": graph.version,
         "ranAt": timezone.localtime().strftime("%Y-%m-%d %H:%M"),
         "periodLabel": period_label,
+        # 이 함수는 저장 전 계산 단계라 아직 LLM 서술을 시도하지 않았다 — 항상 True.
+        # 실제 최종값은 `run_and_save()` 이후 뷰가 `apply_narrative()`를 호출하면 바뀐다.
         "placeholder": True,
         "structureError": structure_error,
         "stats": stats,
@@ -366,7 +374,7 @@ def run_and_save(graph: RuleGraph, test_cases: list[dict[str, Any]] | None, acto
     ])
     graph.sim_result = {
         "runId": run.pk, "ranAt": timezone.localtime(run.ran_at).strftime("%Y-%m-%d %H:%M"),
-        "stats": report["stats"], "grades": report["grades"], "placeholder": True,
+        "stats": report["stats"], "grades": report["grades"], "placeholder": run.agent_report_placeholder,
     }
     graph.save(update_fields=["sim_result"])
     return run
@@ -401,7 +409,7 @@ def report_from_run(run: RuleSimulationRun) -> dict[str, Any]:
         "ranAt": timezone.localtime(run.ran_at).strftime("%Y-%m-%d %H:%M"),
         "ranBy": getattr(run.ran_by, "first_name", "") or getattr(run.ran_by, "username", ""),
         "periodLabel": run.period_label,
-        "placeholder": True,
+        "placeholder": run.agent_report_placeholder,
         "structureError": run.structure_error,
         "stats": run.stats,
         "grades": run.grades,
@@ -503,11 +511,13 @@ def _decision_mix(rows: list[dict]) -> str:
     return ", ".join(f"{key} {value}건" for key, value in sorted(counts.items())) or "판정 없음"
 
 
-def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
-                  structure_error, period_label) -> str:
-    """구조·통계 기반 자연어(마크다운) 보고. LLM 연동 시 이 함수를 교체한다.
+def _narrative_facts(graph, shape, stats, grades, test_rows, history_rows,
+                     structure_error, period_label) -> dict[str, Any]:
+    """보고서 서술에 필요한 사실만 추출한 JSON 조각.
 
-    구성: 개요(이유·권장처리) → 그래프 구성 평가 → 실행결과 → 주의깊게 볼 부분.
+    `_render_template_report()`(결정론적 폴백)와 FastAPI `narrate-report`(LLM 실서술)가
+    **같은 이 dict**를 입력으로 받는다 — 서술 주체가 바뀌어도(템플릿 ↔ LLM) 근거 사실은
+    하나여야 "판정은 실제인데 설명은 다른 근거를 든다"가 생기지 않는다.
     """
     percent = lambda value: f"{value * 100:.1f}%"  # noqa: E731
     watch: list[str] = []   # 주의깊게 살펴봐야 할 부분
@@ -569,18 +579,44 @@ def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
         if stats["hasPrevVersion"] else
         f"직전 버전 시뮬레이션 이력이 없어 0.0% → {percent(stats['autoRate'])}로 계산"
     )
+
+    return {
+        "graphName": graph.name,
+        "graphVersion": graph.version,
+        "periodLabel": period_label,
+        "structureError": structure_error,
+        "shape": shape,
+        "stats": stats,
+        "grades": grades,
+        "reasons": reasons,
+        "watch": watch,
+        "verdictText": verdict,
+        "compareLine": compare,
+        "decisionMixTest": _decision_mix(test_rows),
+        "decisionMixHistory": _decision_mix(history_rows),
+    }
+
+
+def _render_template_report(facts: dict[str, Any]) -> str:
+    """`_narrative_facts()` 결과를 결정론적 마크다운으로 편성 — LLM 미가용 시 폴백.
+
+    구성: 개요(이유·권장처리) → 그래프 구성 평가 → 실행결과 → 주의깊게 볼 부분.
+    """
+    percent = lambda value: f"{value * 100:.1f}%"  # noqa: E731
+    shape, stats, grades = facts["shape"], facts["stats"], facts["grades"]
+    watch = facts["watch"]
     graded = stats["testGraded"] or stats["testTotal"]
 
     lines = [
         "## 개요",
-        f"`{graph.name}` v{graph.version}을(를) 테스트셋 {stats['testTotal']}건과 "
-        f"{period_label} 실제 내역 {stats['historyTotal']}건으로 시뮬레이션했습니다.",
+        f"`{facts['graphName']}` v{facts['graphVersion']}을(를) 테스트셋 {stats['testTotal']}건과 "
+        f"{facts['periodLabel']} 실제 내역 {stats['historyTotal']}건으로 시뮬레이션했습니다.",
         "",
         "**판단 근거**",
-        *[f"- {text}" for text in reasons],
+        *[f"- {text}" for text in facts["reasons"]],
         "",
         f"**권장 처리 — {grades['action']['label']}**",
-        verdict,
+        facts["verdictText"],
         "",
         "## 그래프 구성 평가",
         f"- 노드 {shape['nodeCount']}개 · 라우팅 {shape['routingCount']}개 · 최대 깊이 {shape['maxDepth']}단계",
@@ -593,13 +629,13 @@ def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
         "**테스트케이스 구성 및 결과**",
         f"- 검증셋 {stats['testTotal']}건 중 기대 판정이 지정된 건 {stats['testGraded']}건 "
         f"→ **일치 {stats['testPassed']}건 / 불일치 {stats['testFailed']}건**",
-        f"- 판정 분포: {_decision_mix(test_rows)}",
+        f"- 판정 분포: {facts['decisionMixTest']}",
         "",
-        f"**{period_label} 실제 내역 결과 요약**",
-        f"- 대상 {stats['historyTotal']}건 · 판정 분포: {_decision_mix(history_rows)}",
+        f"**{facts['periodLabel']} 실제 내역 결과 요약**",
+        f"- 대상 {stats['historyTotal']}건 · 판정 분포: {facts['decisionMixHistory']}",
         f"- 자동처리 {stats['autoCount']}건 / 사람 확인 {stats['manualCount']}건 "
         f"→ 자동처리율 **{percent(stats['autoRate'])}**",
-        f"- 검토 감소량 **{percent(stats['reviewReduction'])}p** ({compare})",
+        f"- 검토 감소량 **{percent(stats['reviewReduction'])}p** ({facts['compareLine']})",
         f"- 기존 처리와 달라진 건 {stats['changedCount']}건 "
         f"→ **위험 변경 {stats['riskChangedCount']}건 / 정상 변경 {stats['intendedChangedCount']}건**",
         "",
@@ -617,8 +653,44 @@ def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
                      "기존 처리와 달라진 건 중 위험 판단도 없습니다.".format(graded))
     lines += [
         "",
-        "> 이 보고서는 플레이스홀더입니다. 판정은 실제 룰 엔진 결과이지만, "
-        "EvalContext는 정산·거래에서 조립한 일부 필드만 채워져 있습니다. "
+        "> 이 보고서는 룰 기반 템플릿입니다(Rule Agent 서술 생성 실패 또는 미실행). 판정은 실제 룰 엔진 "
+        "결과이지만, EvalContext는 정산·거래에서 조립한 일부 필드만 채워져 있습니다. "
         "사람 확인 없이 자동 승인하지 마세요.",
     ]
     return "\n".join(lines)
+
+
+def _agent_report(graph, shape, stats, grades, test_rows, history_rows,
+                  structure_error, period_label) -> str:
+    """구조·통계 기반 자연어(마크다운) 보고 — 결정론적 템플릿 폴백."""
+    facts = _narrative_facts(graph, shape, stats, grades, test_rows, history_rows,
+                             structure_error, period_label)
+    return _render_template_report(facts)
+
+
+def narrative_facts_for_run(run: RuleSimulationRun) -> dict[str, Any]:
+    """저장된 실행 결과로부터 서술용 사실 dict를 재구성 — FastAPI narrate 호출 입력."""
+    graph = run.graph
+    shape = _graph_shape(graph)
+    rows = list(run.results.all())
+    test_rows = [_result_row(row) for row in rows if row.source == SimulationSource.TEST]
+    history_rows = [_result_row(row) for row in rows if row.source == SimulationSource.HISTORY]
+    return _narrative_facts(
+        graph, shape, run.stats, run.grades, test_rows, history_rows,
+        run.structure_error, run.period_label,
+    )
+
+
+def apply_narrative(run: RuleSimulationRun, narrative: str) -> None:
+    """LLM이 실제로 작성한 서술을 실행 결과에 반영 — placeholder 플래그도 함께 내린다.
+
+    `run_and_save()`가 이미 `graph.sim_result["placeholder"]`를 True로 저장해 둔 뒤이므로,
+    여기서도 같이 내려야 그래프 목록 화면이 최신 상태를 본다(§13.3 참조).
+    """
+    run.agent_report = narrative
+    run.agent_report_placeholder = False
+    run.save(update_fields=["agent_report", "agent_report_placeholder"])
+    graph = run.graph
+    if isinstance(graph.sim_result, dict) and graph.sim_result.get("runId") == run.pk:
+        graph.sim_result["placeholder"] = False
+        graph.save(update_fields=["sim_result"])

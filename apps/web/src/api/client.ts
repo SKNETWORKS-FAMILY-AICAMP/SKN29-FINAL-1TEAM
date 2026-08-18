@@ -38,6 +38,10 @@ export const endpoints = {
     api.post(`/rules/${id}/messages/`, { nodeKey, messages }),
   ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),
   saveRuleTestCases: (id: string, testCases: unknown[]) => api.put(`/rules/${id}/test-cases/`, { testCases }),
+  // 검증셋 자동생성 — 대화형 아님, 노드 조건을 역산해 완제품 검증셋을 한 번에 만들어
+  // 기존 검증셋에 추가(append)한다. 노드마다 조건 역산 + 자체검증(최대 2회 simulate
+  // 왕복)이 순차로 돌아 시간이 걸릴 수 있어 넉넉히 잡는다.
+  generateRuleTestCases: (id: string) => api.post(`/rules/${id}/test-cases/generate/`, {}, { timeout: 200_000 }),
   simulateRule: (id: string, testCases?: unknown[]) => api.post(`/rules/${id}/simulate/`, testCases ? { testCases } : {}),
   ruleSimulation: (id: string) => api.get(`/rules/${id}/simulation/`),
   requestRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/request-activation/`, { comment }),
@@ -57,8 +61,11 @@ export const endpoints = {
     }, { timeout: 150_000 }),
   // 대화형 룰 수정 — 자연어 지시로 Agent가 그래프를 직접 고친다(LLM 툴콜링 여러 턴).
   // 대화 로그는 Agent가 서버에서 남기므로 화면은 addRuleMessages를 또 부르면 안 된다.
-  converseRule: (graphId: string, message: string) =>
-    api.post(`/rules/${graphId}/converse/`, { message }, { timeout: 200_000 }),
+  // nodeKey: 화면에서 지금 선택 중인 노드 — 모호한 지시가 엉뚱한 노드에 적용되는 걸
+  // 막는 힌트다(2026-08-18). Agent는 대화 이력도 서버(RuleAuthoringMessage)에서
+  // 직접 불러 쓰므로 프론트가 이력을 따로 넘길 필요는 없다.
+  converseRule: (graphId: string, message: string, nodeKey?: string) =>
+    api.post(`/rules/${graphId}/converse/`, { message, nodeKey }, { timeout: 200_000 }),
   createRuleNode: (graphId: string, nodeKey: string) => api.post(`/rules/${graphId}/nodes/`, { nodeKey }),
   saveRuleNode: (graphId: string, nodeKey: string, data: Record<string, unknown>) =>
     api.patch(`/rules/${graphId}/nodes/${nodeKey}/`, data),

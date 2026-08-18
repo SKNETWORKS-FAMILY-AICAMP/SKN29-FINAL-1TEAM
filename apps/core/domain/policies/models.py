@@ -440,6 +440,10 @@ class RuleSimulationRun(models.Model):
     stats = models.JSONField(default=dict, blank=True)
     grades = models.JSONField(default=dict, blank=True)
     agent_report = models.TextField(blank=True)
+    # False = Rule Agent(LLM)가 실제로 작성한 서술. True(기본) = 통계만 있고 LLM 호출이
+    # 실패했거나 아직 안 됐을 때 쓰는 결정론적 템플릿 서술(simulation.py `_render_template_report`).
+    # 판정·통계 자체는 이 값과 무관하게 항상 실데이터다 — 이 필드는 "서술문의 저자"만 표시한다.
+    agent_report_placeholder = models.BooleanField(default=True)
     ran_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
     )

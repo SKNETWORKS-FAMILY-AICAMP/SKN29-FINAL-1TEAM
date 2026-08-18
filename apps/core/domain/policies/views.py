@@ -126,7 +126,7 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action in ("create_version", "create_graph", "generate_graph", "create_node",
                            "update_node", "discard_draft", "delete_graph", "simulate",
                            "test_cases", "simulation_report", "request_activation", "messages",
-                           "converse"):
+                           "converse", "generate_test_cases"):
             return [CanViewRule()]
         return super().get_permissions()
 
@@ -185,7 +185,13 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="simulate")
     def simulate(self, request, pk=None):
-        """검증 시뮬레이션 — 검증셋 + 직전달 내역으로 판정하고 결과를 저장한 뒤 보고서를 돌려준다."""
+        """검증 시뮬레이션 — 검증셋 + 직전달 내역으로 판정하고 결과를 저장한 뒤 보고서를 돌려준다.
+
+        판정·통계는 여기서 이미 실데이터로 저장된다. 그 위에 얹는 **서술문**만 Rule Agent에게
+        맡긴다 — `generate_graph`/`converse`와 같은 얇은 프록시 원칙(인가·전달만). LLM 호출이
+        실패해도 시뮬레이션 자체는 실패로 보지 않는다 — `run_and_save()`가 이미 만든 룰 기반
+        템플릿 서술(`placeholder=True`)을 그대로 반환한다.
+        """
         graph = self.get_object()
         cases = request.data.get("testCases")
         if cases is not None and not isinstance(cases, list):
@@ -193,6 +199,18 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         if cases is not None:
             simulation.replace_test_cases(graph, cases, _actor(request))
         run = simulation.run_and_save(graph, simulation.test_cases_of(graph), _actor(request))
+        narrate_url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/narrate-report"
+        try:
+            resp = httpx.post(
+                narrate_url, json={"facts": simulation.narrative_facts_for_run(run)},
+                timeout=httpx.Timeout(60.0, connect=5.0),
+            )
+            if resp.status_code == 200:
+                narrative = str(resp.json().get("report") or "").strip()
+                if narrative:
+                    simulation.apply_narrative(run, narrative)
+        except Exception:  # noqa: BLE001  # 서술 생성 실패는 시뮬레이션 실패가 아니다 — 템플릿 폴백 유지
+            pass
         return Response(simulation.report_from_run(run))
 
     @action(detail=True, methods=["get"], url_path="simulation")
@@ -284,6 +302,9 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         message = str(request.data.get("message", "")).strip()
         if not message:
             return Response({"detail": "message가 필요합니다."}, status=400)
+        # 화면에서 지금 선택 중인 노드 — 모호한 지시("금액 30만원으로 바꿔줘")가 엉뚱한
+        # 노드에 적용되는 걸 막는 힌트(2026-08-18). 안 보내도 동작은 한다.
+        node_key = str(request.data.get("nodeKey", "")).strip() or None
         graph = self.get_object()
         if graph.status != RuleGraphStatus.DRAFT:
             # ACTIVE를 대화로 직접 고치면 시뮬레이션·승인 절차를 통째로 우회하게 된다.
@@ -294,7 +315,38 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             # LLM 툴콜링 여러 턴 + Django 재호출 왕복 — generate와 비슷하게 넉넉히.
             resp = httpx.post(
-                url, json={"graph_id": str(graph.pk), "message": message},
+                url, json={"graph_id": str(graph.pk), "message": message, "node_key": node_key},
+                timeout=httpx.Timeout(180.0, connect=5.0),
+            )
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": f"AI 서비스({django_settings.AI_BASE_URL})에 연결하지 못했습니다 — "
+                           f"{type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {"detail": resp.text[:2000]}
+        return Response(payload, status=resp.status_code)
+
+    @action(detail=True, methods=["post"], url_path="test-cases/generate")
+    def generate_test_cases(self, request, pk=None):
+        """POST /api/rules/{id}/test-cases/generate/ — 검증셋 자동생성(agent-v1-upgrade-plan.md §4).
+
+        대화형이 아니다 — 한 번 호출로 완제품 검증셋을 만들어 기존 것에 추가(append)한다.
+        `converse`와 같은 얇은 프록시 원칙: 인가·전달만, 실제 역산·자체검증·저장은
+        FastAPI(`testcases.generate_test_cases`)가 이 ViewSet의 `test-cases`/`simulate`
+        액션을 서비스 계정으로 다시 부르며 수행한다.
+        """
+        graph = self.get_object()
+        if graph.status != RuleGraphStatus.DRAFT:
+            return Response({"detail": "DRAFT 그래프만 검증셋을 자동생성할 수 있습니다."}, status=400)
+        url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/test-cases/generate"
+        try:
+            # 노드마다 조건 역산 + 자체검증(최대 2회 simulate 왕복)이 순차로 도니 여유 있게.
+            resp = httpx.post(
+                url, json={"graph_id": str(graph.pk)},
                 timeout=httpx.Timeout(180.0, connect=5.0),
             )
         except Exception as exc:  # noqa: BLE001
