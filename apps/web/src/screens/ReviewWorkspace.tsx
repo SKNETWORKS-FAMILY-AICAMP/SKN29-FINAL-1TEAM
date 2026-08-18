@@ -23,6 +23,20 @@ const RECO_LABEL: Record<Reco, { text: string; abbr: string; cls: string }> = {
   RETURN: { text: '보완요청', abbr: '보완', cls: 'warn' },
   REJECT: { text: '반려', abbr: '반려', cls: 'warn' },
 }
+// 2차 RAG 검증의 판정. 권고(RECO_LABEL)와 **다른 축**이라 따로 보여준다 —
+// "규정 위반인가"와 "그래서 어떻게 하라는 건가"를 같이 봐야 담당자가 판단할 수 있다.
+type Verdict = 'VIOLATION' | 'NO_VIOLATION' | 'INSUFFICIENT_INFO'
+const VERDICT_LABEL: Record<Verdict, string> = {
+  VIOLATION: '내규 위반',
+  NO_VIOLATION: '위반 없음',
+  INSUFFICIENT_INFO: '판단 보류',
+}
+const VERDICT_STYLE: Record<Verdict, { color: string; background: string }> = {
+  VIOLATION: { color: 'var(--tone-red)', background: 'var(--tone-red-bg)' },
+  NO_VIOLATION: { color: 'var(--tone-green)', background: 'var(--tone-green-bg)' },
+  INSUFFICIENT_INFO: { color: 'var(--tone-amber)', background: 'var(--tone-amber-bg)' },
+}
+
 type Filter = 'ALL' | Reco
 
 // 위험도(anomaly_score×100) 색 구간: ~30 정상(초록) / 30~60 주의(주황) / 60~ 고위험(빨강)
@@ -388,9 +402,23 @@ export function ReviewWorkspace() {
                 <div className="card">
                   <div className="card-head">
                     <h3>② RAG 내규 검증</h3>
-                    <span className={'tag ' + RECO_LABEL[sel.aiRecommendation].cls}>AI 권장: {RECO_LABEL[sel.aiRecommendation].text} · {pct(sel.aiConfidence)}</span>
+                    <span className="row" style={{ gap: 6 }}>
+                      {/* 판정과 권고는 다른 축이다 — 판단 보류(INSUFFICIENT_INFO)를 권고만 보면 놓친다. */}
+                      {sel.violationVerdict && (
+                        <span className="tag" style={VERDICT_STYLE[sel.violationVerdict]}>
+                          {VERDICT_LABEL[sel.violationVerdict]}
+                        </span>
+                      )}
+                      <span className={'tag ' + RECO_LABEL[sel.aiRecommendation].cls}>AI 권장: {RECO_LABEL[sel.aiRecommendation].text} · {pct(sel.aiConfidence)}</span>
+                    </span>
                   </div>
                   <div className="card-body">
+                    {sel.violationVerdict === 'INSUFFICIENT_INFO' && (
+                      // 이 상태를 조용히 넘기면 담당자가 "검증했는데 문제없음"으로 오해한다.
+                      <p className="note" style={{ margin: '0 0 12px', color: 'var(--tone-amber)' }}>
+                        근거가 부족해 <b>판단을 보류</b>한 건입니다. 아래 내용은 참고용이며, 증빙·사유를 직접 확인해주세요.
+                      </p>
+                    )}
                     {sel.ragReport
                       ? <Markdown source={sel.ragReport} />
                       : (

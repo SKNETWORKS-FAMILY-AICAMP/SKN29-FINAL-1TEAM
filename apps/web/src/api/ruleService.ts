@@ -23,6 +23,34 @@ export async function rollbackRuleTo(id: string): Promise<void> {
   await endpoints.rollbackRuleTo(id)
 }
 
+/** 대화형 수정 1턴의 결과. `appliedChanges`가 비어 있으면 Agent가 답만 하고 안 고친 것이다. */
+export type RuleConverseResult = {
+  answer: string
+  appliedChanges: { tool?: string; nodeKey?: string; summary?: string }[]
+  /** 수정 후 그래프 스냅샷(Agent가 되읽은 것). 그래프가 폐기됐으면 null. */
+  graph: unknown | null
+}
+
+/**
+ * Tab1: 자연어로 룰 그래프를 수정한다.
+ *
+ * Agent가 툴콜링으로 **실제 노드 CRUD API를 호출**하므로, 성공하면 화면의 그래프를
+ * 다시 읽어야 한다. 대화 로그도 서버가 남기므로 화면은 저장하지 말고 다시 읽는다
+ * — 양쪽에서 저장하면 같은 대화가 두 번 쌓인다.
+ */
+export async function converseRule(graphId: string, message: string): Promise<RuleConverseResult> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return { answer: '(목업) 요청을 반영했다고 가정합니다.', appliedChanges: [], graph: null }
+  }
+  const { data } = await endpoints.converseRule(graphId, message)
+  return {
+    answer: String(data?.answer ?? ''),
+    appliedChanges: Array.isArray(data?.applied_changes) ? data.applied_changes : [],
+    graph: data?.graph ?? null,
+  }
+}
+
 /** Rule Agent가 생성한 DRAFT 그래프의 요약 — 화면은 graphId로 그 그래프를 열면 된다. */
 export type GeneratedRuleGraph = {
   graphId: string

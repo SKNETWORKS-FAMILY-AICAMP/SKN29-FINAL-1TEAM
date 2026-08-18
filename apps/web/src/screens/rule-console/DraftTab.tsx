@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Code2, Plus, Send, Trash2 } from 'lucide-react'
 import { endpoints } from '../../api/client'
-import { generateRuleGraph } from '../../api/ruleService'
+import { converseRule, generateRuleGraph } from '../../api/ruleService'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
@@ -31,6 +31,8 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const [input, setInput] = useState('')
   const [deleteMode, setDeleteMode] = useState(false)
   const [generating, setGenerating] = useState(false)
+  // 대화 1턴은 LLM 여러 턴 + 그래프 CRUD 왕복이라 수십 초 걸린다 — 중복 전송을 막는다.
+  const [chatting, setChatting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -66,6 +68,21 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   })
   const selectNode = (graphId: string, nodeKey: string) => setSel({ graphId, nodeKey })
 
+  /** 서버가 그래프를 고친 뒤(생성·대화형 수정) 목록을 다시 읽어 화면을 맞춘다. */
+  const reloadGraphs = async (focusGraphId?: string, focusNodeKey?: string) => {
+    const { data } = await endpoints.rules()
+    const loaded = (data as ApiGraph[]).map(toGraph)
+    setGraphs(loaded)
+    if (!focusGraphId) return loaded
+    setExpanded((previous) => new Set(previous).add(focusGraphId))
+    const graph = loaded.find((item) => item.id === focusGraphId)
+    // 보고 있던 노드가 지워졌을 수 있다 — 그러면 그 그래프의 첫 노드로 옮긴다.
+    const stillThere = focusNodeKey && graph?.nodes.some((n) => n.nodeKey === focusNodeKey)
+    const nextKey = stillThere ? focusNodeKey : graph?.nodes[0]?.nodeKey
+    setSel(graph && nextKey ? { graphId: graph.id, nodeKey: nextKey } : null)
+    return loaded
+  }
+
   // 선택한 노드의 작성 대화 로그를 불러온다 — 누가 무엇을 지시했고 Agent가 무엇을 바꿨는지.
   useEffect(() => {
     if (!sel) { setChat([]); return }
@@ -79,19 +96,47 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     return () => { cancelled = true }
   }, [sel?.graphId, sel?.nodeKey])
 
-  const send = () => {
+  /**
+   * 대화형 수정 — Agent가 툴콜링으로 **실제 노드를 고친다**.
+   *
+   * 예전에는 여기서 "네, 반영했습니다"라는 **고정 문구를 만들어 로그에 저장**했다.
+   * 아무것도 안 고쳤는데 고쳤다고 기록하는 셈이라, 대화 로그가 실제 그래프와 어긋났다.
+   *
+   * 로그 저장은 서버(Agent)가 한다 — 여기서 또 저장하면 같은 대화가 두 번 쌓인다.
+   * 그래서 보내고 나서 **대화 로그와 그래프를 둘 다 다시 읽는다**.
+   */
+  const send = async () => {
     const text = input.trim()
-    if (!text || !sel) return
-    const reply: ChatMessage = {
-      role: 'ai', text: '네, 반영했습니다. 가운데 조건·액션·라우팅에서 변경 내용을 확인해주세요.',
-      appliedNote: '노드 설정에 적용됨',
-    }
-    setChat((previous) => [...previous, { role: 'user', text }, reply])
+    if (!text || !sel || chatting) return
+    const { graphId, nodeKey } = sel
     setInput('')
-    void endpoints.addRuleMessages(sel.graphId, sel.nodeKey, [
-      { role: 'user', text },
-      { role: 'ai', text: reply.text, appliedNote: reply.appliedNote },
-    ]).catch(() => undefined)
+    setChatting(true)
+    // 낙관적 표시 — 사용자 발화만. AI 답은 실제 응답이 와야 붙인다.
+    setChat((previous) => [...previous, { role: 'user', text }])
+    try {
+      const result = await converseRule(graphId, text)
+      // 서버가 남긴 로그가 정본이다. 실패하면 방금 받은 답이라도 화면에 남긴다.
+      try {
+        const { data } = await endpoints.ruleMessages(graphId, nodeKey)
+        setChat((data as ApiMessage[]).map((row) => ({
+          role: row.role, text: row.text, appliedNote: row.appliedNote || undefined,
+        })))
+      } catch {
+        setChat((previous) => [...previous, {
+          role: 'ai', text: result.answer,
+          appliedNote: result.appliedChanges.length ? `${result.appliedChanges.length}건 반영됨` : undefined,
+        }])
+      }
+      // Agent가 노드를 고쳤을 수 있으므로 그래프를 다시 읽는다.
+      if (result.appliedChanges.length) await reloadGraphs(graphId, nodeKey)
+    } catch (exc) {
+      const detail = (exc as { response?: { data?: { detail?: string } }; message?: string })
+      const reason = detail.response?.data?.detail || detail.message || '요청을 처리하지 못했습니다.'
+      setError(reason)
+      setChat((previous) => [...previous, { role: 'ai', text: `⚠️ ${reason}` }])
+    } finally {
+      setChatting(false)
+    }
   }
 
   /** Rule Agent 생성 — 그래프·노드·라우팅이 전부 서버에서 만들어지므로 목록을 다시 읽어 붙인다. */
@@ -100,12 +145,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     setError('')
     try {
       const result = await generateRuleGraph(choice)
-      const { data } = await endpoints.rules()
-      const loaded = (data as ApiGraph[]).map(toGraph)
-      setGraphs(loaded)
-      const created = loaded.find((graph) => graph.id === result.graphId)
-      setExpanded((previous) => new Set(previous).add(result.graphId))
-      setSel(created?.nodes.length ? { graphId: created.id, nodeKey: created.nodes[0].nodeKey } : null)
+      await reloadGraphs(result.graphId)
       setChat([])
       setNewRuleOpen(false)
       if (result.rejectedCount > 0) {
@@ -304,11 +344,21 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
               <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-control)', fontSize: 12.5, whiteSpace: 'pre-line', background: message.role === 'user' ? 'var(--primary)' : 'var(--surface-2)', color: message.role === 'user' ? '#fff' : 'var(--text)' }}>{message.text}</div>
               {message.appliedNote && <div className="text-meta" style={{ color: 'var(--tone-green)', marginTop: 4 }}>✓ {message.appliedNote}</div>}
             </div>)}
+            {/* 응답이 수십 초 걸린다 — 아무 표시가 없으면 사용자가 같은 지시를 다시 보낸다. */}
+            {chatting && <div className="text-meta" style={{ alignSelf: 'flex-start' }}>AI가 규칙을 확인하고 수정하는 중…</div>}
           </div>
           <div className="row" style={{ padding: 16, borderTop: '1px solid var(--border)', gap: 8 }}>
-            <input placeholder="예) 액션을 RETURN으로 바꿔줘" value={input} onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') send() }} style={{ flex: 1 }} />
-            <button className="btn primary" onClick={send} aria-label="전송"><Send size={14} /></button>
+            <input
+              placeholder={selGraph && selGraph.status !== 'DRAFT'
+                ? '활성 그래프는 대화로 수정할 수 없습니다 (초안에서 수정하세요)'
+                : '예) 액션을 RETURN으로 바꿔줘'}
+              value={input} onChange={(event) => setInput(event.target.value)}
+              disabled={chatting || !sel || (!!selGraph && selGraph.status !== 'DRAFT')}
+              onKeyDown={(event) => { if (event.key === 'Enter') void send() }} style={{ flex: 1 }} />
+            <button className="btn primary" onClick={() => void send()} aria-label="전송"
+                    disabled={chatting || !sel || !input.trim() || (!!selGraph && selGraph.status !== 'DRAFT')}>
+              <Send size={14} />
+            </button>
           </div>
         </div>
       </div>

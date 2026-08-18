@@ -49,13 +49,19 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       AI_BASE_URL: http://ai:9000
-      # Rule Agent 서비스 계정 — `manage.py ensure_service_account`(및 seed)가 이 값으로
-      # 계정 비밀번호를 설정하고, ai 컨테이너가 같은 값으로 JWT를 받는다. 양쪽이 같아야 한다.
-      RULE_AGENT_SERVICE_USER: ${RULE_AGENT_SERVICE_USER:-rule-agent}
-      RULE_AGENT_SERVICE_PASSWORD: ${RULE_AGENT_SERVICE_PASSWORD:-}
+      # ai(FastAPI)가 core에 쓰기를 할 때 쓰는 **단일 서비스 계정**(Agent별로 나누지 않는다).
+      # `manage.py ensure_service_account`(및 seed)가 이 값으로 비밀번호를 설정하고,
+      # ai가 같은 값으로 JWT를 받는다 — **양쪽이 반드시 같아야 한다.**
+      AI_SERVICE_USER: ${AI_SERVICE_USER:-${RULE_AGENT_SERVICE_USER:-rule-agent}}
+      AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD:-${RULE_AGENT_SERVICE_PASSWORD:-}}
+      # 로그 파일 위치. 비우면 콘솔만 — 아래 ./logs 바인드로 호스트에서 바로 열린다.
+      LOG_DIR: /logs
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - ./apps/core:/app
       - media:/app/media
+      # 컨테이너 로그를 호스트에서 그대로 열어보기 위한 바인드. core는 `logs/core.log`에 쓴다.
+      - ./logs:/logs
     ports:
       - "8000:8000"
     depends_on:
@@ -72,13 +78,20 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      # Rule Agent — 룰 콘솔 API에 DRAFT를 쓰려면 서비스 계정 JWT가 필요하다(core와 동일 값).
-      RULE_AGENT_SERVICE_USER: ${RULE_AGENT_SERVICE_USER:-rule-agent}
-      RULE_AGENT_SERVICE_PASSWORD: ${RULE_AGENT_SERVICE_PASSWORD:-}
+      # core에 쓰기(룰 DRAFT 저장·적재 결과 회신)를 할 때 쓰는 서비스 계정. **core와 같은 값.**
+      AI_SERVICE_USER: ${AI_SERVICE_USER:-${RULE_AGENT_SERVICE_USER:-rule-agent}}
+      AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD:-${RULE_AGENT_SERVICE_PASSWORD:-}}
       RULE_AGENT_MODEL: ${RULE_AGENT_MODEL:-gpt-4o-mini}
+      LOG_DIR: /logs
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # 업로드된 규정 PDF를 읽을 위치(아래 media 볼륨). docling이 파일 경로를 요구해서
       # 바이트를 HTTP로 되넘기는 대신 core와 같은 볼륨을 공유한다.
       RAG_MEDIA_ROOT: /data/media
+      # 개발용: docling 파싱만 미리 떠둔 덤프로 대체한다(아래 docling_eval 마운트).
+      # 켜면 업로드 **파일 내용이 무시되고 문서명으로만** 덤프를 고른다 — 운영에선 절대 켜지 말 것.
+      # 기본값 비어 있음 = 꺼짐. 켤 때는 .env에 DOCLING_MOCK=1.
+      DOCLING_MOCK: ${DOCLING_MOCK:-}
+      DOCLING_MOCK_DUMP: ${DOCLING_MOCK_DUMP:-/data/docling_eval/output}
     volumes:
       - ./apps/ai:/app
       # RAG 인덱싱 배치의 입력(파싱 덤프). 레포 루트에 있어 `/app` 마운트로는 안 보인다 —
@@ -86,6 +99,8 @@ services:
       - ./docling_eval:/data/docling_eval:ro
       # core가 저장한 업로드 원본(규정 PDF). ai는 읽기만 한다 — 파일의 SoR은 Django다.
       - media:/data/media:ro
+      # 컨테이너 로그를 호스트에서 그대로 열어보기 위한 바인드. ai는 `logs/ai.log`에 쓴다.
+      - ./logs:/logs
     ports:
       - "9000:9000"
     depends_on:

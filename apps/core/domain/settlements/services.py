@@ -99,10 +99,16 @@ def judge(settlement, actor=None):
     """
     from domain.policies import orchestrator
 
+    from . import risk_review
+
     result = orchestrator.judge(settlement)
     reason = _judge_reason(result)
     transition(settlement, S.RPA_JUDGED, actor, reason)
     transition(settlement, JUDGE_MAP.get(result.decision, S.IN_REVIEW), actor, reason)
+    # 검토로 넘어간 건에만 Risk Review Agent를 붙인다. **커밋 후** 실행이라 60초짜리 AI
+    # 호출이 이 트랜잭션을 붙들지 않는다. 호출 지점을 여기 하나로 둔 이유는 §risk_review
+    # docstring 참조 — 뷰에만 있던 시절 제출 경로에서 통째로 빠졌었다.
+    risk_review.schedule(settlement)
     return result
 
 

@@ -72,7 +72,7 @@ Rule Agent 실판정 (orchestrator.py: GLOBAL 게이트 → scope 게이트)
 
 ### 3.4 Rule Agent ↔ Risk Review 연결
 - `services.judge()`가 Rule Agent를 한 번도 호출하지 않는 하드코딩 placeholder였음이 밝혀짐 (기존 테스트 데이터는 상태머신을 거치지 않고 `IN_REVIEW`로 직접 시드된 것이었음)
-- `apps/core/domain/policies/orchestrator.py::judge_settlement()` 신규 구현: GLOBAL(ACTIVE) 게이트 → PASS 아니면 최종 → PASS/부재 시 scope ACTIVE 그래프 → 둘 다 없으면 IN_REVIEW. 실행마다 `RuleHit` 기록
+- `apps/core/domain/policies/orchestrator.py` 신규 구현(당시 함수명 `judge_settlement()` — 현재는 `judge()`로 재작성됨): GLOBAL(ACTIVE) 게이트 → PASS 아니면 최종 → PASS/부재 시 scope ACTIVE 그래프 → 둘 다 없으면 IN_REVIEW. 실행마다 `RuleHit` 기록
 - 실제 HTTP 경로(`/api/settlements/<id>/judge/`)로 PASS/IN_REVIEW 갈래 실측 확인
 
 ### 3.5 Review List v0

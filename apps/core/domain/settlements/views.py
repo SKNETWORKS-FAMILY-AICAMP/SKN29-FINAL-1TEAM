@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 from domain.cards.models import Card
 from domain.common.permissions import CanAccountingReview, CanTeamAggregate
-from domain.risk.models import RiskReview
 from domain.transactions.models import Receipt, Transaction
 
 from . import draft_agent, services
@@ -234,48 +233,9 @@ class SettlementViewSet(viewsets.ModelViewSet):
             result = services.judge(s, _actor(request))
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
-        if s.status == "IN_REVIEW":
-            self._run_risk_review(s)
+        # Risk Review 호출은 `services.judge`가 소유한다(커밋 후 실행) — 여기서 따로 부르면
+        # 제출 경로와 수동 판정 경로 중 한쪽만 도는 상황이 다시 생긴다.
         return Response({**self.get_serializer(s).data, "ruleResult": result.to_dict()})
-
-    @staticmethod
-    def _run_risk_review(settlement):
-        """IN_REVIEW 전이 직후 Risk Review Agent(1차 이상탐지 + 2차 RAG 검증) 호출·저장.
-
-        FastAPI는 확정 데이터를 소유하지 않는다(CLAUDE.md §1) — 응답만 반환하고, 저장은
-        여기(Django)에서 한다. AI 미기동·타임아웃 등으로 실패해도 judge 자체(상태 전이)는
-        이미 커밋됐으므로 조용히 넘어간다 — 검토자가 육안 검토는 계속할 수 있어야 한다.
-        """
-        try:
-            resp = httpx.post(
-                f"{settings.AI_BASE_URL}/agent/risk-review",
-                json={"settlement_id": settlement.id}, timeout=60,
-            )
-            resp.raise_for_status()
-            result = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("risk-review 호출 실패(settlement=%s): %s", settlement.id, exc)
-            return
-
-        stage1 = result.get("stage1_anomaly", {})
-        stage2 = result.get("stage2_rag_review", {})
-        RiskReview.objects.create(
-            settlement=settlement,
-            anomaly_score=stage1.get("anomaly_score", 0.0),
-            reasons=stage1.get("contribs", []),
-            anomaly_reasons=stage2.get("review_reasons", []),
-            rag_refs=[
-                {"title": c.get("quote_summary", ""), "source": f"{c.get('doc','')} {c.get('article','')}".strip(), "kind": "policy"}
-                for c in stage2.get("citations", [])
-            ] + [
-                {"title": sc.get("relevance", ""), "source": f"사례 {sc.get('case_id','')} ({sc.get('outcome','')})", "kind": "case"}
-                for sc in stage2.get("similar_cases", [])
-            ],
-            ai_recommendation={"APPROVE": "APPROVE", "SUPPLEMENT": "RETURN", "REJECT": "REJECT"}.get(
-                stage2.get("recommendation", ""), ""
-            ),
-            stage2_verdict=stage2,
-        )
 
 
 class SettlementSummaryView(APIView):

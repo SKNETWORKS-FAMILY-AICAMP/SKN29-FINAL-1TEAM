@@ -55,6 +55,10 @@ export const endpoints = {
       top_k: data.topK ?? 6,
       include_law: data.includeLaw ?? false,
     }, { timeout: 150_000 }),
+  // 대화형 룰 수정 — 자연어 지시로 Agent가 그래프를 직접 고친다(LLM 툴콜링 여러 턴).
+  // 대화 로그는 Agent가 서버에서 남기므로 화면은 addRuleMessages를 또 부르면 안 된다.
+  converseRule: (graphId: string, message: string) =>
+    api.post(`/rules/${graphId}/converse/`, { message }, { timeout: 200_000 }),
   createRuleNode: (graphId: string, nodeKey: string) => api.post(`/rules/${graphId}/nodes/`, { nodeKey }),
   saveRuleNode: (graphId: string, nodeKey: string, data: Record<string, unknown>) =>
     api.patch(`/rules/${graphId}/nodes/${nodeKey}/`, data),
@@ -71,6 +75,16 @@ export const endpoints = {
   }),
   reembedPolicyDoc: (id: string) => api.post(`/policy-docs/${id}/reembed/`),
   deletePolicyDoc: (id: string) => api.delete(`/policy-docs/${id}/`),
+  // 폴더 트리(+ 폴더별 문서) · 폴더 생성 · 문서 이동
+  policyFolders: () => api.get('/policy-docs/folders/'),
+  createPolicyFolder: (name: string, parentId?: number | null) =>
+    api.post('/policy-docs/folders/', { name, parentId: parentId ?? null }),
+  movePolicyDoc: (id: string, folderId: number | null) =>
+    api.post(`/policy-docs/${id}/move/`, { folderId }),
+  // 조 단위 조항 + 룰 연결 상태(계산값) · 조항 결정
+  policyClauses: (id: string) => api.get(`/policy-docs/${id}/clauses/`),
+  decidePolicyClause: (docId: string, clauseId: number, decision: 'SKIP' | 'RESET', reason?: string) =>
+    api.post(`/policy-docs/${docId}/clauses/${clauseId}/decision/`, { decision, reason }),
   // Rule 버전 관리
   ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
 }
