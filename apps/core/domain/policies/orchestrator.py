@@ -179,6 +179,7 @@ def _record(settlement, result: JudgeResult) -> None:
     돌린 그래프가 없을 때도 **한 행은 남긴다**(graph=None). 판정을 시도했고 규칙이
     없었다는 사실 자체가 기록돼야 하고, 그때의 EvalContext도 보존돼야 한다.
     """
+    _stamp(settlement, result)
     tx = getattr(settlement, "transaction", None)
     common = {
         "transaction": tx,
@@ -206,3 +207,19 @@ def _record(settlement, result: JudgeResult) -> None:
         )
         for run in result.runs
     ])
+
+
+def _stamp(settlement, result: JudgeResult) -> None:
+    """판정 요약을 정산에 얹는다 — 목록 화면이 `rule_hits`를 훑지 않고 읽을 수 있게.
+
+    근거 전문(EvalContext·노드 경로)은 `rule_hits`가 그대로 갖고 있다. 여기 두는 건
+    "무엇으로 판정됐고 왜인가" 한 줄이다. 이 값이 있어야 **판정을 다시 돌리지 않고**
+    제출 시 상태를 정할 수 있다(`settlements.services.judge`).
+    """
+    from django.utils import timezone
+
+    summary = result.to_dict()
+    summary.pop("unresolvedPolicyFields", None)   # 감사용이라 요약엔 싣지 않는다
+    settlement.rule_judgement = summary
+    settlement.rule_judged_at = timezone.now()
+    settlement.save(update_fields=["rule_judgement", "rule_judged_at", "updated_at"])

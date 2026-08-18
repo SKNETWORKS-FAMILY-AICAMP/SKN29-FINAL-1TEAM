@@ -114,8 +114,19 @@ export interface Settlement {
   additionalEvidence?: { id: number; name: string; status: string }[]
   facts?: Record<string, unknown>
   events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]
-  ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; confidence: number }[]
+  ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; flags?: string[]; confidence: number }[]
+  /**
+   * 룰 판정 결과 — **팀 취합에 올라온 시점에 한 번** 돈다(제출 때 다시 돌지 않는다).
+   * `''`이면 아직 판정 전이다. 팀 화면의 "이상 건"이 이 값으로 정해진다.
+   */
+  ruleDecision?: RuleDecision | ''
+  /** 판정이 붙인 사유 코드(`PROHIBITED_MERCHANT` 등). "왜 걸렸는지"가 여기 있다. */
+  ruleFlags?: string[]
+  ruleJudgedAt?: string | null
 }
+
+/** 룰 엔진 판정. 사람의 결정(APPROVE/RETURN/REJECT)이나 AI 권고와는 다른 축이다. */
+export type RuleDecision = 'PASS' | 'RETURN' | 'REJECT' | 'REVIEW'
 
 /** ERP 수집 1회분 결과. `exhausted`면 준비된 표본을 다 받은 것이다. */
 export interface ImportResult {
@@ -134,7 +145,12 @@ export interface ReviewItem extends Settlement {
   ragRefs: { title: string; source: string; kind?: 'policy' | 'case'; excerpt?: string; relevance?: number }[]
   /** RAG 내규 검증 보고서(마크다운). 비면 요약 문장으로 대체 렌더링한다. */
   ragReport?: string
-  aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
+  /**
+   * Risk Review Agent(2차 RAG 검증)의 **권고**. 룰 엔진 판정이 아니다.
+   * **Agent가 아직 안 돈 건은 `''`** — 예전엔 `'APPROVE'`로 기본값을 채워서
+   * 돌지도 않은 건이 "AI 권장: 승인"으로 표시됐다(없는 판단을 지어낸 것).
+   */
+  aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT' | ''
   aiConfidence: number // 0~1
   anomalyReasons: string[]
   /**

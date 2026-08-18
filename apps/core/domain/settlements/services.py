@@ -1,4 +1,6 @@
 """정산 상태머신 서비스 (요구사항 §4.4, FR-ST). 전이는 여기서만 수행."""
+import logging
+
 from django.db import transaction as db_tx
 from django.utils import timezone
 
@@ -8,6 +10,8 @@ from domain.risk.models import DecisionLabel
 
 from .models import Settlement, SettlementEvent
 from .models import SettlementStatus as S
+
+logger = logging.getLogger(__name__)
 
 # 허용 전이표 (FR-ST-01, 4단계). REJECT/TEAM_REJECTED/ERP_VOUCHER_DRAFTED는 단말.
 #  ① 개인(DRAFT) → ② 팀 취합(TEAM_*) → ③ 회계 제출(SUBMITTED)·룰엔진 → ④ 회계 검토·확정
@@ -54,8 +58,27 @@ def transition(settlement: Settlement, to_state: str, actor=None, reason: str = 
 
 
 def raise_to_team(settlement, actor=None):
-    """DRAFT → TEAM_COLLECTING (개인 '올림'). 1인 팀(영업사원·임원 개인)도 이 단계를 거친다."""
-    return transition(settlement, S.TEAM_COLLECTING, actor, "팀 취합 올림")
+    """DRAFT → TEAM_COLLECTING (개인 '올림'). 1인 팀(영업사원·임원 개인)도 이 단계를 거친다.
+
+    **여기서 룰 판정을 돌린다.** 예전엔 회계 제출 뒤에야 돌아서 팀장이 판정 결과를 못 봤고,
+    팀 화면은 "30만원 이상이면 이상건" 같은 프론트 하드코딩으로 이상 여부를 흉내내고 있었다.
+    판정을 앞당기면 팀장이 **진짜 근거**로 취합하고, 보완이 필요한 건은 회계까지 갔다
+    돌아오지 않고 팀 단계에서 바로 잡힌다.
+
+    **상태는 바꾸지 않는다** — `orchestrator.judge`는 판정만 하고 전이는 하지 않는다.
+    `TEAM_COLLECTING → RPA_JUDGED`는 애초에 허용 전이가 아니다(팀장이 올려야 넘어간다).
+
+    판정 실패가 '올림'을 되돌리지 않는다. 올림은 이미 성립했고 판정은 다시 돌릴 수 있다
+    (`POST /settlements/{id}/judge/`). 실패를 이유로 롤백하면 개인이 팀에 올릴 수조차 없다.
+    """
+    from domain.policies import orchestrator
+
+    transition(settlement, S.TEAM_COLLECTING, actor, "팀 취합 올림")
+    try:
+        orchestrator.judge(settlement)
+    except Exception as exc:  # noqa: BLE001  # 조립기·엔진·DB 어느 쪽이든
+        logger.warning("정산 %s 팀 취합 판정 실패: %s", settlement.id, exc, exc_info=True)
+    return settlement
 
 
 def submit(settlement, actor=None):
@@ -77,6 +100,32 @@ JUDGE_MAP = {
 }
 
 
+class RecordedJudgement:
+    """팀 취합 때 기록해 둔 판정을 `JudgeResult`처럼 읽게 하는 얇은 어댑터.
+
+    호출부(상태 매핑·감사 사유·API 응답)가 "다시 돌린 판정"과 "기록된 판정"을 구분할
+    필요가 없게 한다 — 구분해야 하면 그 분기가 호출부마다 복제된다.
+    """
+
+    def __init__(self, summary: dict):
+        self._summary = summary or {}
+
+    @property
+    def decision(self) -> str:
+        return self._summary.get("decision", "REVIEW")
+
+    @property
+    def flags(self) -> list:
+        return self._summary.get("flags", [])
+
+    @property
+    def graph_names(self) -> list:
+        return [f"{g.get('name')} v{g.get('version')}" for g in self._summary.get("graphs", [])]
+
+    def to_dict(self) -> dict:
+        return dict(self._summary)
+
+
 def _judge_reason(result) -> str:
     """감사 로그·상태 이력에 남길 한 줄. 왜 그렇게 판정됐는지가 여기서 보여야 한다."""
     where = " → ".join(result.graph_names) or "활성 룰 그래프 없음"
@@ -85,23 +134,33 @@ def _judge_reason(result) -> str:
 
 
 @db_tx.atomic
-def judge(settlement, actor=None):
-    """RPA 1차판정 — ACTIVE 룰 그래프를 순회해 상태를 정한다 (FR-RA-10).
+def judge(settlement, actor=None, *, reuse_recorded: bool = False):
+    """RPA 1차판정을 상태로 옮긴다 (FR-RA-10).
 
     판정 자체(그래프 선택·엔진 순회·`rule_hits` 기록)는 `policies.orchestrator`가 하고,
     여기서는 그 결정을 상태로 옮기기만 한다. 둘을 갈라 두면 상태를 건드리지 않고
     "지금 규칙으로 다시 돌리면?"을 볼 수 있다.
 
+    ``reuse_recorded=True``면 **엔진을 다시 돌리지 않고** 팀 취합 때 기록해 둔 판정을
+    그대로 쓴다. 팀을 거쳐 올라온 건이 그렇다 — 같은 사실에 같은 그래프면 결과가 같은데,
+    다시 돌리면 `rule_hits`가 회차별로 쌓여 검토 화면이 어느 게 최신인지 잃는다.
+    기록이 없으면(팀 단계에서 판정이 실패했거나 회계 보완요청 재제출이라 팀을 안 거쳤다면)
+    여기서 돌린다 — 재제출은 사실이 바뀐 뒤라 옛 판정을 쓰면 안 된다.
+
     LLM은 개입하지 않는다 — 적용 단계는 결정론적 엔진만 쓴다(FR-RA-06 재현성).
     돌릴 ACTIVE 그래프가 없으면 통과가 아니라 `IN_REVIEW`다(사람에게 넘긴다).
 
-    Returns: `policies.orchestrator.JudgeResult` — 호출부가 판정 근거를 그대로 쓸 수 있다.
+    Returns: 판정 근거(`JudgeResult` 또는 기록된 요약) — 호출부가 그대로 응답에 싣는다.
     """
     from domain.policies import orchestrator
 
     from . import risk_review
 
-    result = orchestrator.judge(settlement)
+    recorded = settlement.rule_judgement if reuse_recorded else None
+    if recorded:
+        result = RecordedJudgement(recorded)
+    else:
+        result = orchestrator.judge(settlement)
     reason = _judge_reason(result)
     transition(settlement, S.RPA_JUDGED, actor, reason)
     transition(settlement, JUDGE_MAP.get(result.decision, S.IN_REVIEW), actor, reason)

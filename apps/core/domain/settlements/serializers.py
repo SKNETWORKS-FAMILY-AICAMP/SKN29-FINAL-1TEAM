@@ -68,6 +68,12 @@ class SettlementSerializer(serializers.ModelSerializer):
     violationVerdict = serializers.SerializerMethodField()
     # 판정 시점 EvalContext 스냅샷(rule_hits) — 있으면 검토 화면의 fact.json이 이걸 보여준다.
     evalContext = serializers.SerializerMethodField()
+    # ── 룰 판정 결과 (팀 취합 진입 시 1회) ──
+    #  팀 화면의 "이상 건"이 이 값이다. 예전엔 프론트가 `amount >= 300000` 같은 상수로
+    #  이상 여부를 흉내냈는데, 그 숫자는 어느 규정에서도 오지 않은 값이었다.
+    ruleDecision = serializers.CharField(source="rule_decision", read_only=True)
+    ruleFlags = serializers.JSONField(source="rule_flags", read_only=True)
+    ruleJudgedAt = serializers.DateTimeField(source="rule_judged_at", read_only=True)
 
     class Meta:
         model = Settlement
@@ -77,7 +83,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
-            "evalContext",
+            "evalContext", "ruleDecision", "ruleFlags", "ruleJudgedAt",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -212,6 +218,8 @@ class SettlementDetailSerializer(SettlementSerializer):
                 "graphVersion": hit.graph_version,
                 "path": hit.path,
                 "decision": hit.decision,
+                # 사유 코드. 빠져 있어서 화면이 "무슨 판정인지"는 알아도 "왜"를 몰랐다.
+                "flags": hit.flags,
                 "confidence": hit.confidence,
             }
             for hit in obj.rule_hits.select_related("graph").all()

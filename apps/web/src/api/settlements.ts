@@ -11,10 +11,24 @@ export interface SettlementsData {
   reviewItems: ReviewItem[]
 }
 
-/** 회계 담당자가 이미 결정을 내린 상태 — S-03 "이전 처리"의 대상.
- *  APPROVE→PENDING_CONFIRM(→CONFIRMED→ERP_VOUCHER_DRAFTED) / RETURN→RETURNED / REJECT→REJECT */
+/**
+ * **확정 대기** — 아직 사람이 확정(CONFIRMED)하지 않은 건. S-03 "확정 대기" 탭의 대상.
+ *
+ * `PENDING_CONFIRM`에는 두 갈래가 도착한다: ① 룰 판정 PASS로 **자동** 도착한 건
+ * (사람이 아직 아무것도 안 봤다) ② 회계 담당자가 승인한 건. 둘 다 `confirm()`을 눌러야
+ * CONFIRMED가 된다(FR-ST-03 사람 확정 원칙) — 그래서 "처리 완료"가 아니라 **대기**다.
+ * 예전엔 이 상태가 "이전 처리 · 승인"으로 묶여서, 아무도 안 본 건이 승인된 것처럼 보였다.
+ */
+export const AWAITING_CONFIRM_STATUSES: SettlementStatus[] = ['PENDING_CONFIRM']
+
+/** 회계 처리가 실제로 끝난 상태 — S-03 "이전 처리"의 대상. */
+export const REVIEW_HISTORY_STATUSES: SettlementStatus[] = [
+  'CONFIRMED', 'ERP_VOUCHER_DRAFTED', 'RETURNED', 'REJECT',
+]
+
+/** 검토 화면이 싣는 전체 범위(대기 + 확정대기 + 이력). */
 export const REVIEW_DECIDED_STATUSES: SettlementStatus[] = [
-  'PENDING_CONFIRM', 'RETURNED', 'REJECT', 'CONFIRMED', 'ERP_VOUCHER_DRAFTED',
+  ...AWAITING_CONFIRM_STATUSES, ...REVIEW_HISTORY_STATUSES,
 ]
 
 /** 팀 단계에 머물러 있는 상태 — S-02 취합 목록의 대상. */
@@ -28,7 +42,10 @@ function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
     anomalyScore: row.anomalyScore ?? 0,
     featureContribs: row.featureContribs ?? [],
     ragRefs: row.ragRefs ?? [],
-    aiRecommendation: row.aiRecommendation ?? 'APPROVE',
+    // **기본값을 'APPROVE'로 채우지 않는다.** Risk Review가 안 돈 건이 "AI 권장: 승인"으로
+    // 표시되면, 아무도 판단하지 않은 건을 담당자가 판단된 것으로 읽는다. 아래 violationVerdict가
+    // 같은 이유로 이미 빈 문자열을 쓰고 있었는데 여기만 어긋나 있었다.
+    aiRecommendation: row.aiRecommendation ?? '',
     aiConfidence: row.aiConfidence ?? 0,
     anomalyReasons: row.anomalyReasons ?? [],
     // Risk Review가 아직 안 돈 건은 빈 문자열 — '문제없음'으로 접으면 안 된다.

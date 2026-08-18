@@ -61,12 +61,7 @@ export const teamBudget = {
 
 /** 이상 사유(태그) 판정 — 화면설계서 S-02 이상 사유 태그 로직 데모.
  *  ※ 증빙 유무는 하드 플래그가 아니라 AI가 유연 판단할 항목이라 태그에서 제외(영수증 없이도 자동처리 지원). */
-export function anomalyTags(s: Settlement): string[] {
-  const tags: string[] = []
-  if (s.amount >= 300000) tags.push('건당한도초과')
-  if (s.cardType === 'SHARED') tags.push('실사용자미지정')
-  return tags
-}
+
 
 export const reviewItems: ReviewItem[] = [
   {

@@ -1,7 +1,8 @@
 // S-02 팀 취합·제출 — 팀장. FR-UI-02, FR-DA-07~08, FR-DB-03
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { anomalyTags, teamBudget } from '../data/mock'
+import { teamBudget } from '../data/mock'
+import { judgementTags, needsAttention, notJudged } from '../lib/judgement'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
@@ -85,7 +86,7 @@ export function TeamAggregation() {
 
   // ① 대시보드 지표 — teamMonthly(팀·월·최종반려 제외 전체) 기준.
   const stats = useMemo(() => {
-    const anomalous = teamMonthly.filter((i) => anomalyTags(i).length > 0).length
+    const anomalous = teamMonthly.filter((i) => needsAttention(i)).length
     return {
       members: new Set(teamMonthly.map((i) => i.user)).size,
       total: teamMonthly.reduce((s, i) => s + i.amount, 0),
@@ -97,7 +98,7 @@ export function TeamAggregation() {
 
   // ② 취합 처리 버튼용 — 지금 취합 대기(TEAM_COLLECTING) 중인 건만.
   const collectingStats = useMemo(() => {
-    const anomalous = collecting.filter((i) => anomalyTags(i).length > 0).length
+    const anomalous = collecting.filter((i) => needsAttention(i)).length
     return { anomalous, normal: collecting.length - anomalous }
   }, [collecting])
 
@@ -124,18 +125,18 @@ export function TeamAggregation() {
     setBusy(false)
   }
 
-  const submitNormalOnly = () => submitIds(visibleAll.filter((i) => anomalyTags(i).length === 0 && i.status === 'TEAM_COLLECTING').map((i) => i.id))
+  const submitNormalOnly = () => submitIds(visibleAll.filter((i) => !needsAttention(i) && i.status === 'TEAM_COLLECTING').map((i) => i.id))
   const requestAnomalyCorrections = async () => {
-    const targets = visibleAll.filter((i) => anomalyTags(i).length > 0 && i.status === 'TEAM_COLLECTING')
+    const targets = visibleAll.filter((i) => needsAttention(i) && i.status === 'TEAM_COLLECTING')
     if (targets.length === 0) return
     setBusy(true)
-    const results = await Promise.all(targets.map(async (item) => ({ id: item.id, status: await decideTeamSettlement(item.id, 'RETURN', `자동 보완요청: ${anomalyTags(item).join(', ')}`) })))
+    const results = await Promise.all(targets.map(async (item) => ({ id: item.id, status: await decideTeamSettlement(item.id, 'RETURN', `자동 보완요청: ${judgementTags(item).join(', ')}`) })))
     results.forEach(({ id, status }) => updateStatus(id, status))
     setBusy(false)
   }
 
   const hasVisibleMember = filteredMembers.some((m) =>
-    (onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items).length > 0
+    (onlyAnomaly ? m.items.filter((i) => needsAttention(i)) : m.items).length > 0
   )
   const budgetRemaining = budget.total - budget.used
   // 한도가 0이면 나눗셈이 Infinity/NaN이 되어 막대·퍼센트가 깨진다 — 0으로 떨어뜨린다.
@@ -271,10 +272,10 @@ export function TeamAggregation() {
 
       <div className="stack" style={{ gap: 12 }}>
         {filteredMembers.map((m) => {
-          const visibleItems = onlyAnomaly ? m.items.filter((i) => anomalyTags(i).length > 0) : m.items
+          const visibleItems = onlyAnomaly ? m.items.filter((i) => needsAttention(i)) : m.items
           if (visibleItems.length === 0) return null
           const isOpen = expanded.has(m.name) || onlyAnomaly
-          const memberAnomaly = m.items.filter((i) => anomalyTags(i).length > 0).length
+          const memberAnomaly = m.items.filter((i) => needsAttention(i)).length
           return (
             <div className="card" key={m.name}>
               <div
@@ -307,11 +308,11 @@ export function TeamAggregation() {
                     <col style={{ width: 176 }} />
                   </colgroup>
                   <thead>
-                    <tr><th>거래일자</th><th>가맹점</th><th className="num">금액</th><th>카드구분</th><th>이상 사유</th><th>처리</th></tr>
+                    <tr><th>거래일자</th><th>가맹점</th><th className="num">금액</th><th>카드구분</th><th>판정 사유</th><th>처리</th></tr>
                   </thead>
                   <tbody>
                     {visibleItems.map((i) => {
-                      const tags = anomalyTags(i)
+                      const tags = judgementTags(i)
                       return (
                         <tr
                           key={i.id}
@@ -325,9 +326,13 @@ export function TeamAggregation() {
                           <td className="num">{won(i.amount)}</td>
                           <td>{CARD_TYPE_LABEL[i.cardType]}</td>
                           <td>
-                            {tags.length === 0
-                              ? <span className="tag ok">정상</span>
-                              : tags.map((t) => <span key={t} className="tag warn" style={{ marginRight: 4 }}>{t}</span>)}
+                            {/* 판정 전 ≠ 정상. 검사하지 않은 것과 통과한 것을 같은 배지로 쓰면
+                                판정이 실패한 건이 조용히 일괄제출에 섞인다. */}
+                            {notJudged(i)
+                              ? <span className="tag">판정 전</span>
+                              : tags.length === 0
+                                ? <span className="tag ok">정상</span>
+                                : tags.map((t) => <span key={t} className="tag warn" style={{ marginRight: 4 }}>{t}</span>)}
                           </td>
                           <td className="team-actions" onClick={(ev) => ev.stopPropagation()}>
                             {tags.length === 0 ? (

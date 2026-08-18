@@ -104,11 +104,35 @@ class Settlement(models.Model):
     is_secondary_venue = models.BooleanField("2차 성격 지출", null=True, blank=True)
     includes_alcohol = models.BooleanField("주류 포함", null=True, blank=True)
 
+    # ── 룰 판정 결과 (팀 취합 진입 시 1회) ───────────────────────────
+    #
+    # 판정은 **팀에 올라온 시점에 한 번** 돈다(`services.raise_to_team`). 그 결과를 여기
+    # 얹어 두는 이유는 두 가지다:
+    #   ① 팀장이 판정 결과를 보고 취합해야 한다 — 예전엔 판정이 회계 제출 뒤에 돌아서
+    #      팀 화면이 "30만원 이상이면 이상건" 같은 프론트 하드코딩으로 때우고 있었다.
+    #   ② 제출 시 **다시 돌리지 않는다** — 같은 사실에 같은 그래프면 결과가 같고,
+    #      두 번 돌리면 `rule_hits`가 회차별로 쌓여 검토 화면이 어느 게 최신인지 잃는다.
+    #
+    # 근거 전문(EvalContext 스냅샷·노드 경로)은 그대로 `rule_hits`에 있다. 여기 있는 건
+    # 목록 화면이 N+1 없이 읽을 요약이다.
+    rule_judgement = models.JSONField("룰 판정 결과", default=dict, blank=True)
+    rule_judged_at = models.DateTimeField("룰 판정 시각", null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+
+    @property
+    def rule_decision(self) -> str:
+        """최신 룰 판정 — PASS/RETURN/REJECT/REVIEW. 판정 전이면 빈 문자열."""
+        return (self.rule_judgement or {}).get("decision", "")
+
+    @property
+    def rule_flags(self) -> list:
+        """판정이 붙인 사유 코드. 팀 화면의 "이상 사유"가 이 값이다."""
+        return (self.rule_judgement or {}).get("flags", [])
 
     def __str__(self):
         return f"Settlement#{self.pk} ({self.status})"

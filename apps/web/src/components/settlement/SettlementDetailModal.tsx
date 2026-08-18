@@ -13,7 +13,7 @@ import {
   CARD_TYPE_LABEL, CATEGORIES,
   type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
-import { anomalyTags } from '../../data/mock'
+import { needsAttention } from '../../lib/judgement'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
@@ -101,7 +101,7 @@ export function SettlementDetailModal({
   // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
   const canDelete = !isCreate && ['DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED'].includes(item?.status ?? '')
   // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
-  const isAnomaly = !isCreate && item ? anomalyTags(item).length > 0 : false
+  const isAnomaly = !isCreate && item ? needsAttention(item) : false
 
   // fact.json — 현재 입력값으로 자동 생성(자동생성/자동갱신)
   const fact = useMemo(() => ({

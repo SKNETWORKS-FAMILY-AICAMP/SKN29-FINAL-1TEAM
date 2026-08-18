@@ -114,6 +114,21 @@ export async function reviewSettlement(
   return res.data.status
 }
 
+/**
+ * FR-ST-03 사람 최종 확정 — PENDING_CONFIRM → CONFIRMED(→ ERP 전표(안) 자동 생성).
+ *
+ * 룰이 통과시킨 건도 **사람 확정 없이는 CONFIRMED가 될 수 없다**("사람 확정 원칙").
+ * 이 함수가 없어서 확정 대기 건이 화면에서 어디로도 갈 수 없었다.
+ * 실패 시 `null` — 상태를 임의로 바꿔 그리지 않는다.
+ */
+export async function confirmSettlement(id: string): Promise<SettlementStatus | null> {
+  if (USE_MOCK) { await mockDelay(); return 'ERP_VOUCHER_DRAFTED' }
+  try {
+    const res = await endpoints.confirm(id)
+    return res.data.status as SettlementStatus
+  } catch { return null }
+}
+
 /** S-02/S-06: 팀 취합 단계의 보완요청·반려(회계 결정과 별도 상태). */
 export async function decideTeamSettlement(
   id: string,

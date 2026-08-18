@@ -187,10 +187,16 @@ class SettlementViewSet(viewsets.ModelViewSet):
     # POST /api/settlements/submit/  {ids:[...]}  팀 제출(TEAM_COLLECTING → SUBMITTED)·재제출(RETURNED → SUBMITTED)
     @action(detail=False, methods=["post"])
     def submit(self, request):
-        """제출 후 곧바로 RPA 1차판정을 돌린다 (SUBMITTED → RPA_JUDGED → …).
+        """제출 후 곧바로 판정 결과를 상태에 반영한다 (SUBMITTED → RPA_JUDGED → …).
 
-        판정을 따로 떼어 두면 아무도 부르지 않아 정산이 SUBMITTED에 고인다 — 상태머신상
-        제출의 다음 단계는 룰 판정이고, 그건 사람이 누르는 단계가 아니다.
+        상태 반영을 따로 떼어 두면 아무도 부르지 않아 정산이 SUBMITTED에 고인다 —
+        상태머신상 제출의 다음 단계는 룰 판정이고, 그건 사람이 누르는 단계가 아니다.
+
+        **엔진을 여기서 다시 돌리지는 않는다.** 판정은 팀 취합에 올라온 시점에 이미 돌았고
+        (`services.raise_to_team`), 같은 사실·같은 그래프면 결과가 같다. 다시 돌리면
+        `rule_hits`가 회차별로 쌓여 검토 화면이 어느 게 최신 근거인지 잃는다. 다만 회계
+        보완요청 재제출(`RETURNED → SUBMITTED`)은 팀 단계를 거치지 않고 사실이 바뀐 뒤라
+        옛 판정을 쓸 수 없다 — 그 경로만 재판정한다.
 
         판정 실패는 제출을 되돌리지 않는다. 제출은 이미 성공했고 판정은 다시 돌릴 수 있다
         (`POST /settlements/{id}/judge/`). 실패를 감추면 SUBMITTED에 고인 건이 왜 안 넘어가는지
@@ -200,6 +206,8 @@ class SettlementViewSet(viewsets.ModelViewSet):
         actor = _actor(request)
         submitted, skipped, judged, judge_failed = [], [], {}, {}
         for s in Settlement.objects.filter(id__in=ids):
+            # 전이 전에 봐야 한다 — `submit()` 뒤엔 전부 SUBMITTED라 출처를 알 수 없다.
+            came_from_team = s.status == "TEAM_COLLECTING"
             try:
                 services.submit(s, actor)
             except services.TransitionError:
@@ -207,7 +215,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
                 continue
             submitted.append(s.id)
             try:
-                result = services.judge(s, actor)
+                result = services.judge(s, actor, reuse_recorded=came_from_team)
             except Exception as exc:  # noqa: BLE001  # 조립기·엔진·DB 어느 쪽이든
                 logger.warning("정산 %s 판정 실패: %s", s.id, exc, exc_info=True)
                 judge_failed[str(s.id)] = f"{type(exc).__name__}: {exc}"
