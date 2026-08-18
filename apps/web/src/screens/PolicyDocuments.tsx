@@ -7,8 +7,8 @@
 //
 // 업로드는 **접수만** 하고 파싱·청킹·임베딩·적재는 백그라운드로 돈다(문서당 수십 초~분).
 // 그래서 진행 중인 문서가 있을 때만 목록을 폴링한다.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw, Search, Trash2, Upload } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, FileText, RefreshCw, Search, Trash2, Upload } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
   EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META,
@@ -16,13 +16,11 @@ import {
 } from '../types/domain'
 import { KpiCard } from '../components/ui/KpiCard'
 import { FolderTree } from './policy-docs/FolderTree'
+import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
 import { ClauseCard } from './policy-docs/ClauseAccordion'
 import './policy-docs/policy-docs.css'
 
 const POLL_MS = 4000
-// GLOBAL ∪ settlements.Category. SoT는 Django `Category` — "업무활성"은 폐지되고
-// "회식"이 독립 카테고리로 대체됐다(2026-08-14).
-const RULE_SCOPES = ['GLOBAL', '회식', '회의', '식대', '출장', '접대', '비품'] as const
 // 판정 근거로 인용되는 컬렉션. org_docs(조직도·직급체계)는 여기 없다 — 결재선의 SoR은
 // 문서가 아니라 Django이고, 조직도가 정산 판정 근거로 인용되면 안 된다.
 const JUDGEMENT_COLLECTIONS = ['policy_docs', 'case_history', 'tax_refs']
@@ -38,11 +36,10 @@ export function PolicyDocuments() {
   const [clauses, setClauses] = useState<PolicyClause[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
-  const [scope, setScope] = useState('')
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const fileInput = useRef<HTMLInputElement>(null)
 
   const selected = docs.find((d) => d.id === selectedId) ?? null
 
@@ -88,28 +85,55 @@ export function PolicyDocuments() {
     void loadClauses(selectedId)
   }, [selectedId, loadClauses])
 
-  const upload = async (file: File) => {
+  const upload = async (input: UploadInput) => {
     setBusy(true); setError('')
     const form = new FormData()
-    form.append('file', file)
-    form.append('title', file.name.replace(/\.[^.]+$/, ''))
-    if (scope) form.append('ruleScope', scope)
+    form.append('file', input.file)
+    form.append('title', input.title)
+    if (input.profileHint) form.append('profileHint', input.profileHint)
+    if (input.ruleScope) form.append('ruleScope', input.ruleScope)
+    if (input.folderId != null) form.append('folderId', String(input.folderId))
     try {
       const { data } = await endpoints.uploadPolicyDoc(form)
       await load()
       setSelectedId(String(data.id))
+      setUploadOpen(false)
     } catch (exc) {
       setError((exc as { response?: { data?: { detail?: string } } }).response?.data?.detail
         || '업로드에 실패했습니다.')
     } finally {
       setBusy(false)
-      if (fileInput.current) fileInput.current.value = ''
     }
+  }
+
+  /** 폴더·이동 조작은 전부 서버가 정본이라, 성공하면 트리를 다시 읽는다. */
+  const treeActions = {
+    onSelect: setSelectedId,
+    onCreateFolder: (name: string, parentId: number | null) =>
+      withBusy(async () => { await endpoints.createPolicyFolder(name, parentId); await load() },
+        '폴더를 만들지 못했습니다.'),
+    onRenameFolder: (id: number, name: string) =>
+      withBusy(async () => { await endpoints.renamePolicyFolder(id, name); await load() },
+        '이름을 바꾸지 못했습니다.'),
+    onDeleteFolder: (id: number) =>
+      withBusy(async () => { await endpoints.deletePolicyFolder(id); await load() },
+        '폴더를 삭제하지 못했습니다.'),
+    onMoveDoc: (docId: string, folderId: number | null) =>
+      withBusy(async () => { await endpoints.movePolicyDoc(docId, folderId); await load() },
+        '문서를 옮기지 못했습니다.'),
   }
 
   const withBusy = async (fn: () => Promise<unknown>, fail: string) => {
     setBusy(true); setError('')
-    try { await fn() } catch { setError(fail) } finally { setBusy(false) }
+    try {
+      await fn()
+    } catch (exc) {
+      // 서버가 이유를 주면 그걸 쓴다 — "비어 있지 않습니다(문서 3건)"처럼 다음 행동이 보인다.
+      const detail = (exc as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      setError(detail || fail)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const decide = (clauseId: number, decision: 'SKIP' | 'RESET', reason?: string) =>
@@ -140,17 +164,10 @@ export function PolicyDocuments() {
           <h1>규정 문서 관리</h1>
           <div className="sub">회사 규정을 등록하면 AI가 조항을 정리하고, 자동 판단 규칙과 연결해드려요.</div>
         </div>
-        <div className="row" style={{ gap: 8 }}>
-          <select value={scope} onChange={(e) => setScope(e.target.value)} title="룰 생성 대상 비용분류">
-            <option value="">비용분류 미지정</option>
-            {RULE_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <input ref={fileInput} type="file" accept=".pdf" style={{ display: 'none' }}
-                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f) }} />
-          <button className="btn primary" disabled={busy} onClick={() => fileInput.current?.click()}>
-            <Upload size={14} /> {busy ? '처리 중…' : '+ 문서 업로드'}
-          </button>
-        </div>
+        {/* 문서명·유형·폴더·비용분류는 업로드 모달에서 함께 고른다 — 올린 뒤 다시 손볼 일이 없게. */}
+        <button className="btn primary" disabled={busy} onClick={() => setUploadOpen(true)}>
+          <Upload size={14} /> {busy ? '처리 중…' : '+ 문서 업로드'}
+        </button>
       </div>
 
       {error && (
@@ -175,7 +192,7 @@ export function PolicyDocuments() {
           {loading
             ? <div className="text-meta" style={{ padding: 16 }}>불러오는 중…</div>
             : <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
-                          onSelect={setSelectedId} query={query} />}
+                          query={query} actions={treeActions} busy={busy} />}
         </aside>
 
         <section className="card pd-preview">
@@ -197,6 +214,15 @@ export function PolicyDocuments() {
                   {selected.superseded && <span className="pd-badge gray">이전 버전</span>}
                 </div>
                 <div className="row" style={{ gap: 6 }}>
+                  {/* 원본은 새 탭에서 브라우저 내장 PDF 뷰어로 연다 — 페이지 이동·확대·검색·
+                      인쇄가 전부 거기 있으므로 우리가 다시 만들 이유가 없다.
+                      적재 상태와 무관하게 열 수 있다: 파싱이 실패했을 때야말로 원본을 봐야 한다. */}
+                  <a className={`btn sm${selected.fileName ? '' : ' disabled'}`}
+                     href={selected.fileName ? endpoints.policyDocFileUrl(selected.id) : undefined}
+                     target="_blank" rel="noreferrer"
+                     title={selected.fileName ? '새 탭에서 원본 PDF 보기' : '원본 파일이 없습니다'}>
+                    <FileText size={11} /> 원본 보기
+                  </a>
                   <button className="btn sm" disabled={busy || EMBEDDING_IN_PROGRESS.includes(selected.status)}
                           onClick={() => void withBusy(async () => {
                             await endpoints.reembedPolicyDoc(selected.id); await load()
@@ -222,6 +248,13 @@ export function PolicyDocuments() {
                 {selected.fileSize > 0 && <> · 크기 {fmtSize(selected.fileSize)}</>}
                 · 조항 {selected.clauseCount}개
                 {selected.reviewCount > 0 && <> · 확인이 필요한 조항 {selected.reviewCount}개</>}
+                {selected.profile && (
+                  // 유형이 컬렉션을 정하고, 컬렉션이 "판정에 인용되는가"를 정한다.
+                  // 사람이 지정한 값이면 자동 감지가 아니라는 것도 같이 밝힌다.
+                  <> · {selected.profileLabel || selected.profile}
+                    {selected.profileHint && <span className="pd-badge gray" style={{ marginLeft: 4 }}>지정</span>}
+                  </>
+                )}
                 {selected.collection && (
                   <> · {selected.collection}
                     {!JUDGEMENT_COLLECTIONS.includes(selected.collection) && (
@@ -267,8 +300,8 @@ export function PolicyDocuments() {
                   onReset={() => void decide(clause.id, 'RESET')}
                   // 규칙 생성은 룰 콘솔이 주인이다 — 여기서 두 번째 생성 경로를 만들지 않는다.
                   onCreateRule={() => {
-                    const target = selected.ruleScope || scope
-                    window.location.href = `/rules?generate=1&scope=${encodeURIComponent(target)}`
+                    // 문서에 지정된 비용분류를 그대로 넘긴다(없으면 룰 콘솔에서 고르게 둔다).
+                    window.location.href = `/rules?generate=1&scope=${encodeURIComponent(selected.ruleScope)}`
                       + `&query=${encodeURIComponent(clause.articleLabel + ' ' + clause.articleTitle)}`
                   }}
                 />
@@ -280,9 +313,19 @@ export function PolicyDocuments() {
 
       <div className="note" style={{ marginTop: 16 }}>
         등록된 문서 {kpi.total}개 · {folders.length}개 폴더로 정리되어 있어요.
-        업로드된 문서는 <b>파싱 → 조(條) 단위 청킹 → 임베딩 → 적재</b>를 거쳐 Rule Agent의 RAG 검색과
-        Risk Review의 내규검증 근거로 인용됩니다.
+        문서는 드래그해서 폴더로 옮길 수 있고, 폴더는 비어 있을 때만 삭제됩니다.
       </div>
+
+      {uploadOpen && (
+        <UploadModal
+          folders={folders}
+          // 문서를 보고 있으면 그 문서가 있는 폴더를 기본값으로 — 대개 같은 자리에 올린다.
+          defaultFolderId={selected?.folderId ?? null}
+          busy={busy}
+          onClose={() => setUploadOpen(false)}
+          onSubmit={(input) => void upload(input)}
+        />
+      )}
     </>
   )
 }

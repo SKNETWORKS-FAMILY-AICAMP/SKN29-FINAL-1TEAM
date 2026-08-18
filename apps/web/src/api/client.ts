@@ -79,10 +79,23 @@ export const endpoints = {
   policyFolders: () => api.get('/policy-docs/folders/'),
   createPolicyFolder: (name: string, parentId?: number | null) =>
     api.post('/policy-docs/folders/', { name, parentId: parentId ?? null }),
+  // 끝 슬래시 필수 — 없으면 DRF 라우터가 301로 리다이렉트하고, PATCH/DELETE는 그 과정에서
+  // 메서드·본문이 유실될 수 있다(테스트로 고정).
+  renamePolicyFolder: (id: number, name: string) =>
+    api.post(`/policy-docs/folders/${id}/`, { name }),
+  // 비어 있지 않으면 400 — 문서·하위폴더를 먼저 옮겨야 한다(분류가 통째로 날아가는 걸 막는다).
+  deletePolicyFolder: (id: number) => api.delete(`/policy-docs/folders/${id}/`),
   movePolicyDoc: (id: string, folderId: number | null) =>
     api.post(`/policy-docs/${id}/move/`, { folderId }),
   // 조 단위 조항 + 룰 연결 상태(계산값) · 조항 결정
   policyClauses: (id: string) => api.get(`/policy-docs/${id}/clauses/`),
+  /**
+   * 원본 PDF URL. `<iframe>`·다운로드 링크가 직접 쓰므로 axios가 아니라 **경로만** 만든다.
+   * 세션 쿠키로 인가되므로(same-origin) 별도 토큰이 필요 없다 — baseURL이 `/api`라
+   * vite proxy·nginx 어느 쪽이든 core로 간다.
+   */
+  policyDocFileUrl: (id: string, download = false) =>
+    `${api.defaults.baseURL ?? '/api'}/policy-docs/${id}/file/${download ? '?download=1' : ''}`,
   decidePolicyClause: (docId: string, clauseId: number, decision: 'SKIP' | 'RESET', reason?: string) =>
     api.post(`/policy-docs/${docId}/clauses/${clauseId}/decision/`, { decision, reason }),
   // Rule 버전 관리

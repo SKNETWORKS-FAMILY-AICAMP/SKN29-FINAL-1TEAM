@@ -32,6 +32,17 @@ class IngestStatus(models.TextChoices):
     FAILED = "FAILED", "실패"
 
 
+# 파서가 판정하는 문서 유형 = **실제 백엔드 분류**. 컬렉션 라우팅을 결정한다
+# (REGULATION/GENERIC→policy_docs · LAW→tax_refs · DIAGRAM→org_docs).
+# `org_docs`는 정산 판정이 검색하지 않으므로, 이 값이 틀리면 그 문서는 판정에 인용되지 않는다.
+DOC_PROFILE_CHOICES = [
+    ("REGULATION", "사내 규정"),
+    ("LAW", "법령·시행령"),
+    ("DIAGRAM", "조직도·도해"),
+    ("GENERIC", "기타 문서"),
+]
+
+
 class PolicyFolder(models.Model):
     """규정 문서 정리용 폴더(트리).
 
@@ -85,7 +96,14 @@ class PolicyDoc(models.Model):
     status = models.CharField(max_length=12, choices=IngestStatus.choices, default=IngestStatus.PENDING)
     # 파일 내용 해시(파서가 계산). 같은 파일이면 같은 값이라 재적재가 멱등 upsert가 된다.
     doc_id = models.CharField(max_length=32, blank=True, db_index=True)
-    profile = models.CharField("문서 유형", max_length=16, blank=True)  # REGULATION/LAW/DIAGRAM/GENERIC
+    profile = models.CharField(  # 파서가 실제로 판정한 값
+        "문서 유형(판정)", max_length=16, blank=True, choices=DOC_PROFILE_CHOICES,
+    )
+    # 업로더가 지정한 유형. 비면 파서 자동 감지를 쓴다. 파서가 틀릴 때(도해 위주 규정 등)
+    # 사람이 바로잡는 통로 — 컬렉션 라우팅이 바뀌므로 "판정에 인용되는가"가 달라진다.
+    profile_hint = models.CharField(
+        "문서 유형(지정)", max_length=16, blank=True, choices=DOC_PROFILE_CHOICES,
+    )
     collection = models.CharField(max_length=32, blank=True)           # policy_docs/tax_refs/org_docs
     chunk_count = models.PositiveIntegerField(default=0)
     leaf_count = models.PositiveIntegerField(default=0)   # 검색 대상(부모 제외) 청크 수

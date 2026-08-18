@@ -162,8 +162,11 @@ export interface PolicyDocument {
   title: string
   fileName: string
   fileSize: number
-  /** 파서가 판정한 문서 유형 — REGULATION/LAW/DIAGRAM/GENERIC. */
-  profile: string
+  /** 최종 적용된 문서 유형(지정값이 있으면 그것, 없으면 파서 자동 감지). 컬렉션 라우팅을 정한다. */
+  profile: DocProfile | ''
+  /** 업로더가 지정한 유형. 비면 자동 감지를 썼다는 뜻. */
+  profileHint: DocProfile | ''
+  profileLabel: string
   /** 적재된 Chroma 컬렉션. `org_docs`는 판정 근거로 검색되지 않는다. */
   collection: string
   status: EmbeddingStatus
@@ -191,6 +194,20 @@ export interface PolicyDocument {
   uploadedAt: string
   indexedAt: string | null
   uploadedBy: string
+}
+
+/**
+ * 문서 유형 = **실제 백엔드 분류**(`PolicyDoc.profile`). 컬렉션 라우팅을 결정한다:
+ * REGULATION·GENERIC→`policy_docs` · LAW→`tax_refs` · DIAGRAM→`org_docs`.
+ * `org_docs`는 정산 판정이 검색하지 않으므로, 유형이 틀리면 그 문서는 판정에 인용되지 않는다.
+ */
+export type DocProfile = 'REGULATION' | 'LAW' | 'DIAGRAM' | 'GENERIC'
+
+export const DOC_PROFILE_LABEL: Record<DocProfile, { label: string; hint: string; judged: boolean }> = {
+  REGULATION: { label: '사내 규정', hint: '조·항 구조의 사규 — 룰 생성·판정 근거로 인용', judged: true },
+  LAW: { label: '법령·시행령', hint: '법인세법 등 외부 법령 — 세무 근거로 인용', judged: true },
+  DIAGRAM: { label: '조직도·도해', hint: '표·그림 위주 — 판정 근거로는 인용되지 않음', judged: false },
+  GENERIC: { label: '기타 문서', hint: '위에 해당하지 않는 문서 — 규정과 함께 검색됨', judged: true },
 }
 
 /** 폴더 트리에 실리는 문서 요약. */

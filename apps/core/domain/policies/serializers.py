@@ -16,6 +16,9 @@ class PolicyDocSerializer(serializers.ModelSerializer):
     uploadedAt = serializers.DateTimeField(source="created_at", read_only=True)
     uploadedBy = serializers.CharField(source="uploaded_by.first_name", read_only=True, default="")
     fileSize = serializers.IntegerField(source="file_size", read_only=True)
+    # 업로더가 지정한 유형(비면 자동 감지). `profile`은 최종 적용값이다.
+    profileHint = serializers.CharField(source="profile_hint", read_only=True)
+    profileLabel = serializers.CharField(source="get_profile_display", read_only=True)
     folderId = serializers.IntegerField(source="folder_id", read_only=True)
     folderName = serializers.CharField(source="folder.name", read_only=True, default="")
     # 구판이면 "이전 버전" 배지. 지우지 않는 이유: 과거 판정이 인용한 조항이 사라지면 감사가 끊긴다.
@@ -27,7 +30,8 @@ class PolicyDocSerializer(serializers.ModelSerializer):
     class Meta:
         model = PolicyDoc
         fields = [
-            "id", "title", "category", "version", "fileName", "fileSize", "profile", "collection",
+            "id", "title", "category", "version", "fileName", "fileSize",
+            "profile", "profileHint", "profileLabel", "collection",
             "status", "statusLabel", "chunkCount", "leafCount", "clauseCount", "reviewCount",
             "error", "folderId", "folderName", "superseded",
             "ruleScope", "ruleTrigger", "indexedAt", "uploadedAt", "uploadedBy",
