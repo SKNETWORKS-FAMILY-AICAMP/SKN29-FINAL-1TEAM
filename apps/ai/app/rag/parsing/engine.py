@@ -104,7 +104,7 @@ def _to_elements(document, doc_id: str):
     """DoclingDocument → Element[]. 여기가 엔진 이질성이 끊기는 유일한 지점이다."""
     from docling_core.types.doc import DocItemLabel
 
-    for seq, (item, level) in enumerate(document.iterate_items()):
+    for seq, (item, _depth) in enumerate(document.iterate_items()):
         label = getattr(getattr(item, "label", None), "value", None) or str(
             getattr(item, "label", "")
         )
@@ -133,7 +133,10 @@ def _to_elements(document, doc_id: str):
             text=text,
             page=page,
             order=seq,
-            level=level if label == DocItemLabel.SECTION_HEADER.value else None,
+            # `_depth`(iterate_items의 스택 깊이)가 아니라 `item.level` — heading_hierarchy_options가
+            # 채우는 값은 SectionHeaderItem.level이지 트리 순회 깊이가 아니다. 둘을 혼동하면
+            # heading_hierarchy_options.enabled=True가 계층을 복원해도 전부 level=1로 뭉개진다.
+            level=getattr(item, "level", None) if label == DocItemLabel.SECTION_HEADER.value else None,
             bbox=bbox,
             attrs=attrs,
         )
