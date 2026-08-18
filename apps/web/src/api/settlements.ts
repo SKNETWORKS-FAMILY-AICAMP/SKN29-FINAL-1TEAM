@@ -36,12 +36,21 @@ function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
   }
 }
 
-export async function fetchSettlementsData(currentUser?: string): Promise<SettlementsData> {
+export async function fetchSettlementsData(
+  currentUser?: string, currentTeamId?: number,
+): Promise<SettlementsData> {
   const res = await endpoints.settlements()
   const all = (res.data as (Settlement & Partial<ReviewItem>)[]) ?? []
 
   // ⚠ 서버측 사용자/팀 바인딩(auth)이 없어 client-side로 분리한다 — gap(§ 리포트).
-  const myExpenses = currentUser ? all.filter((s) => s.user === currentUser) : all
+  //
+  // '내 지출' = 내게 귀속된 건 ∪ **같은 팀의 실사용자 미등록 건**.
+  //  후자는 팀·공용 카드 결제라 주인이 없다(`user`가 비어 있다) — 주인 기준으로만 거르면
+  //  아무에게도 안 보여서 실사용자가 본인 등록을 할 방법이 사라진다.
+  const myExpenses = currentUser
+    ? all.filter((s) => s.user === currentUser
+        || (s.claimPending && (currentTeamId == null || s.teamId === currentTeamId)))
+    : all
 
   // S-03은 검토 대기(IN_REVIEW) + 이미 처리된 건을 함께 싣는다.
   //  이전 처리 탭이 "이번 세션에서 처리한 건"만 보이던 문제 때문 — 달 필터는 화면에서 건다.

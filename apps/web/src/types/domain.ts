@@ -98,7 +98,14 @@ export interface Settlement {
   aiSuggested: boolean
   evidence: 'OK' | 'MISSING'
   status: SettlementStatus
+  /** 귀속된 사용자(username). 팀·공용 카드 결제는 실사용자 등록 전까지 비어 있다. */
   user: string
+  /**
+   * 팀·공용 카드 결제인데 아직 실사용자가 정해지지 않음 → **팀원 전원에게 보인다.**
+   * 주인이 없으니 `user` 기준으로는 아무에게도 안 보이기 때문에 이 플래그가 필요하다.
+   */
+  claimPending?: boolean
+  teamId?: number | null
   purpose?: string // 지출 목적/사유
   time?: string
   dept?: string
@@ -108,6 +115,16 @@ export interface Settlement {
   facts?: Record<string, unknown>
   events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]
   ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; confidence: number }[]
+}
+
+/** ERP 수집 1회분 결과. `exhausted`면 준비된 표본을 다 받은 것이다. */
+export interface ImportResult {
+  batch: number
+  totalBatches: number
+  created: number
+  skipped: number
+  claimPending: number
+  exhausted: boolean
 }
 
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */

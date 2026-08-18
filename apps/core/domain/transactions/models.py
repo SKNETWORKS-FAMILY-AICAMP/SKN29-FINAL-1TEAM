@@ -11,10 +11,21 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=0)  # KRW 정수
     ts = models.DateTimeField("거래일시")
     raw_payload = models.JSONField(default=dict, blank=True)
+    # 카드사/ERP 결제기록의 원천 식별자(승인번호 등). **재수집 멱등성의 근거**다 —
+    # "내역 불러오기"를 두 번 눌러도 같은 결제가 두 건이 되면 안 된다.
+    # 손으로 만든 거래(F-1 신규 등록)는 빈 문자열이라 아래 제약에 걸리지 않는다.
+    external_id = models.CharField("원천 식별자", max_length=64, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-ts"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["external_id"],
+                condition=~models.Q(external_id=""),
+                name="uq_transaction_external_id",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.merchant} {self.amount}"

@@ -52,6 +52,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     statusLabel = serializers.CharField(source="get_status_display", read_only=True)
     user = serializers.CharField(source="submitted_by.username", read_only=True, default=None)
     dept = serializers.SerializerMethodField()
+    teamId = serializers.IntegerField(source="team_id", read_only=True)
+    # 팀·공용 카드 결제인데 아직 실사용자가 정해지지 않은 건. 팀원 **전원**에게 보여야
+    # 실사용자가 본인 등록을 할 수 있다(주인이 없으니 `user` 기준으로는 아무에게도 안 보인다).
+    claimPending = serializers.SerializerMethodField()
     # ── Risk 평탄화 (ReviewItem 셰이프) ──
     anomalyScore = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
@@ -70,7 +74,7 @@ class SettlementSerializer(serializers.ModelSerializer):
         fields = [
             "id", "date", "time", "merchant", "amount", "cardType",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "purpose",
-            "evidence", "status", "statusLabel", "user", "dept",
+            "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext",
@@ -91,6 +95,9 @@ class SettlementSerializer(serializers.ModelSerializer):
         # 증빙 '누락'은 하드 플래그로 차단하지 않는다 — 영수증 없이도 자동 유연처리 지원(AI가 별도 판단).
         # 영수증이 매칭되면 'OK', 없어도 누락으로 막지 않고 'OK'로 통과시킨다(누락 여부 판단은 AI 몫, post-MVP).
         return "OK"
+
+    def get_claimPending(self, obj):
+        return obj.submitted_by_id is None and obj.status == "DRAFT"
 
     def get_dept(self, obj):
         return obj.submitted_by.team.name if (obj.submitted_by_id and obj.submitted_by.team_id) else None

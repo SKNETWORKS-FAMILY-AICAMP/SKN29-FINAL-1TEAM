@@ -16,6 +16,10 @@ export const endpoints = {
   deleteSettlement: (id: string) => api.delete(`/settlements/${id}/`), // '내 지출' 미제출 건 삭제
   // F-1 초안 작성 Agent — instruction이 있으면 수정, 없으면 생성(플레이스홀더)
   suggestDraft: (data: Record<string, unknown>) => api.post('/settlements/draft-suggest/', data),
+  // ERP/카드사 결제기록 수집("내역 불러오기") — 다음 회차 표본을 가져온다(멱등).
+  importSettlements: () => api.post('/settlements/import/'),
+  // 팀·공용 카드 결제의 실사용자 본인 등록
+  claimSettlement: (id: string) => api.post(`/settlements/${id}/claim/`),
   raise: (ids: string[]) => api.post('/settlements/raise/', { ids }), // 개인 올림 DRAFT→TEAM_COLLECTING
   submit: (ids: string[]) => api.post('/settlements/submit/', { ids }), // 팀 제출 TEAM_COLLECTING→SUBMITTED / 재제출
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정

@@ -725,3 +725,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 .lab-history-row:hover { background: var(--surface-2); }
 .lab-history-label { flex: 1; font-size: var(--text-meta); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 진행 중 스피너 — '내역 불러오기'처럼 수 초 걸리는 동작에서 버튼이 살아 있음을 보인다. */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+/* 실사용자 미등록(팀·공용 카드) 행 — 아직 '내 것'이 아니라는 걸 색으로 구분한다.
+   클릭해도 상세가 열리지 않으므로 커서도 기본으로 둔다. */
+.row-pending { background: var(--tone-amber-bg); cursor: default; }
+.row-pending:hover { background: var(--tone-amber-bg); }

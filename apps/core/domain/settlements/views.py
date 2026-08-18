@@ -19,7 +19,7 @@ from domain.cards.models import Card
 from domain.common.permissions import CanAccountingReview, CanTeamAggregate
 from domain.transactions.models import Receipt, Transaction
 
-from . import draft_agent, services
+from . import draft_agent, erp_import, services
 from .models import Settlement, TeamBudget
 from .serializers import SettlementDetailSerializer, SettlementSerializer
 
@@ -143,6 +143,33 @@ class SettlementViewSet(viewsets.ModelViewSet):
         if p.get("team"):
             qs = qs.filter(team_id=p["team"])
         return qs
+
+    # POST /api/settlements/import/  — ERP/카드사 결제기록 수집("내역 불러오기")
+    @action(detail=False, methods=["post"], url_path="import")
+    def import_transactions(self, request):
+        """다음 회차 결제기록을 가져와 초안(DRAFT)으로 만든다.
+
+        인증이 필요하다 — 누구 카드의 결제를 가져올지는 **요청자**로 정해지고, 개인카드 건은
+        그 사람에게 바로 귀속되기 때문이다. 익명으로 열어두면 주인 없는 초안만 쌓인다.
+        """
+        actor = _actor(request)
+        if actor is None:
+            return Response({"detail": "로그인이 필요합니다."}, status=401)
+        result = erp_import.import_next_batch(actor)
+        return Response(result.to_dict())
+
+    # POST /api/settlements/{id}/claim/  — 팀·공용 카드 결제의 실사용자 본인 등록
+    @action(detail=True, methods=["post"])
+    def claim(self, request, pk=None):
+        """"내가 사용했어요" — 주인 없는 팀카드 결제를 본인에게 귀속시킨다."""
+        actor = _actor(request)
+        if actor is None:
+            return Response({"detail": "로그인이 필요합니다."}, status=401)
+        try:
+            settlement = erp_import.claim(self.get_object(), actor)
+        except erp_import.ClaimError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(self.get_serializer(settlement).data)
 
     # POST /api/settlements/raise/  {ids:[...]}  개인 '올림'(DRAFT → TEAM_COLLECTING)
     @action(detail=False, methods=["post"], url_path="raise")

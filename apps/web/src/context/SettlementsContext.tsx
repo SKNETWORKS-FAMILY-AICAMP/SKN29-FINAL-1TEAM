@@ -48,7 +48,7 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
   const refresh = () => {
     if (USE_MOCK) return
     setLoading(true)
-    fetchSettlementsData(user?.name)
+    fetchSettlementsData(user?.name, user?.teamId)
       .then((d) => {
         setAll(d.all)
         setMyExpenses(d.myExpenses)

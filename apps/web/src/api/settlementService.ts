@@ -3,7 +3,7 @@
 // 백엔드(Django)가 준비되면 이 파일 안쪽만 endpoints.* 실제 호출로 바꾸면 되고, 화면 컴포넌트는 그대로 둔다.
 import { endpoints } from './client'
 import { USE_MOCK } from './config'
-import type { Settlement, SettlementStatus } from '../types/domain'
+import type { ImportResult, Settlement, SettlementStatus } from '../types/domain'
 
 export async function fetchSettlementDetail(item: Settlement): Promise<Settlement> {
   if (USE_MOCK) return item
@@ -22,6 +22,37 @@ export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>)
   }
   const res = await endpoints.createSettlement(draft)
   return res.data
+}
+
+/**
+ * S-01: ERP/카드사 결제기록 수집("내역 불러오기").
+ *
+ * 표본 3회분이 준비돼 있고 누를 때마다 다음 회차가 들어온다. 같은 결제는 두 번 들어오지
+ * 않는다(서버가 원천 식별자로 막는다) — 화면이 중복 방지를 떠안지 않아도 된다.
+ *
+ * `minMillis`: 실제 ERP 연동은 수 초가 걸린다. 응답이 즉시 오면 "눌렸나?" 싶어서
+ * 최소 표시 시간을 둔다 — 진행 상태를 **꾸며내는 게 아니라** 실제 호출을 기다리되
+ * 너무 빨리 끝나면 그만큼만 더 보여준다.
+ */
+export async function importSettlements(minMillis = 1200): Promise<ImportResult> {
+  const started = Date.now()
+  const run = USE_MOCK
+    ? Promise.resolve({ data: { batch: 1, totalBatches: 3, created: 3, skipped: 0, claimPending: 1, exhausted: false } })
+    : endpoints.importSettlements()
+  const { data } = await run
+  const elapsed = Date.now() - started
+  if (elapsed < minMillis) await new Promise((r) => setTimeout(r, minMillis - elapsed))
+  return {
+    batch: data.batch, totalBatches: data.totalBatches, created: data.created,
+    skipped: data.skipped, claimPending: data.claimPending, exhausted: data.exhausted,
+  }
+}
+
+/** S-01: 팀·공용 카드 결제의 실사용자 본인 등록("내가 사용했어요"). */
+export async function claimSettlement(id: string): Promise<SettlementStatus> {
+  if (USE_MOCK) { await mockDelay(); return 'DRAFT' }
+  const { data } = await endpoints.claimSettlement(id)
+  return data.status as SettlementStatus
 }
 
 /** S-01: 개인 '올림'(DRAFT → TEAM_COLLECTING). 팀 취합 단계로 넘긴다(1인 팀도 동일 경로). */
