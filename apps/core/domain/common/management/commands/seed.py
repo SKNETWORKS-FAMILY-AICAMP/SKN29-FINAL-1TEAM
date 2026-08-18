@@ -95,8 +95,8 @@ class Command(BaseCommand):
         if not password_set:
             # 조용히 넘어가면 나중에 ai가 원인과 동떨어진 401("No active account found")을 받는다.
             self.stdout.write(self.style.WARNING(
-                f"⚠ 서비스 계정 `{SERVICE_USERNAME}`의 비밀번호를 설정하지 못했다 "
-                "(AI_SERVICE_PASSWORD 가 비어 있음) — AI의 룰 생성·규정 적재가 401로 실패한다.\n"
+                f"[경고] 서비스 계정 `{SERVICE_USERNAME}`의 비밀번호를 설정하지 못했다 "
+                "(AI_SERVICE_PASSWORD 가 비어 있음) - AI의 룰 생성·규정 적재가 401로 실패한다.\n"
                 "  .env에 AI_SERVICE_PASSWORD를 넣고 `docker compose up -d --force-recreate core ai` 후\n"
                 "  `manage.py ensure_service_account`를 실행할 것."
             ))

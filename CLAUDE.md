@@ -61,6 +61,7 @@ daily_scrum/  주차별 진행 보고
 | 가맹점 업종 구분 시스템 | 📄 문서화 완료 / 🔲 구현 미착수 | 3개 명세 반영. `classify_merchant` Tool·`merchant_categories` 캐시·카카오/웹 연동 필요 |
 | 룰 그래프(트리) 도메인 | ✅ 1차 완료 | scope별 버전·DRAFT 복제/원복·노드 삭제·자동 저장·**DSL 쉽게보기(`RuleNode.condition_text`)** 에 더해 **검증 시뮬레이션 도메인**(`RuleTestCase`/`RuleSimulationRun`/`RuleSimulationResult` — 실행 스냅샷+해시 보존, 낡은 결과 표시)과 **승인 흐름**(Active 요청 시 검토자 코멘트·스코프당 승인대기 1건 제한, 활성자/검토자 추적, 버전 이력 롤백) 구현. 구조 시각화는 위→아래 스크롤 플로우차트(순환 감지 포함) |
 | 화면 임시 비활성화 | ✅ 해소 | 규정 문서 관리(`/policy-docs`)는 실 API 연동 완료로 메뉴·라우트 복구(capability `rule_view`). mock `policyDocuments`는 제거 — 적재 상태는 백엔드가 실제로 진행시키는 값이라 흉내낸 데이터가 오해를 만든다 |
+| 시연용 초기 상태 시드 (`seed_clean`) | ✅ 구현 완료 | `seed`와 **정반대 목적** — "제품을 막 설치한 회사" 상태(사용자·팀·카드 + `DEFAULT GATE` 1개, 정산·규정문서·과목별 룰 0건). 규정 업로드 → Rule Agent 생성 흐름을 처음부터 시연할 때 쓴다. **기본 게이트 설계가 핵심**: 회사 규정이 없는 상태라 한도·기한 같은 **정책 판단을 넣을 수 없다**(`policy.*`는 회사 별표에서 오는데 신규 설치엔 없음 → 미해소 가드가 **전건 REVIEW 강등** → 게이트 무용지물). 그래서 정책이 아니라 **기록 완결성**만 본다: 증빙(RETURN)·목적(RETURN)·가맹점업종(REVIEW)·분류신뢰도(REVIEW)·PASS. **참조 필드는 조립기가 항상 채우는 것만** 골랐다 — `card.actual_user_recorded`는 공용카드에서 `None`(모름)이 대부분이라 참조하면 공용카드 건이 전부 REVIEW로 떨어져 제외. 심야·주말·고액 같은 이상 신호는 **일부러 뺐다**(Risk Review의 일이고 회사마다 정상 범위가 달라 범용 룰이 될 수 없다). 로그인 계정은 `seed`와 동일(kim/lead/acc/acclead/exec, pass1234) — 시드를 갈아끼울 때 헤매지 않게. 회귀 12건(정상 건 **강등 없이 PASS** 확인 포함) |
 | 시연 시드 데이터 | ✅ 완료 | 룰 그래프 4계열(GLOBAL v1~v3·기업업무추진비 v1~v2·회식비 활성+초안·출장비 승인대기) + 작성 대화 로그, 정산 87건(회계팀 자체 지출 포함)·검토 대기 30건·검토 이전처리 10건, 하이라이트 3건은 RAG 검증 보고서(마크다운)+실제 EvalContext 스냅샷(`rule_hits`). **모든 거래일자는 이번 달 1~30일 안에 배치**(`seed.at()`) — 팀 통계·검토 이력의 "이번 달" 필터와 정합. **회식(GATHERING) 규정 검증 시연 3건 추가**(`_judge_dining_demo`) — 하드코딩 상태가 아니라 `services.judge()`(진짜 Rule Agent 오케스트레이션)로 실제 판정: 1인당 4만원·2차 아님(PASS→자동 `PENDING_CONFIRM`) / 1인당 15만원(한도 초과 M-001 REVIEW→`IN_REVIEW`) / 2차 결제(M-002 REVIEW→`IN_REVIEW`, 이어서 Risk Review Agent 2차 실호출까지 태워 `stage2_verdict` 실제 LLM 응답 확보). **실측 함정**: `upsert_policy_tables()`가 원래 시드 맨 끝에 있어서 이 판정 시점엔 `policy.dining_per_person_limit`이 미해소라 3건 전부 REVIEW로 강등됐다 — `PolicyTable` 적재를 `seed_rules` 직후·판정 직전으로 이동해 해결(기존 `_enrich_demo_cases`는 EvalContext를 수기로 채워써서 이 순서 의존성이 가려져 있었을 뿐, `build_rule_context`를 실제로 타는 경로는 원래도 이 순서가 필요했다) |
 | 화면 데이터 스코프 규약 | ✅ 정리 완료 | "이번 달" 경계는 `web/src/lib/period.ts`에서만 정의(하드코딩 월 상수 제거). **S-01 내 지출**=오늘이 속한 달(단순 월 기준, 일자 무관). **S-02 팀 통계 대시보드**(KPI·예산)=팀·이번달·`REJECT` 제외 **전 상태** / **S-02 취합 목록**=팀·이번달·`TEAM_*`만. **S-03 이전 처리**=이번 달 회계 결정 완료 건(`api/settlements.ts:REVIEW_DECIDED_STATUSES`) |
 | 팀 예산(TeamBudget) 정합 | ✅ 수정 완료 | 한도만 DB, 사용액은 팀·월·`REJECT` 제외 Settlement 집계(`TeamBudgetView`). **불변식 2개**: ① 팀 총한도(`category=''`) = 과목 한도 합 ② 과목 사용 합 = 총 사용액. 시드는 실제 집계에서 한도를 역산(`seed.py` BASE_USAGE_RATE)해 내역이 바뀌어도 어긋나지 않게 하고, **6개 과목 전부** 예산 행을 만든다(과거 `업무활성` 누락으로 항목 합 ≠ 총액이었음). 예산 행 없는 과목 지출은 API `unbudgetedUsed`로 노출 |
@@ -152,6 +153,14 @@ docker compose exec ai python -m app.rag.embedding.index --peek                 
 # Django (core)
 docker compose exec core python manage.py migrate
 docker compose exec core python manage.py createsuperuser
+
+# 시드 — 목적이 정반대인 둘 중 하나를 고른다
+#   seed        시연 데이터 한가득(정산 87건·룰 4계열·규정 하이라이트). 화면을 채워 보여줄 때
+#   seed_clean  **막 설치한 회사** 상태(사용자 + DEFAULT GATE 1개만). 규정 업로드→룰 생성
+#               흐름을 처음부터 시연할 때. 기존 데이터를 지우므로 --dry-run으로 먼저 확인.
+docker compose exec core python manage.py seed --fresh
+docker compose exec core python manage.py seed_clean --dry-run
+docker compose exec core python manage.py seed_clean
 
 # AI 서비스 계정 (ai → core 쓰기: 룰 DRAFT 저장·규정 적재 회신) — .env의 AI_SERVICE_PASSWORD 선행
 #   **Agent별로 나누지 않은 계정 하나.** capability는 `rule_view` 뿐.
