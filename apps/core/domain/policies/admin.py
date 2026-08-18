@@ -1,7 +1,8 @@
 from django.contrib import admin
 
 from .models import (
-    PolicyDoc, PolicyTable, RuleGraph, RuleGraphVersion, RuleHit, RuleNode, RuleRouting,
+    PolicyClause, PolicyDoc, PolicyFolder, PolicyTable, RuleGraph, RuleGraphVersion,
+    RuleHit, RuleNode, RuleRouting,
 )
 
 
@@ -37,3 +38,7 @@ class PolicyTableAdmin(admin.ModelAdmin):
 admin.site.register(PolicyDoc)
 admin.site.register(RuleGraphVersion)
 admin.site.register(RuleHit)
+# 폴더는 사람이 손으로 정리하는 분류라 admin에서 만드는 게 가장 빠르다(화면에도 생성 API가 있다).
+admin.site.register(PolicyFolder)
+# 조항은 적재가 만들지만, 결정(규칙 생성 안 함 + 사유)을 admin에서 되돌려야 할 때가 있다.
+admin.site.register(PolicyClause)

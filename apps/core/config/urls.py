@@ -10,7 +10,6 @@ from domain.erp.views import ErpVoucherViewSet
 from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSet
 from domain.policies.rule_agent_v0_views import EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
-from domain.risk_review_v0.views import ReviewDecisionView, ReviewListView   # v0 격리 서브패키지
 from domain.settlements.views import SettlementSummaryView, SettlementViewSet, TeamBudgetView
 from domain.transactions.views import ReceiptViewSet, TransactionViewSet, TxFeaturesView
 
@@ -46,8 +45,7 @@ urlpatterns = [
     # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.
     path("api/internal/policy-docs/<int:pk>/ingest-result/", IngestCallbackView.as_view(), name="internal_ingest_result"),
     path("api/", include(router.urls)),
-    # Review List v0 — 독립 개발 서브패키지(domain/risk_review_v0). v1에서 정식 URL 네임스페이스로
-    # 정리 예정, 지금은 v0 전용 경로로만 노출(메인 라우팅 정식 편입 전).
-    path("api/risk-review-v0/reviews/", ReviewListView.as_view(), name="risk_review_v0_list"),
-    path("api/risk-review-v0/reviews/<int:settlement_id>/decision/", ReviewDecisionView.as_view(), name="risk_review_v0_decision"),
+    # 구 `api/risk-review-v0/*`(domain/risk_review_v0)는 제거했다 — 회계 검토 큐는
+    # `/api/settlements/`(목록) + `/settlements/{id}/review/`(결정) 한 경로다. 같은 일을
+    # 하는 두 번째 쓰기 경로를 두면 상태 전이 규칙이 갈라진다.
 ]

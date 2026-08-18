@@ -1,0 +1,11 @@
+﻿intent,쿼리 방식,건수,MRR,Recall@1,nDCG@10
+definition,사람 말투,5,1.0,1.0,1.0
+definition,Agent 렌더,5,0.8667,0.8,0.9
+evidence,사람 말투,1,1.0,1.0,1.0
+evidence,Agent 렌더,1,1.0,1.0,1.0
+limit_lookup,사람 말투,10,0.8333,0.75,0.85
+limit_lookup,Agent 렌더,10,0.82,0.75,0.8387
+procedure,사람 말투,3,1.0,1.0,1.0
+procedure,Agent 렌더,3,1.0,1.0,1.0
+prohibition,사람 말투,5,1.0,1.0,1.0
+prohibition,Agent 렌더,5,0.7067,0.6,0.7774

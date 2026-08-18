@@ -21,6 +21,9 @@ import logging
 
 import httpx
 from django.conf import settings
+from django.db import transaction
+from django.db.models import Count, Q
+from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import status as http
 from rest_framework import viewsets
@@ -31,7 +34,10 @@ from rest_framework.views import APIView
 
 from domain.common.permissions import CanViewRule
 
-from .models import IngestStatus, PolicyDoc
+from .models import (
+    DOC_PROFILE_CHOICES, ClauseDecision, IngestStatus, PolicyClause, PolicyDoc,
+    PolicyFolder, RuleNode,
+)
 from .scope import normalize_scope
 from .serializers import PolicyDocSerializer
 
@@ -40,6 +46,38 @@ logger = logging.getLogger(__name__)
 # 적재 요청은 "접수"만 확인하면 된다 — 실제 작업은 ai가 백그라운드로 돌린다.
 _DISPATCH_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 ALLOWED_SUFFIXES = (".pdf",)
+
+
+def _folder_doc(doc: PolicyDoc) -> dict:
+    """폴더 트리에 실리는 문서 요약 — 목록에 필요한 최소치만."""
+    return {
+        "id": doc.pk,
+        "title": doc.title,
+        "status": doc.status,
+        # 확인이 필요한 조항 수 — 트리의 "확인 3" 배지.
+        "reviewCount": getattr(doc, "review_count", 0),
+        # 구판이면 "이전 버전" 배지. 지우지 않는 이유는 과거 판정이 인용한 조항 보존.
+        "superseded": doc.superseded_by_id is not None,
+    }
+
+
+def _clause_row(clause: PolicyClause, links: list[dict]) -> dict:
+    return {
+        "id": clause.pk,
+        "articleLabel": clause.article_label,
+        "articleTitle": clause.article_title,
+        "citation": clause.citation,
+        "body": clause.body,
+        "pageStart": clause.page_start,
+        "pageEnd": clause.page_end,
+        # LINKED / SKIPPED / NEEDS_REVIEW — 저장하지 않고 계산한 값이다.
+        "ruleStatus": clause.rule_status(len(links)),
+        "linkedRules": links,
+        "decision": clause.decision,
+        "decisionReason": clause.decision_reason,
+        "decidedBy": getattr(clause.decided_by, "first_name", "") or getattr(clause.decided_by, "username", ""),
+        "decidedAt": clause.decided_at,
+    }
 
 
 def _dispatch(doc: PolicyDoc, *, is_reindex: bool) -> str:
@@ -61,6 +99,8 @@ def _dispatch(doc: PolicyDoc, *, is_reindex: bool) -> str:
                 "name": doc.title,
                 "ruleScope": doc.rule_scope,
                 "isReindex": is_reindex,
+                # 비면 파서 자동 감지. 지정하면 컬렉션 라우팅이 그 값으로 결정된다.
+                "profileHint": doc.profile_hint,
             },
             timeout=_DISPATCH_TIMEOUT,
         )
@@ -108,19 +148,229 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
                 {"detail": f"지원하지 않는 형식입니다: {upload.name} (PDF만 가능)"},
                 status=http.HTTP_400_BAD_REQUEST,
             )
+        # 확장자는 이름일 뿐이라 얼마든지 속일 수 있다. 내용이 실제로 PDF인지 본다 —
+        # `.pdf`로 위장한 HTML을 받아 두면 그걸 `inline`으로 되돌려줄 때 문제가 된다.
+        head = upload.read(5)
+        upload.seek(0)
+        if head != b"%PDF-":
+            return Response(
+                {"detail": f"PDF 파일이 아닙니다: {upload.name} (내용이 PDF 형식과 다릅니다)"},
+                status=http.HTTP_400_BAD_REQUEST,
+            )
+
+        # 업로더가 문서 유형을 지정하면 파서 자동 감지 대신 그 값을 쓴다(빈 값이면 자동 감지).
+        # 유형이 컬렉션 라우팅을 정하므로, 틀리면 그 문서는 정산 판정에 아예 인용되지 않는다.
+        hint = str(request.data.get("profileHint") or "").strip().upper()
+        if hint and hint not in dict(DOC_PROFILE_CHOICES):
+            return Response({"detail": f"알 수 없는 문서 유형: {hint}"}, status=http.HTTP_400_BAD_REQUEST)
 
         doc = PolicyDoc.objects.create(
             title=(request.data.get("title") or upload.name).strip()[:200],
-            category=str(request.data.get("category") or "")[:20],
+            profile_hint=hint,
             version=str(request.data.get("version") or "")[:20],
             # 규정 표기(기업업무추진비·회식)를 보내도 Category 값으로 접힌다.
             rule_scope=normalize_scope(str(request.data.get("ruleScope") or "").strip())
             if request.data.get("ruleScope") else "",
             file=upload,
+            file_size=upload.size or 0,
+            folder=PolicyFolder.objects.filter(pk=request.data.get("folderId")).first()
+            if request.data.get("folderId") else None,
             uploaded_by=request.user if request.user.is_authenticated else None,
         )
         _start(doc, is_reindex=False)
         return Response(self.get_serializer(doc).data, status=http.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get", "post"])
+    def folders(self, request):
+        """GET: 폴더 트리 + 각 폴더의 문서 / POST: 폴더 생성 `{name, parentId}`.
+
+        폴더는 검색에 아무 영향이 없다 — 사람이 문서를 찾기 위한 분류다. 미분류 문서는
+        트리 밖에 따로 담아 돌려준다(폴더에 안 넣었다고 안 보이면 문서를 잃어버린다).
+        """
+        if request.method == "POST":
+            name = str(request.data.get("name", "")).strip()
+            if not name:
+                return Response({"detail": "폴더 이름이 필요합니다."}, status=http.HTTP_400_BAD_REQUEST)
+            parent = PolicyFolder.objects.filter(pk=request.data.get("parentId")).first()
+            folder, created = PolicyFolder.objects.get_or_create(name=name[:80], parent=parent)
+            return Response({"id": folder.pk, "name": folder.name, "created": created},
+                            status=http.HTTP_201_CREATED if created else http.HTTP_200_OK)
+
+        docs = list(
+            PolicyDoc.objects.select_related("folder")
+            .annotate(review_count=Count("clauses", filter=Q(clauses__decision="")))
+        )
+        by_folder: dict[int | None, list] = {}
+        for doc in docs:
+            by_folder.setdefault(doc.folder_id, []).append(doc)
+
+        def node(folder: PolicyFolder) -> dict:
+            children = [node(child) for child in folder.children.all()]
+            own = [_folder_doc(d) for d in by_folder.get(folder.pk, [])]
+            return {
+                "id": folder.pk, "name": folder.name,
+                "children": children, "documents": own,
+                # 하위 전체 문서 수 — 화면의 "(12개)" 배지.
+                "docCount": len(own) + sum(c["docCount"] for c in children),
+            }
+
+        roots = PolicyFolder.objects.filter(parent__isnull=True).prefetch_related("children")
+        return Response({
+            "folders": [node(f) for f in roots],
+            "unfiled": [_folder_doc(d) for d in by_folder.get(None, [])],
+            "totalDocs": len(docs),
+            "totalFolders": PolicyFolder.objects.count(),
+        })
+
+    @action(detail=False, methods=["post", "delete"], url_path=r"folders/(?P<folder_id>[0-9]+)")
+    def folder_detail(self, request, folder_id=None):
+        """POST: 이름 변경 `{name}` / DELETE: 폴더 삭제.
+
+        이름 변경에 PATCH를 쓰지 않는 이유: 이 ViewSet에 `patch`를 열면 `partial_update`
+        (`PATCH /policy-docs/{id}/`)까지 함께 열려 문서 필드가 검토 없이 수정 가능해진다.
+        액션은 POST로 두는 이 앱의 기존 관례(`reembed`·`move`)를 따른다.
+
+        **비어 있지 않으면 삭제를 거부한다.** 문서는 `SET_NULL`이라 미분류로 살아남고 하위
+        폴더는 `CASCADE`로 함께 지워지는데, 그게 한 번의 클릭으로 조용히 일어나면 정리해 둔
+        분류가 통째로 날아간다. 옮기고 나서 지우게 한다.
+        """
+        folder = PolicyFolder.objects.filter(pk=folder_id).first()
+        if folder is None:
+            return Response({"detail": "폴더를 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            docs = folder.documents.count()
+            children = folder.children.count()
+            if docs or children:
+                return Response(
+                    {"detail": f"비어 있지 않습니다 — 문서 {docs}건, 하위 폴더 {children}개. "
+                               "먼저 옮긴 뒤 삭제해주세요."},
+                    status=http.HTTP_400_BAD_REQUEST,
+                )
+            folder.delete()
+            return Response(status=http.HTTP_204_NO_CONTENT)
+
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            return Response({"detail": "폴더 이름이 필요합니다."}, status=http.HTTP_400_BAD_REQUEST)
+        if PolicyFolder.objects.filter(parent=folder.parent, name=name[:80]).exclude(pk=folder.pk).exists():
+            return Response({"detail": f"같은 위치에 '{name}' 폴더가 이미 있습니다."},
+                            status=http.HTTP_400_BAD_REQUEST)
+        folder.name = name[:80]
+        folder.save(update_fields=["name"])
+        return Response({"id": folder.pk, "name": folder.name})
+
+    @action(detail=True, methods=["get"])
+    def file(self, request, pk=None):
+        """GET /api/policy-docs/{id}/file/[?download=1] — 원본 PDF 스트리밍.
+
+        **`MEDIA_URL`로 직접 노출하지 않는 이유**가 둘이다:
+          ① 인가 — 목록·조항이 `rule_view`를 요구하는데 원본만 무인증으로 열리면 그 통제가
+             무의미해진다. 규정 원문은 회사 내부 문서다.
+          ② 도달 경로 — nginx는 `/`를 web(SPA)으로 보내고 core로 가는 건 `/api/`뿐이다.
+             `MEDIA_URL`을 열어도 브라우저에서 core에 닿지 않는다.
+
+        기본은 `inline`(브라우저 PDF 뷰어로 바로 렌더), `?download=1`이면 첨부로 내려받는다.
+        한글 파일명은 `FileResponse`가 RFC 5987로 인코딩해 준다.
+        """
+        doc = self.get_object()
+        if not doc.file:
+            return Response({"detail": "원본 파일이 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+        try:
+            handle = doc.file.open("rb")
+        except FileNotFoundError:
+            # DB에는 있는데 볼륨에서 사라진 경우 — 조용히 빈 화면을 주지 않고 사유를 밝힌다.
+            logger.warning("원본 파일 없음 doc=%s path=%s", doc.pk, doc.file.name)
+            return Response(
+                {"detail": "원본 파일을 찾을 수 없습니다(볼륨에서 삭제된 것으로 보입니다)."},
+                status=http.HTTP_404_NOT_FOUND,
+            )
+        name = (doc.file.name.rsplit("/", 1)[-1]) or f"{doc.title}.pdf"
+        resp = FileResponse(
+            handle,
+            content_type="application/pdf",
+            as_attachment=bool(request.query_params.get("download")),
+            filename=name,
+        )
+        # **inline + 사용자 업로드 파일**은 저장형 XSS의 고전적 조합이다. 우리가 보낸
+        # Content-Type을 브라우저가 무시하고 내용을 스니핑해 HTML로 렌더하면, 그 스크립트가
+        # **이 앱의 오리진**에서 돈다. nosniff가 그 경로를 막는다(업로드 시 매직바이트 검사와
+        # 이중 방어 — 어느 한쪽만으로는 부족하다고 보지 않지만 둘 다 싸다).
+        resp["X-Content-Type-Options"] = "nosniff"
+        return resp
+
+    @action(detail=True, methods=["get"])
+    def clauses(self, request, pk=None):
+        """문서의 조 단위 조항 + 룰 연결 상태.
+
+        연결 상태는 **저장하지 않고 계산한다** — 룰은 나중에 생기고 지워지므로 컬럼에
+        굳히면 곧 실제와 어긋난다. 링크는 `RuleNode.action.source_clause` 일치로 찾는다.
+        """
+        doc = self.get_object()
+        rows = list(doc.clauses.all())
+        # N+1 방지: 이 문서의 인용 전체를 한 번에 조회해 조항별로 나눈다.
+        citations = [c.citation for c in rows if c.citation]
+        links: dict[str, list[dict]] = {}
+        if citations:
+            for node_row in (
+                RuleNode.objects.filter(action__source_clause__in=citations)
+                .select_related("graph")
+            ):
+                links.setdefault(node_row.action.get("source_clause", ""), []).append({
+                    "graphId": str(node_row.graph_id),
+                    "graphName": node_row.graph.name,
+                    "graphStatus": node_row.graph.status,
+                    "nodeKey": node_row.node_key,
+                    "title": (node_row.action or {}).get("title", ""),
+                    "conditionText": node_row.condition_text,
+                    "decision": (node_row.action or {}).get("decision", ""),
+                })
+        return Response([_clause_row(c, links.get(c.citation, [])) for c in rows])
+
+    @action(detail=True, methods=["post"], url_path=r"clauses/(?P<clause_id>\d+)/decision")
+    def clause_decision(self, request, pk=None, clause_id=None):
+        """조항 결정 — `{decision: "SKIP"|"RESET", reason}`.
+
+        `SKIP`(규칙 생성 안 함)은 **사유가 필수**다. 나중에 "왜 이 조항엔 규칙이 없지"를
+        묻는 사람이 반드시 나오고, 그때 답이 없으면 같은 검토를 처음부터 다시 한다.
+        `RESET`은 결정을 되돌려 다시 '확인 필요'로 만든다.
+        """
+        clause = PolicyClause.objects.filter(doc_id=pk, pk=clause_id).first()
+        if clause is None:
+            return Response({"detail": "조항을 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+
+        decision = str(request.data.get("decision", "")).upper()
+        if decision == "RESET":
+            clause.decision, clause.decision_reason = "", ""
+            clause.decided_by, clause.decided_at = None, None
+        elif decision == "SKIP":
+            reason = str(request.data.get("reason", "")).strip()
+            if not reason:
+                return Response({"detail": "규칙을 만들지 않는 이유를 입력해주세요."},
+                                status=http.HTTP_400_BAD_REQUEST)
+            clause.decision = ClauseDecision.SKIP
+            clause.decision_reason = reason
+            clause.decided_by = request.user if request.user.is_authenticated else None
+            clause.decided_at = timezone.now()
+        else:
+            return Response({"detail": f"알 수 없는 결정: {decision}"}, status=http.HTTP_400_BAD_REQUEST)
+
+        clause.save()
+        return Response(_clause_row(clause, [
+            {"graphId": str(n.graph_id), "graphName": n.graph.name, "graphStatus": n.graph.status,
+             "nodeKey": n.node_key, "title": (n.action or {}).get("title", ""),
+             "conditionText": n.condition_text, "decision": (n.action or {}).get("decision", "")}
+            for n in clause.linked_nodes()
+        ]))
+
+    @action(detail=True, methods=["post"], url_path="move")
+    def move(self, request, pk=None):
+        """문서를 폴더로 옮긴다. `folderId`가 null이면 미분류로."""
+        doc = self.get_object()
+        folder_id = request.data.get("folderId")
+        doc.folder = PolicyFolder.objects.filter(pk=folder_id).first() if folder_id else None
+        doc.save(update_fields=["folder", "updated_at"])
+        return Response(self.get_serializer(doc).data)
 
     @action(detail=True, methods=["post"])
     def reembed(self, request, pk=None):
@@ -166,4 +416,43 @@ class IngestCallbackView(APIView):
         if state == IngestStatus.DONE:
             doc.indexed_at = timezone.now()
         doc.save()
-        return Response({"ok": True, "status": doc.status})
+
+        if state == IngestStatus.DONE:
+            _replace_clauses(doc, request.data.get("clauses") or [])
+        return Response({"ok": True, "status": doc.status, "clauses": doc.clauses.count()})
+
+
+@transaction.atomic
+def _replace_clauses(doc: PolicyDoc, rows: list[dict]) -> None:
+    """조항을 새 적재 결과로 교체하되 **사람의 결정은 지키고 이어붙인다**.
+
+    재색인은 흔한 일이다(청킹 전략 변경·파싱 개선). 그때마다 "이 조항은 규칙으로 만들지
+    않겠다"는 판단이 날아가면 담당자가 같은 결정을 반복해야 한다. 조 라벨이 같으면
+    같은 조항으로 보고 결정을 옮긴다 — 본문이 바뀌었어도 조 번호는 개정 전후로 유지되는
+    것이 규정 문서의 관례다.
+    """
+    kept = {
+        c.article_label: (c.decision, c.decision_reason, c.decided_by_id, c.decided_at)
+        for c in doc.clauses.exclude(decision="")
+    }
+    doc.clauses.all().delete()
+    PolicyClause.objects.bulk_create([
+        PolicyClause(
+            doc=doc,
+            order=int(row.get("order") or index),
+            article_no=row.get("articleNo"),
+            article_label=str(row.get("articleLabel") or "")[:32],
+            article_title=str(row.get("articleTitle") or "")[:200],
+            citation=str(row.get("citation") or "")[:300],
+            body=str(row.get("body") or ""),
+            page_start=int(row.get("pageStart") or 0),
+            page_end=int(row.get("pageEnd") or 0),
+            chunk_ids=row.get("chunkIds") or [],
+            decision=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[0],
+            decision_reason=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[1],
+            decided_by_id=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[2],
+            decided_at=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[3],
+        )
+        for index, row in enumerate(rows)
+        if row.get("articleLabel")
+    ])

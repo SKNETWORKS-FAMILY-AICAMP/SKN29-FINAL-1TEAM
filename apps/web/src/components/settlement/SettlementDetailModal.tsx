@@ -17,6 +17,7 @@ import { anomalyTags } from '../../data/mock'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
+import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
   createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
@@ -71,7 +72,10 @@ export function SettlementDetailModal({
 
   // ── 편집 상태(우측 폼) ──
   const [merchant, setMerchant] = useState(item?.merchant ?? '')
-  const [dateStr, setDateStr] = useState(item?.date ?? '2026-07-28')
+  // 신규 등록의 기본 날짜는 **오늘**이다. 예전엔 목업 시절 상수('2026-07-28')가 박혀 있어서,
+  // 사용자가 날짜를 안 고치면 지난달 건으로 저장됐다 — 등록은 성공(201)하는데 '내 지출'이
+  // 기본으로 이번 달만 보여주므로 **목록에서 사라진 것처럼 보였다**.
+  const [dateStr, setDateStr] = useState(item?.date ?? todayISO())
   const [amountText, setAmountText] = useState(item ? String(item.amount) : '')
   const [cardType, setCardType] = useState<CardType>(item?.cardType ?? 'PERSONAL')
   const [category, setCategory] = useState<Category>(item?.aiCategory ?? '접대')

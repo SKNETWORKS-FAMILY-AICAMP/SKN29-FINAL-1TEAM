@@ -120,6 +120,12 @@ export interface ReviewItem extends Settlement {
   aiRecommendation: 'APPROVE' | 'RETURN' | 'REJECT'
   aiConfidence: number // 0~1
   anomalyReasons: string[]
+  /**
+   * 2차 RAG 내규검증의 **판정**. 권고(`aiRecommendation`)와 다른 축이다 —
+   * `INSUFFICIENT_INFO`는 "문제없음"이 아니라 **판단 보류**라서, 권고만 보면 그 구분이 사라진다.
+   * Risk Review가 아직 안 돈 건은 빈 문자열.
+   */
+  violationVerdict?: 'VIOLATION' | 'NO_VIOLATION' | 'INSUFFICIENT_INFO' | ''
   /** 판정 시점 EvalContext 스냅샷(rule_hits). 있으면 fact.json이 이 원본을 보여준다. */
   evalContext?: Record<string, Record<string, unknown>> | null
   dept?: string // 부서
@@ -155,8 +161,12 @@ export interface PolicyDocument {
   id: string
   title: string
   fileName: string
-  /** 파서가 판정한 문서 유형 — REGULATION/LAW/DIAGRAM/GENERIC. */
-  profile: string
+  fileSize: number
+  /** 최종 적용된 문서 유형(지정값이 있으면 그것, 없으면 파서 자동 감지). 컬렉션 라우팅을 정한다. */
+  profile: DocProfile | ''
+  /** 업로더가 지정한 유형. 비면 자동 감지를 썼다는 뜻. */
+  profileHint: DocProfile | ''
+  profileLabel: string
   /** 적재된 Chroma 컬렉션. `org_docs`는 판정 근거로 검색되지 않는다. */
   collection: string
   status: EmbeddingStatus
@@ -164,12 +174,94 @@ export interface PolicyDocument {
   chunkCount: number
   /** 검색 대상(부모 제외) 청크 수 — 실제로 검색에 걸리는 건 이 수다. */
   leafCount: number
+  /** 조(條) 단위 조항 수. 사람이 보고 결정하는 단위는 청크가 아니라 조다. */
+  clauseCount: number
+  /** 룰도 없고 사람 결정도 없는 조항 수 — "확인이 필요한 조항". */
+  reviewCount: number
   /** 실패 사유 또는 적재 경고. 감추지 않는다. */
   error: string
+  folderId: number | null
+  folderName: string
+  /** 개정으로 대체된 구판. 지우지 않는 이유는 과거 판정이 인용한 조항 보존. */
+  superseded: boolean
   ruleScope: string
-  /** 적재 후 룰 생성 트리거 결과. 자동 생성은 아직 개발 중이라 안내만 들어온다. */
+  /**
+   * 적재 후 룰 자동 생성 트리거 결과. `status`는 생성기의 것을 그대로 받는다
+   * (`DRAFT_SAVED` / `NO_SOURCE` / `SKIPPED_NO_SCOPE`(비용분류 미지정) /
+   *  `SKIPPED_REINDEX`(재색인은 자동 생성 안 함) / `ERROR` …).
+   */
   ruleTrigger: { status?: string; detail?: string; hint?: string; scope?: string } | null
   uploadedAt: string
   indexedAt: string | null
   uploadedBy: string
+}
+
+/**
+ * 문서 유형 = **실제 백엔드 분류**(`PolicyDoc.profile`). 컬렉션 라우팅을 결정한다:
+ * REGULATION·GENERIC→`policy_docs` · LAW→`tax_refs` · DIAGRAM→`org_docs`.
+ * `org_docs`는 정산 판정이 검색하지 않으므로, 유형이 틀리면 그 문서는 판정에 인용되지 않는다.
+ */
+export type DocProfile = 'REGULATION' | 'LAW' | 'DIAGRAM' | 'GENERIC'
+
+export const DOC_PROFILE_LABEL: Record<DocProfile, { label: string; hint: string; judged: boolean }> = {
+  REGULATION: { label: '사내 규정', hint: '조·항 구조의 사규 — 룰 생성·판정 근거로 인용', judged: true },
+  LAW: { label: '법령·시행령', hint: '법인세법 등 외부 법령 — 세무 근거로 인용', judged: true },
+  DIAGRAM: { label: '조직도·도해', hint: '표·그림 위주 — 판정 근거로는 인용되지 않음', judged: false },
+  GENERIC: { label: '기타 문서', hint: '위에 해당하지 않는 문서 — 규정과 함께 검색됨', judged: true },
+}
+
+/** 폴더 트리에 실리는 문서 요약. */
+export interface FolderDoc {
+  id: string
+  title: string
+  status: EmbeddingStatus
+  reviewCount: number
+  superseded: boolean
+}
+
+export interface PolicyFolder {
+  id: number
+  name: string
+  children: PolicyFolder[]
+  documents: FolderDoc[]
+  docCount: number
+}
+
+/**
+ * 조항의 룰 연결 상태 — **백엔드가 저장하지 않고 계산**해서 준다.
+ * 룰은 나중에 생기고 지워지므로 컬럼에 굳히면 곧 실제와 어긋난다.
+ */
+export type ClauseRuleStatus = 'LINKED' | 'SKIPPED' | 'NEEDS_REVIEW'
+
+export const CLAUSE_STATUS_META: Record<ClauseRuleStatus, { label: string; tone: 'green' | 'amber' | 'gray' }> = {
+  LINKED: { label: '규칙 연결됨', tone: 'green' },
+  NEEDS_REVIEW: { label: '확인 필요', tone: 'amber' },
+  SKIPPED: { label: '규칙 생성 안 함', tone: 'gray' },
+}
+
+export interface LinkedRule {
+  graphId: string
+  graphName: string
+  graphStatus: string
+  nodeKey: string
+  title: string
+  /** "언제 걸리나요 / 걸리면 어떻게 되나요" — 비개발자용 문장(DSL 아님). */
+  conditionText: string
+  decision: string
+}
+
+export interface PolicyClause {
+  id: number
+  articleLabel: string
+  articleTitle: string
+  citation: string
+  body: string
+  pageStart: number
+  pageEnd: number
+  ruleStatus: ClauseRuleStatus
+  linkedRules: LinkedRule[]
+  decision: string
+  decisionReason: string
+  decidedBy: string
+  decidedAt: string | null
 }

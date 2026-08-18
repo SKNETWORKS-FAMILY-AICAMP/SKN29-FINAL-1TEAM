@@ -60,6 +60,8 @@ class SettlementSerializer(serializers.ModelSerializer):
     ragRefs = serializers.SerializerMethodField()
     ragReport = serializers.SerializerMethodField()
     anomalyReasons = serializers.SerializerMethodField()
+    # 2차 RAG 검증의 판정(위반/문제없음/판단보류) — 권고(aiRecommendation)와 다른 축이다.
+    violationVerdict = serializers.SerializerMethodField()
     # 판정 시점 EvalContext 스냅샷(rule_hits) — 있으면 검토 화면의 fact.json이 이걸 보여준다.
     evalContext = serializers.SerializerMethodField()
 
@@ -70,7 +72,8 @@ class SettlementSerializer(serializers.ModelSerializer):
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "purpose",
             "evidence", "status", "statusLabel", "user", "dept",
             "anomalyScore", "aiRecommendation", "aiConfidence",
-            "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "evalContext",
+            "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
+            "evalContext",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -123,6 +126,17 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_anomalyReasons(self, obj):
         r = self._risk(obj)
         return r.anomaly_reasons if r else []
+
+    def get_violationVerdict(self, obj):
+        """Risk Review 2차(RAG 내규검증)의 **판정 자체** — VIOLATION / NO_VIOLATION /
+        INSUFFICIENT_INFO.
+
+        `aiRecommendation`(승인/보완/반려 권고)과는 다른 축이다: "규정 위반인가"와
+        "그래서 어떻게 하라는 건가"는 같이 봐야 판단이 선다. 특히 `INSUFFICIENT_INFO`는
+        "문제없음"이 아니라 **판단 보류**라서, 권고만 보면 그 구분이 사라진다.
+        """
+        r = self._risk(obj)
+        return (r.stage2_verdict or {}).get("violation_verdict", "") if r else ""
 
     def get_evalContext(self, obj):
         """검토 화면이 보는 "판정 시점 사실" — **가장 최근 판정**의 스냅샷이다.

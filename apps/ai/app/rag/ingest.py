@@ -25,6 +25,7 @@ from app.rag.chunking.chunker import chunk_document
 from app.rag.embedding import config as emb_config
 from app.rag.embedding import store
 from app.rag.parsing import engine
+from app.rag.parsing import mock
 from app.rag.parsing.corrections import pipeline
 
 logger = logging.getLogger(__name__)
@@ -54,16 +55,74 @@ class IngestResult:
     leaf_count: int = 0
     error: str = ""
     warnings: list[str] = field(default_factory=list)
+    clauses: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "ok": self.ok, "docId": self.doc_id, "name": self.name, "profile": self.profile,
             "collection": self.collection, "chunkCount": self.chunk_count,
             "leafCount": self.leaf_count, "error": self.error, "warnings": self.warnings,
+            "clauses": self.clauses,
         }
 
 
-def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult:
+def build_clauses(chunks) -> tuple[list[dict[str, Any]], int]:
+    """청크 → **조(條) 단위** 조항 목록. `(clauses, 조에 안 속한 청크 수)`.
+
+    화면과 사람의 결정 단위는 청크가 아니라 조다. 청킹은 긴 조를 항 단위로 쪼개므로
+    (`chunking-strategy` 분할 사다리), 여기서 다시 조로 모은다.
+
+    본문은 **부모(조 전문)가 있으면 그걸** 쓴다 — 잎을 이어 붙이면 항이 잘린 자리의
+    문맥이 어긋난다. 부모가 없는 짧은 조는 잎이 곧 조 전문이다.
+
+    조에 속하지 않는 청크(별표 등 조 밖 형제)는 조항 행이 되지 않는다. 검색에는 그대로
+    걸리지만 화면 목록에는 안 뜨므로, 몇 개가 그랬는지 세어 돌려준다(조용한 누락 방지).
+    """
+    by_article: dict[str, dict[str, Any]] = {}
+    orphans = 0
+
+    for chunk in chunks:
+        label = (chunk.article_label or "").strip()
+        if not label:
+            orphans += chunk.chunk_role != "parent"
+            continue
+        row = by_article.setdefault(label, {
+            "articleLabel": label,
+            "articleNo": chunk.article_no,
+            "articleTitle": (chunk.article_title or "").strip(),
+            "citation": chunk.citation,
+            "body": "",
+            "leafBodies": [],
+            "pageStart": chunk.page_start,
+            "pageEnd": chunk.page_end,
+            "chunkIds": [],
+        })
+        row["chunkIds"].append(chunk.chunk_id)
+        row["pageStart"] = min(row["pageStart"], chunk.page_start)
+        row["pageEnd"] = max(row["pageEnd"], chunk.page_end)
+        if not row["articleTitle"] and chunk.article_title:
+            row["articleTitle"] = chunk.article_title.strip()
+        if chunk.chunk_role == "parent":
+            row["body"] = chunk.text          # 조 전문 — 이게 있으면 이걸 쓴다
+        else:
+            row["leafBodies"].append(chunk.text)
+
+    clauses = []
+    for order, (_, row) in enumerate(
+        sorted(by_article.items(), key=lambda kv: (kv[1]["articleNo"] is None, kv[1]["articleNo"] or 0))
+    ):
+        body = row.pop("body") or "\n\n".join(row["leafBodies"])
+        row.pop("leafBodies")
+        clauses.append({**row, "body": body, "order": order})
+    return clauses, orphans
+
+
+VALID_PROFILES = {"REGULATION", "LAW", "DIAGRAM", "GENERIC"}
+
+
+def ingest_pdf(
+    pdf_path: str | Path, *, name: str | None = None, profile_hint: str = ""
+) -> IngestResult:
     """PDF 하나를 파싱→청킹→임베딩→적재한다. 예외를 삼키지 않고 결과에 담아 돌려준다.
 
     `doc_id`가 **파일 내용 해시**라, 같은 파일을 다시 넣으면 Chroma에서 같은 ID로 덮어쓴다
@@ -73,8 +132,18 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
     if not path.exists():
         return IngestResult(ok=False, name=name or str(path), error=f"파일이 없습니다: {path}")
 
+    # 파싱만 갈아끼우는 지점. 모킹이 꺼져 있으면(기본) 이 분기는 없는 것과 같다.
+    # 모킹 실패는 **폴백하지 않고** 그대로 실패시킨다 — 조용히 실물 파싱으로 넘어가면
+    # "모킹이 켜졌는데 왜 느리지"를 아무도 모른다.
+    mock_warning = ""
     try:
-        doc = engine.convert(path, converters=_get_converters())
+        if mock.enabled():
+            doc, mock_warning = mock.parse(path, name=name)
+        else:
+            doc = engine.convert(path, converters=_get_converters())
+    except mock.MockDocumentNotFound as exc:
+        logger.warning("docling 모킹 대상 없음 %s: %s", path, exc)
+        return IngestResult(ok=False, name=name or path.stem, error=str(exc))
     except Exception as exc:  # noqa: BLE001
         logger.exception("파싱 실패 %s", path)
         return IngestResult(ok=False, name=name or path.stem, error=f"파싱 실패: {exc}")
@@ -83,6 +152,17 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
         # 표시명은 업로드 제목을 따르되, 청크 메타의 doc_name도 같이 맞춘다 — 검색 결과의
         # citation("「문서명」 제N조")이 화면에 보이는 문서명과 달라지면 근거를 못 찾는다.
         doc.name = name
+
+    # 사람이 지정한 유형이 파서 판정을 이긴다. 교정(pipeline)·청킹이 프로파일별로 갈리므로
+    # **교정 전에** 덮어써야 지정이 실제로 반영된다.
+    hint = (profile_hint or "").strip().upper()
+    if hint in VALID_PROFILES and hint != doc.profile:
+        logger.info("문서 유형 지정으로 덮어씀: %s → %s (%s)", doc.profile, hint, doc.name)
+        detected, doc.profile = doc.profile, hint
+        doc.report.profile = hint
+        doc.report.warnings.append(
+            f"문서 유형을 지정값 `{hint}`로 처리했다(파서 자동 감지는 `{detected}`)."
+        )
 
     try:
         pipeline.run(doc)                       # 교정 C1~C7 (프로파일별 계획)
@@ -108,7 +188,15 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
                             error=f"임베딩·적재 실패: {exc}")
 
     leaves = sum(1 for c in chunks if c.chunk_role != "parent")
-    warnings = list(doc.report.warnings) + list(getattr(report, "warnings", []))
+    clauses, orphans = build_clauses(chunks)
+    # 모킹 경고를 **맨 앞에** 둔다 — 화면 경고 배너가 앞쪽 몇 줄만 보여주므로,
+    # 뒤에 두면 "이건 실제 파싱 결과가 아니다"라는 사실이 잘려 안 보일 수 있다.
+    warnings = ([mock_warning] if mock_warning else [])
+    warnings += list(doc.report.warnings) + list(getattr(report, "warnings", []))
+    if orphans:
+        warnings.append(
+            f"조에 속하지 않은 청크 {orphans}개(별표 등) — 검색에는 걸리지만 조항 목록에는 뜨지 않는다."
+        )
     if collection not in emb_config.JUDGEMENT_COLLECTIONS:
         # 판정 근거로 인용되지 않는 컬렉션(조직도 등). 올린 사람이 기대와 다를 수 있으니 알린다.
         warnings.append(
@@ -120,5 +208,5 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
     return IngestResult(
         ok=True, doc_id=doc.doc_id, name=doc.name, profile=doc.profile,
         collection=collection, chunk_count=upsert.total, leaf_count=leaves,
-        warnings=warnings[:20],
+        warnings=warnings[:20], clauses=clauses,
     )

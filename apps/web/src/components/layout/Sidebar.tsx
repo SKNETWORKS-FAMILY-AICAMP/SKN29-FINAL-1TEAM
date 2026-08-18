@@ -19,6 +19,9 @@ interface MenuItem {
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '내 지출' },
   { to: '/team', label: '팀 현황' },
+  // 회계 검토 = Risk Review. 이상탐지 점수·RAG 내규검증 결과가 여기 한 화면에 모인다
+  // (별도 '위험 검토 큐' 화면은 중복이라 제거했다 — 같은 큐를 두 곳에서 처리하면
+  //  어느 쪽이 최신인지 알 수 없다).
   { to: '/review', label: '검토 워크스페이스', capability: 'accounting_review' },
   { to: '/policy-docs', label: '규정 문서 관리', capability: 'rule_view' },
   { to: '/rules', label: 'Rule 콘솔', capability: 'rule_view' },

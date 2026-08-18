@@ -219,7 +219,18 @@ export function ActiveTab() {
                             {report.stale && ' · 실행 이후 그래프 변경됨'}
                           </span>
                         </div>
-                        <div className="card-body"><Markdown source={report.agentReport} /></div>
+                        <div className="card-body">
+                          {/* 백엔드가 `placeholder: true`로 내려주는 사실을 화면이 감추면 안 된다 —
+                              담당자가 LLM이 쓴 분석으로 오해하고 그만큼 신뢰해 버린다.
+                              판정·통계는 실제 엔진 결과이고, 아래 **서술만** 규칙 기반이다. */}
+                          {report.placeholder && (
+                            <div className="note" style={{ marginBottom: 12, color: 'var(--tone-amber)' }}>
+                              아래 서술은 <b>구조·통계에서 규칙 기반으로 생성</b>한 요약입니다(LLM 미연동).
+                              판정 결과와 통계는 실제 룰 엔진을 돌린 실측값입니다.
+                            </div>
+                          )}
+                          <Markdown source={report.agentReport} />
+                        </div>
                       </div>
                     )}
                     {report === null && <div className="note">이 그래프의 시뮬레이션 실행 이력이 없습니다.</div>}
