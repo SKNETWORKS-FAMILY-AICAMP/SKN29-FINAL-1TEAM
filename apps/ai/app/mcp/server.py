@@ -20,4 +20,9 @@ for _fn in (
     tools.get_tx_features,
     tools.ml_infer,
 ):
-    mcp.tool(_fn)
+    # `mcp.tool()`은 데코레이터 팩토리라 함수를 직접 넘기면(`mcp.tool(_fn)`) `_fn`이
+    # `name` 인자로 잘못 들어가 아무 것도 등록되지 않는다(FastMCP가 이 오용을 감지해
+    # "Use @tool() instead of @tool" TypeError를 던진다 — main.py의 try/except가
+    # 이를 삼켜 "FastMCP mount skipped" 경고로만 보이고, /mcp 전체가 마운트되지 않는다).
+    # 미리 만든 함수를 등록하는 정식 API는 `add_tool`이다.
+    mcp.add_tool(_fn)

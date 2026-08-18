@@ -1,17 +1,33 @@
 fastapi==0.115.*
 uvicorn[standard]==0.32.*
 pydantic==2.9.*
-pydantic-settings==2.6.*
-httpx==0.27.*
-fastmcp>=2.0,<3.0
+# docling-core 2.91.0(아래)가 pydantic-settings>=2.14.0을 요구해 2.6.*에서 끌어올렸다.
+pydantic-settings==2.15.*
+# docling-slim 2.119.0(아래)이 httpx>=0.28을 요구해 0.27.*에서 끌어올렸다.
+httpx==0.28.*
+# `>=2.0,<3.0`으로 뒀던 넓은 범위가 설치 시점마다 다른 버전을 골라 재현이 안 됐다
+# (실측: 2.1.2가 깔려 있었는데 이 버전엔 `FastMCP.http_app()`이 없어 /mcp 마운트가
+# 조용히 스킵됐다 — main.py의 try/except가 "FastMCP mount skipped" 로그로만 남긴다).
+# `http_app()`이 생긴 최소 버전(2.4.0)으로 고정. mcp도 같이 고정하는 이유: fastmcp만
+# 고정해도 `mcp<2.0,>=1.9.0` 범위가 열려 있어 pip이 최신 mcp(1.29.0 확인)를 골라
+# pydantic>=2.11.0을 강제해 위 `pydantic==2.9.*` 고정과 충돌한다.
+fastmcp==2.4.0
+mcp==1.9.0
 scikit-learn==1.5.*
 numpy>=1.26,<3.0
 pandas==2.3.*
 openai>=1.40,<2.0
 
 # --- RAG PDF 파싱 (llm_wiki/_context/pdf_parsing_strategy.md §2.1) ---
-docling>=2.0,<3.0        # 파싱 엔진. TORCHDYNAMO_DISABLE=1 을 import 이전에 설정할 것
-docling-core>=2.0,<3.0
+# `>=2.0,<3.0`이 재현성을 깼다 — 컨테이너에 2.87.0이 깔려 있었는데(docling-slim 분리 이전
+# 아키텍처) `engine.py`가 쓰는 `PdfPipelineOptions.heading_hierarchy_options`는 2.106.0에서야
+# 생긴 필드라 `AttributeError`로 죽었다. 검증된 개발 환경(docling_eval/docling_parsing_test.ipynb
+# 11종 전건 SUCCESS 확인)의 정확한 버전으로 고정. docling 2.106.0+부터 실제 구현은 별도 패키지
+# `docling-slim`으로 옮겨갔고(`docling`은 그걸 가리키는 얇은 메타패키지), 그 docling-slim이
+# `docling-core>=2.90.0`을 요구하므로 docling-core도 같이 고정한다(직접 안 고정하면 pip이
+# 그때그때 최신을 골라 이 조합의 재현성이 다시 깨진다).
+docling==2.119.0        # 파싱 엔진. TORCHDYNAMO_DISABLE=1 을 import 이전에 설정할 것
+docling-core==2.91.0
 
 # --- RAG 임베딩·벡터 스토어 (llm_wiki/_context/embedding-strategy.md §8) ---
 chromadb>=0.5,<2.0       # HttpClient만 쓴다. 임베딩은 우리가 계산해 넘긴다
