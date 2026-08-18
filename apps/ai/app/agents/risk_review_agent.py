@@ -20,6 +20,7 @@ from app.clients import core_client
 from app.config import settings
 from app.mcp import tools
 from app.ml.registry import get_active_model
+from app.rag.retrieval import build_query
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +112,6 @@ def _format_cases(cases: list[dict]) -> str:
     return "\n".join(f"- [{c['outcome']}] {c['citation']}: {c['text'][:300]}" for c in cases)
 
 
-def _build_query(category: str, merchant: str, contribs: list[dict]) -> str:
-    feature_hint = " ".join(c["feature"] for c in contribs)
-    return f"{category} {merchant} {feature_hint}".strip()
-
-
 def _stage1(tx_id: int) -> dict:
     """1차 이상탐지: get_tx_features → ml_infer. 모델 미학습이면 stub 그대로 통과."""
     features = tools.get_tx_features(tx_id)
@@ -128,7 +124,7 @@ def _stage1(tx_id: int) -> dict:
 def _stage2(summary: dict, stage1: dict) -> dict:
     """2차 RAG 내규 검증. search_policy/search_cases 근거 + LLM structured output."""
     contribs = stage1.get("contribs", [])
-    query = _build_query(summary["category"], summary["merchant"], contribs)
+    query = build_query(summary["category"], summary["merchant"], contribs, summary)
 
     policy_hits = tools.search_policy(query)["chunks"]
     case_hits = tools.search_cases(query)["similar_cases"]
