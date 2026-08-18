@@ -12,6 +12,9 @@ mcp = FastMCP("settlement-tools")
 for _fn in (
     tools.get_policy,
     tools.get_card_context,
+    # 비전 판독 2종 — 영수증(사용내역+사실) / 증빙 문서(사실만)
+    tools.read_receipt,
+    tools.read_evidence_document,
     tools.search_policy,
     tools.search_cases,
     tools.fetch_historical_tx,

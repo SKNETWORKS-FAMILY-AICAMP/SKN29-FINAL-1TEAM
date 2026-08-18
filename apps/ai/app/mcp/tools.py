@@ -63,6 +63,41 @@ def search_policy(
     return {"query": query, "chunks": hits}
 
 
+def read_receipt(file_ref: str) -> dict:
+    """영수증(사진·캡처·PDF 전표) 판독 → 사용내역 + 판정 사실. Draft (FR-DA-02).
+
+    별도 OCR 엔진 없이 비전 모델이 이미지에서 바로 필드를 뽑는다(기술명세서 §2).
+    총액뿐 아니라 **품목**을 읽는 이유는 거기서만 나오는 판정 사실이 있어서다
+    (주류 포함 여부 → `dining.includes_alcohol`, 지출 세부유형 → `category.item_type`).
+
+    실패는 폴백으로 덮지 않는다 — 초안이 조용히 빈 값으로 채워지면 사용자가 "AI가 읽었다"고
+    믿고 그대로 제출한다.
+    """
+    from app.vision import read_receipt as _read
+
+    result = _read(file_ref)
+    logger.info("read_receipt %s → facts %d개, 경고 %d건",
+                file_ref, len(result["extracted"]), len(result["warnings"]))
+    return result
+
+
+def read_evidence_document(file_ref: str, kind: str) -> dict:
+    """증빙 문서(사전승인·회의록·참석자명단·출장계획서) 판독 → 판정 사실. Risk/Rule.
+
+    출력이 `Attachment.extracted`/`field_confidence`/`evidence_spans`와 **같은 모양**이라
+    Django가 변환 없이 저장하고, 조립기가 그대로 EvalContext에 얹는다.
+
+    **관측 계약**: 경로가 있으면 관측한 것, 없으면 안 본 것이다(→ `None` → 미해소 가드).
+    「확인했는데 없음」을 「안 봤음」과 섞지 않는 것이 이 도구의 핵심이다.
+    """
+    from app.vision import read_evidence_document as _read
+
+    result = _read(file_ref, kind)
+    logger.info("read_evidence_document %s kind=%s → %s, facts %d개",
+                file_ref, kind, result["extraction_status"], len(result["extracted"]))
+    return result
+
+
 def search_cases(query: str) -> dict:
     """유사 과거 승인/반려 사례 검색 (Chroma 직접, `case_history`). Risk.
 

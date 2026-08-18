@@ -18,7 +18,9 @@ from app.rag.chunking.model import Budget
 from app.rag.parsing import dump
 from app.rag.parsing.corrections import pipeline
 
-DUMP_DIR = Path(__file__).resolve().parents[3] / "docling_eval" / "output"
+from tests.dump_path import find_dump
+
+DUMP_DIR = find_dump() or Path("docling_eval/output")   # None이면 아래 skipif가 잡는다
 LAYOUT_CSV = DUMP_DIR / "layout" / "layout_result.csv"
 TABLES_DIR = DUMP_DIR / "tables"
 

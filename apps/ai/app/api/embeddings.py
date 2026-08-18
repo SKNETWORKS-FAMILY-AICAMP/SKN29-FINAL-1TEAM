@@ -22,12 +22,11 @@
 from __future__ import annotations
 
 import logging
-import os
-from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, Field
 
+from app import media
 from app.clients import core_auth
 from app.rag import ingest as ingest_mod
 from app.rag import rule_trigger
@@ -37,9 +36,8 @@ from app.rag.embedding import store
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# core와 같은 media 볼륨을 읽기전용으로 마운트한 위치(compose). docling이 파일 경로를
-# 요구하므로 바이트를 HTTP로 되넘기는 대신 볼륨을 공유한다.
-MEDIA_ROOT = Path(os.environ.get("RAG_MEDIA_ROOT", "/data/media"))
+# 파일 경로 해석은 `app/media.py` 한 곳이 소유한다 — 모듈마다 따로 계산하면 컨테이너에서만
+# 조용히 어긋난다(Chroma 호스트 설정에서 실제로 그랬다). 경로 탈출 방어도 거기 있다.
 
 # core `PolicyDoc.IngestStatus`와 같은 값이어야 한다 — 콜백이 그대로 상태로 쓰인다.
 PARSING, INDEXING, DONE, FAILED = "PARSING", "INDEXING", "DONE", "FAILED"
@@ -72,7 +70,7 @@ def _run(req: IngestRequest) -> None:
     """백그라운드 본체 — 파싱·청킹·적재 → 룰 트리거 → 회신."""
     _report(req.policyDocId, {"status": PARSING})
 
-    path = MEDIA_ROOT / req.filePath
+    path = media.resolve(req.filePath)
     result = ingest_mod.ingest_pdf(path, name=req.name, profile_hint=req.profileHint)
     if not result.ok:
         _report(req.policyDocId, {

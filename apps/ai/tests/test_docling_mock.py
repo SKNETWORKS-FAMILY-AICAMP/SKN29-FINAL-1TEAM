@@ -15,14 +15,12 @@ from pathlib import Path
 
 import pytest
 
+from tests.dump_path import find_dump
+
 from app.rag.parsing import mock
 
 # 레포 루트/컨테이너 양쪽을 본다. 컨테이너는 `/data/docling_eval`로 마운트된다.
-_CANDIDATES = [
-    Path(__file__).resolve().parents[3] / "docling_eval" / "output",
-    Path("/data/docling_eval/output"),
-]
-DUMP = next((p for p in _CANDIDATES if (p / "layout" / "layout_result.csv").is_file()), None)
+DUMP = find_dump()
 
 pytestmark = pytest.mark.skipif(DUMP is None, reason="파싱 덤프가 없는 환경")
 
