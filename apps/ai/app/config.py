@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = ""
     # OpenAI (LLM·비전) — 실제 Agent 동작 시 필요
     openai_api_key: str = ""
+    # 카카오 로컬(지도) API — 가맹점 업종 구분 캐스케이드 2단계(§7-1)
+    kakao_rest_api_key: str = ""
     # 로컬 모델 레지스트리 경로
     model_dir: str = "/app/var/models"
 

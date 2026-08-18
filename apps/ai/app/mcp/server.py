@@ -12,6 +12,7 @@ mcp = FastMCP("settlement-tools")
 for _fn in (
     tools.get_policy,
     tools.get_card_context,
+    tools.classify_merchant,
     tools.search_policy,
     tools.search_cases,
     tools.fetch_historical_tx,

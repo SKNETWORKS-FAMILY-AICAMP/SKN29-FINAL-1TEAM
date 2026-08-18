@@ -2,6 +2,8 @@
 
 관계형 데이터는 반드시 Django를 경유한다. LLM/Tool의 Postgres 직접 접근 금지.
 """
+from urllib.parse import quote
+
 import httpx
 
 from app.config import settings
@@ -67,3 +69,11 @@ def get_tx_features(tx_id: int) -> dict:
     "판단 없는 변환"만 `app.ml.features`로 수행한다.
     """
     return _get(f"/api/internal/tx-features/{tx_id}/")
+
+
+def get_merchant_category(normalized_name: str) -> dict:
+    """가맹점 업종 캐시 조회 (Django `MerchantCategoryLookupView`, §7-1).
+
+    TTL(30일) 판정은 Django 쪽에서 끝낸다 — 여기선 `hit` 여부만 본다.
+    """
+    return _get(f"/api/internal/merchant-category/{quote(normalized_name, safe='')}/")
