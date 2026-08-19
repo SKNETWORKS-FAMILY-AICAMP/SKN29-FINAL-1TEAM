@@ -101,9 +101,21 @@ anomaly_score: {anomaly_score:.3f}
 
 
 def _format_chunks(chunks: list[dict]) -> str:
+    """policy_docs 검색 결과를 LLM 프롬프트용 텍스트로 조립.
+
+    [수정 2026-08-19] `store.search()`가 잎 청크가 맞으면 그 조문 전체(parent_text)를
+    이미 가져오고 있었는데, 여기서는 잎 청크 원문(`text`)을 400자로 자른 것만 써서
+    애써 가져온 문맥이 프롬프트 직전에 버려지고 있었다 — `app.rag.retrieval` 모듈
+    분리 작업 중 발견. 이제 조문 전체가 있으면 그걸 쓰고(항이 잘려 나가는 문제 해소),
+    없으면(원래 짧아 부모-자식 분할이 없는 atomic 청크) 잎 원문으로 폴백한다.
+    """
     if not chunks:
         return "(검색 결과 없음)"
-    return "\n".join(f"- {c['citation']}: {c['text'][:400]}" for c in chunks)
+    lines = []
+    for c in chunks:
+        text = c.get("parent_text") or c["text"]
+        lines.append(f"- {c['citation']}: {text[:1200]}")
+    return "\n".join(lines)
 
 
 def _format_cases(cases: list[dict]) -> str:
