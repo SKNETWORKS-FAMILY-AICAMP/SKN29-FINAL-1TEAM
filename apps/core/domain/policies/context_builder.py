@@ -333,6 +333,13 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
             typed("card.actual_user_recorded", settlement.actual_user_recorded)
         else:
             sor("card.actual_user_recorded", True)
+    # 직책 — 조직 마스터에서 온다(문서 검색이 아니라). 결재권·카드한도의 유일한 축이다
+    #  (「직급체계」§1.1). **직급은 올리지 않는다** — 처우 축이라 판정 근거가 될 수 없다.
+    #  미지정이면 `None`(모름)이라 별표가 와일드카드 기본값(=비직책자 한도)으로 해소된다.
+    spender = settlement.submitted_by
+    job_title = getattr(spender, "job_title", None) if spender is not None else None
+    sor("user.job_title", job_title.name if job_title else None)
+    sor("user.job_title_rank", job_title.rank if job_title else None)
     sor("category.value", settlement.category or None)
     sor("category.confidence", 0.5 if settlement.ai_suggested else 0.95)
     industry = settlement.merchant_industry or None

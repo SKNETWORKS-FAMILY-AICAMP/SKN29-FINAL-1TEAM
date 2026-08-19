@@ -25,7 +25,7 @@ export const NUMBER_FACTS = [
   { path: 'history.daily_cumulative_amount', label: '당일 누적 사용액(원)' },
   { path: 'derived.business_days_since_expense', label: '결제 후 경과 영업일' },
   { path: 'tx.per_person_amount', label: '1인당 금액(원)' },
-  { path: 'policy.position_daily_limit', label: '직책 일일 한도(원)' },
+  { path: 'policy.position_daily_limit', label: '직책 일일 한도(원)' },   // 축은 직책(user.job_title) — 직급 아님
   { path: 'policy.preapproval_threshold', label: '사전승인 기준액(원)' },
   { path: 'policy.evidence_threshold', label: '적격증빙 기준액(원)' },
   { path: 'policy.dining_per_person_limit', label: '회식 1인당 한도(원)' },

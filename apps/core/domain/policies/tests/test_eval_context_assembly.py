@@ -234,7 +234,7 @@ CASES = [
         "별표에서 한도가 선해소돼 스칼라로 들어온다",
         Given(),
         expect={"policy.evidence_threshold": 30_000,
-                "policy.preapproval_threshold": 500_000,
+                "policy.preapproval_threshold": 300_000,
                 "policy.dining_per_person_limit": 50_000,
                 "policy.kickback_limit": 30_000,
                 "policy.settlement_deadline_days": 7},

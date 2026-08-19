@@ -8,9 +8,11 @@
    EvalContext)에 흩어져 있던 값을 **그대로 모은 것**이다. 규정 별표 원문(`tiger_inc/`, RAG 소스)
    대조는 아직 하지 않았다. 운영 투입 전 `source_clause` 기준으로 원문 검수가 필요하다.
 
-⚠️ **`user.position` 축**: 현재 SoR(`accounts.User`)에 직책 필드가 없어 조립기가 키를 만들 수
-   없다. 그래서 직책 축 표는 `"*"`(와일드카드) 항목만 두고, 직책 필드가 생기면 항목을 추가하는
-   방식으로 확장한다. 와일드카드가 있으므로 지금도 해소는 성공한다(미해소 플래그 안 뜸).
+✅ **별표1(직책별 한도)은 원문 대조 완료**(2026-08-19, `tiger_inc/md/법인카드_사용규정.md` §별표1).
+   축은 **`user.job_title`(직책)**이다 — 규정이 "한도는 보임 중인 **직책** 기준으로 적용되며,
+   직급(사원~전무)과는 **무관**하다"고 못박는다. 이전 구현은 축을 `user.position`(직급)으로
+   두고 payload에 직책(`본부장`)과 직급(`과장`·`대리`)을 섞어 놓았는데, 값도 규정과 달랐다.
+   나머지 표(청탁금지·숙박·증빙·회식·기한)는 여전히 원문 미대조다.
 """
 from __future__ import annotations
 
@@ -27,26 +29,41 @@ def _scalar(value):
 
 # key → (title, key_axes, payload, source_clause)
 TABLES: list[dict] = [
+    # ── 별표1 「직책별 법인카드 사용 한도」 — 원문 대조 완료 ──────────────────────
+    #  와일드카드(`"*"`)는 **비직책자 값과 같게** 둔다. 직책을 모르는 사람에게 팀장 이상
+    #  한도를 주면 규정보다 느슨해진다 — 모를 때는 가장 좁은 한도가 안전하다.
     {
         "key": "pre_approval_threshold_table",
-        "title": "별표1. 직책별 사전승인 기준액",
-        "key_axes": ["user.position"],
-        "payload": {"*": 500_000},
-        "source_clause": f"{REG} 제12조① · 별표1",
+        "title": "별표1. 직책별 건당 사전승인 기준",
+        "key_axes": ["user.job_title"],
+        "payload": {
+            "*": 300_000,
+            "비직책자(공용카드)": 300_000, "팀장": 500_000, "부서장": 600_000,
+            "본부장": 800_000, "대표이사": 1_000_000,
+        },
+        "source_clause": f"{REG} 제10조② · 별표1",
     },
     {
         "key": "daily_limit_table",
         "title": "별표1. 직책별 1일 사용 한도",
-        "key_axes": ["user.position"],
-        "payload": {"*": 600_000, "본부장": 600_000, "과장": 300_000, "대리": 400_000},
-        "source_clause": f"{REG} 별표1",
+        "key_axes": ["user.job_title"],
+        "payload": {
+            "*": 500_000,
+            "비직책자(공용카드)": 500_000, "팀장": 1_000_000, "부서장": 1_500_000,
+            "본부장": 2_500_000, "대표이사": 3_000_000,
+        },
+        "source_clause": f"{REG} 제10조① · 별표1",
     },
     {
         "key": "monthly_limit_table",
         "title": "별표1. 직책별 월 사용 한도",
-        "key_axes": ["user.position"],
-        "payload": {"*": 3_000_000, "본부장": 3_000_000, "대리": 2_000_000},
-        "source_clause": f"{REG} 별표1",
+        "key_axes": ["user.job_title"],
+        "payload": {
+            "*": 2_000_000,
+            "비직책자(공용카드)": 2_000_000, "팀장": 4_000_000, "부서장": 5_000_000,
+            "본부장": 8_000_000, "대표이사": 10_000_000,
+        },
+        "source_clause": f"{REG} 제10조① · 별표1",
     },
     {
         "key": "kickback_limit_table",
@@ -144,9 +161,11 @@ def upsert_all(effective_date=EFFECTIVE_FROM) -> int:
 
 
 DEMO_POLICY: dict[str, object] = {
-    "preapproval_threshold": 500_000,
-    "position_daily_limit": 600_000,
-    "position_monthly_limit": 3_000_000,
+    # 별표1의 **와일드카드(직책 미지정) 값** = 비직책자 한도. 시연 스냅샷과 조립기 결과가
+    # 어긋나지 않게 여기 값도 별표1과 함께 움직인다(`test_resolved_values_match_demo_snapshot`).
+    "preapproval_threshold": 300_000,
+    "position_daily_limit": 500_000,
+    "position_monthly_limit": 2_000_000,
     "kickback_limit": 30_000,
     "lodging_limit": 120_000,
     "evidence_threshold": 30_000,

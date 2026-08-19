@@ -39,7 +39,7 @@ None이라, 그걸 참조하면 공용카드 건이 전부 REVIEW로 떨어진�
 from django.core.management.base import BaseCommand
 from django.db import transaction as db_tx
 
-from domain.accounts.models import Capability, Role, Team, User
+from domain.accounts.models import Capability, JobTitle, Position, Role, Team, User
 from domain.cards.models import Card, CardType
 from domain.erp.models import ErpVoucher
 from domain.policies.models import (
@@ -178,18 +178,33 @@ class Command(BaseCommand):
         시드를 갈아끼울 때마다 로그인 정보가 바뀌면 시연 중에 헤맨다. 역할별 능력은
         `ROLE_DEFAULT_CAPABILITIES`가 주고, 개인 추가부여만 여기서 얹는다.
         """
+        # 직책·직급 기준 코드 — 사람보다 먼저. 규정 별표와 달리 **회사 마스터 데이터**라
+        #  갓 설치한 상태에도 있어야 사람을 등록할 수 있다(정책 판단이 아니라 조직 사실이다).
+        from domain.accounts.org_codes import seed_org_codes
+
+        seed_org_codes()
+        pos = {p.name: p for p in Position.objects.all()}
+        title = {j.name: j for j in JobTitle.objects.all()}
+        NONE = title["비직책자(공용카드)"]
+
         User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE,
-                                 team=teams["sales"], first_name="김영업")
+                                 team=teams["sales"], first_name="김영업",
+                                 position=pos["대리"], job_title=NONE)
         User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD,
-                                 team=teams["sales"], first_name="이팀장")
+                                 team=teams["sales"], first_name="이팀장",
+                                 position=pos["과장"], job_title=title["팀장"])
         User.objects.create_user("acc", password="pass1234", role=Role.ACCOUNTANT,
                                  team=teams["fin"], first_name="박회계",
+                                 position=pos["대리"], job_title=NONE,
                                  extra_capabilities=[Capability.TEAM_AGGREGATE.value])
         User.objects.create_user("acclead", password="pass1234", role=Role.ACCOUNTANT_LEAD,
                                  team=teams["fin"], first_name="정회계팀장",
+                                 position=pos["부장"], job_title=title["팀장"],
                                  extra_capabilities=[Capability.GOVERNANCE_VIEW.value])
+        # 경영지원본부는 본부장 직위 미설치 → 부서장이 실무 최종 승인권자(「조직도」§3).
         User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE,
-                                 team=teams["fin"], first_name="최운영")
+                                 team=teams["fin"], first_name="최운영",
+                                 position=pos["이사"], job_title=title["부서장"])
 
         # ai(FastAPI)가 core에 쓰기를 할 때 쓰는 서비스 계정. 비밀번호가 비어 있으면
         # 룰 생성·규정 적재가 401로 실패하므로 조용히 넘기지 않고 경고한다.

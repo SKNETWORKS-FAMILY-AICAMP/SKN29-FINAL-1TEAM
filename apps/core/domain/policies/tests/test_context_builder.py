@@ -32,25 +32,25 @@ class LookupTests(TestCase):
         """축이 2개 → 3개로 늘어도 조립기 코드는 그대로다(마이그레이션 0)."""
         table = PolicyTable(
             key="lodging_limit_table",
-            key_axes=["trip.trip_type", "trip.region_grade", "user.position"],
+            key_axes=["trip.trip_type", "trip.region_grade", "user.job_title"],
             payload={"국내": {"A": {"*": 120_000, "본부장": 200_000}}},
             effective_date=date(2026, 1, 1),
         )
         ctx = empty_eval_context()
         ctx["trip"].update({"trip_type": "국내", "region_grade": "A"})
-        ctx["user"]["position"] = "본부장"
+        ctx["user"]["job_title"] = "본부장"
         self.assertEqual(lookup(table, ctx), 200_000)
 
     def test_wildcard_fallback_when_key_missing(self):
-        """키가 SoR에 없어도(예: user.position 미구현) 와일드카드로 해소된다."""
+        """축 값을 몰라도(직책 미배정) 와일드카드로 해소된다."""
         table = PolicyTable(
-            key="daily_limit_table", key_axes=["user.position"],
-            payload={"*": 600_000, "과장": 300_000}, effective_date=date(2026, 1, 1),
+            key="daily_limit_table", key_axes=["user.job_title"],
+            payload={"*": 500_000, "팀장": 1_000_000}, effective_date=date(2026, 1, 1),
         )
         ctx = empty_eval_context()
-        self.assertEqual(lookup(table, ctx), 600_000)
-        ctx["user"]["position"] = "과장"
-        self.assertEqual(lookup(table, ctx), 300_000)
+        self.assertEqual(lookup(table, ctx), 500_000)
+        ctx["user"]["job_title"] = "팀장"
+        self.assertEqual(lookup(table, ctx), 1_000_000)
 
     def test_axisless_and_list_leaf(self):
         scalar = PolicyTable(key="settlement_deadline_table", key_axes=[],
@@ -121,9 +121,10 @@ class SeededTablesTests(TestCase):
     def test_limit_tables_still_fall_back_to_default(self):
         """한도표는 반대다 — 직책을 몰라도 회사 기본값(*)으로 해소한다(strict_keys=False)."""
         ctx = empty_eval_context()
-        self.assertIsNone(ctx["user"]["position"])
+        self.assertIsNone(ctx["user"]["job_title"])
         resolve_policy(ctx, load_tables())
-        self.assertEqual(ctx["policy"]["position_daily_limit"], 600_000)
+        # 별표1 비직책자(공용카드) 1일 한도 — 모를 때는 가장 좁은 한도로 떨어진다.
+        self.assertEqual(ctx["policy"]["position_daily_limit"], 500_000)
 
     def test_resolved_values_match_demo_snapshot(self):
         """시연 EvalContext(DEMO_POLICY)와 조립기 결과가 어긋나지 않는다."""

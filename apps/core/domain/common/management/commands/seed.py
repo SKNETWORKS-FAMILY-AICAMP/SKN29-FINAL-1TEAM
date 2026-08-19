@@ -25,7 +25,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from domain.accounts.models import Capability, Role, Team
+from domain.accounts.models import Capability, JobTitle, Position, Role, Team
 from domain.cards.models import Card, CardType
 from domain.policies.engine import run_rule_engine
 from domain.policies.eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION, empty_eval_context
@@ -72,20 +72,52 @@ class Command(BaseCommand):
         devai = Team.objects.create(name="AI·개발팀", bu="AI·개발본부")
         fin = Team.objects.create(name="재무회계팀", bu="경영지원본부")
 
+        # ── 직책·직급 기준 코드 ────────────────────
+        #  사용자보다 먼저 만든다(사람에 FK로 붙는다). 「직급체계」·별표1 원문 기준.
+        #  **직책**이 결재권·카드한도 축이고, 직급은 처우 축이라 판정에 쓰이지 않는다.
+        from domain.accounts.org_codes import check_table_keys, seed_org_codes
+
+        seed_org_codes()
+        pos = {p.name: p for p in Position.objects.all()}
+        title = {j.name: j for j in JobTitle.objects.all()}
+        # 별표 축 값이 코드 테이블에 없으면 그 직급/직책의 한도가 **조용히** 회사 기본값
+        #  (`"*"`)으로 떨어진다 — 한도 룰이 안 걸리는데 에러도 플래그도 없다. 매번 대조한다.
+        mismatch = check_table_keys()
+        if mismatch:
+            self.stdout.write(self.style.WARNING(
+                "[경고] 별표 축 값이 직급/직책 코드에 없다 - 해당 키는 와일드카드로 해소된다:
+"
+                + "
+".join(f"  - {key}: {', '.join(names)}" for key, names in mismatch.items())
+                + "
+  규정 원문으로 그 표의 축이 직급인지 직책인지 확정할 것"
+                " (policies/tiger_tables.py)."
+            ))
+
         # ── 로그인 계정 ───────────────────────────
         # 인가는 기능 단위(Capability) — 역할 기본값 ∪ extra_capabilities. (accounts.ROLE_DEFAULT_CAPABILITIES)
         #  kim=일반 사원(능력 없음)
         #  acc=회계작업·룰콘솔열람(역할기본) + 팀취합(추가부여)
         #  acclead=회계작업·룰콘솔열람·룰활성·AI-LAB(역할기본) + 거버넌스열람(추가부여)
         #        — 회계팀장은 룰 활성화 판단에 지표가 필요해 거버넌스 대시보드도 본다.
-        kim = User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE, team=sales, first_name="김영업")
-        User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD, team=sales, first_name="이팀장")
+        #  직급(호봉)과 직책(보임)은 따로 붙는다 — 과장이면서 팀장일 수 있고, 부장인데
+        #  직책이 없을 수도 있다. **한도를 정하는 건 직책 쪽**이다(「직급체계」§1.1).
+        NONE = title["비직책자(공용카드)"]
+        kim = User.objects.create_user("kim", password="pass1234", role=Role.EMPLOYEE, team=sales, first_name="김영업",
+                                       position=pos["대리"], job_title=NONE)
+        User.objects.create_user("lead", password="pass1234", role=Role.TEAM_LEAD, team=sales, first_name="이팀장",
+                                 position=pos["과장"], job_title=title["팀장"])
         acc = User.objects.create_user("acc", password="pass1234", role=Role.ACCOUNTANT, team=fin, first_name="박회계",
+                                       position=pos["대리"], job_title=NONE,
                                        extra_capabilities=[Capability.TEAM_AGGREGATE.value])
         acclead = User.objects.create_user("acclead", password="pass1234", role=Role.ACCOUNTANT_LEAD, team=fin,
                                            first_name="정회계팀장",
+                                           position=pos["부장"], job_title=title["팀장"],
                                            extra_capabilities=[Capability.GOVERNANCE_VIEW.value])
-        User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영")
+        # 경영지원본부는 본부장 직위 미설치라 재무회계부 부서장이 실무 최종 승인권자다
+        #  (「조직도」§3 · 별표1 각주). 그래서 exec의 직책은 본부장이 아니라 부서장이다.
+        User.objects.create_user("exec", password="pass1234", role=Role.EXECUTIVE, team=fin, first_name="최운영",
+                                 position=pos["이사"], job_title=title["부서장"])
 
         # ai(FastAPI)용 서비스 계정 — Agent별로 나누지 않은 **하나**(capability는 rule_view 뿐).
         #  --fresh가 비슈퍼유저를 전부 지우므로 여기서 다시 만들어 준다.
@@ -101,14 +133,27 @@ class Command(BaseCommand):
                 "  `manage.py ensure_service_account`를 실행할 것."
             ))
 
-        def emp(name, team):
-            return User.objects.create_user(name, password="pass1234", role=Role.EMPLOYEE, team=team)
+        def emp(name, team, grade, title_name="비직책자(공용카드)"):
+            return User.objects.create_user(
+                name, password="pass1234", role=Role.EMPLOYEE, team=team,
+                position=pos[grade], job_title=title[title_name],
+            )
 
-        # 검토/팀 취합용 추가 사용자
-        u = {n: emp(n, t) for n, t in [
-            ("이영희", devai), ("최지우", devai), ("김철수", devai), ("한도현", devai),
-            ("박민수", sales), ("정하늘", sales), ("이도윤", sales), ("서지훈", sales),
-            ("오세진", fin), ("한지민", fin),
+        # 검토/팀 취합용 추가 사용자.
+        #  **직책을 흩어 놓는 게 중요하다** — 전원 비직책자면 별표1이 한 행으로만 해소돼
+        #  직책별 한도가 실제로 갈리는지 확인할 수 없다. 직급은 표시용이라 아무렇게나 둬도
+        #  판정이 달라지지 않는다(그 사실 자체가 이 구조의 검증이다).
+        u = {n: emp(n, t, g, j) for n, t, g, j in [
+            ("이영희", devai, "과장", "팀장"),
+            ("최지우", devai, "대리", "비직책자(공용카드)"),
+            ("김철수", devai, "사원", "비직책자(공용카드)"),
+            ("한도현", devai, "부장", "부서장"),
+            ("박민수", sales, "차장", "팀장"),
+            ("정하늘", sales, "주임", "비직책자(공용카드)"),
+            ("이도윤", sales, "대리", "비직책자(공용카드)"),
+            ("서지훈", sales, "사원", "비직책자(공용카드)"),
+            ("오세진", fin, "대리", "비직책자(공용카드)"),
+            ("한지민", fin, "사원", "비직책자(공용카드)"),
         ]}
 
         # ── 카드 ─────────────────────────────────

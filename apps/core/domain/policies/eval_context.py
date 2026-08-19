@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 
-EVAL_CONTEXT_SCHEMA_VERSION = 4
-BUILDER_VERSION = "4.0"
+EVAL_CONTEXT_SCHEMA_VERSION = 5
+BUILDER_VERSION = "5.0"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 정적 카탈로그. ACTIVE 전환 게이트(`validate_graph_vars`)와 룰 편집 UI가 사용한다.
@@ -44,7 +44,14 @@ _SCHEMA_FIELDS = {
     "tx": ("amount", "per_person_amount", "payment_time", "payment_method"),
     "card": ("card_type", "actual_user_recorded"),
     # dept 제거 — 부서명 자체를 비교하는 룰은 없다. 재무회계 여부만 불린으로 남긴다.
-    "user": ("position", "finance_dept_is_spender", "is_working_hours"),
+    #  v5: `position`(직급) → **`job_title`(직책)으로 교체**. 규정 원문이 "결재 권한 및
+    #  법인카드 사용한도는 **직책** 기준으로 부여한다(직급 기준이 아니다)"로 못박고,
+    #  별표1도 "직급(사원~전무)과는 무관하다"고 적는다(「직급체계」§1.1 · 별표1 각주).
+    #  직급으로는 한도를 정할 수 **없다** — 같은 '이사'라도 부서장 겸직이냐 본부장 대행이냐로
+    #  한도가 갈리기 때문이다. 직급(처우 축)은 SoR에 남지만 판정에 올리지 않는다.
+    #  `job_title_rank`를 함께 두는 이유: "부서장 이상 승인"을 이름 비교로 쓰면 조직 체계가
+    #  바뀔 때 룰을 전부 고쳐야 한다. DSL은 스칼라 비교만 하므로 숫자 축이 필요하다.
+    "user": ("job_title", "job_title_rank", "finance_dept_is_spender", "is_working_hours"),
     # merchant_grade 제거(원천 없음). forbidden은 금지업종 별표 선해소 불린.
     "merchant": ("merchant_type", "merchant_info_resolved", "forbidden"),
     # 세부유형 3종 제거. item_type은 청탁금지 한도 룩업 키라 유지.
@@ -64,6 +71,8 @@ _SCHEMA_FIELDS = {
     "history": ("same_vendor_count", "daily_cumulative_amount", "monthly_cumulative_amount"),
     # 별표 선해소 스칼라 8종 — 비교 대상이 남아 있는 것만.
     "policy": (
+        # ⚠️ `position_*` 접두는 역사적 이름이다. 축은 **직책**(`user.job_title`)이지
+        #    직급이 아니다 — 화면 라벨("직책 일일 한도")은 처음부터 맞았고 축 선언만 틀렸었다.
         "preapproval_threshold", "position_daily_limit", "position_monthly_limit",
         "kickback_limit", "lodging_limit",
         "evidence_threshold", "dining_per_person_limit", "settlement_deadline_days",
