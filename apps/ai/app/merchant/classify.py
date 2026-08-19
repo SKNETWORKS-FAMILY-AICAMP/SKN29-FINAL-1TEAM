@@ -10,6 +10,10 @@ LLM 재분류(카카오 원시 카테고리 → 우리 서비스 업종 어휘) 
 
 이 모듈은 MCP Tool(`app.mcp.tools.classify_merchant`)에서만 쓰인다 — Draft/Risk Agent
 연동은 후속 과제(2026-08-18, 사용자 지시로 이번 범위에서 제외).
+
+캐스케이드의 모든 단계(캐시 조회·카카오 조회·LLM 재분류·캐시 적재)는 개별적으로 실패해도
+`classify()`가 예외를 던지지 않는다 — 캐시 조회 실패는 캐시 미스로 취급하고 계속 진행한다
+(2026-08-19, core 장애 시 크래시 대신 미확정/저비용 저하로 수렴하도록 수정).
 """
 from __future__ import annotations
 
@@ -154,7 +158,12 @@ def classify(merchant: str, place_hint: str | None = None) -> dict:
     if not name:
         return dict(UNRESOLVED)
 
-    cached = core_client.get_merchant_category(name)
+    try:
+        cached = core_client.get_merchant_category(name)
+    except Exception as exc:  # noqa: BLE001  # core 장애·타임아웃 — 캐시 미스로 취급하고 계속 진행
+        logger.warning("가맹점 업종 캐시 조회 실패(merchant=%r): %s — 캐시 미스로 처리", merchant, exc)
+        cached = {"hit": False}
+
     if cached.get("hit"):
         return {
             "industry_code": cached.get("industry_code", ""),

@@ -64,6 +64,28 @@ def test_cache_hit_skips_kakao_and_llm(monkeypatch, request_spy):
     assert request_spy.calls == []
 
 
+def test_cache_lookup_failure_falls_back_to_kakao_instead_of_raising(monkeypatch, request_spy):
+    def _raise_cache_error(name):
+        raise RuntimeError("core 연결 실패")
+
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", _raise_cache_error)
+    fake_doc = {"id": "1", "category_name": "음식점 > 한식", "category_group_name": "음식점", "category_group_code": "FD6"}
+    monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: fake_doc)
+    monkeypatch.setattr(
+        classify_mod, "_llm_classify",
+        lambda merchant, category_name, category_group_name: classify_mod._LLMIndustryOutput(
+            industry_label="일반음식점", confidence=0.7,
+        ),
+    )
+
+    result = classify_mod.classify("아무개식당")
+
+    assert result == {
+        "industry_code": "RESTAURANT", "industry_label": "일반음식점",
+        "confidence": 0.7, "source": "KAKAO",
+    }
+
+
 def test_kakao_miss_returns_unresolved_without_llm(monkeypatch, request_spy):
     monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name: {"hit": False})
     monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: None)
