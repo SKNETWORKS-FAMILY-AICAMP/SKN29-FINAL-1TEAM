@@ -78,6 +78,7 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
       # core에 쓰기(룰 DRAFT 저장·적재 결과 회신)를 할 때 쓰는 서비스 계정. **core와 같은 값.**
       AI_SERVICE_USER: ${AI_SERVICE_USER:-${RULE_AGENT_SERVICE_USER:-rule-agent}}
       AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD:-${RULE_AGENT_SERVICE_PASSWORD:-}}

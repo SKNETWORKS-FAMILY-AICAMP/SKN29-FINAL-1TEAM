@@ -34,7 +34,6 @@ class Transaction(models.Model):
 class MerchantSource(models.TextChoices):
     CACHE = "CACHE", "캐시"
     KAKAO = "KAKAO", "카카오 지도"
-    WEB = "WEB", "웹검색"
 
 
 class MerchantCategory(models.Model):

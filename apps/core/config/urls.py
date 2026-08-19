@@ -11,7 +11,13 @@ from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSe
 from domain.policies.rule_agent_v0_views import EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import SettlementSummaryView, SettlementViewSet, TeamBudgetView
-from domain.transactions.views import ReceiptViewSet, TransactionViewSet, TxFeaturesView
+from domain.transactions.views import (
+    MerchantCategoryLookupView,
+    MerchantCategoryUpsertView,
+    ReceiptViewSet,
+    TransactionViewSet,
+    TxFeaturesView,
+)
 
 router = DefaultRouter()
 router.register("transactions", TransactionViewSet)
@@ -40,6 +46,8 @@ urlpatterns = [
     path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
     path("api/internal/rule-context/<int:settlement_id>/", RuleContextView.as_view(), name="internal_rule_context"),
     path("api/internal/tx-features/<int:tx_id>/", TxFeaturesView.as_view(), name="internal_tx_features"),
+    path("api/internal/merchant-category/", MerchantCategoryUpsertView.as_view(), name="internal_merchant_category_upsert"),
+    path("api/internal/merchant-category/<str:normalized_name>/", MerchantCategoryLookupView.as_view(), name="internal_merchant_category_lookup"),
     path("api/internal/settlement-summary/<int:settlement_id>/", SettlementSummaryView.as_view(), name="internal_settlement_summary"),
     path("api/internal/rule-agent-v0/eval-context-schema/", EvalContextSchemaView.as_view(), name="internal_eval_context_schema"),
     # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.

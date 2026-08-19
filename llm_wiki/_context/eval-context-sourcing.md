@@ -144,7 +144,7 @@ ACTIVE 3그래프 × 실 정산 120행 기준. 괄호는 등급(§2).
 |---|---|---|
 | 영수증 상세 파싱 | `tx.service_charge_ratio` | 봉사료 항목을 비전 모델이 뽑아야 함. **ACTIVE 그래프가 참조 중이라 우선 제거 대상** |
 | 공휴일 | `tx.is_holiday` | 공휴일 캘린더 미도입. `derived.is_weekend`로 근사 |
-| 가맹점 등급 | `merchant.merchant_grade` | 업종 캐시에 등급 축 없음(카카오/웹 미제공) |
+| 가맹점 등급 | `merchant.merchant_grade` | 업종 캐시에 등급 축 없음(카카오 미제공) |
 | 세부 첨부·기재 6종 | `evidence.event_plan_attached`, `confirmation_doc_submitted`, `vendor_info_missing`, `venue_datetime_missing`, `project_name_missing`, `participant_record_missing` | 첨부 종류별 관리 체계 부재 |
 | 참석자 상세 5종 | `contractor_participant_count`, `contractor_regular_communication_purpose`, `kickback_law_target_status_missing`, `participant_includes_former_employee`, `family_or_personal_gathering_suspected` | 참석자 명부 모델 필요(인원수만으로 충분) |
 | 출장 상세 9종 | `flight_class`, `flight_duration_hours`, `booking_to_trip_gap_months`, `during_business_trip`, `itinerary_mismatch`, `work_end_time`, `expense_type`, `trip_request_submitted_days_before`, `emergency_trip` | 출장 도메인 전체 + 항공 예약 연동 |

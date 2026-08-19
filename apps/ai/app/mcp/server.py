@@ -12,6 +12,8 @@ mcp = FastMCP("settlement-tools")
 for _fn in (
     tools.get_policy,
     tools.get_card_context,
+    # 가맹점 업종 재분류 — 카카오 원시 카테고리를 우리 서비스 어휘로 (fix/risk-review 계열)
+    tools.classify_merchant,
     # 비전 판독 2종 — 영수증(사용내역+사실) / 증빙 문서(사실만)
     tools.read_receipt,
     tools.read_evidence_document,

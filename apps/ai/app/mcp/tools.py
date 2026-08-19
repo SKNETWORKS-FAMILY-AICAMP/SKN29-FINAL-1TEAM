@@ -40,6 +40,20 @@ def get_card_context(card_id: int) -> dict:
     return {"card_id": card_id, "card_type": None, "required_inputs": []}
 
 
+def classify_merchant(merchant: str, place_hint: str | None = None) -> dict:
+    """가맹점 업종 판별 — 캐시→카카오→LLM 재분류 캐스케이드 (§7-1). Draft, Risk 공용 Tool.
+
+    구현 실체는 `app.merchant.classify` — 카카오 원시 카테고리를 그대로 쓰지 않고 LLM이
+    우리 서비스 업종 어휘로 재분류한다. 카카오에서도 못 찾으면 예외 없이 미확정
+    (industry_code/label 공란)을 돌려준다. Agent 연동(Draft/Risk 프롬프트에 실제로 꽂는 것)은
+    아직 없다 — 이 Tool만 우선 실동작한다(2026-08-18).
+    """
+    from app.merchant.classify import classify as _classify
+
+    result = _classify(merchant, place_hint)
+    return {"merchant": merchant, **result}
+
+
 def search_policy(
     query: str, top_k: int = 6, include_law: bool = False, filters: dict | None = None
 ) -> dict:
