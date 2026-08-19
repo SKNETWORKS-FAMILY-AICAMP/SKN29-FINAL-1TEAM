@@ -278,6 +278,12 @@ class SettlementSummaryView(APIView):
 
     FastAPI(ai) Risk Review Agent가 settlement_id만 갖고 tx_id·분류·가맹점·목적을 얻는 최소
     조회. 관계형 데이터는 Django 경유 원칙(CLAUDE.md §1)에 따라 Postgres를 직접 조회하지 않는다.
+
+    판정 입력 필드(headcount 등) 6종도 함께 내려준다 — Risk Review 2차 검증 질의(retrieve)에
+    "판정 사실"로 녹여 넣기 위함(retrive 브랜치 `retrieval_strategy_evaluation.ipynb` §11 실측,
+    자연어+facts 방식이 블롭 대비 MRR을 유의하게 끌어올림). 전부 null 허용 필드다 — `None`은
+    "거짓"이 아니라 "모름"이므로 여기서도 그대로 null로 내려보내고, 임의로 false/0으로 채우지
+    않는다(`Settlement` 모델 §76 주석의 계약과 동일).
     """
     permission_classes = [AllowAny]
 
@@ -293,6 +299,12 @@ class SettlementSummaryView(APIView):
             "merchant": tx.merchant,
             "amount": int(tx.amount),
             "purpose": s.purpose,
+            "headcount": s.headcount,
+            "preApproved": s.pre_approved,
+            "itemType": s.item_type or None,
+            "kickbackTarget": s.kickback_target,
+            "isSecondaryVenue": s.is_secondary_venue,
+            "includesAlcohol": s.includes_alcohol,
         })
 
 
