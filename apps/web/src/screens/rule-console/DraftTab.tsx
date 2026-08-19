@@ -33,6 +33,18 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const [generating, setGenerating] = useState(false)
   // 대화 1턴은 LLM 여러 턴 + 그래프 CRUD 왕복이라 수십 초 걸린다 — 중복 전송을 막는다.
   const [chatting, setChatting] = useState(false)
+  // decision/severity 선택지 — 서버 카탈로그(§8 후속). 조회 실패 시 이전 하드코딩 값과
+  // 같은 기본값으로 대체해 화면이 빈 드롭다운이 되지 않게 한다.
+  const [decisionOptions, setDecisionOptions] = useState<string[]>(['PASS', 'REJECT', 'REVIEW', 'RETURN', 'PASS_THROUGH'])
+  const [severityOptions, setSeverityOptions] = useState<string[]>(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'])
+
+  useEffect(() => {
+    endpoints.ruleActionSchema().then(({ data }) => {
+      const result = data as { decisions?: string[]; severities?: string[] }
+      if (result.decisions?.length) setDecisionOptions(result.decisions)
+      if (result.severities?.length) setSeverityOptions(result.severities)
+    }).catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -122,7 +134,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     // 낙관적 표시 — 사용자 발화만. AI 답은 실제 응답이 와야 붙인다.
     setChat((previous) => [...previous, { role: 'user', text }])
     try {
-      const result = await converseRule(graphId, text)
+      const result = await converseRule(graphId, text, nodeKey)
       // 서버가 남긴 로그가 정본이다. 실패하면 방금 받은 답이라도 화면에 남긴다.
       // 저장도 조회도 **그래프 단위** — Agent가 node_key="" 로 남기기 때문(위 useEffect 참조).
       try {
@@ -341,7 +353,8 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
           ? <NodeDetail key={`${selGraph.id}-${selNode.nodeKey}`} graph={selGraph} node={selNode}
               onStartEdit={() => void startNodeEdit(selGraph, selNode.nodeKey)} onDelete={() => void deleteNode(selGraph, selNode)}
               onReverted={(activeId) => revertToActive(selGraph, activeId)}
-              onNodeChanged={(patch) => reflectNode(selGraph.id, selNode.nodeKey, patch)} />
+              onNodeChanged={(patch) => reflectNode(selGraph.id, selNode.nodeKey, patch)}
+              decisionOptions={decisionOptions} severityOptions={severityOptions} />
           : <div className="card"><div className="card-body text-meta">좌측에서 노드를 선택하거나 신규 룰을 생성하세요.</div></div>}
 
         <div className="card" style={{ borderColor: 'var(--primary)' }}>
@@ -403,9 +416,10 @@ function useFlagRegistry() {
 }
 
 
-function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged }: {
+function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged, decisionOptions, severityOptions }: {
   graph: RuleGraph; node: GraphNode; onStartEdit: () => void; onDelete: () => void
   onReverted: (activeId: string) => void; onNodeChanged: (patch: Partial<GraphNode>) => void
+  decisionOptions: string[]; severityOptions: string[]
 }) {
   const editable = graph.status === 'DRAFT'
   const flagRegistry = useFlagRegistry()
@@ -489,8 +503,14 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       </div>
 
       <div className="field"><label>액션</label><div className="grid-2" style={{ gap: 8 }}>
-        <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">결정 선택</option><option>PASS</option><option>REJECT</option><option>REVIEW</option><option>RETURN</option><option>PASS_THROUGH</option></select>
-        <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">심각도 선택</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select>
+        <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}>
+          <option value="">결정 선택</option>
+          {decisionOptions.map((value) => <option key={value}>{value}</option>)}
+        </select>
+        <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}>
+          <option value="">심각도 선택</option>
+          {severityOptions.map((value) => <option key={value}>{value}</option>)}
+        </select>
         {/* 플래그는 자유 입력이되 **등록된 어휘를 먼저 제안**한다. 닫으면(select) 고객 규정에서
             생성된 새 어휘를 못 쓰고, 완전히 열어두면 같은 개념에 다른 이름이 생긴다
             (실제로 `EVIDENCE_MISSING` vs `MISSING_RECEIPT`로 갈렸었다). */}

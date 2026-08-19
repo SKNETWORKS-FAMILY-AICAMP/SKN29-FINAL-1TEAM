@@ -31,6 +31,9 @@ export const endpoints = {
   // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
   //  시스템 플래그는 기본 제외한다(룰이 `NO_ACTIVE_RULE_GRAPH`를 붙이면 의미가 뒤집힌다).
   ruleFlags: () => api.get('/rules/flags/'),
+  // decision/severity 선택지 카탈로그 — Django `engine.py`가 소스(§8 후속, 2026-08-19).
+  // 이전엔 이 화면이 <option>을 하드코딩해서 AI 서비스가 쓰던 목록과 독립적으로 존재했다.
+  ruleActionSchema: () => api.get('/rules/action-schema/'),
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   // 버전 이력(같은 family 전체) 조회 · 특정 과거 버전으로 롤백
@@ -43,9 +46,11 @@ export const endpoints = {
     api.get(`/rules/${id}/messages/`, { params: nodeKey ? { nodeKey } : undefined }),
   addRuleMessages: (id: string, nodeKey: string, messages: unknown[]) =>
     api.post(`/rules/${id}/messages/`, { nodeKey, messages }),
-  ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),
-  saveRuleTestCases: (id: string, testCases: unknown[]) => api.put(`/rules/${id}/test-cases/`, { testCases }),
-  simulateRule: (id: string, testCases?: unknown[]) => api.post(`/rules/${id}/simulate/`, testCases ? { testCases } : {}),
+  // 검증셋 자동생성 — 대화형 아님, 노드 조건을 역산해 완제품 검증셋을 한 번에 만들고
+  // **통째로 교체**한다(replace, 2026-08-19 이전엔 append). 이제 "시뮬레이션 실행"의
+  // 유일한 경로 — 노드마다 조건 역산 + 자체검증(최대 2회 simulate 왕복)이 순차로 돌아
+  // 시간이 걸릴 수 있어 넉넉히 잡는다.
+  generateRuleTestCases: (id: string) => api.post(`/rules/${id}/test-cases/generate/`, {}, { timeout: 200_000 }),
   ruleSimulation: (id: string) => api.get(`/rules/${id}/simulation/`),
   requestRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/request-activation/`, { comment }),
   rejectRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/reject-activation/`, { comment }),
@@ -64,8 +69,11 @@ export const endpoints = {
     }, { timeout: 150_000 }),
   // 대화형 룰 수정 — 자연어 지시로 Agent가 그래프를 직접 고친다(LLM 툴콜링 여러 턴).
   // 대화 로그는 Agent가 서버에서 남기므로 화면은 addRuleMessages를 또 부르면 안 된다.
-  converseRule: (graphId: string, message: string) =>
-    api.post(`/rules/${graphId}/converse/`, { message }, { timeout: 200_000 }),
+  // nodeKey: 화면에서 지금 선택 중인 노드 — 모호한 지시가 엉뚱한 노드에 적용되는 걸
+  // 막는 힌트다(2026-08-18). Agent는 대화 이력도 서버(RuleAuthoringMessage)에서
+  // 직접 불러 쓰므로 프론트가 이력을 따로 넘길 필요는 없다.
+  converseRule: (graphId: string, message: string, nodeKey?: string) =>
+    api.post(`/rules/${graphId}/converse/`, { message, nodeKey }, { timeout: 200_000 }),
   createRuleNode: (graphId: string, nodeKey: string) => api.post(`/rules/${graphId}/nodes/`, { nodeKey }),
   saveRuleNode: (graphId: string, nodeKey: string, data: Record<string, unknown>) =>
     api.patch(`/rules/${graphId}/nodes/${nodeKey}/`, data),

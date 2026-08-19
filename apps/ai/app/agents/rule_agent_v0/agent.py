@@ -68,9 +68,31 @@ def _openai():
     return _client
 
 
-DECISIONS = ["PASS", "REJECT", "RETURN", "REVIEW"]
-SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
-SEVERITY_PRIORITY = {s: i for i, s in enumerate(SEVERITIES)}  # CRITICAL=0 … INFO=4
+# decision/severity 카탈로그 — 이전엔 여기 하드코딩(그리고 `chat.py`가 별도로 또
+# 하드코딩)했다. Django `engine.py`가 유일한 소스가 됐다(§8 후속, 2026-08-19) — 첫 호출
+# 때 fetch해 프로세스 수명 동안 캐시한다(`_openai()`와 같은 지연 초기화 패턴 — import
+# 시점에 Django가 안 떠 있어도 라우터 import가 안 죽는다. 조회 실패 시엔 예전 하드코딩
+# 값과 같은 기본값으로 안전하게 대체된다 — `django_client.get_action_schema` 참조).
+_action_schema_cache: dict[str, Any] | None = None
+
+
+def _action_schema() -> dict[str, Any]:
+    global _action_schema_cache
+    if _action_schema_cache is None:
+        _action_schema_cache = django_client.get_action_schema()
+    return _action_schema_cache
+
+
+def severities() -> list[str]:
+    return _action_schema()["severities"]
+
+
+def decisions() -> list[str]:
+    return _action_schema()["decisions"]
+
+
+def severity_priority() -> dict[str, int]:
+    return {s: i for i, s in enumerate(severities())}  # CRITICAL=0 … INFO=4
 
 _ALLOWED_OPS = {"and", "or", "not", "==", "!=", ">", ">=", "<", "<=", "in", "var"}
 
@@ -147,54 +169,59 @@ _CONDITION_NODE_SCHEMA = {
                  "right_bool", "right_string_list", "combinator", "children"],
 }
 
-_RESPONSE_SCHEMA = {
-    "name": "rule_nodes",
-    "strict": True,
-    "schema": {
-        "type": "object",
-        "additionalProperties": False,
-        "$defs": {
-            "condition_node": _CONDITION_NODE_SCHEMA,
-        },
-        "properties": {
-            "nodes": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "node_key": {"type": "string"},
-                        "title": {"type": "string"},
-                        "condition": {"$ref": "#/$defs/condition_node"},
-                        "when": {"type": "string"},
-                        "then": {"type": "string"},
-                        "decision": {"type": "string", "enum": ["REJECT", "RETURN", "REVIEW"]},
-                        "severity": {"type": "string", "enum": SEVERITIES},
-                        "flag": {"type": "string"},
-                        "source_citation": {"type": "string"},
+def _response_schema() -> dict[str, Any]:
+    """호출 시점에 조립 — `severity` enum이 `_action_schema()`(Django 소스)를 따라야
+    해서 모듈 로드 시점 상수로 못 둔다. `decision`은 이 생성 흐름이 만드는 노드가 항상
+    비-PASS 종단이라는 v0 설계(모듈 docstring 참조)에 따라 의도적으로 서브셋
+    (REJECT/RETURN/REVIEW만, 전체 카탈로그의 PASS·PASS_THROUGH 제외)이다."""
+    return {
+        "name": "rule_nodes",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "$defs": {
+                "condition_node": _CONDITION_NODE_SCHEMA,
+            },
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "node_key": {"type": "string"},
+                            "title": {"type": "string"},
+                            "condition": {"$ref": "#/$defs/condition_node"},
+                            "when": {"type": "string"},
+                            "then": {"type": "string"},
+                            "decision": {"type": "string", "enum": ["REJECT", "RETURN", "REVIEW"]},
+                            "severity": {"type": "string", "enum": severities()},
+                            "flag": {"type": "string"},
+                            "source_citation": {"type": "string"},
+                        },
+                        "required": [
+                            "node_key", "title", "condition", "when", "then",
+                            "decision", "severity", "flag", "source_citation",
+                        ],
                     },
-                    "required": [
-                        "node_key", "title", "condition", "when", "then",
-                        "decision", "severity", "flag", "source_citation",
-                    ],
+                },
+                "skipped": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "reason": {"type": "string"},
+                            "source_citation": {"type": "string"},
+                        },
+                        "required": ["reason", "source_citation"],
+                    },
                 },
             },
-            "skipped": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "reason": {"type": "string"},
-                        "source_citation": {"type": "string"},
-                    },
-                    "required": ["reason", "source_citation"],
-                },
-            },
+            "required": ["nodes", "skipped"],
         },
-        "required": ["nodes", "skipped"],
-    },
-}
+    }
 
 
 def _format_chunks(chunks: list[dict]) -> str:
@@ -252,15 +279,16 @@ _SEARCH_POLICY_TOOL = {
     },
 }
 
-_SUBMIT_NODES_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "submit_rule_nodes",
-        "description": "최종 룰 노드 목록을 제출한다. 이 툴을 호출해야 생성이 끝난다.",
-        "strict": True,
-        "parameters": _RESPONSE_SCHEMA["schema"],
-    },
-}
+def _submit_nodes_tool() -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": "submit_rule_nodes",
+            "description": "최종 룰 노드 목록을 제출한다. 이 툴을 호출해야 생성이 끝난다.",
+            "strict": True,
+            "parameters": _response_schema()["schema"],
+        },
+    }
 
 
 def _run_generation_loop(
@@ -278,10 +306,12 @@ def _run_generation_loop(
 
     for _ in range(MAX_TOOL_TURNS):
         resp = _openai().chat.completions.create(
-            model=settings.model,
-            temperature=0.2,
+            # gpt-5-mini류 심층 모델은 커스텀 temperature를 지원하지 않는다(기본값 1만 허용,
+            # 다른 값을 주면 400). 그래서 temperature를 아예 안 넘긴다 — 2026-08-18 실측.
+            model=settings.model_heavy,
+            reasoning_effort=settings.model_heavy_reasoning_effort,
             timeout=60,
-            tools=[_SEARCH_POLICY_TOOL, _SUBMIT_NODES_TOOL],
+            tools=[_SEARCH_POLICY_TOOL, _submit_nodes_tool()],
             tool_choice="auto",
             messages=messages,
         )
@@ -473,7 +503,7 @@ def _sanitize_nodes(
                     "origin": "rule-agent-v0",
                     "workflow_status": "DRAFT",
                 },
-                "priority": SEVERITY_PRIORITY.get(n["severity"], 4),
+                "priority": severity_priority().get(n["severity"], 4),
             }
         )
     return accepted, rejected
@@ -616,7 +646,7 @@ def generate(req: Any) -> dict[str, Any]:
         #    인증은 서비스 계정 JWT(django_client) — 실패는 감추지 않고 그대로 올린다.
         generation_meta = {
             "agent": "rule-agent-v0",
-            "model": settings.model,
+            "model": settings.model_heavy,
             "query": query,
             "requested_scope": req.scope,
             "include_law": req.include_law,

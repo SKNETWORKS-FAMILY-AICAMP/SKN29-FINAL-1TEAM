@@ -21,7 +21,17 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class RuleAgentSettings:
+    # 경량 모델 — 판정/생성 결과에 영향 없는 표시용 변환(예: 검증셋 라벨·가맹점명 문구화)에만 쓴다.
     model: str = os.environ.get("RULE_AGENT_MODEL", "gpt-4o-mini")
+    # 심층 모델 — 실제 산출물을 만들거나 깊은 판단이 들어가는 호출(룰 그래프 생성·대화형 수정·
+    # 시뮬레이션 보고서 서술)에 쓴다. 2026-08-18 전수조사로 도입 — 그 전엔 4개 호출 전부가
+    # `model` 하나를 공유해 표시용 문구화까지 판단이 중요한 호출과 같은 모델을 쓰고 있었다.
+    model_heavy: str = os.environ.get("RULE_AGENT_MODEL_HEAVY", "gpt-5-mini")
+    # gpt-5-mini 기본(medium) 추론 노력은 실측 40초대 — 대부분 다중 섹션 마크다운을 길게
+    # 뽑느라 걸리는 시간이라 reasoning_effort를 낮춰도 품질 저하가 뚜렷하지 않았다(실측:
+    # minimal/low 둘 다 ~23초, medium 41초). 'low'를 기본으로 — 'minimal'보다 살짝 더 깊게
+    # 생각하되 medium의 지연은 피한다.
+    model_heavy_reasoning_effort: str = os.environ.get("RULE_AGENT_MODEL_HEAVY_REASONING_EFFORT", "low")
     # 서비스 계정(최소 권한: rule_view 하나). 비밀번호가 비면 인증 없이 호출해 403이 난다 —
     # 조용히 익명으로 떨어지지 않도록 django_client가 그 사실을 사유에 명시한다.
     service_user: str = os.environ.get("RULE_AGENT_SERVICE_USER", "rule-agent")

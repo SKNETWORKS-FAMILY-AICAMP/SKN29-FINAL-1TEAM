@@ -4,28 +4,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { endpoints } from '../../api/client'
 import { isSimulatable, toGraph, type ApiGraph } from './data/graphApi'
-import { DEFAULT_TEST_CASES, type SimReport, type TestCase } from './data/simulationTypes'
+import { type SimReport } from './data/simulationTypes'
 import { type RuleGraph } from './data/ruleConsoleMock'
 import { GraphFlowView } from './GraphFlowView'
 import { NodeDetailRead } from './NodeDetailRead'
 import { SimulationEmptyState, SimulationReportView } from './SimulationReport'
-import { TestCaseModal } from './TestCaseModal'
 import { ActivationRequestModal } from './ActivationRequestModal'
-
-// 저장된 검증셋(API) ↔ 화면 모델 변환
-type ApiTestCase = {
-  id: string; label: string; merchant: string; amount: number; category: string
-  merchantType: string; paymentMethod: string; expected: string; facts: Record<string, boolean | number>
-}
-const fromApiCase = (raw: ApiTestCase): TestCase => ({
-  id: raw.id, label: raw.label, merchant: raw.merchant, amount: raw.amount, category: raw.category,
-  merchantType: raw.merchantType, paymentMethod: raw.paymentMethod || '법인카드',
-  expected: (raw.expected || '') as TestCase['expected'], facts: raw.facts || {},
-})
-const toApiCase = (item: TestCase) => ({
-  id: item.id, label: item.label, merchant: item.merchant, amount: item.amount, category: item.category,
-  merchantType: item.merchantType, paymentMethod: item.paymentMethod, expected: item.expected, facts: item.facts,
-})
 
 export function SimulationTab() {
   const [graphs, setGraphs] = useState<RuleGraph[]>([])
@@ -33,11 +17,15 @@ export function SimulationTab() {
   const [error, setError] = useState('')
   const [graphId, setGraphId] = useState('')
   const [nodeKey, setNodeKey] = useState('')
-  const [testCases, setTestCases] = useState<TestCase[]>([])
-  const [caseModalOpen, setCaseModalOpen] = useState(false)
+  // 과거 실행 결과가 있으면 그대로 보여준다(2026-08-19, "결과를 굳이 숨길 이유가 없다"는
+  // 재요청) — report가 곧 "보여줄 결과 있음"이라 별도 revealed 플래그가 필요 없다.
   const [report, setReport] = useState<SimReport | null>(null)
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState('')
+  const [genNote, setGenNote] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null)
+  // §2-2 — 이번 생성에서 제외되거나 발견으로 반영된 케이스의 사유("왜 이 케이스들이 이렇게 됐는지").
+  const [generationLog, setGenerationLog] = useState<{ nodeKey: string; kind: string; outcome: string; problem: string }[]>([])
+  const [logOpen, setLogOpen] = useState(false)
   const [activationOpen, setActivationOpen] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [requestError, setRequestError] = useState('')
@@ -64,19 +52,16 @@ export function SimulationTab() {
     return () => { cancelled = true }
   }, [])
 
-  // 그래프(버전)마다 저장된 검증셋과 최신 보고서를 불러온다. 화면에는 최신 실행만 보여준다.
+  // 그래프(버전)마다 최신 보고서를 불러온다. 화면에는 최신 실행만 보여준다.
   useEffect(() => {
     if (!graphId) return
     let cancelled = false
     setReport(null)
-    setTestCases([])
     setRunError('')
     setRequested('')
-    endpoints.ruleTestCases(graphId).then(({ data }) => {
-      if (cancelled) return
-      const saved = (data as ApiTestCase[]).map(fromApiCase)
-      setTestCases(saved.length ? saved : DEFAULT_TEST_CASES)
-    }).catch(() => { if (!cancelled) setTestCases(DEFAULT_TEST_CASES) })
+    setGenNote(null)
+    setGenerationLog([])
+    setLogOpen(false)
     endpoints.ruleSimulation(graphId).then(({ data, status }) => {
       if (!cancelled && status === 200 && data) setReport(data as SimReport)
     }).catch(() => undefined)
@@ -91,28 +76,46 @@ export function SimulationTab() {
     setNodeKey(next.entryNodeKey || next.nodes[0]?.nodeKey || '')
   }
 
+  // 시뮬레이션 실행 = 검증셋 자동생성(그래프 현재 조건 기준 replace) + 그 결과로 시뮬레이션까지
+  // 한 번에. 예전엔 "검증셋 자동생성"과 "시뮬레이션 실행"이 별도 버튼이었는데, 검증셋을
+  // 사람이 직접 관리할 일이 없어진 뒤로는(자동생성이 유일한 경로) 따로 눌러야 할 이유가
+  // 없다 — 실행 버튼 하나로 통합한다(2026-08-19).
   const run = async () => {
     if (!graph) return
     setRunning(true)
     setRunError('')
+    setGenNote(null)
     try {
-      const { data } = await endpoints.simulateRule(graph.id, testCases.map(toApiCase))
-      setReport(data as SimReport)
-    } catch {
-      setRunError('시뮬레이션을 실행하지 못했습니다. Core API 연결과 권한을 확인해주세요.')
+      const { data } = await endpoints.generateRuleTestCases(graph.id)
+      const result = data as {
+        status: string; detail?: string; attempted?: number; generated?: number
+        unresolved?: { nodeKey: string; kind: string; reason: string }[]
+        skippedNodes?: { node_key: string; reason: string }[]
+        belowTarget?: boolean; minTarget?: number
+        generationLog?: { nodeKey: string; kind: string; outcome: string; problem: string }[]
+        simulationReport?: SimReport
+      }
+      if (result.status !== 'DONE') {
+        setGenNote({ tone: 'warn', text: result.detail || '역산 가능한 노드가 없어 생성하지 못했습니다.' })
+        return
+      }
+      if (result.simulationReport) setReport(result.simulationReport)
+      setGenerationLog(result.generationLog ?? [])
+      const attempted = result.attempted ?? result.generated ?? 0
+      const generated = result.generated ?? 0
+      const unresolvedCount = result.unresolved?.length ?? 0
+      const skippedCount = result.skippedNodes?.length ?? 0
+      // "전체 N건 중 M건 반영" — 시도 자체가 생성 건수와 같으면(전부 통과) 굳이 분모를 안 보인다.
+      const parts = [attempted > generated ? `총 ${attempted}건 중 ${generated}건 검증셋에 반영` : `${generated}건 생성`]
+      if (unresolvedCount) parts.push(`${unresolvedCount}건은 자체검증 실패로 제외`)
+      if (skippedCount) parts.push(`${skippedCount}개 노드는 지원 범위 밖 조건이라 건너뜀`)
+      if (result.belowTarget) parts.push(`그래프 구조상 최소 ${result.minTarget}건을 채울 소스가 없어 ${generated}건까지만 생성됨`)
+      setGenNote({ tone: unresolvedCount || skippedCount || result.belowTarget ? 'warn' : 'ok', text: parts.join(' · ') })
+    } catch (failure) {
+      const detail = (failure as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      setRunError(detail || '시뮬레이션을 실행하지 못했습니다. Core API 연결과 권한을 확인해주세요.')
     } finally {
       setRunning(false)
-    }
-  }
-
-  const saveCases = async (next: TestCase[]) => {
-    setTestCases(next)
-    setCaseModalOpen(false)
-    if (!graph) return
-    try {
-      await endpoints.saveRuleTestCases(graph.id, next.map(toApiCase))
-    } catch {
-      setRunError('검증셋을 저장하지 못했습니다. 실행 시 다시 시도됩니다.')
     }
   }
 
@@ -188,12 +191,44 @@ export function SimulationTab() {
               : <div className="card"><div className="card-body text-meta">표시할 노드가 없습니다.</div></div>}
           </div>
 
-          {/* ③ 검증 시뮬레이션 보고서 — 실행 전에는 빈 상태 + 실행/검증셋 버튼만 */}
+          {genNote && (
+            <div className="note" style={{
+              marginBottom: generationLog.length ? 0 : 12,
+              color: genNote.tone === 'ok' ? 'var(--tone-green)' : 'var(--tone-amber)',
+              borderColor: genNote.tone === 'ok' ? 'var(--tone-green)' : 'var(--tone-amber)',
+            }}>
+              검증셋: {genNote.text}
+              {generationLog.length > 0 && (
+                <>
+                  {' · '}
+                  <button className="btn sm" style={{ marginLeft: 4 }} onClick={() => setLogOpen((v) => !v)}>
+                    {logOpen ? '사유 숨기기 ▲' : `이번 생성에서 발견한 사항 ${generationLog.length}건 보기 ▼`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {logOpen && generationLog.length > 0 && (
+            <div className="card" style={{ marginBottom: 12 }}>
+              <div className="card-body stack" style={{ gap: 8, fontSize: 12.5 }}>
+                {generationLog.map((entry, i) => (
+                  <div key={i} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                    <span className={'tag ' + (entry.outcome === '제외됨' ? 'warn' : 'ok')} style={{ flexShrink: 0 }}>
+                      {entry.nodeKey} · {entry.outcome}
+                    </span>
+                    <span className="text-meta">{entry.problem}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ③ 검증 시뮬레이션 보고서 — 과거 실행 이력이 있으면 그대로 보여주고, 없으면 빈
+              상태("실행하기") — "실행하기" 한 번이면 검증셋 생성부터 시뮬레이션까지 끝나
+              전체 보고서로 펼쳐진다 — 별도의 "검증셋 자동생성" 버튼 없이. */}
           {report
-            ? <SimulationReportView report={report} caseCount={testCases.length} running={running}
-                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} />
-            : <SimulationEmptyState caseCount={testCases.length} running={running}
-                error={runError} onRun={() => void run()} onEditCases={() => setCaseModalOpen(true)} />}
+            ? <SimulationReportView report={report} running={running} error={runError} onRun={() => void run()} />
+            : <SimulationEmptyState running={running} error={runError} onRun={() => void run()} />}
 
           {report && (
             <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
@@ -211,10 +246,6 @@ export function SimulationTab() {
       )}
 
       {requested && <div className="note" style={{ marginTop: 16, color: 'var(--tone-green)', borderColor: 'var(--tone-green)' }}>{requested}</div>}
-
-      {caseModalOpen && (
-        <TestCaseModal cases={testCases} onClose={() => setCaseModalOpen(false)} onSave={(next) => void saveCases(next)} />
-      )}
 
       {activationOpen && report && graph && (
         <ActivationRequestModal report={report} graphName={graph.name} submitting={requesting} error={requestError}

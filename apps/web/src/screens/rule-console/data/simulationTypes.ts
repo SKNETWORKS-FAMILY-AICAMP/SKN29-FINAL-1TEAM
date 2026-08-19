@@ -1,4 +1,6 @@
-// 검증 시뮬레이션(POST /api/rules/{id}/simulate/) 요청·응답 계약 + 테스트케이스 편집 모델.
+// 검증 시뮬레이션(POST /api/rules/{id}/simulate/) 요청·응답 계약 + 검증셋(에이전트 자동생성 전용) 모델.
+// 사람이 자연어/폼으로 케이스를 직접 만들던 mock 모달(TestCaseModal)은 2026-08-18 제거했다
+// — 검증셋은 "검증셋 자동생성"(§12, `_solve` 역산+LLM 라벨링+자체검증)이 유일한 생성 경로다.
 export type Decision = 'PASS' | 'REVIEW' | 'RETURN' | 'REJECT'
 export const DECISIONS: Decision[] = ['PASS', 'REVIEW', 'RETURN', 'REJECT']
 export const DECISION_LABEL: Record<Decision, string> = {
@@ -6,34 +8,6 @@ export const DECISION_LABEL: Record<Decision, string> = {
 }
 export const decisionTone = (decision: string) =>
   decision === 'PASS' ? 'ok' : decision === 'REVIEW' ? 'ai' : decision ? 'warn' : ''
-
-/** 화면에서 직접 조정할 수 있는 판정 입력값(EvalContext dot-path). */
-export const BOOLEAN_FACTS = [
-  { path: 'evidence.has_valid_receipt', label: '적격증빙 있음' },
-  { path: 'approval.pre_approval_obtained', label: '사전승인 받음' },
-  { path: 'evidence.expense_purpose_missing', label: '사용 목적 누락' },
-  { path: 'derived.is_late_night', label: '심야 결제' },
-  { path: 'derived.is_weekend', label: '주말 결제' },
-] as const
-
-// 규정 임계값은 별표(policy_tables)에서 조립기가 해소한다. 검증셋에서는 "만약 이 한도라면"을
-// 시험할 수 있도록 덮어쓰기용으로 노출한다(policy-domain.md §4).
-export const NUMBER_FACTS = [
-  { path: 'participants.participant_count', label: '참석 인원' },
-  { path: 'participants.external_participant_count', label: '외부 참석자' },
-  { path: 'history.same_vendor_count', label: '동일 가맹점 반복 결제 수' },
-  { path: 'history.daily_cumulative_amount', label: '당일 누적 사용액(원)' },
-  { path: 'derived.business_days_since_expense', label: '결제 후 경과 영업일' },
-  { path: 'tx.per_person_amount', label: '1인당 금액(원)' },
-  { path: 'policy.position_daily_limit', label: '직책 일일 한도(원)' },   // 축은 직책(user.job_title) — 직급 아님
-  { path: 'policy.preapproval_threshold', label: '사전승인 기준액(원)' },
-  { path: 'policy.evidence_threshold', label: '적격증빙 기준액(원)' },
-  { path: 'policy.dining_per_person_limit', label: '회식 1인당 한도(원)' },
-  { path: 'policy.lodging_limit', label: '1박 숙박비 한도(원)' },
-  { path: 'policy.settlement_deadline_days', label: '정산 기한(영업일)' },
-] as const
-
-export const CATEGORIES = ['회식', '회의', '식대', '출장', '접대', '비품'] as const
 
 export interface TestCase {
   id: string
@@ -61,7 +35,9 @@ export interface SimResultRow {
   baseline: string
   changed: boolean
   aiComment: string
-  commentVerdict: 'intended' | 'risk' | ''
+  /** 플래그·평가경로 등 기술 상세 — "자세히 보기"에서만 펼쳐 보여준다. */
+  aiCommentDetail: string
+  commentVerdict: 'intended' | 'risk' | 'reversal' | ''
   decision: string
   path: string[]
   flags: string[]
@@ -72,7 +48,12 @@ export interface SimResultRow {
 }
 
 export type GradeLevel = 'poor' | 'warn' | 'good'
-export interface Grade { level: GradeLevel; label: string; note: string }
+export interface Grade {
+  level: GradeLevel; label: string; note: string; cause?: ('structure' | 'result')[]
+  /** true면 이 등급(주로 action)이 결정론적 규칙이 아니라 Agent가 facts를 보고 재판단한 값 —
+   * 단, 구조 오류가 있으면 서버가 poor로 강제해 이 값이 true여도 poor 밑으로는 못 내려간다. */
+  aiAdjusted?: boolean
+}
 export const gradeTone = (level: GradeLevel) => level === 'good' ? 'ok' : level === 'warn' ? 'caution' : 'warn'
 
 export interface SimReport {
@@ -107,8 +88,10 @@ export interface SimReport {
     testFailed: number
     nodeCoverage: number
     visitedNodes: number
-    /** 변경건 중 AI가 위험하다고 본 건 / 의도된 정상 변경으로 본 건 */
+    /** 변경건 중 AI가 위험하다고 본 건(완전 반전 포함) / 의도된 정상 변경으로 본 건 */
     riskChangedCount: number
+    /** 위험 변경 중에서도 "이미 사람이 반려/보완요청으로 확정했던 건이 통과로 뒤집힌" 최우선 확인 대상 */
+    reversalChangedCount: number
     intendedChangedCount: number
   }
   grades: { structure: Grade; result: Grade; action: Grade }
@@ -117,25 +100,3 @@ export interface SimReport {
   testResults: SimResultRow[]
   historyResults: SimResultRow[]
 }
-
-const testCase = (
-  id: string, label: string, merchant: string, amount: number, category: string,
-  expected: TestCase['expected'], facts: Record<string, boolean | number>, merchantType = '',
-): TestCase => ({ id, label, merchant, amount, category, merchantType, paymentMethod: '법인카드', expected, facts })
-
-/** 기본 검증셋 — 사용자가 모달에서 자유롭게 수정·추가한다. */
-export const DEFAULT_TEST_CASES: TestCase[] = [
-  testCase('TC-1', '정상 소액 식대', '김밥천국', 32000, '식대', 'PASS',
-    { 'evidence.has_valid_receipt': true, 'approval.pre_approval_obtained': true, 'participants.participant_count': 3 }),
-  testCase('TC-2', '고액 결제 · 사전승인 누락', '한우마을', 820000, '접대', 'RETURN',
-    { 'evidence.has_valid_receipt': false, 'approval.pre_approval_obtained': false, 'participants.participant_count': 6, 'participants.external_participant_count': 2 }),
-  testCase('TC-3', '심야 주점 · 외부 참석', '강남 포차', 260000, '접대', 'REVIEW',
-    { 'evidence.has_valid_receipt': true, 'derived.is_late_night': true, 'participants.external_participant_count': 1 }, '주점'),
-  testCase('TC-4', '주말 회식 · 일일 한도 초과', '고기집', 450000, '식대', 'REVIEW',
-    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'participants.participant_count': 12,
-      'history.daily_cumulative_amount': 1200000, 'policy.position_daily_limit': 500000 }),
-  testCase('TC-5', '주말 결제 · 사용 목적 누락', '스타벅스 본사점', 48000, '회의', 'RETURN',
-    { 'evidence.has_valid_receipt': true, 'derived.is_weekend': true, 'evidence.expense_purpose_missing': true }),
-  testCase('TC-6', '대규모 · 동일 가맹점 반복', '한식뷔페', 380000, '회의', 'REVIEW',
-    { 'evidence.has_valid_receipt': true, 'participants.participant_count': 12, 'history.same_vendor_count': 6 }),
-]

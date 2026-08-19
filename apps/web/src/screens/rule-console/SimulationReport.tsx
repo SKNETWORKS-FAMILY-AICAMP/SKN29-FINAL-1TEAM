@@ -1,6 +1,7 @@
-// 검증 시뮬레이션 보고서 — 실행 전 빈 상태 / 실행 결과(통계 · Agent 의견 · 결과 리스트).
+// 검증 시뮬레이션 보고서 — 실행 이력 있으면 그대로 표시 / 없으면 빈 상태("실행하기").
+// (2026-08-19) 실행 버튼 한 번이면 검증셋 생성부터 결과까지 한 번에 — 중간 단계 없음.
 import { useState } from 'react'
-import { ArrowRight, FlaskConical, Play, RotateCw, Sliders } from 'lucide-react'
+import { ArrowRight, FlaskConical, Play, RotateCw } from 'lucide-react'
 import { Markdown } from '../../components/ui/Markdown'
 import { won } from '../../lib/format'
 import {
@@ -11,37 +12,57 @@ import {
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`
 const decisionText = (decision: string) => DECISION_LABEL[decision as Decision] ?? decision ?? '미처리'
 
-export function SimulationEmptyState({ caseCount, running, error, onRun, onEditCases }: {
-  caseCount: number; running: boolean; error: string; onRun: () => void; onEditCases: () => void
+/** Agent 보고서를 "한눈에 보기"(항상 보임) / 나머지 상세 섹션(접힘)으로 나눈다.
+ * narrate.py·simulation.py 둘 다 `## 한눈에 보기`로 시작하도록 프롬프트/템플릿을
+ * 맞춰뒀다 — 그다음 두 번째 `## ` 헤딩부터를 "상세"로 취급한다. 헤딩이 1개뿐이면
+ * (구버전 캐시 응답 등) 전부 요약으로 보고 접을 것도 없다고 처리한다. */
+function splitAgentReport(source: string): { summary: string; detail: string } {
+  const headingIndices: number[] = []
+  const re = /^##\s/gm
+  let match: RegExpExecArray | null
+  while ((match = re.exec(source))) headingIndices.push(match.index)
+  if (headingIndices.length < 2) return { summary: source, detail: '' }
+  const cut = headingIndices[1]
+  return { summary: source.slice(0, cut).trim(), detail: source.slice(cut).trim() }
+}
+
+export function SimulationEmptyState({ running, error, onRun }: {
+  running: boolean; error: string
+  onRun: () => void
 }) {
   return (
     <div className="card">
-      <div className="card-head"><h3>검증 시뮬레이션 보고서</h3><span className="text-meta">미실행</span></div>
+      <div className="card-head">
+        <h3>검증 시뮬레이션 보고서</h3>
+        <span className="text-meta">미실행</span>
+      </div>
       <div className="card-body stack" style={{ alignItems: 'center', gap: 10, padding: '40px 16px', textAlign: 'center' }}>
         <FlaskConical size={30} className="muted" />
         <b style={{ fontSize: 14 }}>아직 시뮬레이션을 실행하지 않았습니다.</b>
-        <div className="text-meta" style={{ maxWidth: 560, lineHeight: 1.7 }}>
-          선택한 그래프를 <b>커스텀 검증셋</b>과 <b>직전 달 실제 정산 내역</b>에 적용해 판정 결과·통계·Agent 의견을 만듭니다.
+        <div className="text-meta" style={{ maxWidth: 960, lineHeight: 1.7 }}>
+          선택한 그래프의 현재 조건으로 <b>검증셋을 자동생성</b>하고 <b>직전 달 실제 정산 내역</b>에도 적용해
+          판정 결과·통계·Agent 의견을 만듭니다
+          <br />
+          (Rule Agent가 조건을 역산해 만들고 자체 검증까지 마칩니다).
+          <br />
           결과를 확인한 뒤에만 승인대기로 전환할 수 있습니다.
         </div>
         {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)' }}>{error}</div>}
-        <div className="row" style={{ gap: 8, marginTop: 6 }}>
-          <button className="btn primary" onClick={onRun} disabled={running}>
-            <Play size={13} /> {running ? '실행 중…' : '시뮬레이션 실행하기'}
-          </button>
-          <button className="btn" onClick={onEditCases} disabled={running}>
-            <Sliders size={13} /> 테스트케이스(커스텀 검증셋) 만들기 ({caseCount})
-          </button>
-        </div>
+        <button className="btn primary" onClick={onRun} disabled={running} style={{ marginTop: 6 }}>
+          <Play size={13} /> {running ? '실행 중…' : '시뮬레이션 실행하기'}
+        </button>
       </div>
     </div>
   )
 }
 
-export function SimulationReportView({ report, caseCount, running, error, onRun, onEditCases }: {
-  report: SimReport; caseCount: number; running: boolean; error: string; onRun: () => void; onEditCases: () => void
+export function SimulationReportView({ report, running, error, onRun }: {
+  report: SimReport; running: boolean; error: string
+  onRun: () => void
 }) {
   const { stats } = report
+  const [detailOpen, setDetailOpen] = useState(false)
+  const { summary, detail } = splitAgentReport(report.agentReport)
   return (
     <>
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
@@ -51,10 +72,7 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
           {report.placeholder && <span className="tag ai" style={{ marginLeft: 6 }}>플레이스홀더 보고서</span>}
           {report.stale && <span className="tag warn" style={{ marginLeft: 6 }}>실행 이후 그래프 변경됨 — 다시 실행 필요</span>}
         </span>
-        <span className="row" style={{ gap: 8 }}>
-          <button className="btn sm" onClick={onEditCases} disabled={running}><Sliders size={12} /> 검증셋 수정 ({caseCount})</button>
-          <button className="btn sm" onClick={onRun} disabled={running}><RotateCw size={12} /> {running ? '실행 중…' : '다시 실행'}</button>
-        </span>
+        <button className="btn sm" onClick={onRun} disabled={running}><RotateCw size={12} /> {running ? '실행 중…' : '다시 실행'}</button>
       </div>
       {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 8 }}>{error}</div>}
 
@@ -97,7 +115,21 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
             <GradeTile label="실행결과 평가" grade={report.grades.result} />
             <GradeTile label="권장 처리" grade={report.grades.action} />
           </div>
-          <Markdown source={report.agentReport} />
+          <div className="note" style={{ borderColor: 'var(--primary)', background: 'var(--primary-soft)' }}>
+            <Markdown source={summary} />
+          </div>
+          {detail && (
+            <>
+              <button className="btn sm" onClick={() => setDetailOpen((v) => !v)} style={{ marginTop: 12 }}>
+                {detailOpen ? '상세 보고서 접기 ▲' : '상세 보고서 보기 ▼'}
+              </button>
+              {detailOpen && (
+                <div style={{ marginTop: 10 }}>
+                  <Markdown source={detail} />
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -107,21 +139,36 @@ export function SimulationReportView({ report, caseCount, running, error, onRun,
   )
 }
 
+const CAUSE_LABEL: Record<'structure' | 'result', string> = { structure: '구조 문제', result: '실행결과 문제' }
+
 function GradeTile({ label, grade }: { label: string; grade: Grade }) {
   return (
     <div className={'kpi ' + gradeTone(grade.level)}>
       <div className="label">{label}</div>
       <div className="value" style={{ fontSize: 'var(--text-value)' }}>{grade.label}</div>
+      {(grade.cause && grade.cause.length > 0) || grade.aiAdjusted ? (
+        <div className="row" style={{ gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
+          {grade.cause?.map((c) => <span key={c} className="tag warn" style={{ fontSize: 10 }}>원인 · {CAUSE_LABEL[c]}</span>)}
+          {grade.aiAdjusted && <span className="tag ai" style={{ fontSize: 10 }} title="Agent가 실행 결과 전체를 보고 재판단한 등급입니다">🤖 Agent 판단</span>}
+        </div>
+      ) : null}
       <div className="text-meta">{grade.note}</div>
     </div>
   )
 }
 
-/** 직전 기간 내역 — 위험건(위험 변경) / 정상변경건 / 전체. 변경건에만 AI 코멘트가 붙는다. */
+const HIST_VERDICT_META: Record<'reversal' | 'risk' | 'intended', { badge: string; tone: string; heading: string }> = {
+  reversal: { badge: '⚠⚠ 완전 반전', tone: 'danger', heading: '⚠⚠ 가장 먼저 확인하세요 · 완전 반전' },
+  risk: { badge: '⚠ 위험 변경', tone: 'warn', heading: '⚠ AI 코멘트 · 위험' },
+  intended: { badge: '✅ 정상 변경', tone: 'ok', heading: '💬 AI 코멘트 · 의도된 변경' },
+}
+
+/** 직전 기간 내역 — 위험건(완전 반전 포함) / 정상변경건 / 전체. 변경건에만 AI 코멘트가 붙는다. */
 function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResultRow[] }) {
   const [filter, setFilter] = useState<'risk' | 'intended' | 'all'>('risk')
-  // 위험건 = 변경건 중 AI가 위험하다고 판단한 건 / 정상변경건 = 의도된 변경으로 판단한 건
-  const risky = rows.filter((row) => row.changed && row.commentVerdict === 'risk')
+  // 위험건 = 변경건 중 AI가 위험하다고 판단한 건(완전 반전 포함) / 정상변경건 = 의도된 변경
+  const risky = rows.filter((row) => row.changed && (row.commentVerdict === 'risk' || row.commentVerdict === 'reversal'))
+  const reversals = rows.filter((row) => row.changed && row.commentVerdict === 'reversal')
   const intended = rows.filter((row) => row.changed && row.commentVerdict === 'intended')
   const visible = filter === 'all' ? rows : filter === 'intended' ? intended : risky
   const emptyText = filter === 'risk'
@@ -135,7 +182,7 @@ function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResu
           <h3>{periodLabel} 내역 결과</h3>
           <div className="text-meta">
             전체 {rows.length}건 · 변경 {risky.length + intended.length}건
-            (위험 {risky.length} / 정상 {intended.length})
+            (위험 {risky.length}{reversals.length > 0 && ` · 완전 반전 ${reversals.length}`} / 정상 {intended.length})
           </div>
         </div>
         <div className="seg-toggle">
@@ -149,40 +196,58 @@ function HistoryList({ periodLabel, rows }: { periodLabel: string; rows: SimResu
         {rows.length > 0 && visible.length === 0 && (
           <div className="text-meta">{emptyText} ‘전체’로 {rows.length}건을 모두 볼 수 있습니다.</div>
         )}
-        {visible.map((row) => (
-          <div key={row.id} className={'hist-row' + (row.changed && row.commentVerdict === 'risk' ? ' risk' : '')}>
-            <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  <b style={{ fontSize: 13 }}>{row.merchant || row.label}</b>
-                  <span className="text-meta">{row.date && `${row.date} · `}{row.category || '분류 없음'} · {won(row.amount)}</span>
-                </div>
-                <div className="text-meta" style={{ marginTop: 2 }}>{row.label}</div>
-              </div>
-              <div className="hist-flow">
-                <span className="tag">{row.baseline ? decisionText(row.baseline) : '미처리'}</span>
-                <ArrowRight size={13} className="muted" />
-                <span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span>
-                {row.changed
-                  ? <span className={'tag ' + (row.commentVerdict === 'risk' ? 'warn' : 'ok')}>
-                      {row.commentVerdict === 'risk' ? '⚠ 위험 변경' : '✅ 정상 변경'}
-                    </span>
-                  : <span className="tag">변경 없음</span>}
-              </div>
-            </div>
-            {row.aiComment && (
-              <div className={'hist-comment ' + row.commentVerdict}>
-                <b>{row.commentVerdict === 'risk' ? '⚠ AI 코멘트 · 위험' : '💬 AI 코멘트 · 의도된 변경'}</b>
-                <div style={{ marginTop: 3 }}>{row.aiComment}</div>
-              </div>
-            )}
-            <div className="text-meta" style={{ fontSize: 11 }}>
-              평가 경로 {row.path.join(' → ') || '-'}
-              {row.flags.length > 0 && <span style={{ color: 'var(--tone-red)' }}> · {row.flags.join(', ')}</span>}
-            </div>
-          </div>
-        ))}
+        {visible.map((row) => <HistoryRow key={row.id} row={row} />)}
       </div>
+    </div>
+  )
+}
+
+function HistoryRow({ row }: { row: SimResultRow }) {
+  const [expanded, setExpanded] = useState(false)
+  const verdictMeta = row.commentVerdict ? HIST_VERDICT_META[row.commentVerdict] : null
+  const hasDetail = Boolean(row.aiCommentDetail || row.path.length > 0 || row.flags.length > 0)
+  return (
+    <div className={'hist-row' + (verdictMeta?.tone === 'danger' ? ' risk reversal' : verdictMeta?.tone === 'warn' ? ' risk' : '')}>
+      <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            <b style={{ fontSize: 13 }}>{row.merchant || row.label}</b>
+            <span className="text-meta">{row.date && `${row.date} · `}{row.category || '분류 없음'} · {won(row.amount)}</span>
+          </div>
+          <div className="text-meta" style={{ marginTop: 2 }}>{row.label}</div>
+        </div>
+        <div className="hist-flow">
+          <span className="tag">{row.baseline ? decisionText(row.baseline) : '미처리'}</span>
+          <ArrowRight size={13} className="muted" />
+          <span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span>
+          {row.changed
+            ? <span className={'tag ' + (verdictMeta?.tone === 'danger' ? 'warn' : verdictMeta?.tone === 'warn' ? 'warn' : 'ok')}>
+                {verdictMeta?.badge}
+              </span>
+            : <span className="tag">변경 없음</span>}
+        </div>
+      </div>
+      {row.aiComment && verdictMeta && (
+        <div className={'hist-comment ' + row.commentVerdict}>
+          <b>{verdictMeta.heading}</b>
+          <div style={{ marginTop: 3 }}>{row.aiComment}</div>
+          {hasDetail && (
+            <button
+              className="btn sm" style={{ marginTop: 6 }}
+              onClick={() => setExpanded((prev) => !prev)}
+            >
+              {expanded ? '자세히 숨기기 ▲' : '자세히 보기 ▼'}
+            </button>
+          )}
+          {expanded && (
+            <div className="text-meta" style={{ marginTop: 6, fontSize: 11 }}>
+              {row.aiCommentDetail && <div>{row.aiCommentDetail}</div>}
+              {row.path.length > 0 && <div>평가 경로: {row.path.join(' → ')}</div>}
+              {row.flags.length > 0 && <div>플래그 원문: {row.flags.join(', ')}</div>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -243,7 +308,11 @@ function TestResultList({ rows, stats }: { rows: SimResultRow[]; stats: SimRepor
                   <b style={{ fontSize: 12.5 }}>{row.label}</b>
                   <div className="text-meta">{row.merchant}</div>
                 </td>
-                <td className="num">{won(row.amount)}</td>
+                {/* 검증셋 자동생성 케이스는 노드 조건 하나만 골라 값을 역산한다 — 그 조건이
+                    금액과 무관하면(예: 참석자 수·2차 여부) tx.amount 자체를 안 다뤄 0으로
+                    남는다. 실제 0원 지출이 아니라 "이 케이스에서 금액은 판정 근거가 아님"
+                    이므로 ₩0으로 보이면 데이터 오류처럼 오해된다 — 구분해 보여준다. */}
+                <td className="num">{row.amount > 0 ? won(row.amount) : <span className="text-meta">해당없음</span>}</td>
                 <td className="text-meta">{row.category || '-'}</td>
                 <td>{row.expected
                   ? <span className="tag">{decisionText(row.expected)}</span>
