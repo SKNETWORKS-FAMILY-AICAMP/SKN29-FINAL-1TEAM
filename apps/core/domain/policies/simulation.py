@@ -48,6 +48,23 @@ BASELINE_BY_STATUS = {
     SettlementStatus.ERP_VOUCHER_DRAFTED: "PASS",
 }
 DECISION_KO = {"PASS": "통과", "REVIEW": "검토 필요", "RETURN": "보완요청", "REJECT": "반려", "": "미처리"}
+# 엔진이 직접 붙이는 고정 플래그만 번역한다(engine.py·orchestrator.py 참조). 룰 노드가
+# 스스로 붙이는 플래그(예: "M-001")는 회사 규정마다 다른 임의 코드라 사전 번역이 불가능하다
+# — 그런 코드는 원문 그대로 두고 "자세히" 영역에서만 보여준다(§7 문구 다듬기 설계).
+SYSTEM_FLAG_KO = {
+    "NO_ACTIVE_RULE_GRAPH": "적용할 룰 그래프가 아예 없음",
+    "NO_SCOPE_RULE_GRAPH": "이 비용 분류에 세부 룰이 없음(공통 게이트만 통과)",
+    "UNRESOLVED_POLICY_VAR": "규정표에서 값을 찾지 못함(별표 미등록)",
+}
+
+
+def _flag_label(flag: str) -> str:
+    """엔진 고정 플래그는 한글로, 룰 작성자가 붙인 임의 코드는 원문 그대로."""
+    if flag in SYSTEM_FLAG_KO:
+        return SYSTEM_FLAG_KO[flag]
+    if flag.startswith("UNRESOLVED_FACT:"):
+        return f"판단에 필요한 정보 없음({flag.split(':', 1)[1]})"
+    return flag
 
 
 # ── EvalContext 조립 ─────────────────────────────────────────────
@@ -126,8 +143,10 @@ def _run_rows(snapshot: dict, cases: list[dict[str, Any]], source: str) -> list[
         status = case.get("currentStatus") or ""
         baseline = BASELINE_BY_STATUS.get(status, "")
         changed = bool(baseline) and baseline != result.decision
-        comment, verdict = (_change_comment(baseline, result.decision, case, node_titles, result)
-                            if changed else ("", ""))
+        comment, comment_detail, verdict = (
+            _change_comment(baseline, result.decision, case, node_titles, result)
+            if changed else ("", "", "")
+        )
         rows.append({
             "id": str(case.get("id") or f"{source}-{index + 1}"),
             "source": source,
@@ -140,14 +159,15 @@ def _run_rows(snapshot: dict, cases: list[dict[str, Any]], source: str) -> list[
             "baseline": baseline,
             "changed": changed,
             "aiComment": comment,
-            "commentVerdict": verdict,  # 'intended' | 'risk' | ''
+            "aiCommentDetail": comment_detail,
+            "commentVerdict": verdict,  # 'intended' | 'risk' | 'reversal' | ''
             "decision": result.decision,
             "path": result.path,
             "flags": result.flags,
             "expected": expected,
             "matchedExpectation": (expected == result.decision) if expected else None,
             "risk": result.decision in RISK_DECISIONS or (bool(expected) and expected != result.decision)
-            or verdict == "risk",
+            or verdict in ("risk", "reversal"),
             # 자동처리 = 그래프가 통과로 끝냈고, 사람 손이 필요한 상태도 아니었던 건
             "auto": result.decision == "PASS" and status not in MANUAL_STATUSES,
             "testCaseId": case.get("testCaseId"),
@@ -157,35 +177,50 @@ def _run_rows(snapshot: dict, cases: list[dict[str, Any]], source: str) -> list[
 
 
 def _change_comment(baseline: str, decision: str, case: dict[str, Any],
-                    node_titles: dict[str, str], result) -> tuple[str, str]:
-    """분류가 달라진 건에만 붙는 AI 코멘트 — (문구, 판단).
+                    node_titles: dict[str, str], result) -> tuple[str, str, str]:
+    """분류가 달라진 건에만 붙는 AI 코멘트 — (한줄 요약, 자세히 보기용 기술 상세, 판단).
 
-    "무엇이 바뀌었는가"에 더해 **어느 노드가 어떤 근거로 그렇게 판정했는지**를 함께 적어,
-    회계 담당자가 그래프를 열어보지 않고도 변경 사유를 확인할 수 있게 한다.
+    "무엇이 바뀌었는가"를 먼저 쉬운 문장으로 말하고, 플래그 코드·평가 경로 같은 기술적
+    디테일은 `detail`로 분리한다 — 화면에서 요약은 항상 보이고 상세는 펼쳐야 보이게 해
+    "근거 플래그: PERSONAL_USE_SUSPECTED, 평가 경로 GLOBAL→R-003→..." 같은 문장을 매번
+    먼저 읽지 않아도 되게 한다(2026-08-18 UX 개선, 사용자가 "너무 어렵다"고 지적).
+
+    판단(verdict)은 세 단계: `intended`(의도한 개선) / `risk`(위험 변경) /
+    `reversal`(사람이 이미 문제로 확정했던 건을 규칙이 뒤집어 통과시킴 — risk 중에서도
+    가장 심각한 경우라 화면에서 더 강하게 강조한다).
     """
     before, after = DECISION_KO.get(baseline, baseline), DECISION_KO.get(decision, decision)
     last = result.path[-1] if result.path else ""
     where = f"`{last}`({node_titles.get(last, '종단 노드')})" if last else "그래프"
-    because = f" 근거 플래그: {', '.join(result.flags)}." if result.flags else ""
-    trail = f" 평가 경로 {' → '.join(result.path)}." if len(result.path) > 1 else ""
+    flag_labels = [_flag_label(f) for f in result.flags]
+    detail_parts = []
+    if result.flags:
+        detail_parts.append("근거: " + ", ".join(flag_labels))
+    if len(result.path) > 1:
+        detail_parts.append("평가 경로: " + " → ".join(result.path))
+    detail = " · ".join(detail_parts)
 
     if baseline == "REVIEW" and decision == "PASS":
-        return (f"사람이 검토하던 건을 {where}에서 자동 «{after}» 처리했습니다.{trail} "
-                "의도한 자동화 효과입니다. 이 경로의 조건이 실제 승인 기준과 같은지 표본 확인을 권장합니다.", "intended")
+        return (f"사람이 검토하던 건을 {where}에서 자동 «{after}» 처리했습니다. "
+                "의도한 자동화 효과입니다. 이 경로의 조건이 실제 승인 기준과 같은지 표본 확인을 권장합니다.",
+                detail, "intended")
     if baseline == "REVIEW":
-        return (f"검토 대기였던 건을 {where}에서 «{after}»로 확정했습니다.{because}{trail} "
-                "사람이 판단하던 것을 규칙이 대신한 셈이므로, 판정 근거 조항이 맞는지 확인하세요.", "intended")
+        return (f"검토 대기였던 건을 {where}에서 «{after}»로 확정했습니다. "
+                "사람이 판단하던 것을 규칙이 대신한 셈이므로, 판정 근거 조항이 맞는지 확인하세요.",
+                detail, "intended")
     if baseline == "PASS" and decision in RISK_DECISIONS:
-        return (f"기존에 {before}된 건이 {where}에서 «{after}»로 바뀌었습니다.{because}{trail} "
-                "규정 근거가 명확하지 않다면 과탐(오탐)으로 검토량만 늘어납니다 — 임계값을 확인하세요.", "risk")
+        return (f"기존에 {before}된 건이 {where}에서 «{after}»로 바뀌었습니다. "
+                "규정 근거가 명확하지 않다면 과탐(오탐)으로 검토량만 늘어납니다 — 임계값을 확인하세요.",
+                detail, "risk")
     if baseline in {"RETURN", "REJECT"} and decision == "PASS":
-        return (f"기존에 {before}된 건이 «{after}»로 바뀌었습니다.{trail} "
-                "이전에 사람이 문제로 본 건을 규칙이 통과시켰습니다. 놓친 위반이 없는지 반드시 확인하세요.", "risk")
+        return (f"⚠ 이전에 사람이 «{before}» 처리했던 건을 이번 그래프가 «{after}»로 뒤집었습니다. "
+                "놓친 위반이 없는지 반드시 확인하세요 — 사람의 결정이 완전히 뒤집힌 경우라 가장 먼저 봐야 합니다.",
+                detail, "reversal")
     if case.get("aiSuggested"):
-        return (f"«{before}» → «{after}»로 바뀌었고, 비용 분류 자체가 AI 저신뢰 추천 건입니다.{because} "
-                "분류부터 다시 확인하세요.", "risk")
-    return (f"«{before}» → «{after}»로 판정이 바뀌었습니다. {where} 기준입니다.{because}{trail} "
-            "의도한 규정 변화인지 확인하세요.", "intended")
+        return (f"«{before}» → «{after}»로 바뀌었고, 비용 분류 자체가 AI 저신뢰 추천 건입니다. "
+                "분류부터 다시 확인하세요.", detail, "risk")
+    return (f"«{before}» → «{after}»로 판정이 바뀌었습니다. {where} 기준입니다. "
+            "의도한 규정 변화인지 확인하세요.", detail, "intended")
 
 
 def _previous_month_cases(scope: str = policies_scope.GLOBAL) -> tuple[list[dict[str, Any]], str]:
@@ -367,7 +402,8 @@ def run_and_save(graph: RuleGraph, test_cases: list[dict[str, Any]] | None, acto
             decision=row["decision"][:12], path=row["path"], flags=row["flags"],
             expected=row["expected"][:12], matched_expectation=row["matchedExpectation"],
             changed=row["changed"], risk=row["risk"], auto=row["auto"],
-            ai_comment=row["aiComment"], comment_verdict=row["commentVerdict"][:12],
+            ai_comment=row["aiComment"], ai_comment_detail=row.get("aiCommentDetail", ""),
+            comment_verdict=row["commentVerdict"][:12],
             order=index,
         )
         for index, row in enumerate(report["testResults"] + report["historyResults"])
@@ -392,7 +428,8 @@ def _result_row(result: RuleSimulationResult) -> dict[str, Any]:
         "path": result.path or [], "flags": result.flags or [],
         "expected": result.expected, "matchedExpectation": result.matched_expectation,
         "changed": result.changed, "risk": result.risk, "auto": result.auto,
-        "aiComment": result.ai_comment, "commentVerdict": result.comment_verdict,
+        "aiComment": result.ai_comment, "aiCommentDetail": result.ai_comment_detail,
+        "commentVerdict": result.comment_verdict,
     }
 
 
@@ -451,7 +488,13 @@ def _stats(test_rows: list[dict], history_rows: list[dict], shape: dict,
         "riskCount": sum(1 for row in history_rows if row["risk"]),
         # 변경건을 두 갈래로 — 위험 변경(AI가 위험하다고 본 건) / 정상 변경(의도된 변경)
         "changedCount": sum(1 for row in history_rows if row["changed"]),
-        "riskChangedCount": sum(1 for row in history_rows if row["changed"] and row["commentVerdict"] == "risk"),
+        "riskChangedCount": sum(
+            1 for row in history_rows if row["changed"] and row["commentVerdict"] in ("risk", "reversal")
+        ),
+        # 완전 반전(반려/보완요청 → 통과) — 위험 변경 중에서도 최우선으로 봐야 할 건.
+        "reversalChangedCount": sum(
+            1 for row in history_rows if row["changed"] and row["commentVerdict"] == "reversal"
+        ),
         "intendedChangedCount": sum(
             1 for row in history_rows if row["changed"] and row["commentVerdict"] == "intended"
         ),
@@ -492,15 +535,20 @@ def _grades(shape: dict, stats: dict, structure_error: str) -> dict[str, Any]:
         result = ("good", f"테스트 {stats['testPassed']}/{graded} 통과 · 위험 변경 0건")
 
     worst = "poor" if "poor" in (structure[0], result[0]) else "warn" if "warn" in (structure[0], result[0]) else "good"
+    # 권장 처리는 구조/실행결과 중 더 나쁜 등급을 그대로 물려받는다(둘 다 독립된 안전검사라
+    # 하나만 나빠도 전체가 그 등급을 따른다 — "평균"이 아니라 "AND 게이트"). `cause`는 그중
+    # 어느 축이 원인인지 화면에 밝혀 "권장 처리" 카드만 보고도 뭘 고쳐야 하는지 알게 한다.
+    cause = [name for name, grade in (("structure", structure[0]), ("result", result[0])) if grade == worst]
+    cause_label = " · ".join({"structure": "그래프 구조", "result": "실행 결과(테스트/실내역)"}[c] for c in cause)
     action_note = {
-        "poor": "그래프를 수정한 뒤 다시 시뮬레이션하세요.",
-        "warn": "확인 사항을 재검토한 뒤 승인 여부를 결정하세요.",
+        "poor": f"원인: {cause_label}. 그래프를 수정한 뒤 다시 시뮬레이션하세요.",
+        "warn": f"원인: {cause_label}. 확인 사항을 재검토한 뒤 승인 여부를 결정하세요.",
         "good": "승인대기로 전환해도 좋습니다.",
     }[worst]
     return {
         "structure": {"level": structure[0], "label": GRADE_LABEL[structure[0]], "note": structure[1]},
         "result": {"level": result[0], "label": GRADE_LABEL[result[0]], "note": result[1]},
-        "action": {"level": worst, "label": ACTION_LABEL[worst], "note": action_note},
+        "action": {"level": worst, "label": ACTION_LABEL[worst], "note": action_note, "cause": cause},
     }
 
 
@@ -580,6 +628,18 @@ def _narrative_facts(graph, shape, stats, grades, test_rows, history_rows,
         f"직전 버전 시뮬레이션 이력이 없어 0.0% → {percent(stats['autoRate'])}로 계산"
     )
 
+    # 대표 사례 — "8건 중 8건 통과"라는 숫자만으론 왜 그런지 알 수 없다. 실제로 어느 노드를
+    # 거쳐 어떤 판정에 도달했는지 구체적 사례 1~2개를 줘서 서술이 그걸 인용해 설명하게 한다
+    # (§6, 2026-08-19 — "숫자만 있고 왜 그런지는 없다"는 사용자 피드백).
+    def _example(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "label": row["label"], "path": row["path"], "decision": row["decision"],
+            "expected": row.get("expected") or None, "aiComment": row.get("aiComment") or None,
+        }
+    test_pass = next((r for r in test_rows if r["matchedExpectation"]), None)
+    test_fail = next((r for r in test_rows if r["matchedExpectation"] is False), None)
+    risky_examples = [r for r in history_rows if r["changed"] and r["risk"]][:2]
+
     return {
         "graphName": graph.name,
         "graphVersion": graph.version,
@@ -594,20 +654,35 @@ def _narrative_facts(graph, shape, stats, grades, test_rows, history_rows,
         "compareLine": compare,
         "decisionMixTest": _decision_mix(test_rows),
         "decisionMixHistory": _decision_mix(history_rows),
+        # 대표 사례 — 서술이 "왜 이 숫자가 나왔는지"를 구체적으로 인용할 근거.
+        "testExamples": [_example(r) for r in (test_pass, test_fail) if r],
+        "riskyExamples": [_example(r) for r in risky_examples],
     }
 
 
 def _render_template_report(facts: dict[str, Any]) -> str:
     """`_narrative_facts()` 결과를 결정론적 마크다운으로 편성 — LLM 미가용 시 폴백.
 
-    구성: 개요(이유·권장처리) → 그래프 구성 평가 → 실행결과 → 주의깊게 볼 부분.
+    구성: **한눈에 보기**(가장 중요 — 화면에서 항상 펼쳐짐) → 개요(이유·권장처리) →
+    그래프 구성 평가 → 실행결과 → 주의깊게 볼 부분(뒤 4개는 화면에서 접혀서 시작 —
+    프론트가 첫 `## ` 섹션과 나머지를 분리해 렌더링한다, `SimulationReport.tsx` 참조).
     """
     percent = lambda value: f"{value * 100:.1f}%"  # noqa: E731
     shape, stats, grades = facts["shape"], facts["stats"], facts["grades"]
     watch = facts["watch"]
     graded = stats["testGraded"] or stats["testTotal"]
 
+    top_watch = watch[0] if watch else None
+    summary_lines = [
+        "## 한눈에 보기",
+        f"**권장 처리: {grades['action']['label']}** — {facts['reasons'][0] if facts['reasons'] else grades['action']['note']}",
+    ]
+    if top_watch:
+        summary_lines.append(f"가장 먼저 확인할 것: {top_watch}")
+    summary_lines.append("")
+
     lines = [
+        *summary_lines,
         "## 개요",
         f"`{facts['graphName']}` v{facts['graphVersion']}을(를) 테스트셋 {stats['testTotal']}건과 "
         f"{facts['periodLabel']} 실제 내역 {stats['historyTotal']}건으로 시뮬레이션했습니다.",

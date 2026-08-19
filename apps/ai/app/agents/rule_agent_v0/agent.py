@@ -278,8 +278,10 @@ def _run_generation_loop(
 
     for _ in range(MAX_TOOL_TURNS):
         resp = _openai().chat.completions.create(
-            model=settings.model,
-            temperature=0.2,
+            # gpt-5-mini류 심층 모델은 커스텀 temperature를 지원하지 않는다(기본값 1만 허용,
+            # 다른 값을 주면 400). 그래서 temperature를 아예 안 넘긴다 — 2026-08-18 실측.
+            model=settings.model_heavy,
+            reasoning_effort=settings.model_heavy_reasoning_effort,
             timeout=60,
             tools=[_SEARCH_POLICY_TOOL, _SUBMIT_NODES_TOOL],
             tool_choice="auto",
@@ -616,7 +618,7 @@ def generate(req: Any) -> dict[str, Any]:
         #    인증은 서비스 계정 JWT(django_client) — 실패는 감추지 않고 그대로 올린다.
         generation_meta = {
             "agent": "rule-agent-v0",
-            "model": settings.model,
+            "model": settings.model_heavy,
             "query": query,
             "requested_scope": req.scope,
             "include_law": req.include_law,

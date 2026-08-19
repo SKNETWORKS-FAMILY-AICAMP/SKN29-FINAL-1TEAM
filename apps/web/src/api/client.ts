@@ -36,13 +36,11 @@ export const endpoints = {
     api.get(`/rules/${id}/messages/`, { params: nodeKey ? { nodeKey } : undefined }),
   addRuleMessages: (id: string, nodeKey: string, messages: unknown[]) =>
     api.post(`/rules/${id}/messages/`, { nodeKey, messages }),
-  ruleTestCases: (id: string) => api.get(`/rules/${id}/test-cases/`),
-  saveRuleTestCases: (id: string, testCases: unknown[]) => api.put(`/rules/${id}/test-cases/`, { testCases }),
-  // 검증셋 자동생성 — 대화형 아님, 노드 조건을 역산해 완제품 검증셋을 한 번에 만들어
-  // 기존 검증셋에 추가(append)한다. 노드마다 조건 역산 + 자체검증(최대 2회 simulate
-  // 왕복)이 순차로 돌아 시간이 걸릴 수 있어 넉넉히 잡는다.
+  // 검증셋 자동생성 — 대화형 아님, 노드 조건을 역산해 완제품 검증셋을 한 번에 만들고
+  // **통째로 교체**한다(replace, 2026-08-19 이전엔 append). 이제 "시뮬레이션 실행"의
+  // 유일한 경로 — 노드마다 조건 역산 + 자체검증(최대 2회 simulate 왕복)이 순차로 돌아
+  // 시간이 걸릴 수 있어 넉넉히 잡는다.
   generateRuleTestCases: (id: string) => api.post(`/rules/${id}/test-cases/generate/`, {}, { timeout: 200_000 }),
-  simulateRule: (id: string, testCases?: unknown[]) => api.post(`/rules/${id}/simulate/`, testCases ? { testCases } : {}),
   ruleSimulation: (id: string) => api.get(`/rules/${id}/simulation/`),
   requestRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/request-activation/`, { comment }),
   rejectRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/reject-activation/`, { comment }),

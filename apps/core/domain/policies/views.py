@@ -191,6 +191,12 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         맡긴다 — `generate_graph`/`converse`와 같은 얇은 프록시 원칙(인가·전달만). LLM 호출이
         실패해도 시뮬레이션 자체는 실패로 보지 않는다 — `run_and_save()`가 이미 만든 룰 기반
         템플릿 서술(`placeholder=True`)을 그대로 반환한다.
+
+        `narrate=false`를 보내면 서술 생성 자체를 건너뛴다 — 검증셋 자동생성(`testcases.py`)의
+        **자체검증 루프**가 노드마다 이 액션을 최대 2회 내부 호출하는데, 그 결과는 아무도 읽지
+        않는데도 심층 모델(`narrate-report`, 추론 모델이라 느림) 호출을 매번 태워 전체가
+        타임아웃 나던 문제(2026-08-18 실사용 발견)를 해결한다. 사용자가 직접 누르는 "실행"·
+        검증셋 생성의 **최종** 보고서는 여전히 서술을 만든다.
         """
         graph = self.get_object()
         cases = request.data.get("testCases")
@@ -199,18 +205,19 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         if cases is not None:
             simulation.replace_test_cases(graph, cases, _actor(request))
         run = simulation.run_and_save(graph, simulation.test_cases_of(graph), _actor(request))
-        narrate_url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/narrate-report"
-        try:
-            resp = httpx.post(
-                narrate_url, json={"facts": simulation.narrative_facts_for_run(run)},
-                timeout=httpx.Timeout(60.0, connect=5.0),
-            )
-            if resp.status_code == 200:
-                narrative = str(resp.json().get("report") or "").strip()
-                if narrative:
-                    simulation.apply_narrative(run, narrative)
-        except Exception:  # noqa: BLE001  # 서술 생성 실패는 시뮬레이션 실패가 아니다 — 템플릿 폴백 유지
-            pass
+        if request.data.get("narrate", True):
+            narrate_url = f"{django_settings.AI_BASE_URL}/agent/rule-v0/narrate-report"
+            try:
+                resp = httpx.post(
+                    narrate_url, json={"facts": simulation.narrative_facts_for_run(run)},
+                    timeout=httpx.Timeout(60.0, connect=5.0),
+                )
+                if resp.status_code == 200:
+                    narrative = str(resp.json().get("report") or "").strip()
+                    if narrative:
+                        simulation.apply_narrative(run, narrative)
+            except Exception:  # noqa: BLE001  # 서술 생성 실패는 시뮬레이션 실패가 아니다 — 템플릿 폴백 유지
+                pass
         return Response(simulation.report_from_run(run))
 
     @action(detail=True, methods=["get"], url_path="simulation")

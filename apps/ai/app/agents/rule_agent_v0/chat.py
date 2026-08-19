@@ -82,6 +82,11 @@ _SYSTEM_PROMPT = """당신은 법인카드 정산 룰 콘솔의 편집 보조입
    `update_node`/`create_node`를 아예 호출하지 말고, `answer`로만 "이건 참/거짓
    사실이 아니라 사람의 판단이 필요한 부분이라 룰 조건으로 표현할 수 없습니다"라고
    답하세요.
+9-A. [최근 시뮬레이션 결과]가 주어졌다면 참고하세요 — "왜 위험해?", "이 노드 좀 이상한데"
+   처럼 애매한 질문을 받으면 사용자에게 되묻기 전에 먼저 이 결과(권장 처리 사유·위험
+   변경건 예시)를 확인하고, 관련이 있으면 답변에 근거로 인용하세요. 다만 이 결과는
+   직전 실행 시점 스냅샷일 뿐입니다 — 그래프를 수정한 뒤에는 다시 시뮬레이션해야 최신
+   상태를 반영한다는 것을 사용자에게 알려주세요.
 9. 숫자(임계값·인원수·금액 등)를 바꾸라는 지시를 받으면, 그 값이 법인카드 정산
    업무의 상식적인 범위를 크게 벗어나 보이는지(예: 회식 참석 인원 제한을 수십~수백
    명 단위로, 결제 금액 한도를 비현실적으로 크거나 작게) 스스로 판단하세요. 벗어나
@@ -108,8 +113,37 @@ def _format_graph(graph: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_simulation(report: dict[str, Any] | None) -> str:
+    """최근 시뮬레이션 결과를 대화 컨텍스트용으로 요약 — "이 노드가 위험건을 만들고
+    있다"를 사용자가 매번 설명하지 않아도 Agent가 알게 한다(§4, 2026-08-19).
+
+    통계 전부를 덤프하지 않는다 — 프롬프트가 무거워지고, 대화형 수정에 실제로 쓸모있는
+    건 "지금 뭐가 문제인가"뿐이다: 등급·원인, 그리고 위험 변경건 상위 몇 개(어느 노드가
+    근거인지 포함)만 추린다."""
+    if not report:
+        return "(이 그래프는 아직 시뮬레이션을 실행한 적이 없습니다 — 실행 결과 컨텍스트 없음)"
+    grades = report.get("grades") or {}
+    action = grades.get("action") or {}
+    stats = report.get("stats") or {}
+    lines = [
+        f"실행 #{report.get('runId')} ({report.get('ranAt')}"
+        f"{', 그래프 변경 이후 낡은 결과' if report.get('stale') else ''})",
+        f"권장 처리: {action.get('label')} — {action.get('note')}",
+        f"테스트 {stats.get('testPassed')}/{stats.get('testGraded')} 통과, "
+        f"위험 변경 {stats.get('riskChangedCount')}건(완전 반전 {stats.get('reversalChangedCount', 0)}건 포함), "
+        f"자동처리율 {stats.get('autoRate', 0) * 100:.1f}%",
+    ]
+    risky = [row for row in report.get("historyResults", []) if row.get("changed") and row.get("risk")][:3]
+    if risky:
+        lines.append("위험 변경건 예시(최대 3건):")
+        for row in risky:
+            lines.append(f"  - {row.get('label') or row.get('merchant')}: {row.get('aiComment', '')}")
+    return "\n".join(lines)
+
+
 def _build_user_prompt(
-    graph: dict[str, Any], schema_paths: list[str], message: str, node_key: str | None = None
+    graph: dict[str, Any], schema_paths: list[str], message: str,
+    node_key: str | None = None, simulation: dict[str, Any] | None = None,
 ) -> str:
     paths_block = "\n".join(sorted(schema_paths)) if schema_paths else "(목록 조회 실패)"
     focus_block = ""
@@ -121,6 +155,7 @@ def _build_user_prompt(
         f"[현재 그래프 상태]\n{_format_graph(graph)}\n\n"
         f"[허용 경로 목록 — EvalContext v4]\n{paths_block}"
         f"{focus_block}\n\n"
+        f"[최근 시뮬레이션 결과]\n{_format_simulation(simulation)}\n\n"
         f"[사용자 지시]\n{message}"
     )
 
@@ -256,17 +291,22 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
     """
     graph = django_client.get_graph(graph_id)
     schema_paths = django_client.get_eval_context_schema()
+    try:
+        simulation = django_client.get_latest_simulation(graph_id)
+    except Exception:  # noqa: BLE001 — 시뮬레이션 컨텍스트 조회 실패가 대화 자체를 막으면 안 된다
+        simulation = None
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
     messages.extend(_load_history(graph_id))
-    messages.append({"role": "user", "content": _build_user_prompt(graph, schema_paths, message, node_key)})
+    messages.append({"role": "user", "content": _build_user_prompt(graph, schema_paths, message, node_key, simulation)})
     applied: list[dict[str, Any]] = []
     final_answer = ""
     graph_gone = False  # dedup 원복으로 DRAFT가 삭제되면 True — 이후 그래프 접근 금지
 
     for _ in range(MAX_CHAT_TURNS):
         resp = _openai().chat.completions.create(
-            model=settings.model, temperature=0.2, timeout=60,
+            # gpt-5-mini류는 커스텀 temperature 미지원(기본 1만 허용) — 2026-08-18 실측.
+            model=settings.model_heavy, reasoning_effort=settings.model_heavy_reasoning_effort, timeout=60,
             tools=_ALL_TOOLS, tool_choice="auto", messages=messages,
         )
         msg = resp.choices[0].message

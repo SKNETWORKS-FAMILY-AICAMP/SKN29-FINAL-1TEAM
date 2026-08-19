@@ -224,36 +224,18 @@ textarea:focus-visible, [tabindex]:focus-visible {
   position: absolute; display: grid; place-items: center; border: 1px dashed var(--border-strong);
   border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600;
 }
-/* 테스트케이스(커스텀 검증셋) 모달 — 리스트 / 세부 수정 / 대화 Agent */
-.testcase-grid { display: grid; grid-template-columns: 288px minmax(0, 1fr) 340px; gap: var(--space-3); align-items: start; }
-@media (max-width: 1100px) { .testcase-grid { grid-template-columns: 1fr; } }
-
-/* 테스트케이스 내역 리스트 — 제목 한 줄 + 정답(기대) 판정 배지, 그 아래 요약 한 줄.
-   Review List(.review-item)는 가로 flex라 여기에 재사용하면 두 줄이 좌우로 붙는다. */
-.testcase-item {
-  display: flex; flex-direction: column; gap: 3px;
-  padding: var(--space-2) 10px; border: 1px solid transparent; border-radius: var(--radius-control);
-  cursor: pointer; transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
-}
-.testcase-item:hover { background: var(--surface-2); }
-.testcase-item.selected { background: var(--primary-soft); border-color: var(--primary); }
-.testcase-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.testcase-item-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.testcase-item-top .name {
-  flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.testcase-item-top .tag { flex-shrink: 0; }
-.testcase-item-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Active 관리 — 현재 활성 그래프를 스코프별로 좌우 배치 */
 .active-scope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); align-items: start; }
 .active-scope { min-width: 0; }
 /* 시뮬레이션 — 직전 기간 내역 결과 행 */
 .hist-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
 .hist-row.risk { border-color: #f3c9c5; background: var(--tone-red-bg); }
+/* 완전 반전(반려·보완요청 → 통과) — 위험건 중에서도 가장 먼저 봐야 할 건이라 두께로 더 강조 */
+.hist-row.reversal { border-width: 2px; border-color: var(--tone-red); }
 .hist-flow { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .hist-comment { padding: 8px 10px; border-radius: var(--radius-control); font-size: var(--text-meta); line-height: 1.6; background: var(--surface-2); border-left: 3px solid var(--border-strong); }
 .hist-comment.risk { background: var(--tone-red-bg); border-left-color: var(--tone-red); color: var(--tone-red); }
+.hist-comment.reversal { background: var(--tone-red-bg); border-left-width: 5px; border-left-color: var(--tone-red); color: var(--tone-red); font-weight: 600; }
 .hist-comment.intended { background: var(--tone-blue-bg); border-left-color: var(--tone-blue); color: var(--tone-blue); }
 /* Agent 보고서 마크다운 */
 .md { font-size: var(--text-body); line-height: 1.75; }

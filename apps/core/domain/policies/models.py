@@ -483,7 +483,8 @@ class RuleSimulationResult(models.Model):
     risk = models.BooleanField(default=False)
     auto = models.BooleanField(default=False)
     ai_comment = models.TextField(blank=True)
-    comment_verdict = models.CharField(max_length=12, blank=True)  # intended | risk
+    ai_comment_detail = models.TextField(blank=True)  # 플래그·평가경로 등 기술 상세 — 접어서 표시
+    comment_verdict = models.CharField(max_length=12, blank=True)  # intended | risk | reversal
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

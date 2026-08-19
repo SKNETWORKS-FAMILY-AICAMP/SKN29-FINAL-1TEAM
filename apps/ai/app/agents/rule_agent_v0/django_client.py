@@ -99,14 +99,33 @@ def create_rule_graph_draft(
     }
 
 
-def simulate_graph(graph_id: str) -> dict[str, Any]:
+def simulate_graph(graph_id: str, narrate: bool = True) -> dict[str, Any]:
     """검증 시뮬레이션 실행 — 구조검증(`validate_graph`) + 검증셋/직전달 내역 판정.
 
     `simulate()`(Django, 저장 없음)를 감싸는 `POST /api/rules/{id}/simulate` 액션이
     실행 결과를 `RuleSimulationRun`으로 **저장**한다(호출할 때마다 실행 이력에 남음).
     응답의 `structureError`가 빈 문자열이면 구조적으로 유효한 그래프.
+
+    `narrate=False`면 Django가 서술(LLM narrate-report) 생성을 건너뛴다 — 아무도 읽지 않는
+    내부 검증 호출(`testcases.py` 자체검증 루프)에서 심층 모델 호출을 아끼기 위함.
+
+    `narrate=True`일 때는 기본 20초(`core_auth.TIMEOUT`)보다 넉넉하게 잡는다 — Django가
+    내부적으로 narrate-report(심층 모델, 최대 60초 예산)를 기다리므로, 이 호출의 타임아웃이
+    그보다 짧으면 Django 응답이 오기도 전에 여기서 먼저 끊어진다(2026-08-18 실사용 발견 —
+    검증셋 자동생성의 마지막 호출이 20초 만에 ReadTimeout으로 끊겼었다).
     """
-    return _request("POST", f"/api/rules/{graph_id}/simulate/", json={}).json()
+    timeout = 75.0 if narrate else None
+    kwargs = {"timeout": timeout} if timeout else {}
+    return _request("POST", f"/api/rules/{graph_id}/simulate/", json={"narrate": narrate}, **kwargs).json()
+
+
+def get_latest_simulation(graph_id: str) -> dict[str, Any] | None:
+    """최신 시뮬레이션 보고서. 실행 이력이 없으면 None(204) — 대화형 수정(§4)이 "이 노드가
+    위험건을 만들고 있다" 같은 사실을 프롬프트에 얹을 때 쓴다. 없으면 그냥 그 맥락 없이 진행."""
+    resp = _request("GET", f"/api/rules/{graph_id}/simulation/")
+    if resp.status_code == 204:
+        return None
+    return resp.json()
 
 
 def discard_draft(graph_id: str) -> None:
