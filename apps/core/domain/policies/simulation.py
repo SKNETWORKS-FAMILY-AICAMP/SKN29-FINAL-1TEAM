@@ -769,3 +769,35 @@ def apply_narrative(run: RuleSimulationRun, narrative: str) -> None:
     if isinstance(graph.sim_result, dict) and graph.sim_result.get("runId") == run.pk:
         graph.sim_result["placeholder"] = False
         graph.save(update_fields=["sim_result"])
+
+
+def apply_action_assessment(run: RuleSimulationRun, action: dict[str, Any] | None) -> None:
+    """LLM이 재판단한 "권장 처리"(action) 등급을 반영 — 2026-08-19, 사용자 요청으로 도입.
+
+    `_grades()`의 기계적 규칙(구조/실행결과 중 더 나쁜 쪽을 그대로 채택)이 지나치게
+    보수적일 수 있어 LLM이 `facts` 전체를 보고 종합 판단하게 했다. **단, 안전 하한은
+    서버에서 한 번 더 강제한다** — 구조 평가가 `poor`(구조 오류·도달 불가 노드)면 LLM이
+    무슨 응답을 줬든 `poor`로 되돌린다. 프롬프트 지시만으로는 LLM이 틀릴 수 있으므로
+    (환각·지시 무시), "그래프가 구조적으로 깨진 상태를 활성화해도 된다고 판단"하는 일이
+    실제로 일어나지 않도록 코드로 검증한다.
+    """
+    if not isinstance(action, dict):
+        return
+    level = action.get("level")
+    note = str(action.get("note") or "").strip()
+    if level not in {"poor", "warn", "good"} or not note:
+        return  # 스키마를 어긴 응답은 조용히 무시 — 결정론적 action 유지
+
+    grades = dict(run.grades or {})
+    structure = grades.get("structure") or {}
+    if structure.get("level") == "poor":
+        level = "poor"  # 안전 하한 — LLM 응답과 무관하게 강제
+
+    current = grades.get("action") or {}
+    grades["action"] = {**current, "level": level, "label": ACTION_LABEL[level], "note": note, "aiAdjusted": True}
+    run.grades = grades
+    run.save(update_fields=["grades"])
+    graph = run.graph
+    if isinstance(graph.sim_result, dict) and graph.sim_result.get("runId") == run.pk:
+        graph.sim_result["grades"] = grades
+        graph.save(update_fields=["sim_result"])

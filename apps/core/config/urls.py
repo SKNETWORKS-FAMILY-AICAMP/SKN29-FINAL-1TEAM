@@ -8,7 +8,7 @@ from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import AiLabProxyView, DashboardView, health
 from domain.erp.views import ErpVoucherViewSet
 from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSet
-from domain.policies.rule_agent_v0_views import EvalContextSchemaView
+from domain.policies.rule_agent_v0_views import ActionSchemaView, EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import SettlementSummaryView, SettlementViewSet, TeamBudgetView
 from domain.transactions.views import ReceiptViewSet, TransactionViewSet, TxFeaturesView
@@ -42,6 +42,7 @@ urlpatterns = [
     path("api/internal/tx-features/<int:tx_id>/", TxFeaturesView.as_view(), name="internal_tx_features"),
     path("api/internal/settlement-summary/<int:settlement_id>/", SettlementSummaryView.as_view(), name="internal_settlement_summary"),
     path("api/internal/rule-agent-v0/eval-context-schema/", EvalContextSchemaView.as_view(), name="internal_eval_context_schema"),
+    path("api/internal/rule-agent-v0/action-schema/", ActionSchemaView.as_view(), name="internal_action_schema"),
     # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.
     path("api/internal/policy-docs/<int:pk>/ingest-result/", IngestCallbackView.as_view(), name="internal_ingest_result"),
     path("api/", include(router.urls)),

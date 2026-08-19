@@ -9,6 +9,23 @@ from .dsl import DSLValidationError, evaluate, extract_vars, resolve_path, valid
 
 
 DECISIONS = {"PASS", "REJECT", "REVIEW", "RETURN"}
+PASS_THROUGH = "PASS_THROUGH"  # action.decision에 쓸 수 있는 특수값 — 아래 _finalize 참조
+
+# ── 룰 작성 카탈로그(2026-08-19) ────────────────────────────────────────────
+# `DECISIONS`(위)는 순회 종료 시 유효성 검사용 집합(순서 없음). 아래 두 튜플은
+# **룰 작성 화면·Rule Agent 프롬프트가 선택지로 보여줄 카탈로그**다 — 이 엔진 모듈이
+# 유일한 소스이고, 다른 곳(AI 서비스 `agent.py`, 프론트 `DraftTab.tsx`)은 이 값을
+# API로 받아써야 한다(`views.py::RuleGraphViewSet.action_schema`).
+#
+# 이전엔 AI 서비스와 프론트가 이 목록을 각자 하드코딩해 3곳에 독립적으로 존재했다
+# (지금은 값이 같아 안 드러나지만, 한쪽만 바뀌면 조용히 어긋나는 구조였다) — 단일
+# 소스로 합친다(`llm_wiki/_context/rule-agent-v1-ux-upgrade-plan.md` §8 후속).
+#
+# severity는 엔진이 실제로 읽지 않는다(현재 engine.py 어디서도 참조 안 함) — 노드
+# 작성자가 참고용으로 붙이는 메타데이터일 뿐이라 "진짜 소스"가 원래 없었다. 그래도
+# 세 곳에 따로 하드코딩되어 있던 걸 하나로 모으는 의미는 있다.
+DECISIONS_CATALOG = ("PASS", "REJECT", "RETURN", "REVIEW", PASS_THROUGH)
+SEVERITIES_CATALOG = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")
 
 # ── 미해소 사실 가드 (policy-domain.md §6, eval-context-sourcing.md)
 #

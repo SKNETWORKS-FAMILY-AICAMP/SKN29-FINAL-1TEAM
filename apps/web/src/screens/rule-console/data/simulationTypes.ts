@@ -48,7 +48,12 @@ export interface SimResultRow {
 }
 
 export type GradeLevel = 'poor' | 'warn' | 'good'
-export interface Grade { level: GradeLevel; label: string; note: string; cause?: ('structure' | 'result')[] }
+export interface Grade {
+  level: GradeLevel; label: string; note: string; cause?: ('structure' | 'result')[]
+  /** true면 이 등급(주로 action)이 결정론적 규칙이 아니라 Agent가 facts를 보고 재판단한 값 —
+   * 단, 구조 오류가 있으면 서버가 poor로 강제해 이 값이 true여도 poor 밑으로는 못 내려간다. */
+  aiAdjusted?: boolean
+}
 export const gradeTone = (level: GradeLevel) => level === 'good' ? 'ok' : level === 'warn' ? 'caution' : 'warn'
 
 export interface SimReport {

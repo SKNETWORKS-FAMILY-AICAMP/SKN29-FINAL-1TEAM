@@ -1,6 +1,5 @@
-// 검증 시뮬레이션 보고서 — 실행 전 빈 상태 / 실행 결과(통계 · Agent 의견 · 결과 리스트).
-// 실행 이력이 있어도 "실행하기"를 눌러야 펼쳐진다 — 진입 직후 숫자를 바로 쏟아내지 않는다
-// (2026-08-18). 대신 별도의 "펼쳐서 보기" 중간 단계는 없다 — 실행 버튼 한 번이면 결과까지 한 번에.
+// 검증 시뮬레이션 보고서 — 실행 이력 있으면 그대로 표시 / 없으면 빈 상태("실행하기").
+// (2026-08-19) 실행 버튼 한 번이면 검증셋 생성부터 결과까지 한 번에 — 중간 단계 없음.
 import { useState } from 'react'
 import { ArrowRight, FlaskConical, Play, RotateCw } from 'lucide-react'
 import { Markdown } from '../../components/ui/Markdown'
@@ -27,25 +26,19 @@ function splitAgentReport(source: string): { summary: string; detail: string } {
   return { summary: source.slice(0, cut).trim(), detail: source.slice(cut).trim() }
 }
 
-export function SimulationEmptyState({ running, error, lastRun, onRun }: {
+export function SimulationEmptyState({ running, error, onRun }: {
   running: boolean; error: string
-  /** 과거 실행 이력이 있으면(재조회로 존재는 알지만 아직 안 펼친 상태) 문구만 다르게 — "미실행"으로 오해 주지 않게. */
-  lastRun?: { runId: number; ranAt: string; stale: boolean }
   onRun: () => void
 }) {
   return (
     <div className="card">
       <div className="card-head">
         <h3>검증 시뮬레이션 보고서</h3>
-        <span className="text-meta">{lastRun ? `마지막 실행 #${lastRun.runId} (${lastRun.ranAt})` : '미실행'}</span>
+        <span className="text-meta">미실행</span>
       </div>
       <div className="card-body stack" style={{ alignItems: 'center', gap: 10, padding: '40px 16px', textAlign: 'center' }}>
         <FlaskConical size={30} className="muted" />
-        <b style={{ fontSize: 14 }}>
-          {lastRun
-            ? (lastRun.stale ? '그래프가 바뀌어 다시 실행이 필요합니다.' : '이전 실행 결과가 있습니다 — 실행하면 최신 결과를 볼 수 있습니다.')
-            : '아직 시뮬레이션을 실행하지 않았습니다.'}
-        </b>
+        <b style={{ fontSize: 14 }}>아직 시뮬레이션을 실행하지 않았습니다.</b>
         <div className="text-meta" style={{ maxWidth: 960, lineHeight: 1.7 }}>
           선택한 그래프의 현재 조건으로 <b>검증셋을 자동생성</b>하고 <b>직전 달 실제 정산 내역</b>에도 적용해
           판정 결과·통계·Agent 의견을 만듭니다
@@ -153,11 +146,12 @@ function GradeTile({ label, grade }: { label: string; grade: Grade }) {
     <div className={'kpi ' + gradeTone(grade.level)}>
       <div className="label">{label}</div>
       <div className="value" style={{ fontSize: 'var(--text-value)' }}>{grade.label}</div>
-      {grade.cause && grade.cause.length > 0 && (
+      {(grade.cause && grade.cause.length > 0) || grade.aiAdjusted ? (
         <div className="row" style={{ gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
-          {grade.cause.map((c) => <span key={c} className="tag warn" style={{ fontSize: 10 }}>원인 · {CAUSE_LABEL[c]}</span>)}
+          {grade.cause?.map((c) => <span key={c} className="tag warn" style={{ fontSize: 10 }}>원인 · {CAUSE_LABEL[c]}</span>)}
+          {grade.aiAdjusted && <span className="tag ai" style={{ fontSize: 10 }} title="Agent가 실행 결과 전체를 보고 재판단한 등급입니다">🤖 Agent 판단</span>}
         </div>
-      )}
+      ) : null}
       <div className="text-meta">{grade.note}</div>
     </div>
   )

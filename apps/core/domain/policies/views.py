@@ -12,6 +12,7 @@ from . import services, simulation
 from .context_builder import load_tables, lookup
 from .eval_context import empty_eval_context
 from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .rule_agent_v0_views import action_schema_payload
 from .scope import normalize_scope
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
@@ -126,9 +127,19 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action in ("create_version", "create_graph", "generate_graph", "create_node",
                            "update_node", "discard_draft", "delete_graph", "simulate",
                            "test_cases", "simulation_report", "request_activation", "messages",
-                           "converse", "generate_test_cases"):
+                           "converse", "generate_test_cases", "action_schema"):
             return [CanViewRule()]
         return super().get_permissions()
+
+    @action(detail=False, methods=["get"], url_path="action-schema")
+    def action_schema(self, request):
+        """GET /api/rules/action-schema/ — decision/severity 선택지 카탈로그(룰 콘솔 화면용).
+
+        `engine.py`가 유일한 소스 — AI 서비스가 쓰는 내부 API(`ActionSchemaView`)와 같은
+        페이로드를 재사용한다(§8 후속, 2026-08-19). 프론트가 각자 하드코딩하던
+        `<option>PASS</option>...` 목록을 여기서 받아 대체한다.
+        """
+        return Response(action_schema_payload())
 
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
@@ -187,10 +198,10 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
     def simulate(self, request, pk=None):
         """검증 시뮬레이션 — 검증셋 + 직전달 내역으로 판정하고 결과를 저장한 뒤 보고서를 돌려준다.
 
-        판정·통계는 여기서 이미 실데이터로 저장된다. 그 위에 얹는 **서술문**만 Rule Agent에게
-        맡긴다 — `generate_graph`/`converse`와 같은 얇은 프록시 원칙(인가·전달만). LLM 호출이
-        실패해도 시뮬레이션 자체는 실패로 보지 않는다 — `run_and_save()`가 이미 만든 룰 기반
-        템플릿 서술(`placeholder=True`)을 그대로 반환한다.
+        판정·통계는 여기서 이미 실데이터로 저장된다. 그 위에 얹는 **서술문 + 권장 처리 재판단**만
+        Rule Agent에게 맡긴다 — `generate_graph`/`converse`와 같은 얇은 프록시 원칙(인가·전달만).
+        LLM 호출이 실패해도 시뮬레이션 자체는 실패로 보지 않는다 — `run_and_save()`가 이미 만든
+        룰 기반 템플릿 서술(`placeholder=True`)과 결정론적 action 등급을 그대로 반환한다.
 
         `narrate=false`를 보내면 서술 생성 자체를 건너뛴다 — 검증셋 자동생성(`testcases.py`)의
         **자체검증 루프**가 노드마다 이 액션을 최대 2회 내부 호출하는데, 그 결과는 아무도 읽지
@@ -213,9 +224,11 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
                     timeout=httpx.Timeout(60.0, connect=5.0),
                 )
                 if resp.status_code == 200:
-                    narrative = str(resp.json().get("report") or "").strip()
+                    data = resp.json()
+                    narrative = str(data.get("report") or "").strip()
                     if narrative:
                         simulation.apply_narrative(run, narrative)
+                    simulation.apply_action_assessment(run, data.get("action"))
             except Exception:  # noqa: BLE001  # 서술 생성 실패는 시뮬레이션 실패가 아니다 — 템플릿 폴백 유지
                 pass
         return Response(simulation.report_from_run(run))

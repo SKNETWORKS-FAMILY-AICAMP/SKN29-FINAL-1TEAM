@@ -42,7 +42,7 @@ import json
 from typing import Any
 
 from . import django_client, mcp_client
-from .agent import _CONDITION_NODE_SCHEMA, SEVERITIES, _build_condition, _openai, _validate_condition
+from .agent import _CONDITION_NODE_SCHEMA, _build_condition, _openai, _validate_condition, decisions, severities
 from .settings import settings
 
 # 대화 1턴에 허용하는 최대 툴 호출 라운드. 조회 없이 바로 답하는 경우가 대부분이라
@@ -177,49 +177,56 @@ _SEARCH_POLICY_TOOL = {
     },
 }
 
-_UPDATE_NODE_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "update_node",
-        "description": "기존 노드의 조건/액션을 수정한다.",
-        "parameters": {
-            "type": "object", "additionalProperties": False,
-            "$defs": {"condition_node": _CONDITION_NODE_SCHEMA},
-            "properties": {
-                "node_key": {"type": "string"},
-                "condition": {"$ref": "#/$defs/condition_node"},
-                "when": {"type": "string", "description": "언제 걸리나요? (사람이 읽는 설명)"},
-                "then": {"type": "string", "description": "걸리면 어떻게 되나요? (사람이 읽는 설명)"},
-                "decision": {"type": "string", "enum": ["PASS", "REJECT", "RETURN", "REVIEW"]},
-                "severity": {"type": "string", "enum": SEVERITIES},
-                "title": {"type": "string"},
+def _update_node_tool() -> dict[str, Any]:
+    """decision/severity enum이 Django `engine.py` 카탈로그를 따른다(§8 후속,
+    2026-08-19) — 이전엔 이 파일이 `["PASS","REJECT","RETURN","REVIEW"]`를 별도로
+    하드코딩했다(`agent.py`가 쓰던 목록과도, 실제 엔진 소스와도 독립적으로 존재하던
+    3번째 사본). 호출 시점에 조립해야 캐시된 최신 카탈로그를 반영한다."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "update_node",
+            "description": "기존 노드의 조건/액션을 수정한다.",
+            "parameters": {
+                "type": "object", "additionalProperties": False,
+                "$defs": {"condition_node": _CONDITION_NODE_SCHEMA},
+                "properties": {
+                    "node_key": {"type": "string"},
+                    "condition": {"$ref": "#/$defs/condition_node"},
+                    "when": {"type": "string", "description": "언제 걸리나요? (사람이 읽는 설명)"},
+                    "then": {"type": "string", "description": "걸리면 어떻게 되나요? (사람이 읽는 설명)"},
+                    "decision": {"type": "string", "enum": decisions()},
+                    "severity": {"type": "string", "enum": severities()},
+                    "title": {"type": "string"},
+                },
+                "required": ["node_key"],
             },
-            "required": ["node_key"],
         },
-    },
-}
+    }
 
-_CREATE_NODE_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "create_node",
-        "description": "새 노드를 추가한다. node_key는 영문/숫자/`_`/`-`로 새로 짓는다.",
-        "parameters": {
-            "type": "object", "additionalProperties": False,
-            "$defs": {"condition_node": _CONDITION_NODE_SCHEMA},
-            "properties": {
-                "node_key": {"type": "string"},
-                "condition": {"$ref": "#/$defs/condition_node"},
-                "when": {"type": "string"},
-                "then": {"type": "string"},
-                "decision": {"type": "string", "enum": ["PASS", "REJECT", "RETURN", "REVIEW"]},
-                "severity": {"type": "string", "enum": SEVERITIES},
-                "title": {"type": "string"},
+
+def _create_node_tool() -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": "create_node",
+            "description": "새 노드를 추가한다. node_key는 영문/숫자/`_`/`-`로 새로 짓는다.",
+            "parameters": {
+                "type": "object", "additionalProperties": False,
+                "$defs": {"condition_node": _CONDITION_NODE_SCHEMA},
+                "properties": {
+                    "node_key": {"type": "string"},
+                    "condition": {"$ref": "#/$defs/condition_node"},
+                    "when": {"type": "string"},
+                    "then": {"type": "string"},
+                    "decision": {"type": "string", "enum": decisions()},
+                    "severity": {"type": "string", "enum": severities()},
+                    "title": {"type": "string"},
+                },
+                "required": ["node_key", "condition", "when", "then", "decision", "severity", "title"],
             },
-            "required": ["node_key", "condition", "when", "then", "decision", "severity", "title"],
         },
-    },
-}
+    }
 
 _DELETE_NODE_TOOL = {
     "type": "function",
@@ -247,7 +254,8 @@ _ANSWER_TOOL = {
     },
 }
 
-_ALL_TOOLS = [_SEARCH_POLICY_TOOL, _UPDATE_NODE_TOOL, _CREATE_NODE_TOOL, _DELETE_NODE_TOOL, _ANSWER_TOOL]
+def _all_tools() -> list[dict[str, Any]]:
+    return [_SEARCH_POLICY_TOOL, _update_node_tool(), _create_node_tool(), _DELETE_NODE_TOOL, _ANSWER_TOOL]
 
 
 def _condition_and_text(args: dict[str, Any], schema_paths: set[str]) -> tuple[Any, str, list[str]]:
@@ -307,7 +315,7 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
         resp = _openai().chat.completions.create(
             # gpt-5-mini류는 커스텀 temperature 미지원(기본 1만 허용) — 2026-08-18 실측.
             model=settings.model_heavy, reasoning_effort=settings.model_heavy_reasoning_effort, timeout=60,
-            tools=_ALL_TOOLS, tool_choice="auto", messages=messages,
+            tools=_all_tools(), tool_choice="auto", messages=messages,
         )
         msg = resp.choices[0].message
         tool_calls = msg.tool_calls or []

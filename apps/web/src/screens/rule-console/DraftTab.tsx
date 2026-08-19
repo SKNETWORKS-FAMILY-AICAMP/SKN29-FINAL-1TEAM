@@ -33,6 +33,18 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const [generating, setGenerating] = useState(false)
   // 대화 1턴은 LLM 여러 턴 + 그래프 CRUD 왕복이라 수십 초 걸린다 — 중복 전송을 막는다.
   const [chatting, setChatting] = useState(false)
+  // decision/severity 선택지 — 서버 카탈로그(§8 후속). 조회 실패 시 이전 하드코딩 값과
+  // 같은 기본값으로 대체해 화면이 빈 드롭다운이 되지 않게 한다.
+  const [decisionOptions, setDecisionOptions] = useState<string[]>(['PASS', 'REJECT', 'REVIEW', 'RETURN', 'PASS_THROUGH'])
+  const [severityOptions, setSeverityOptions] = useState<string[]>(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'])
+
+  useEffect(() => {
+    endpoints.ruleActionSchema().then(({ data }) => {
+      const result = data as { decisions?: string[]; severities?: string[] }
+      if (result.decisions?.length) setDecisionOptions(result.decisions)
+      if (result.severities?.length) setSeverityOptions(result.severities)
+    }).catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -341,7 +353,8 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
           ? <NodeDetail key={`${selGraph.id}-${selNode.nodeKey}`} graph={selGraph} node={selNode}
               onStartEdit={() => void startNodeEdit(selGraph, selNode.nodeKey)} onDelete={() => void deleteNode(selGraph, selNode)}
               onReverted={(activeId) => revertToActive(selGraph, activeId)}
-              onNodeChanged={(patch) => reflectNode(selGraph.id, selNode.nodeKey, patch)} />
+              onNodeChanged={(patch) => reflectNode(selGraph.id, selNode.nodeKey, patch)}
+              decisionOptions={decisionOptions} severityOptions={severityOptions} />
           : <div className="card"><div className="card-body text-meta">좌측에서 노드를 선택하거나 신규 룰을 생성하세요.</div></div>}
 
         <div className="card" style={{ borderColor: 'var(--primary)' }}>
@@ -388,9 +401,10 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   )
 }
 
-function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged }: {
+function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged, decisionOptions, severityOptions }: {
   graph: RuleGraph; node: GraphNode; onStartEdit: () => void; onDelete: () => void
   onReverted: (activeId: string) => void; onNodeChanged: (patch: Partial<GraphNode>) => void
+  decisionOptions: string[]; severityOptions: string[]
 }) {
   const editable = graph.status === 'DRAFT'
   const [showCode, setShowCode] = useState(false)
@@ -473,8 +487,14 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       </div>
 
       <div className="field"><label>액션</label><div className="grid-2" style={{ gap: 8 }}>
-        <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">결정 선택</option><option>PASS</option><option>REJECT</option><option>REVIEW</option><option>RETURN</option><option>PASS_THROUGH</option></select>
-        <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">심각도 선택</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select>
+        <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}>
+          <option value="">결정 선택</option>
+          {decisionOptions.map((value) => <option key={value}>{value}</option>)}
+        </select>
+        <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}>
+          <option value="">심각도 선택</option>
+          {severityOptions.map((value) => <option key={value}>{value}</option>)}
+        </select>
         <input disabled={!editable} value={action.flag ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, flag: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="플래그" />
         <input disabled={!editable} value={action.note ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, note: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="처리 안내/메모" />
         <input disabled={!editable} value={action.approver ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, approver: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="확인·승인 주체" />

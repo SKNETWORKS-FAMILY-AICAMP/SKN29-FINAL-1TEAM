@@ -17,9 +17,9 @@ export function SimulationTab() {
   const [error, setError] = useState('')
   const [graphId, setGraphId] = useState('')
   const [nodeKey, setNodeKey] = useState('')
+  // 과거 실행 결과가 있으면 그대로 보여준다(2026-08-19, "결과를 굳이 숨길 이유가 없다"는
+  // 재요청) — report가 곧 "보여줄 결과 있음"이라 별도 revealed 플래그가 필요 없다.
   const [report, setReport] = useState<SimReport | null>(null)
-  // 과거 실행 결과가 있어도 사용자가 펼치거나(onExpand) 새로 실행하기 전엔 숫자를 안 보여준다.
-  const [revealed, setRevealed] = useState(false)
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState('')
   const [genNote, setGenNote] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null)
@@ -57,7 +57,6 @@ export function SimulationTab() {
     if (!graphId) return
     let cancelled = false
     setReport(null)
-    setRevealed(false)
     setRunError('')
     setRequested('')
     setGenNote(null)
@@ -92,7 +91,7 @@ export function SimulationTab() {
         status: string; detail?: string; attempted?: number; generated?: number
         unresolved?: { nodeKey: string; kind: string; reason: string }[]
         skippedNodes?: { node_key: string; reason: string }[]
-        belowTarget?: boolean; minTarget?: number; trimmedForCap?: number; maxTarget?: number
+        belowTarget?: boolean; minTarget?: number
         generationLog?: { nodeKey: string; kind: string; outcome: string; problem: string }[]
         simulationReport?: SimReport
       }
@@ -100,18 +99,16 @@ export function SimulationTab() {
         setGenNote({ tone: 'warn', text: result.detail || '역산 가능한 노드가 없어 생성하지 못했습니다.' })
         return
       }
-      if (result.simulationReport) { setReport(result.simulationReport); setRevealed(true) }
+      if (result.simulationReport) setReport(result.simulationReport)
       setGenerationLog(result.generationLog ?? [])
       const attempted = result.attempted ?? result.generated ?? 0
       const generated = result.generated ?? 0
       const unresolvedCount = result.unresolved?.length ?? 0
       const skippedCount = result.skippedNodes?.length ?? 0
-      const trimmedCount = result.trimmedForCap ?? 0
       // "전체 N건 중 M건 반영" — 시도 자체가 생성 건수와 같으면(전부 통과) 굳이 분모를 안 보인다.
       const parts = [attempted > generated ? `총 ${attempted}건 중 ${generated}건 검증셋에 반영` : `${generated}건 생성`]
       if (unresolvedCount) parts.push(`${unresolvedCount}건은 자체검증 실패로 제외`)
       if (skippedCount) parts.push(`${skippedCount}개 노드는 지원 범위 밖 조건이라 건너뜀`)
-      if (trimmedCount) parts.push(`상한 ${result.maxTarget}건에 맞춰 ${trimmedCount}건은 노드별로 고르게 제외`)
       if (result.belowTarget) parts.push(`그래프 구조상 최소 ${result.minTarget}건을 채울 소스가 없어 ${generated}건까지만 생성됨`)
       setGenNote({ tone: unresolvedCount || skippedCount || result.belowTarget ? 'warn' : 'ok', text: parts.join(' · ') })
     } catch (failure) {
@@ -226,16 +223,14 @@ export function SimulationTab() {
             </div>
           )}
 
-          {/* ③ 검증 시뮬레이션 보고서 — 진입 직후에는 항상 빈 상태(과거 실행 이력이 있어도
-              숫자를 먼저 보여주지 않는다). "실행하기" 한 번이면 검증셋 생성부터 시뮬레이션까지
-              끝나 전체 보고서로 펼쳐진다 — 별도의 "검증셋 자동생성"/"펼쳐서 보기" 버튼 없이. */}
-          {report && revealed
+          {/* ③ 검증 시뮬레이션 보고서 — 과거 실행 이력이 있으면 그대로 보여주고, 없으면 빈
+              상태("실행하기") — "실행하기" 한 번이면 검증셋 생성부터 시뮬레이션까지 끝나
+              전체 보고서로 펼쳐진다 — 별도의 "검증셋 자동생성" 버튼 없이. */}
+          {report
             ? <SimulationReportView report={report} running={running} error={runError} onRun={() => void run()} />
-            : <SimulationEmptyState running={running} error={runError}
-                lastRun={report ? { runId: report.runId, ranAt: report.ranAt, stale: report.stale } : undefined}
-                onRun={() => void run()} />}
+            : <SimulationEmptyState running={running} error={runError} onRun={() => void run()} />}
 
-          {report && revealed && (
+          {report && (
             <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
               {report.structureError && <span className="text-meta" style={{ color: 'var(--tone-red)' }}>구조 오류가 있어 Active 요청을 보낼 수 없습니다.</span>}
               {!report.structureError && pendingScopes.has(graph.scope) && (

@@ -46,6 +46,27 @@ def get_eval_context_schema() -> list[str]:
         return []
 
 
+def get_action_schema() -> dict[str, Any]:
+    """decision/severity 선택지 카탈로그. SoT는 Django `engine.py`(§8 후속, 2026-08-19).
+
+    이전엔 이 파일을 호출하는 `agent.py`가 `DECISIONS`/`SEVERITIES`를 직접 하드코딩했다
+    (프론트 `DraftTab.tsx`도 별도로 하드코딩 — 3곳에 독립 존재). 조회 실패 시엔 그 옛
+    하드코딩 값을 기본값으로 돌려준다 — Django가 잠깐 안 떠 있어도 룰 생성 자체가
+    막히면 안 된다(§ `get_eval_context_schema`와 같은 원칙).
+    """
+    fallback = {"decisions": ["PASS", "REJECT", "RETURN", "REVIEW", "PASS_THROUGH"],
+                "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], "passThrough": "PASS_THROUGH"}
+    try:
+        r = httpx.get(f"{_base()}/api/internal/rule-agent-v0/action-schema/", timeout=_TIMEOUT)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("decisions") and data.get("severities"):
+            return data
+        return fallback
+    except Exception:  # noqa: BLE001
+        return fallback
+
+
 # ---------------------------------------------------------------- 쓰기
 
 def create_rule_graph_draft(

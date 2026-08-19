@@ -130,7 +130,12 @@ class NarrateReportRequest(BaseModel):
 
 @router.post("/narrate-report")
 def narrate_report(req: NarrateReportRequest):
-    """시뮬레이션 결과 서술 생성(§13.3) — Django가 이미 계산한 통계/판정(`facts`)을 문장으로
-    풀어쓴다. LLM 호출이 실패해도 500을 주지 않고 `report: null`을 돌려준다 — 호출부(Django)가
-    템플릿 폴백을 유지하는 정상 경로이지 에러가 아니다."""
-    return {"report": rule_narrate.narrate_report(req.facts)}
+    """시뮬레이션 결과 서술 생성(§13.3) + 권장 처리 판단(2026-08-19) — Django가 이미 계산한
+    통계/구조·실행결과 등급(`facts`)을 바탕으로 문장을 쓰고, 권장 처리(action) 등급도 다시
+    판단한다(구조 등급이 poor면 Django가 서버 측에서 poor로 강제 — LLM 응답과 무관).
+    LLM 호출이 실패해도 500을 주지 않고 `report: null`을 돌려준다 — 호출부(Django)가
+    템플릿 폴백 + 결정론적 action을 유지하는 정상 경로이지 에러가 아니다."""
+    result = rule_narrate.narrate_report(req.facts)
+    if result is None:
+        return {"report": None, "action": None}
+    return result

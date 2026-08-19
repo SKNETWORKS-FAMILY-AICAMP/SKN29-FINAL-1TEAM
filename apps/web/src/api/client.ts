@@ -24,6 +24,9 @@ export const endpoints = {
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
+  // decision/severity 선택지 카탈로그 — Django `engine.py`가 소스(§8 후속, 2026-08-19).
+  // 이전엔 이 화면이 <option>을 하드코딩해서 AI 서비스가 쓰던 목록과 독립적으로 존재했다.
+  ruleActionSchema: () => api.get('/rules/action-schema/'),
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   // 버전 이력(같은 family 전체) 조회 · 특정 과거 버전으로 롤백

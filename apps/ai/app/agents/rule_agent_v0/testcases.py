@@ -42,7 +42,7 @@ import json
 from typing import Any
 
 from . import django_client
-from .agent import SEVERITIES, _openai
+from .agent import _openai
 from .settings import settings
 
 MAX_CANDIDATES_PER_NODE = 5  # 확실히 걸림·경계값·분기반대편(경계·확실)·결측 — 최대 5종
@@ -50,10 +50,9 @@ MAX_CANDIDATES_PER_NODE = 5  # 확실히 걸림·경계값·분기반대편(경�
 # (지어내진 않는다). 이 미달 시 "M/N건" 처럼 몇 건이 부족한지 응답에 남긴다
 # (agent-v1-upgrade-plan.md 후속 §2-1, 2026-08-18 설계+구현).
 MIN_TOTAL_TARGET = 5
-# 그래프 전체 상한 — 노드가 많은 그래프(예: 4노드×5종=20)에서 검증셋이 과하게 커지는 것을
-# 막는다. predictable(definite/boundary)은 노드 커버리지의 핵심이라 자르지 않고, discovery
-# (분기반대편·결측)만 이 상한에 맞춰 줄인다(2026-08-18, 15건이 너무 많다는 피드백으로 도입).
-MAX_TOTAL_CANDIDATES = 10
+# 상한 없음 — 2026-08-18에 MAX_TOTAL_CANDIDATES=10을 도입했다가 2026-08-19 "상한은
+# 제거하는 게 맞다"는 재요청으로 철회했다. 노드당 최대 5종(위 `MAX_CANDIDATES_PER_NODE`)
+# 만으로 전체 규모를 통제한다 — 노드가 많은 그래프는 정직하게 검증셋도 커진다.
 
 _UNSUPPORTED = object()
 _NEGATE_OP = {">": "<=", ">=": "<", "<": ">=", "<=": ">"}
@@ -404,28 +403,9 @@ def generate_test_cases(graph_id: str) -> dict[str, Any]:
     predictable = [c for c in all_candidates if c.get("predictable", True)]
     discovery = [c for c in all_candidates if not c.get("predictable", True)]
 
-    # 전체 상한을 넘으면 discovery만 줄인다 — 한 노드 것부터 다 자르지 않고 노드별로
-    # 돌아가며 하나씩 덜어내 커버리지를 고르게 유지한다.
-    budget = max(0, MAX_TOTAL_CANDIDATES - len(predictable))
-    trimmed_count = 0
-    if len(discovery) > budget:
-        by_node: dict[str, list[dict[str, Any]]] = {}
-        for c in discovery:
-            by_node.setdefault(c["node_key"], []).append(c)
-        kept: list[dict[str, Any]] = []
-        while len(kept) < budget:
-            progressed = False
-            for key in list(by_node):
-                if by_node[key]:
-                    kept.append(by_node[key].pop(0))
-                    progressed = True
-                    if len(kept) >= budget:
-                        break
-            if not progressed:
-                break
-        trimmed_count = len(discovery) - len(kept)
-        discovery = kept
-
+    # 전체 상한 없음(2026-08-19 — 상한 10건이 있었으나 "제거하는 게 맞다"는 재요청으로
+    # 철회). 노드당 최대 5종(`MAX_CANDIDATES_PER_NODE`)만 유지 — 그래프 전체 건수는
+    # 노드 개수에 정직하게 비례한다.
     all_candidates = predictable + discovery
     _label_candidates(all_candidates, node_titles)
 
@@ -529,9 +509,6 @@ def generate_test_cases(graph_id: str) -> dict[str, Any]:
         # 지어내는 대신 사실대로 보고한다.
         "belowTarget": below_target,
         "minTarget": MIN_TOTAL_TARGET,
-        # 전체 상한(10건)에 걸려 노드별로 고르게 덜어낸 discovery 후보 수.
-        "trimmedForCap": trimmed_count,
-        "maxTarget": MAX_TOTAL_CANDIDATES,
         "testCases": final_payload,
         "simulationReport": final_report,
     }
