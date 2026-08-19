@@ -117,7 +117,12 @@ def build_clauses(chunks) -> tuple[list[dict[str, Any]], int]:
     return clauses, orphans
 
 
-def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult:
+VALID_PROFILES = {"REGULATION", "LAW", "DIAGRAM", "GENERIC"}
+
+
+def ingest_pdf(
+    pdf_path: str | Path, *, name: str | None = None, profile_hint: str = ""
+) -> IngestResult:
     """PDF 하나를 파싱→청킹→임베딩→적재한다. 예외를 삼키지 않고 결과에 담아 돌려준다.
 
     `doc_id`가 **파일 내용 해시**라, 같은 파일을 다시 넣으면 Chroma에서 같은 ID로 덮어쓴다
@@ -147,6 +152,17 @@ def ingest_pdf(pdf_path: str | Path, *, name: str | None = None) -> IngestResult
         # 표시명은 업로드 제목을 따르되, 청크 메타의 doc_name도 같이 맞춘다 — 검색 결과의
         # citation("「문서명」 제N조")이 화면에 보이는 문서명과 달라지면 근거를 못 찾는다.
         doc.name = name
+
+    # 사람이 지정한 유형이 파서 판정을 이긴다. 교정(pipeline)·청킹이 프로파일별로 갈리므로
+    # **교정 전에** 덮어써야 지정이 실제로 반영된다.
+    hint = (profile_hint or "").strip().upper()
+    if hint in VALID_PROFILES and hint != doc.profile:
+        logger.info("문서 유형 지정으로 덮어씀: %s → %s (%s)", doc.profile, hint, doc.name)
+        detected, doc.profile = doc.profile, hint
+        doc.report.profile = hint
+        doc.report.warnings.append(
+            f"문서 유형을 지정값 `{hint}`로 처리했다(파서 자동 감지는 `{detected}`)."
+        )
 
     try:
         pipeline.run(doc)                       # 교정 C1~C7 (프로파일별 계획)

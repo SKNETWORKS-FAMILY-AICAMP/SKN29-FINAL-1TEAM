@@ -7,12 +7,12 @@
 (룰 그래프 DRAFT 저장, 규정 적재 결과 회신). 그 경로들이 요구하는 권한이 같고(`rule_view`),
 계정을 늘리면 비밀번호를 늘린 만큼 어긋날 자리가 늘어난다.
 
-권한은 `rule_view` **하나뿐**이다 — 회계 검토·룰 활성까지 딸려오면 Agent가 스스로 승인까지
+권한은 `rule_view` **하나뿐**이다 - 회계 검토·룰 활성까지 딸려오면 Agent가 스스로 승인까지
 할 수 있게 된다. 사람 계정을 빌려 쓰지 않는 이유는 감사로그의 actor가 사람으로 찍혀
 "누가 만든 룰인지"가 흐려지기 때문이다.
 
 비밀번호는 `AI_SERVICE_PASSWORD`(구 `RULE_AGENT_SERVICE_PASSWORD`)에서 읽는다. ai 컨테이너가
-**같은 값**으로 `/api/auth/token/`에 로그인해 JWT를 받는다 — 양쪽이 다르면 401이 난다.
+**같은 값**으로 `/api/auth/token/`에 로그인해 JWT를 받는다 - 양쪽이 다르면 401이 난다.
 `seed`가 비슈퍼유저를 전부 지우므로 seed도 이 로직을 호출한다.
 """
 import os
@@ -43,7 +43,7 @@ def service_password() -> str:
 def ensure_service_account(password: str | None = None) -> tuple[User, bool, bool]:
     """(user, created, password_set). 비밀번호가 비면 **설정하지 않는다**(기존 값 유지).
 
-    호출부가 빈 비밀번호를 그냥 넘겼는지 알 수 있도록 `password_set`을 돌려준다 —
+    호출부가 빈 비밀번호를 그냥 넘겼는지 알 수 있도록 `password_set`을 돌려준다 -
     관리 명령은 그 경우 에러로 끝낸다(아래 `Command.handle`).
     """
     password = password if password is not None else service_password()
@@ -83,14 +83,14 @@ def diagnose() -> list[str]:
     """무엇이 어긋났는지 사람이 읽을 수 있게. 401이 났을 때 여기부터 본다."""
     lines = [f"계정명       {SERVICE_USERNAME}"]
     env_used = next((k for k in PASSWORD_ENV if os.environ.get(k, "").strip()), None)
-    lines.append(f"비밀번호 env {env_used or '(없음 — ' + ' / '.join(PASSWORD_ENV) + ' 둘 다 비어 있다)'}")
+    lines.append(f"비밀번호 env {env_used or '(없음 - ' + ' / '.join(PASSWORD_ENV) + ' 둘 다 비어 있다)'}")
 
     user = User.objects.filter(username=SERVICE_USERNAME).first()
     if user is None:
-        lines.append("계정 상태     ❌ 없음 — `manage.py ensure_service_account`를 실행할 것")
+        lines.append("계정 상태     [문제] 없음 - `manage.py ensure_service_account`를 실행할 것")
         return lines
 
-    lines.append(f"계정 상태     ✅ 존재 (id={user.pk}, active={user.is_active})")
+    lines.append(f"계정 상태     [OK] 존재 (id={user.pk}, active={user.is_active})")
     lines.append(f"capabilities {sorted(user.capabilities)}")
     if not user.has_usable_password():
         lines.append(
@@ -98,7 +98,7 @@ def diagnose() -> list[str]:
             "`.env`에 AI_SERVICE_PASSWORD를 넣고 다시 실행할 것"
         )
     elif env_used and user.check_password(os.environ[env_used]):
-        lines.append("비밀번호      ✅ env 값과 일치 — ai가 로그인할 수 있다")
+        lines.append("비밀번호      [OK] env 값과 일치 - ai가 로그인할 수 있다")
     elif env_used:
         lines.append(
             "비밀번호      ❌ env 값과 **불일치** — core 계정이 다른 비밀번호로 만들어졌다. "
@@ -108,7 +108,7 @@ def diagnose() -> list[str]:
         lines.append("비밀번호      ⚠️ env가 비어 있어 대조할 수 없다")
 
     if Capability.RULE_VIEW.value not in user.capabilities:
-        lines.append("권한          ❌ rule_view 없음 — 로그인은 되어도 403이 난다")
+        lines.append("권한          [문제] rule_view 없음 - 로그인은 되어도 403이 난다")
     return lines
 
 

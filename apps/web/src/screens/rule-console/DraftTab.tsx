@@ -83,18 +83,26 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     return loaded
   }
 
-  // 선택한 노드의 작성 대화 로그를 불러온다 — 누가 무엇을 지시했고 Agent가 무엇을 바꿨는지.
+  /**
+   * 작성 대화 로그 — **그래프 단위로 읽는다.**
+   *
+   * 예전엔 선택 노드로 걸러 읽었는데(`?nodeKey=...`), 대화형 Agent는 로그를
+   * `node_key=""`(그래프 단위)로 남긴다 — 어느 노드를 고칠지는 Agent가 판단하고
+   * 한 번에 여러 노드를 건드릴 수도 있기 때문이다. 그래서 필터가 항상 0건과 매칭돼
+   * **AI는 동작하는데 대화 내역만 안 보이는** 상태였다.
+   */
   useEffect(() => {
     if (!sel) { setChat([]); return }
     let cancelled = false
-    endpoints.ruleMessages(sel.graphId, sel.nodeKey).then(({ data }) => {
+    endpoints.ruleMessages(sel.graphId).then(({ data }) => {
       if (cancelled) return
       setChat((data as ApiMessage[]).map((row) => ({
         role: row.role, text: row.text, appliedNote: row.appliedNote || undefined,
       })))
     }).catch(() => { if (!cancelled) setChat([]) })
     return () => { cancelled = true }
-  }, [sel?.graphId, sel?.nodeKey])
+    // 그래프가 바뀔 때만 다시 읽는다 — 같은 그래프 안에서 노드를 옮겨도 대화는 이어진다.
+  }, [sel?.graphId])
 
   /**
    * 대화형 수정 — Agent가 툴콜링으로 **실제 노드를 고친다**.
@@ -116,8 +124,9 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
     try {
       const result = await converseRule(graphId, text)
       // 서버가 남긴 로그가 정본이다. 실패하면 방금 받은 답이라도 화면에 남긴다.
+      // 저장도 조회도 **그래프 단위** — Agent가 node_key="" 로 남기기 때문(위 useEffect 참조).
       try {
-        const { data } = await endpoints.ruleMessages(graphId, nodeKey)
+        const { data } = await endpoints.ruleMessages(graphId)
         setChat((data as ApiMessage[]).map((row) => ({
           role: row.role, text: row.text, appliedNote: row.appliedNote || undefined,
         })))
@@ -337,7 +346,12 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
 
         <div className="card" style={{ borderColor: 'var(--primary)' }}>
           <div className="card-head"><h3>대화형 지시·수정</h3></div>
-          <div className="text-meta" style={{ padding: '0 16px' }}>자연어로 말하면 AI가 노드 필드를 직접 수정합니다.</div>
+          {/* 대화는 그래프 단위다 — 어느 노드를 고칠지는 Agent가 판단하고, 한 번에 여러 노드를
+              건드릴 수도 있다. 노드를 옮겨도 같은 대화가 이어지는 이유를 화면에 밝혀 둔다. */}
+          <div className="text-meta" style={{ padding: '0 16px' }}>
+            자연어로 말하면 AI가 노드를 직접 수정합니다. 대화는 <b>그래프 단위</b>로 기록됩니다
+            {selGraph ? ` — ${selGraph.name} v${selGraph.version}` : ''}.
+          </div>
           <div className="stack" style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
             {chat.length === 0 && <div className="text-meta">예) “금액 기준을 40만원으로 올리고 보완요청으로 바꿔줘”</div>}
             {chat.map((message, index) => <div key={index} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '92%' }}>

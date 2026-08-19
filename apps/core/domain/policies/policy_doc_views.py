@@ -23,6 +23,7 @@ import httpx
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import status as http
 from rest_framework import viewsets
@@ -34,7 +35,8 @@ from rest_framework.views import APIView
 from domain.common.permissions import CanViewRule
 
 from .models import (
-    ClauseDecision, IngestStatus, PolicyClause, PolicyDoc, PolicyFolder, RuleNode,
+    DOC_PROFILE_CHOICES, ClauseDecision, IngestStatus, PolicyClause, PolicyDoc,
+    PolicyFolder, RuleNode,
 )
 from .scope import normalize_scope
 from .serializers import PolicyDocSerializer
@@ -97,6 +99,8 @@ def _dispatch(doc: PolicyDoc, *, is_reindex: bool) -> str:
                 "name": doc.title,
                 "ruleScope": doc.rule_scope,
                 "isReindex": is_reindex,
+                # 비면 파서 자동 감지. 지정하면 컬렉션 라우팅이 그 값으로 결정된다.
+                "profileHint": doc.profile_hint,
             },
             timeout=_DISPATCH_TIMEOUT,
         )
@@ -144,10 +148,25 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
                 {"detail": f"지원하지 않는 형식입니다: {upload.name} (PDF만 가능)"},
                 status=http.HTTP_400_BAD_REQUEST,
             )
+        # 확장자는 이름일 뿐이라 얼마든지 속일 수 있다. 내용이 실제로 PDF인지 본다 —
+        # `.pdf`로 위장한 HTML을 받아 두면 그걸 `inline`으로 되돌려줄 때 문제가 된다.
+        head = upload.read(5)
+        upload.seek(0)
+        if head != b"%PDF-":
+            return Response(
+                {"detail": f"PDF 파일이 아닙니다: {upload.name} (내용이 PDF 형식과 다릅니다)"},
+                status=http.HTTP_400_BAD_REQUEST,
+            )
+
+        # 업로더가 문서 유형을 지정하면 파서 자동 감지 대신 그 값을 쓴다(빈 값이면 자동 감지).
+        # 유형이 컬렉션 라우팅을 정하므로, 틀리면 그 문서는 정산 판정에 아예 인용되지 않는다.
+        hint = str(request.data.get("profileHint") or "").strip().upper()
+        if hint and hint not in dict(DOC_PROFILE_CHOICES):
+            return Response({"detail": f"알 수 없는 문서 유형: {hint}"}, status=http.HTTP_400_BAD_REQUEST)
 
         doc = PolicyDoc.objects.create(
             title=(request.data.get("title") or upload.name).strip()[:200],
-            category=str(request.data.get("category") or "")[:20],
+            profile_hint=hint,
             version=str(request.data.get("version") or "")[:20],
             # 규정 표기(기업업무추진비·회식)를 보내도 Category 값으로 접힌다.
             rule_scope=normalize_scope(str(request.data.get("ruleScope") or "").strip())
@@ -202,6 +221,83 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
             "totalDocs": len(docs),
             "totalFolders": PolicyFolder.objects.count(),
         })
+
+    @action(detail=False, methods=["post", "delete"], url_path=r"folders/(?P<folder_id>[0-9]+)")
+    def folder_detail(self, request, folder_id=None):
+        """POST: 이름 변경 `{name}` / DELETE: 폴더 삭제.
+
+        이름 변경에 PATCH를 쓰지 않는 이유: 이 ViewSet에 `patch`를 열면 `partial_update`
+        (`PATCH /policy-docs/{id}/`)까지 함께 열려 문서 필드가 검토 없이 수정 가능해진다.
+        액션은 POST로 두는 이 앱의 기존 관례(`reembed`·`move`)를 따른다.
+
+        **비어 있지 않으면 삭제를 거부한다.** 문서는 `SET_NULL`이라 미분류로 살아남고 하위
+        폴더는 `CASCADE`로 함께 지워지는데, 그게 한 번의 클릭으로 조용히 일어나면 정리해 둔
+        분류가 통째로 날아간다. 옮기고 나서 지우게 한다.
+        """
+        folder = PolicyFolder.objects.filter(pk=folder_id).first()
+        if folder is None:
+            return Response({"detail": "폴더를 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            docs = folder.documents.count()
+            children = folder.children.count()
+            if docs or children:
+                return Response(
+                    {"detail": f"비어 있지 않습니다 — 문서 {docs}건, 하위 폴더 {children}개. "
+                               "먼저 옮긴 뒤 삭제해주세요."},
+                    status=http.HTTP_400_BAD_REQUEST,
+                )
+            folder.delete()
+            return Response(status=http.HTTP_204_NO_CONTENT)
+
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            return Response({"detail": "폴더 이름이 필요합니다."}, status=http.HTTP_400_BAD_REQUEST)
+        if PolicyFolder.objects.filter(parent=folder.parent, name=name[:80]).exclude(pk=folder.pk).exists():
+            return Response({"detail": f"같은 위치에 '{name}' 폴더가 이미 있습니다."},
+                            status=http.HTTP_400_BAD_REQUEST)
+        folder.name = name[:80]
+        folder.save(update_fields=["name"])
+        return Response({"id": folder.pk, "name": folder.name})
+
+    @action(detail=True, methods=["get"])
+    def file(self, request, pk=None):
+        """GET /api/policy-docs/{id}/file/[?download=1] — 원본 PDF 스트리밍.
+
+        **`MEDIA_URL`로 직접 노출하지 않는 이유**가 둘이다:
+          ① 인가 — 목록·조항이 `rule_view`를 요구하는데 원본만 무인증으로 열리면 그 통제가
+             무의미해진다. 규정 원문은 회사 내부 문서다.
+          ② 도달 경로 — nginx는 `/`를 web(SPA)으로 보내고 core로 가는 건 `/api/`뿐이다.
+             `MEDIA_URL`을 열어도 브라우저에서 core에 닿지 않는다.
+
+        기본은 `inline`(브라우저 PDF 뷰어로 바로 렌더), `?download=1`이면 첨부로 내려받는다.
+        한글 파일명은 `FileResponse`가 RFC 5987로 인코딩해 준다.
+        """
+        doc = self.get_object()
+        if not doc.file:
+            return Response({"detail": "원본 파일이 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+        try:
+            handle = doc.file.open("rb")
+        except FileNotFoundError:
+            # DB에는 있는데 볼륨에서 사라진 경우 — 조용히 빈 화면을 주지 않고 사유를 밝힌다.
+            logger.warning("원본 파일 없음 doc=%s path=%s", doc.pk, doc.file.name)
+            return Response(
+                {"detail": "원본 파일을 찾을 수 없습니다(볼륨에서 삭제된 것으로 보입니다)."},
+                status=http.HTTP_404_NOT_FOUND,
+            )
+        name = (doc.file.name.rsplit("/", 1)[-1]) or f"{doc.title}.pdf"
+        resp = FileResponse(
+            handle,
+            content_type="application/pdf",
+            as_attachment=bool(request.query_params.get("download")),
+            filename=name,
+        )
+        # **inline + 사용자 업로드 파일**은 저장형 XSS의 고전적 조합이다. 우리가 보낸
+        # Content-Type을 브라우저가 무시하고 내용을 스니핑해 HTML로 렌더하면, 그 스크립트가
+        # **이 앱의 오리진**에서 돈다. nosniff가 그 경로를 막는다(업로드 시 매직바이트 검사와
+        # 이중 방어 — 어느 한쪽만으로는 부족하다고 보지 않지만 둘 다 싸다).
+        resp["X-Content-Type-Options"] = "nosniff"
+        return resp
 
     @action(detail=True, methods=["get"])
     def clauses(self, request, pk=None):

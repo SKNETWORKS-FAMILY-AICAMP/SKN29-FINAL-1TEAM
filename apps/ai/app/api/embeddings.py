@@ -53,6 +53,8 @@ class IngestRequest(BaseModel):
     # 룰 자동생성 트리거(§1.2-2)는 최초 적재에서만 돈다 — 재색인마다 새 계열이 쌓이는 걸
     # 막기 위함(Django `policy_doc_views.py`가 create/reembed 경로로 이 값을 결정해 보냄).
     isReindex: bool = False
+    # 업로더가 지정한 문서 유형(REGULATION/LAW/DIAGRAM/GENERIC). 비면 파서 자동 감지.
+    profileHint: str = ""
 
 
 def _report(doc_id: int, payload: dict) -> None:
@@ -71,7 +73,7 @@ def _run(req: IngestRequest) -> None:
     _report(req.policyDocId, {"status": PARSING})
 
     path = MEDIA_ROOT / req.filePath
-    result = ingest_mod.ingest_pdf(path, name=req.name)
+    result = ingest_mod.ingest_pdf(path, name=req.name, profile_hint=req.profileHint)
     if not result.ok:
         _report(req.policyDocId, {
             "status": FAILED, "error": result.error, "docId": result.doc_id,

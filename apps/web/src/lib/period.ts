@@ -12,6 +12,13 @@ export const currentMonth = (): string => {
 export const isInMonth = (date: string | undefined, month: string): boolean =>
   Boolean(date) && date!.slice(0, 7) === month
 
+/** 오늘 날짜(`YYYY-MM-DD`). 신규 등록 폼의 기본값 등에 쓴다.
+ *  `toISOString()`을 쓰지 않는 이유는 위와 같다 — UTC라 자정 근처에서 하루가 밀린다. */
+export const todayISO = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 /** `YYYY-MM` → "2026년 8월" 표기. */
 export const monthLabel = (month: string): string => {
   const [year, mon] = month.split('-')
