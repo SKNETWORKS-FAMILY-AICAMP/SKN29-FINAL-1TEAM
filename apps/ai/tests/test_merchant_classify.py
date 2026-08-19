@@ -64,6 +64,33 @@ def test_cache_hit_skips_kakao_and_llm(monkeypatch, request_spy):
     assert request_spy.calls == []
 
 
+def test_cache_lookup_failure_falls_back_to_kakao_instead_of_raising(monkeypatch, request_spy):
+    """캐시가 죽었다고 조회를 포기하지 않는다 — 캐시는 가속 장치지 유일 소스가 아니다.
+
+    `**_kw`는 실제 호출 계약(`timeout=CACHE_TIMEOUT`)을 받기 위한 것이다. 안 받으면
+    `TypeError`가 대신 잡혀서, 정작 시험하려던 core 장애 경로가 아닌 다른 이유로 통과한다.
+    """
+    def _raise_cache_error(name, **_kw):
+        raise RuntimeError("core 연결 실패")
+
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", _raise_cache_error)
+    fake_doc = {"id": "1", "category_name": "음식점 > 한식", "category_group_name": "음식점", "category_group_code": "FD6"}
+    monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: fake_doc)
+    monkeypatch.setattr(
+        classify_mod, "_llm_classify",
+        lambda merchant, category_name, category_group_name: classify_mod._LLMIndustryOutput(
+            industry_label="일반음식점", confidence=0.7,
+        ),
+    )
+
+    result = classify_mod.classify("아무개식당")
+
+    assert result == {
+        "industry_code": "RESTAURANT", "industry_label": "일반음식점",
+        "confidence": 0.7, "source": "KAKAO",
+    }
+
+
 def test_kakao_miss_returns_unresolved_without_llm(monkeypatch, request_spy):
     monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name, **_kw: {"hit": False})
     monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: None)
@@ -138,28 +165,6 @@ def test_cache_lookup_failure_is_absorbed_not_raised(monkeypatch, request_spy):
     monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: None)
 
     assert classify_mod.classify("스타벅스 강남점") == classify_mod.UNRESOLVED
-
-
-def test_cache_failure_still_falls_through_to_kakao(monkeypatch, request_spy):
-    """캐시가 죽었다고 조회를 포기하지는 않는다(캐시는 가속 장치지 유일 소스가 아니다)."""
-    def _boom(*_a, **_kw):
-        raise RuntimeError("core 미기동")
-
-    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", _boom)
-    monkeypatch.setattr(
-        classify_mod, "_kakao_search",
-        lambda query: {"id": "9", "category_name": "음식점 > 카페", "category_group_name": "카페"},
-    )
-    monkeypatch.setattr(
-        classify_mod, "_llm_classify",
-        lambda merchant, category_name, category_group_name: classify_mod._LLMIndustryOutput(
-            industry_label="카페", confidence=0.88,
-        ),
-    )
-
-    result = classify_mod.classify("메가커피 역삼점")
-    assert result["industry_code"] == "CAFE"
-    assert result["source"] == "KAKAO"
 
 
 def test_vocabulary_mirror_is_self_consistent():

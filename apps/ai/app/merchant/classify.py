@@ -11,6 +11,10 @@ LLM 재분류(카카오 원시 카테고리 → 우리 서비스 업종 어휘) 
 호출부는 MCP Tool(`app.mcp.tools.classify_merchant`)과 **Draft Agent**(`agents/draft_agent.py`)다.
 Draft는 사용자가 화면 앞에서 기다리는 경로라 각 단계 타임아웃을 짧게 잡는다(아래 `*_TIMEOUT`) —
 업종은 보조 힌트일 뿐이라 못 채워도 초안 작성은 계속돼야 한다.
+
+캐스케이드의 모든 단계(캐시 조회·카카오 조회·LLM 재분류·캐시 적재)는 개별적으로 실패해도
+`classify()`가 예외를 던지지 않는다 — 캐시 조회 실패는 캐시 미스로 취급하고 계속 진행한다
+(2026-08-19, core 장애 시 크래시 대신 미확정/저비용 저하로 수렴하도록 수정).
 """
 from __future__ import annotations
 
@@ -169,13 +173,15 @@ def classify(merchant: str, place_hint: str | None = None) -> dict:
     if not name:
         return dict(UNRESOLVED)
 
-    # 캐시 조회 실패(=Django 미기동·타임아웃)를 흡수한다. 카카오·LLM 실패는 잡으면서
-    # 여기만 안 잡혀 있어서, core가 죽으면 "미확정 반환" 계약을 깨고 예외가 튀어나갔다.
+    # 캐시 조회 실패(=core 미기동·타임아웃)는 **캐시 미스로 취급하고 계속 진행**한다.
+    # 카카오·LLM 실패는 잡으면서 여기만 안 잡혀 있어서, core가 죽으면 "미확정 반환" 계약을
+    # 깨고 예외가 튀어나갔다 — 캐시는 가속 장치지 유일 소스가 아니다.
     try:
         cached = core_client.get_merchant_category(name, timeout=CACHE_TIMEOUT)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("가맹점 업종 캐시 조회 실패(merchant=%r): %s", merchant, exc)
-        cached = {}
+    except Exception as exc:  # noqa: BLE001  # core 장애·타임아웃 — 캐시 미스로 처리
+        logger.warning("가맹점 업종 캐시 조회 실패(merchant=%r): %s — 캐시 미스로 처리", merchant, exc)
+        cached = {"hit": False}
+
     if cached.get("hit"):
         return {
             "industry_code": cached.get("industry_code", ""),

@@ -20,7 +20,7 @@ from app.clients import core_client
 from app.config import settings
 from app.mcp import tools
 from app.ml.registry import get_active_model
-from app.rag.retrieval import build_query
+from app.rag.retrieval import build_query, facts_nl
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,10 @@ SYSTEM_PROMPT = """당신은 법인카드 정산 Risk Review의 2차(내규 검�
      이 둘을 구분해서 서술하세요(예: "정보 없음: policy_docs에서 해당 지출 유형 관련 조항이
      검색되지 않았습니다" vs "판단 보류: 제12조가 있으나 이 건의 구체 상황(공용카드 실사용자
      미기재)까지는 다루지 않습니다").
+   - 반대로 violation_verdict가 VIOLATION 또는 NO_VIOLATION이면 이미 결론을 낸 것이므로
+     review_reasons도 확정적으로 서술하세요. "판단 보류"·"검토 필요"·"~일 가능성이 높습니다"
+     같은 유보 표현은 INSUFFICIENT_INFO 전용입니다 — 결론과 서술이 어긋나면 사람이 읽었을 때
+     실제로 확정된 건지 다시 봐야 하는 건지 헷갈립니다.
 4. 세법(tax_refs) 판단은 요구하지 않습니다 — 이 검증은 policy_docs(사내 규정)와 case_history
    (과거 유사 사례)만 근거로 사용하고, 세무상 손금 처리 여부 등은 판단하지 마세요.
 5. recommendation은 violation_verdict가 VIOLATION이면 REJECT 또는 SUPPLEMENT(보완요청) 중
@@ -92,6 +96,7 @@ anomaly_score: {anomaly_score:.3f}
 금액: {amount}원
 분류: {category}
 지출 목적: {purpose}
+거래 사실: {facts}
 
 [근거 — policy_docs 검색 결과]
 {policy_chunks}
@@ -103,7 +108,17 @@ anomaly_score: {anomaly_score:.3f}
 def _format_chunks(chunks: list[dict]) -> str:
     if not chunks:
         return "(검색 결과 없음)"
-    return "\n".join(f"- {c['citation']}: {c['text'][:400]}" for c in chunks)
+    lines = []
+    for c in chunks:
+        line = f"- {c['citation']}: {c['text'][:400]}"
+        # 긴 조는 항 단위로 쪼개져 검색되므로, 잎 하나만 보이면 같은 조의 다른 항(맥락)이
+        # 빠진다. 부모(조 전문)를 붙여 채운다 — 인용은 잎의 citation을 그대로 쓴다(부모를
+        # 인용하면 "제N조" 통째로가 근거로 찍혀 근거가 뭉툭해진다). rule_agent_v0/agent.py
+        # ::_format_chunks와 동일 계약.
+        if c.get("parent_text") and c["parent_text"] != c["text"]:
+            line += f"\n  (같은 조 전문 — 맥락 참고용, 인용은 위 citation을 쓸 것): {c['parent_text'][:800]}"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def _format_cases(cases: list[dict]) -> str:
@@ -121,6 +136,24 @@ def _stage1(tx_id: int) -> dict:
     return tools.ml_infer(features["feature_vector"])
 
 
+def _build_user_prompt(summary: dict, stage1: dict, policy_hits: list[dict], case_hits: list[dict]) -> str:
+    contribs = stage1.get("contribs", [])
+    # facts_nl은 build_query(검색어)에 이미 쓰이는 것과 같은 함수 — Settlement 판정필드
+    # (headcount·preApproved 등)를 검색어엔 녹이면서 정작 최종 판정 프롬프트엔 안 넘기고
+    # 있었다(검색은 "참석 인원 2명"을 알고 찾아오는데, 판정은 그 사실 자체를 모르는 불일치).
+    return USER_PROMPT_TEMPLATE.format(
+        anomaly_score=stage1.get("anomaly_score", 0.0),
+        contribs=", ".join(f"{c['feature']}({c['weight']})" for c in contribs) or "(없음)",
+        merchant=summary["merchant"],
+        amount=summary["amount"],
+        category=summary["category"],
+        purpose=summary.get("purpose") or "(미기재)",
+        facts=facts_nl(summary) or "(없음)",
+        policy_chunks=_format_chunks(policy_hits),
+        cases=_format_cases(case_hits),
+    )
+
+
 def _stage2(summary: dict, stage1: dict) -> dict:
     """2차 RAG 내규 검증. search_policy/search_cases 근거 + LLM structured output."""
     contribs = stage1.get("contribs", [])
@@ -129,16 +162,7 @@ def _stage2(summary: dict, stage1: dict) -> dict:
     policy_hits = tools.search_policy(query)["chunks"]
     case_hits = tools.search_cases(query)["similar_cases"]
 
-    user_prompt = USER_PROMPT_TEMPLATE.format(
-        anomaly_score=stage1.get("anomaly_score", 0.0),
-        contribs=", ".join(f"{c['feature']}({c['weight']})" for c in contribs) or "(없음)",
-        merchant=summary["merchant"],
-        amount=summary["amount"],
-        category=summary["category"],
-        purpose=summary.get("purpose") or "(미기재)",
-        policy_chunks=_format_chunks(policy_hits),
-        cases=_format_cases(case_hits),
-    )
+    user_prompt = _build_user_prompt(summary, stage1, policy_hits, case_hits)
 
     resp = _get_client().beta.chat.completions.parse(
         model=MODEL,
