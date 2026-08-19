@@ -58,7 +58,6 @@ class LLMComment(BaseModel):
 
 class LLMDraftOutput(BaseModel):
     category: Category
-    merchantIndustry: str
     purpose: str
     confidence: float
     aiSuggested: bool
@@ -67,7 +66,6 @@ class LLMDraftOutput(BaseModel):
 
 class LLMReviseOutput(BaseModel):
     category: Category
-    merchantIndustry: str
     purpose: str
     amount: int
     headcount: int
@@ -84,7 +82,9 @@ SYSTEM_PROMPT_CREATE = """당신은 법인카드 정산 초안 작성 보조입�
 
 반드시 지켜야 할 규칙:
 1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
-2. 가맹점 업종(merchantIndustry)은 참고용 힌트일 뿐이며, 세무·회계 판단의 근거로 사용하지 마세요.
+2. 가맹점 업종은 **서버가 조회해 사용자 메시지로 함께 준다**. 주어진 값을 분류 판단의 근거로
+   참고하되, 값이 "미확인"이면 업종을 추측하지 말고 다른 정보(가맹점명·금액·시간)만 쓰세요.
+   업종은 보조 힌트일 뿐이라 세무·회계 판단의 근거로 삼지 마세요.
 3. 판단 확신이 낮으면 aiSuggested를 true로 하고 confidence를 낮게(0.5 이하) 주세요.
    확신이 높으면 aiSuggested는 true로 유지하되(사람 확인 대상) confidence만 높게 주세요.
 4. purpose(지출 목적)는 가맹점·금액·참석 인원 정보를 근거로 1~2문장으로 자연스럽게 작성하세요.
@@ -92,6 +92,7 @@ SYSTEM_PROMPT_CREATE = """당신은 법인카드 정산 초안 작성 보조입�
 5. 정책 한도·규정 문구는 절대 스스로 계산하거나 만들어내지 마세요. policyHints는 서버가 별도로 채웁니다."""
 
 USER_PROMPT_TEMPLATE_CREATE = """가맹점: {merchant}
+가맹점 업종(서버 조회): {industry}
 금액: {amount}원
 일시: {ts}
 카드구분: {card_type}
@@ -110,6 +111,7 @@ SYSTEM_PROMPT_REVISE = """당신은 법인카드 정산 초안 수정 보조입�
 
 USER_PROMPT_TEMPLATE_REVISE = """현재 초안:
 가맹점: {merchant}
+가맹점 업종(서버 조회): {industry}
 금액: {amount}원
 분류: {category}
 지출 목적: {purpose}
@@ -117,6 +119,30 @@ USER_PROMPT_TEMPLATE_REVISE = """현재 초안:
 참석 인원: {headcount}명
 
 사용자 지시: {instruction}"""
+
+
+# ── 가맹점 업종(classify_merchant 실연동) ──────────────────────────────
+
+def _resolve_industry(merchant: str, place_hint: str | None, trace: dict | None = None) -> dict:
+    """가맹점 업종을 **서버가 조회해** 초안에 넣는다(§7-1).
+
+    예전엔 이 값을 LLM 출력 스키마(`merchantIndustry`)로 받았다 — 모델이 가맹점명만 보고
+    지어낸 문자열이 그대로 화면에 뜨고 `Settlement.merchant_industry`에 저장돼
+    `merchant.merchant_type` 판정 사실이 됐다. 조회 결과가 있는데도 추측을 쓸 이유가 없고,
+    무엇보다 자유 문자열이라 룰의 `in [...]` 비교에 걸릴 수가 없었다(정본 어휘가 아니다).
+
+    실패·미확정이면 빈 값이다 — 업종은 보조 힌트라 없어도 초안 작성은 계속된다.
+    """
+    try:
+        result = tools.classify_merchant(merchant, place_hint)
+    except Exception as exc:  # noqa: BLE001  # core 미기동·카카오 장애 등
+        logger.warning("classify_merchant(%r) 실패, 업종 미확정: %s", merchant, exc)
+        if trace is not None:
+            trace["industry"] = {"source": "unresolved", "reason": f"{type(exc).__name__}: {exc}"}
+        return {"industry_code": "", "industry_label": "", "confidence": 0.0, "source": ""}
+    if trace is not None:
+        trace["industry"] = {"source": result.get("source") or "unresolved", "value": result}
+    return result
 
 
 # ── 정책 힌트(get_policy 실연동, B-3) ──────────────────────────────────
@@ -181,9 +207,10 @@ def _record_response(trace: dict | None, resp, started: float) -> None:
     trace["finishReason"] = getattr(resp.choices[0], "finish_reason", None)
 
 
-def _call_llm_create(req: "DraftRequest", trace: dict | None = None) -> LLMDraftOutput:
+def _call_llm_create(req: "DraftRequest", industry: str, trace: dict | None = None) -> LLMDraftOutput:
     user_prompt = USER_PROMPT_TEMPLATE_CREATE.format(
         merchant=req.merchant,
+        industry=industry or "미확인",
         amount=req.amount,
         ts=req.resolved_ts(),
         card_type=req.cardType,
@@ -209,10 +236,11 @@ def _call_llm_create(req: "DraftRequest", trace: dict | None = None) -> LLMDraft
     return parsed
 
 
-def _call_llm_revise(req: "ReviseRequest", trace: dict | None = None) -> LLMReviseOutput:
+def _call_llm_revise(req: "ReviseRequest", industry: str, trace: dict | None = None) -> LLMReviseOutput:
     current = req.current
     user_prompt = USER_PROMPT_TEMPLATE_REVISE.format(
         merchant=current.merchant,
+        industry=industry or "미확인",
         amount=current.amount,
         category=current.category,
         purpose=current.purpose,
@@ -242,16 +270,21 @@ def _call_llm_revise(req: "ReviseRequest", trace: dict | None = None) -> LLMRevi
 # ── 생성 모드 ───────────────────────────────────────────────────────────
 
 def run(req: "DraftRequest", trace: dict | None = None) -> dict:
-    """생성 모드 초안 작성. LLM 호출·응답 처리가 어떤 이유로 실패해도 항상 200 형태로 방어."""
+    """생성 모드 초안 작성. LLM 호출·응답 처리가 어떤 이유로 실패해도 항상 200 형태로 방어.
+
+    업종은 LLM보다 **먼저** 조회한다 — 분류 판단의 입력이기 때문이다(뒤에 붙이면 그냥 표시용).
+    """
+    industry = _resolve_industry(req.merchant, req.placeHint, trace)
     try:
-        llm_out = _call_llm_create(req, trace)
+        llm_out = _call_llm_create(req, industry["industry_label"], trace)
         draft = {
             "merchant": req.merchant,
             "amount": req.amount,
             "category": llm_out.category,
             "aiCategory": llm_out.category,
             "aiSuggested": llm_out.aiSuggested,
-            "merchantIndustry": llm_out.merchantIndustry,
+            "merchantIndustry": industry["industry_label"],
+            "merchantIndustryCode": industry["industry_code"],
             "purpose": llm_out.purpose,
             "evidence": req.evidence or "OK",
             "headcount": req.headcount or 0,
@@ -270,7 +303,9 @@ def run(req: "DraftRequest", trace: dict | None = None) -> dict:
             "category": "비품",
             "aiCategory": "비품",
             "aiSuggested": True,
-            "merchantIndustry": "",
+            # 업종 조회는 LLM과 별개 경로라 살아 있다 — 초안이 실패해도 이건 버리지 않는다.
+            "merchantIndustry": industry["industry_label"],
+            "merchantIndustryCode": industry["industry_code"],
             "purpose": f"{req.merchant} 관련 지출 (초안 자동 생성 실패)",
             "evidence": req.evidence or "OK",
             "headcount": req.headcount or 0,
@@ -291,15 +326,22 @@ def run(req: "DraftRequest", trace: dict | None = None) -> dict:
 def revise(req: "ReviseRequest", trace: dict | None = None) -> dict:
     """자연어 지시로 기존 초안을 수정. 실패 시 기존 값을 그대로 유지해 반환한다(추측으로 덮어쓰지 않음)."""
     current = req.current
+    # 수정 모드에선 화면에 이미 떠 있는 업종을 그대로 쓴다 — 사용자가 금액·인원을 고치는
+    # 동안 업종이 바뀔 이유가 없고, 매 수정마다 카카오·LLM을 다시 부르면 비용만 는다.
+    # 화면 값이 비어 있을 때만(첫 조회 실패 등) 다시 조회한다.
+    industry = {"industry_label": current.merchantIndustry, "industry_code": current.merchantIndustryCode}
+    if not industry["industry_label"]:
+        industry = _resolve_industry(current.merchant, None, trace)
     try:
-        llm_out = _call_llm_revise(req, trace)
+        llm_out = _call_llm_revise(req, industry["industry_label"], trace)
         draft = {
             "merchant": current.merchant,
             "amount": llm_out.amount,
             "category": llm_out.category,
             "aiCategory": llm_out.category,
             "aiSuggested": llm_out.aiSuggested,
-            "merchantIndustry": llm_out.merchantIndustry,
+            "merchantIndustry": industry["industry_label"],
+            "merchantIndustryCode": industry["industry_code"],
             "purpose": llm_out.purpose,
             "evidence": llm_out.evidence,
             "headcount": llm_out.headcount,
@@ -319,7 +361,8 @@ def revise(req: "ReviseRequest", trace: dict | None = None) -> dict:
             "category": current.category,
             "aiCategory": current.aiCategory or current.category,
             "aiSuggested": True,
-            "merchantIndustry": "",
+            "merchantIndustry": industry["industry_label"],
+            "merchantIndustryCode": industry["industry_code"],
             "purpose": current.purpose,
             "evidence": current.evidence or "OK",
             "headcount": current.headcount or 0,

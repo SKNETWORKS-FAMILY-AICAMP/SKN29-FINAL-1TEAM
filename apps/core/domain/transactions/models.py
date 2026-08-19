@@ -1,6 +1,8 @@
 """거래 / 가맹점 업종 캐시 / 증빙 (기술명세서 §3.1, §7-1)."""
 from django.db import models
 
+from .industry import IndustryCode
+
 
 class Transaction(models.Model):
     card = models.ForeignKey(
@@ -37,10 +39,15 @@ class MerchantSource(models.TextChoices):
 
 
 class MerchantCategory(models.Model):
-    """가맹점 업종 캐시 (§7-1). 비용분류 보조 힌트 — 세무 기준 아님(MCC는 post-MVP)."""
+    """가맹점 업종 캐시 (§7-1). 비용분류 보조 힌트 — 세무 기준 아님(MCC는 post-MVP).
+
+    `industry_code`/`industry_label`은 **카카오 원시값이 아니라 정본 어휘**(`industry.IndustryCode`)다.
+    캐시가 곧 판정 사실의 출처이므로, 여기 다른 어휘가 섞이면 룰이 조용히 안 걸린다 —
+    쓰기 경로(`MerchantCategoryUpsertView`)에서 정본 어휘만 받도록 막는다.
+    """
     normalized_name = models.CharField(max_length=200, unique=True, db_index=True)
     place_id = models.CharField(max_length=64, blank=True)
-    industry_code = models.CharField(max_length=32, blank=True)
+    industry_code = models.CharField(max_length=32, choices=IndustryCode.choices, blank=True)
     industry_label = models.CharField(max_length=100, blank=True)
     source = models.CharField(max_length=10, choices=MerchantSource.choices, default=MerchantSource.CACHE)
     confidence = models.FloatField(default=0.0)

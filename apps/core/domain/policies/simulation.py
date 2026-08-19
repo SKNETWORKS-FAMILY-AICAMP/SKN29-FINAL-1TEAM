@@ -18,6 +18,7 @@ from django.db import transaction as db_tx
 from django.utils import timezone
 
 from domain.settlements.models import Settlement, SettlementStatus
+from domain.transactions import industry as industry_vocab
 
 from .context_builder import apply_facts, build_rule_context, load_tables, resolve_policy
 from .engine import GraphValidationError, run_rule_engine, validate_graph
@@ -70,7 +71,9 @@ def context_from_case(case: dict[str, Any], tables: dict[str, Any] | None = None
     context["tx"]["payment_method"] = case.get("paymentMethod") or "법인카드"
     context["category"]["value"] = case.get("category") or None
     context["category"]["item_type"] = case.get("itemType") or None
-    context["merchant"]["merchant_type"] = case.get("merchantType") or None
+    # 손으로 만든 검증셋도 정본 어휘로 접는다 — 시뮬레이션이 실 판정과 다른 어휘로 돌면
+    #  "룰 콘솔에선 걸렸는데 실제로는 안 걸린다"가 된다(§7-1).
+    context["merchant"]["merchant_type"] = industry_vocab.canonical_label(case.get("merchantType")) or None
     resolve_policy(context, tables)
     return apply_facts(context, case.get("facts") or {})
 
@@ -89,7 +92,7 @@ def case_from_settlement(settlement: Settlement) -> dict[str, Any]:
         "merchant": tx.merchant if tx else "",
         "amount": int(tx.amount) if tx else 0,
         "category": settlement.category or "",
-        "merchantType": settlement.merchant_industry or "",
+        "merchantType": settlement.merchant_industry_code or settlement.merchant_industry or "",
         "paymentMethod": "법인카드",
         "currentStatus": settlement.status,
         "date": ts.strftime("%m/%d") if ts else "",

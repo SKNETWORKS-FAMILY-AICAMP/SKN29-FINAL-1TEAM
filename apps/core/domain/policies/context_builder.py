@@ -19,6 +19,8 @@ from typing import Any
 from django.db.models import Q
 from django.utils import timezone
 
+from domain.transactions import industry as industry_vocab
+
 from .dsl import resolve_path
 from .eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION, empty_eval_context
 from .models import PolicyTable
@@ -342,9 +344,15 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
     sor("user.job_title_rank", job_title.rank if job_title else None)
     sor("category.value", settlement.category or None)
     sor("category.confidence", 0.5 if settlement.ai_suggested else 0.95)
-    industry = settlement.merchant_industry or None
-    sor("merchant.merchant_type", industry)
-    sor("merchant.merchant_info_resolved", bool(industry))   # 업종 확인 실패는 관측 결과(False)
+    # 업종은 저장값을 그대로 올리지 않고 **정본 어휘로 접어서** 올린다(`transactions.industry`).
+    #  룰·금지업종 별표가 이 표기로 비교하기 때문이고, 옛 데이터(`한식`·`서점` 등)와 외부에서
+    #  들어온 자유 표기도 같은 자리에서 흡수된다. 접히지 않으면 `None`(모름)이다 —
+    #  `기타`로 밀면 금지업종 별표가 `"*"→False`로 폴백해 확인 안 한 걸 안전하다고 단정한다.
+    industry_label = industry_vocab.canonical_label(
+        settlement.merchant_industry_code or settlement.merchant_industry
+    ) or None
+    sor("merchant.merchant_type", industry_label)
+    sor("merchant.merchant_info_resolved", bool(industry_label))   # 업종 확인 실패는 관측 결과(False)
     sor("evidence.has_valid_receipt",
         bool(tx is not None and tx.receipts.exclude(status="MISSING").exists()))
     sor("evidence.expense_purpose_missing", not bool(settlement.purpose))

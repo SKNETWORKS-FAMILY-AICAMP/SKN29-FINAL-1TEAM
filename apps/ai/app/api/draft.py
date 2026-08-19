@@ -24,6 +24,9 @@ class DraftRequest(BaseModel):
     cardType: CardType
     evidence: Optional[Evidence] = "OK"
     headcount: Optional[int] = 0        # 실제 프론트는 생성 모드에서 이 필드를 보내지 않음 → 기본값 필수
+    # 업종 조회(카카오)의 장소 힌트 — 같은 상호가 여러 곳일 때 검색 정확도를 올린다.
+    #  현재 화면은 보내지 않는다(거래에 주소 필드가 없다). 영수증 판독이 주소를 뽑으면 그때 채운다.
+    placeHint: Optional[str] = None
     receipt_image: Optional[str] = None  # 범위 밖. 받아도 무시
 
     def resolved_ts(self) -> str:
@@ -36,6 +39,10 @@ class ReviseCurrent(BaseModel):
     amount: int
     category: Category
     aiCategory: Optional[Category] = None
+    # 생성 모드에서 서버가 조회해 넣어 준 업종. 수정 모드는 이걸 그대로 물려받는다
+    # (재조회는 비어 있을 때만 — §7-1 캐스케이드를 매 수정마다 다시 태울 이유가 없다).
+    merchantIndustry: str = ""
+    merchantIndustryCode: str = ""
     purpose: str = ""
     evidence: Optional[Evidence] = "OK"
     headcount: Optional[int] = 0
@@ -66,6 +73,7 @@ class Draft(BaseModel):
     aiCategory: Category
     aiSuggested: bool
     merchantIndustry: str = ""
+    merchantIndustryCode: str = ""
     purpose: str
     evidence: Evidence
     headcount: int = 0

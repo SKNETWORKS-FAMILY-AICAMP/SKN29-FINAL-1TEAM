@@ -35,6 +35,7 @@ from django.db import transaction as db_tx
 from django.utils import timezone
 
 from domain.cards.models import Card, CardType
+from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Transaction
 
 from .models import Settlement, SettlementStatus
@@ -92,6 +93,11 @@ SAMPLE_BATCHES: list[list[dict]] = [
     ],
 ]
 TOTAL_BATCHES = len(SAMPLE_BATCHES)
+
+
+def _industry(row: dict) -> tuple[str, str]:
+    """표본 행의 업종 표기 → 정본 `(code, label)`. 접히지 않으면 `("", "")`(미확정)."""
+    return industry_vocab.resolve(row.get("industry"))
 
 
 def _external_id(user, batch_index: int, row_index: int) -> str:
@@ -157,10 +163,13 @@ def import_next_batch(user) -> ImportResult:
 
         # 팀·공용 카드는 사용자를 모른다 — 주인을 비워 두고 팀원 전원에게 보인다.
         unassigned = card.card_type in UNASSIGNED_CARD_TYPES
+        industry_code, industry_label = _industry(row)
         Settlement.objects.create(
             transaction=tx,
             category="", ai_category=row["category"], ai_suggested=True,
-            merchant_industry=row["industry"],
+            # ERP 원천 업종 표기(한식·서점·여객운송…)를 정본 어휘로 접어 넣는다 —
+            #  이 값이 그대로 `merchant.merchant_type` 판정 사실이 된다(§7-1).
+            merchant_industry=industry_label, merchant_industry_code=industry_code,
             status=SettlementStatus.DRAFT,
             submitted_by=None if unassigned else card.owner,
             team=card.team or user.team,

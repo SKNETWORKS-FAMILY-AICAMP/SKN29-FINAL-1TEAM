@@ -44,9 +44,11 @@ def classify_merchant(merchant: str, place_hint: str | None = None) -> dict:
     """가맹점 업종 판별 — 캐시→카카오→LLM 재분류 캐스케이드 (§7-1). Draft, Risk 공용 Tool.
 
     구현 실체는 `app.merchant.classify` — 카카오 원시 카테고리를 그대로 쓰지 않고 LLM이
-    우리 서비스 업종 어휘로 재분류한다. 카카오에서도 못 찾으면 예외 없이 미확정
-    (industry_code/label 공란)을 돌려준다. Agent 연동(Draft/Risk 프롬프트에 실제로 꽂는 것)은
-    아직 없다 — 이 Tool만 우선 실동작한다(2026-08-18).
+    **정본 업종 어휘**(core `domain/transactions/industry.py`의 미러 `app/schemas.py`)로
+    재분류한다. 카카오에서도 못 찾으면 예외 없이 미확정(industry_code/label 공란)을 돌려준다.
+
+    Draft Agent가 초안 작성 **전에** 이 tool을 부른다(`agents/draft_agent._resolve_industry`) —
+    업종은 분류 판단의 입력이라 뒤에 붙이면 표시용밖에 안 된다. Risk 연동은 아직 없다.
     """
     from app.merchant.classify import classify as _classify
 

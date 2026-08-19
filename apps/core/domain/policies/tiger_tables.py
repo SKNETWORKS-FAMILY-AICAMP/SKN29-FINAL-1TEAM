@@ -88,10 +88,12 @@ TABLES: list[dict] = [
         "key_axes": ["merchant.merchant_type"],
         # 업종을 모르면 "금지 아님"으로 단정하지 않는다 — null로 남겨 사람이 보게 한다.
         "strict_keys": True,
+        # 키는 **정본 업종 어휘 라벨**(`transactions.industry`)이다 — 규정 원문 표기
+        #  (유흥주점·단란주점·이용업·미용업…)는 조립기가 정본으로 접어서 올리므로
+        #  여기 원문 표기를 남겨두면 영영 안 걸린다.
         "payload": {
             "*": False,
-            "유흥주점": True, "단란주점": True, "노래연습장": True, "사행성업종": True,
-            "카지노": True, "경마장": True, "이용업": True, "미용업": True,
+            "주점/유흥": True, "노래연습장": True, "사행성업종": True, "이·미용": True,
         },
         "source_clause": f"{REG} 제9조②",
     },

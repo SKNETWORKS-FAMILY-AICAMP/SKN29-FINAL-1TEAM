@@ -18,6 +18,7 @@ import random
 import re
 from typing import Any
 
+from domain.transactions import industry as industry_vocab
 from domain.transactions.models import MerchantCategory
 
 # 업종·가맹점명 키워드 → 비용분류 추론 (가맹점 업종 캐시가 없을 때의 폴백)
@@ -59,17 +60,39 @@ def _clean_amount(value: Any) -> int:
     return int(re.sub(r"[^0-9]", "", str(value or "0")) or 0)
 
 
-def _industry_of(merchant: str) -> str:
-    """가맹점 업종 캐시(실데이터) 조회 → 없으면 빈 문자열."""
+# 지점명·법인 표기 제거 — ai(`app/merchant/classify.normalize`)와 **같은 규칙**이어야 한다.
+#  캐시 키는 그쪽이 정규화해서 넣으므로, 여기서 원문으로 찾으면 "(주)한우명가 본점" 같은
+#  표기가 영원히 미스가 된다(예전 결함).
+_CORP_PREFIX = re.compile(r"\(주\)|㈜")
+_STRIP_CHARS = re.compile(r"[()（）※]")
+_BRANCH_SUFFIX = re.compile(r"^(.+\S)\s+\S*(?:점|지점|본점|직영점)$")
+
+
+def _normalize_merchant(name: str) -> str:
+    n = _CORP_PREFIX.sub("", name or "")
+    n = _STRIP_CHARS.sub(" ", n)
+    n = re.sub(r"\s+", " ", n).strip()
+    m = _BRANCH_SUFFIX.match(n)
+    return (m.group(1) if m else n).strip()
+
+
+def _industry_of(merchant: str) -> tuple[str, str]:
+    """가맹점 업종 캐시(실데이터) 조회 → 정본 `(code, label)`. 없으면 `("", "")`.
+
+    이 폴백은 ai가 죽었을 때만 도는 경로라 카카오·LLM은 부르지 않는다(캐시만 본다).
+    """
     if not merchant:
-        return ""
-    hit = MerchantCategory.objects.filter(normalized_name__in=[merchant, merchant.split()[0]]).first()
-    if hit:
-        return hit.industry_label
-    for row in MerchantCategory.objects.all()[:200]:
-        if row.normalized_name and row.normalized_name in merchant:
-            return row.industry_label
-    return ""
+        return ("", "")
+    keys = [merchant, _normalize_merchant(merchant)]
+    hit = MerchantCategory.objects.filter(normalized_name__in=[k for k in keys if k]).first()
+    if hit is None:
+        for row in MerchantCategory.objects.all()[:200]:
+            if row.normalized_name and row.normalized_name in merchant:
+                hit = row
+                break
+    if hit is None:
+        return ("", "")
+    return industry_vocab.resolve(hit.industry_code or hit.industry_label)
 
 
 def _guess_category(merchant: str, industry: str) -> tuple[str, float, str]:
@@ -142,7 +165,9 @@ def suggest_draft(payload: dict[str, Any]) -> dict[str, Any]:
     rng = random.Random(str(payload.get("merchant", "")) + str(payload.get("amount", "")))
     merchant = str(payload.get("merchant") or "").strip() or _sample_merchant(rng)
     amount = _clean_amount(payload.get("amount")) or rng.choice([18000, 42000, 68000, 132000, 264000])
-    industry = str(payload.get("merchantIndustry") or "") or _industry_of(merchant)
+    industry_code, industry = industry_vocab.resolve(payload.get("merchantIndustry"))
+    if not industry:
+        industry_code, industry = _industry_of(merchant)
     category, confidence, reason = _guess_category(merchant, industry)
     headcount = int(payload.get("headcount") or (rng.randint(3, 8) if category in ("식대", "접대", "회의") else 0))
     has_receipt = str(payload.get("evidence", "OK")) == "OK"
@@ -161,7 +186,8 @@ def suggest_draft(payload: dict[str, Any]) -> dict[str, Any]:
         "mode": "create",
         "draft": {
             "merchant": merchant, "amount": amount, "category": category, "aiCategory": category,
-            "aiSuggested": True, "merchantIndustry": industry, "purpose": purpose,
+            "aiSuggested": True, "merchantIndustry": industry, "merchantIndustryCode": industry_code,
+            "purpose": purpose,
             "evidence": "OK" if has_receipt else "MISSING", "headcount": headcount,
         },
         "confidence": round(confidence, 2),

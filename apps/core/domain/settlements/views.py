@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 from domain.cards.models import Card
 from domain.common.permissions import CanAccountingReview, CanTeamAggregate
+from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
 from . import draft_agent, erp_import, services
@@ -72,9 +73,15 @@ class SettlementViewSet(viewsets.ModelViewSet):
         if d.get("evidence") == "OK":
             Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
         actor = _actor(request)
+        industry_code, industry_label = industry_vocab.resolve(
+            d.get("merchantIndustryCode") or d.get("merchantIndustry")
+        )
         s = Settlement.objects.create(
             transaction=tx, category=category, ai_category=d.get("aiCategory") or category,
-            ai_suggested=bool(d.get("aiSuggested")), merchant_industry=d.get("merchantIndustry", ""),
+            ai_suggested=bool(d.get("aiSuggested")),
+            # 업종은 화면이 보낸 표기를 그대로 믿지 않고 정본 어휘로 접어 저장한다(§7-1) —
+            #  이 값이 곧 `merchant.merchant_type` 판정 사실이라, 표기가 갈리면 룰이 안 걸린다.
+            merchant_industry=industry_label, merchant_industry_code=industry_code,
             purpose=d.get("purpose", ""), submitted_by=actor,
             team=getattr(actor, "team", None), status="DRAFT",
         )
@@ -120,9 +127,15 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _call_draft_agent(data):
-        """FastAPI `/agent/draft` 호출. 실패(미기동·타임아웃·5xx 등)하면 None을 돌려줘 폴백을 유도한다."""
+        """FastAPI `/agent/draft` 호출. 실패(미기동·타임아웃·5xx 등)하면 None을 돌려줘 폴백을 유도한다.
+
+        타임아웃 40s는 ai 쪽 최악 경로를 담는 값이다 — 초안 LLM 15s + 가맹점 업종 조회
+        (캐시 3 + 카카오 4 + 재분류 LLM 8 + 캐시적재 4 = 최악 19s). 20s로 두면 **캐시 미스일 때만**
+        조용히 목업 폴백으로 떨어져, 화면에는 그럴듯한 가짜 초안이 뜬다(원인 파악이 어렵다).
+        캐시 히트가 정상 경로라 실사용 지연은 여전히 LLM 한 번 수준이다.
+        """
         try:
-            resp = httpx.post(f"{settings.AI_BASE_URL}/agent/draft", json=data, timeout=20)
+            resp = httpx.post(f"{settings.AI_BASE_URL}/agent/draft", json=data, timeout=40)
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:  # noqa: BLE001

@@ -48,6 +48,8 @@ class SettlementSerializer(serializers.ModelSerializer):
     aiCategory = serializers.CharField(source="ai_category", read_only=True)
     aiSuggested = serializers.BooleanField(source="ai_suggested", read_only=True)
     merchantIndustry = serializers.CharField(source="merchant_industry", read_only=True)
+    # 라벨 옆에 코드도 함께 낸다 — 화면 배지·필터가 표기(개정 가능)가 아니라 키를 잡게 한다.
+    merchantIndustryCode = serializers.CharField(source="merchant_industry_code", read_only=True)
     evidence = serializers.SerializerMethodField()
     statusLabel = serializers.CharField(source="get_status_display", read_only=True)
     user = serializers.CharField(source="submitted_by.username", read_only=True, default=None)
@@ -82,7 +84,7 @@ class SettlementSerializer(serializers.ModelSerializer):
         model = Settlement
         fields = [
             "id", "date", "time", "merchant", "amount", "cardType",
-            "category", "aiCategory", "aiSuggested", "merchantIndustry", "purpose",
+            "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",

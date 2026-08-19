@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from domain.common.permissions import CanViewRule
 
 from .features import build_tx_features
+from . import industry
 from .models import MerchantCategory, MerchantSource, Receipt, Transaction
 from .serializers import ReceiptSerializer, TransactionSerializer
 
@@ -79,12 +80,23 @@ class MerchantCategoryUpsertView(APIView):
         name = str(request.data.get("normalized_name") or "").strip()
         if not name:
             return Response({"detail": "normalized_name이 필요합니다."}, status=400)
+        # 어휘 게이트 — ai가 보낸 표기를 정본으로 접고, 접히지 않으면 **거부**한다.
+        #  ai(`app/schemas.py`)는 이 표를 미러할 뿐 강제받지 않으므로, 양쪽이 어긋나면
+        #  여기서 400으로 드러나야 한다. 조용히 저장하면 그 값이 그대로 판정 사실이 된다.
+        raw_industry = request.data.get("industry_code") or request.data.get("industry_label")
+        code, label = industry.resolve(raw_industry)
+        if not code:
+            return Response(
+                {"detail": f"정본 업종 어휘가 아닙니다: {raw_industry!r} "
+                           f"(허용: {', '.join(industry.LABEL_BY_CODE)})"},
+                status=400,
+            )
         obj, _ = MerchantCategory.objects.update_or_create(
             normalized_name=name,
             defaults=dict(
                 place_id=str(request.data.get("place_id") or ""),
-                industry_code=str(request.data.get("industry_code") or ""),
-                industry_label=str(request.data.get("industry_label") or ""),
+                industry_code=code,
+                industry_label=label,
                 source=request.data.get("source") or MerchantSource.KAKAO,
                 confidence=float(request.data.get("confidence") or 0.0),
                 raw=request.data.get("raw") or {},

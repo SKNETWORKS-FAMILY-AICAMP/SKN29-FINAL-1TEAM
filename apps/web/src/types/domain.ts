@@ -111,6 +111,8 @@ export interface Settlement {
   dept?: string
   category?: Category
   merchantIndustry?: string
+  /** 업종 코드(정본 어휘 키). 라벨은 표기라 개정될 수 있어 필터·배지는 이 값을 잡는다. */
+  merchantIndustryCode?: string
   additionalEvidence?: { id: number; name: string; status: string }[]
   facts?: Record<string, unknown>
   events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]

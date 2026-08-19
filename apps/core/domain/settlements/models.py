@@ -60,7 +60,12 @@ class Settlement(models.Model):
     category = models.CharField(max_length=20, choices=Category.choices, blank=True)
     ai_category = models.CharField(max_length=20, choices=Category.choices, blank=True)  # AI 제안
     ai_suggested = models.BooleanField(default=False)  # 저신뢰라 사용자 확인 필요
-    merchant_industry = models.CharField(max_length=100, blank=True)  # 업종(보조, §6.5)
+    # 업종(보조 힌트, §6.5·§7-1). **라벨은 `transactions.industry` 정본 어휘**로만 채운다 —
+    #  이 값이 `merchant.merchant_type` 사실로 그대로 엔진에 들어가므로 표기가 갈리면 룰이 안 걸린다.
+    merchant_industry = models.CharField(max_length=100, blank=True)
+    # 라벨 표기가 바뀌어도 안 흔들리는 키. 라벨은 화면·DSL 표기라 개정될 수 있지만
+    #  코드는 데이터 계약이라 고정이다(플래그 `code`/`label` 분리와 같은 이유).
+    merchant_industry_code = models.CharField(max_length=32, blank=True)
     purpose = models.CharField("지출 목적/사유", max_length=300, blank=True)
     status = models.CharField(
         max_length=24, choices=SettlementStatus.choices, default=SettlementStatus.DRAFT

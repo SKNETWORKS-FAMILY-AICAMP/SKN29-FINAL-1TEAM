@@ -42,6 +42,7 @@ export interface DraftResult {
     aiCategory: DraftCategory
     aiSuggested: boolean
     merchantIndustry: string
+    merchantIndustryCode: string
     purpose: string
     evidence: 'OK' | 'MISSING'
     headcount: number

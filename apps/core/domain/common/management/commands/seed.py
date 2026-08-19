@@ -34,6 +34,7 @@ from domain.policies.snapshot import graph_snapshot
 from domain.policies.tiger_tables import DEMO_POLICY, upsert_all as upsert_policy_tables
 from domain.risk.models import RiskReview
 from domain.settlements.models import Category as C, Settlement, SettlementStatus as S, TeamBudget
+from domain.transactions import industry as industry_vocab
 from domain.transactions.models import MerchantCategory, MerchantSource, Receipt, Transaction
 
 User = get_user_model()
@@ -171,10 +172,14 @@ class Command(BaseCommand):
         postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="후정산 청구", number_masked="후정산")
         sales_prepaid = Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales)
 
-        for nm, code, label in [("스타벅스", "CE7", "카페"), ("강남한식당", "FD6", "한식"),
-                                ("신라스테이", "AD5", "숙박"), ("메가커피", "CE7", "카페"),
-                                ("르쁘띠바", "FD6", "주점"), ("한우명가", "FD6", "한식"),
-                                ("제주그랜드리조트", "AD5", "숙박"), ("골든벨CC", "AT4", "골프장")]:
+        # 캐시는 **정본 업종 어휘**로만 심는다(§7-1). 예전엔 카카오 group code(CE7·FD6…)와
+        #  자유 라벨(한식·주점)을 넣었는데, 그 값이 그대로 판정 사실이 되어 룰의 `in [...]`에
+        #  안 걸렸다. `resolve()`를 거치므로 아래 표기를 바꿔도 저장값은 정본으로 접힌다.
+        for nm, raw in [("스타벅스", "카페"), ("강남한식당", "한식"),
+                        ("신라스테이", "숙박"), ("메가커피", "카페"),
+                        ("르쁘띠바", "주점"), ("한우명가", "한식"),
+                        ("제주그랜드리조트", "숙박"), ("골든벨CC", "골프장")]:
+            code, label = industry_vocab.resolve(raw)
             MerchantCategory.objects.get_or_create(
                 normalized_name=nm, defaults=dict(industry_code=code, industry_label=label,
                                                   source=MerchantSource.KAKAO, confidence=0.95))
@@ -201,10 +206,12 @@ class Command(BaseCommand):
             # ── 판정 입력 사실. 결정론적으로 채워 시연 판정이 재현되게 한다.
             #    비워두면 "모름"이 되어 미해소 가드가 REVIEW로 강등한다(그게 계약이다).
             shared = card.card_type in ("SHARED", "TEAM")
+            industry_code, industry_label = industry_vocab.resolve(industry)
             group = cat in (C.MEAL, C.MEETING, C.ENTERTAIN, C.GATHERING)
             s = Settlement.objects.create(
                 transaction=tx, category=cat, ai_category=cat, ai_suggested=ai,
-                merchant_industry=industry, purpose=purpose, status=status,
+                merchant_industry=industry_label, merchant_industry_code=industry_code,
+                purpose=purpose, status=status,
                 submitted_by=owner, team=owner.team,
                 item_type=ITEM_TYPE.get(cat, "기타"),
                 # 공용·팀 카드는 목적이 적혀 있어야 실사용자가 식별된 것으로 본다.
@@ -615,7 +622,7 @@ class Command(BaseCommand):
                           "payment_time": "22:41", "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "SHARED", "actual_user_recorded": True})
         ctx["user"].update({"position": "차장", "finance_dept_is_spender": False, "is_working_hours": False})
-        ctx["merchant"].update({"merchant_type": "한식", "merchant_info_resolved": True, "forbidden": False})
+        ctx["merchant"].update({"merchant_type": "일반음식점", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "접대", "confidence": 0.91, "item_type": "식사"})
         ctx["evidence"].update({"has_valid_receipt": False, "has_supporting_evidence": True,
                                 "expense_purpose_missing": False})

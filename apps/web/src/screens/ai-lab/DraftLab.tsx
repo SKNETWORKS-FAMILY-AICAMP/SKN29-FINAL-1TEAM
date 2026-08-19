@@ -432,7 +432,7 @@ function DraftResultView({ res, onCarry }: { res: DraftRunResponse; onCarry: () 
                   )}
                 </td>
               </tr>
-              <tr style={{ cursor: 'default' }}><th>가맹점 업종</th><td>{d.merchantIndustry || '—'} <span className="text-meta">(보조 힌트, 세무 판단 아님)</span></td></tr>
+              <tr style={{ cursor: 'default' }}><th>가맹점 업종</th><td>{d.merchantIndustry || '미확정'}{d.merchantIndustryCode && <span className="text-meta"> · {d.merchantIndustryCode}</span>} <span className="text-meta">({d.merchantIndustry ? '서버 조회값' : '카카오·LLM 모두 확정 실패'} · 보조 힌트, 세무 판단 아님)</span></td></tr>
               <tr style={{ cursor: 'default' }}><th>지출 목적</th><td>{d.purpose}</td></tr>
               <tr style={{ cursor: 'default' }}><th>증빙 / 인원</th><td>{d.evidence} · {d.headcount}명</td></tr>
               <tr style={{ cursor: 'default' }}>

@@ -7,3 +7,32 @@ from typing import Literal
 CardType = Literal["PERSONAL", "TEAM", "SHARED", "POST_PAID", "PREPAID"]
 Evidence = Literal["OK", "MISSING"]
 Category = Literal["회식", "회의", "식대", "출장", "접대", "비품"]
+
+# ── 가맹점 업종 어휘 (§7-1) ─────────────────────────────────────────────
+# **정본은 core의 `domain/transactions/industry.py`다.** ai는 별도 컨테이너라 import할 수
+# 없어 여기서 미러한다(`Category`와 같은 관례). 판정 사실(`merchant.merchant_type`)·룰
+# DSL·금지업종 별표가 전부 이 라벨로 비교하므로 임의로 늘리거나 표기를 바꾸면 안 된다 —
+# 어긋나면 캐시 적재 API(`MerchantCategoryUpsertView`)가 400으로 막는다.
+IndustryLabel = Literal[
+    "일반음식점", "카페", "주점/유흥", "노래연습장", "사행성업종",
+    "숙박", "골프장", "레저", "마트/편의점", "면세점",
+    "이·미용", "문구/사무용품", "주유/교통", "전자/가전", "기타",
+]
+
+INDUSTRY_CODES: dict[str, str] = {
+    "일반음식점": "RESTAURANT",
+    "카페": "CAFE",
+    "주점/유흥": "BAR_ENTERTAINMENT",
+    "노래연습장": "KARAOKE",
+    "사행성업종": "GAMBLING",
+    "숙박": "LODGING",
+    "골프장": "GOLF",
+    "레저": "LEISURE",
+    "마트/편의점": "MART",
+    "면세점": "DUTY_FREE",
+    "이·미용": "PERSONAL_CARE",
+    "문구/사무용품": "OFFICE_SUPPLIES",
+    "주유/교통": "FUEL_TRANSPORT",
+    "전자/가전": "ELECTRONICS",
+    "기타": "OTHER",
+}

@@ -9,8 +9,8 @@ import httpx
 from app.config import settings
 
 
-def _get(path: str) -> dict:
-    resp = httpx.get(f"{settings.core_base_url}{path}", timeout=10)
+def _get(path: str, timeout: float = 10) -> dict:
+    resp = httpx.get(f"{settings.core_base_url}{path}", timeout=timeout)
     resp.raise_for_status()
     return resp.json()
 
@@ -71,9 +71,9 @@ def get_tx_features(tx_id: int) -> dict:
     return _get(f"/api/internal/tx-features/{tx_id}/")
 
 
-def get_merchant_category(normalized_name: str) -> dict:
+def get_merchant_category(normalized_name: str, timeout: float = 10) -> dict:
     """가맹점 업종 캐시 조회 (Django `MerchantCategoryLookupView`, §7-1).
 
     TTL(30일) 판정은 Django 쪽에서 끝낸다 — 여기선 `hit` 여부만 본다.
     """
-    return _get(f"/api/internal/merchant-category/{quote(normalized_name, safe='')}/")
+    return _get(f"/api/internal/merchant-category/{quote(normalized_name, safe='')}/", timeout=timeout)

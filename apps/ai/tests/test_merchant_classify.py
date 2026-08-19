@@ -50,7 +50,7 @@ def request_spy(monkeypatch) -> _RequestRecorder:
 def test_cache_hit_skips_kakao_and_llm(monkeypatch, request_spy):
     monkeypatch.setattr(
         classify_mod.core_client, "get_merchant_category",
-        lambda name: {"hit": True, "industry_code": "CAFE", "industry_label": "카페", "confidence": 0.8},
+        lambda name, **_kw: {"hit": True, "industry_code": "CAFE", "industry_label": "카페", "confidence": 0.8},
     )
 
     def _fail_if_called(*_a, **_kw):
@@ -65,7 +65,7 @@ def test_cache_hit_skips_kakao_and_llm(monkeypatch, request_spy):
 
 
 def test_kakao_miss_returns_unresolved_without_llm(monkeypatch, request_spy):
-    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name: {"hit": False})
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name, **_kw: {"hit": False})
     monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: None)
 
     def _fail_if_called(*_a, **_kw):
@@ -79,7 +79,7 @@ def test_kakao_miss_returns_unresolved_without_llm(monkeypatch, request_spy):
 
 
 def test_kakao_hit_llm_success_upserts_llm_label_not_raw_kakao(monkeypatch, request_spy):
-    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name: {"hit": False})
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name, **_kw: {"hit": False})
     fake_doc = {
         "id": "12345",
         "category_name": "음식점 > 술집 > 호프,요리주점",
@@ -111,7 +111,7 @@ def test_kakao_hit_llm_success_upserts_llm_label_not_raw_kakao(monkeypatch, requ
 
 
 def test_llm_failure_returns_unresolved_and_does_not_leak_raw_kakao_label(monkeypatch, request_spy):
-    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name: {"hit": False})
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", lambda name, **_kw: {"hit": False})
     fake_doc = {"id": "1", "category_name": "음식점 > 한식", "category_group_name": "음식점", "category_group_code": "FD6"}
     monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: fake_doc)
 
@@ -123,3 +123,51 @@ def test_llm_failure_returns_unresolved_and_does_not_leak_raw_kakao_label(monkey
     result = classify_mod.classify("아무개식당")
     assert result == classify_mod.UNRESOLVED
     assert request_spy.calls == []  # LLM 실패 시 캐시에 아무것도 적재하지 않는다
+
+
+def test_cache_lookup_failure_is_absorbed_not_raised(monkeypatch, request_spy):
+    """core가 죽어도 예외를 올리지 않는다 — 독스트링이 약속한 "미확정 반환" 계약.
+
+    카카오·LLM 실패는 잡으면서 캐시 조회만 안 잡혀 있었다. Draft Agent가 이 함수를
+    초안 작성 경로에서 부르므로, 여기서 터지면 정산 초안 자체가 실패한다.
+    """
+    def _boom(*_a, **_kw):
+        raise RuntimeError("core 미기동")
+
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", _boom)
+    monkeypatch.setattr(classify_mod, "_kakao_search", lambda query: None)
+
+    assert classify_mod.classify("스타벅스 강남점") == classify_mod.UNRESOLVED
+
+
+def test_cache_failure_still_falls_through_to_kakao(monkeypatch, request_spy):
+    """캐시가 죽었다고 조회를 포기하지는 않는다(캐시는 가속 장치지 유일 소스가 아니다)."""
+    def _boom(*_a, **_kw):
+        raise RuntimeError("core 미기동")
+
+    monkeypatch.setattr(classify_mod.core_client, "get_merchant_category", _boom)
+    monkeypatch.setattr(
+        classify_mod, "_kakao_search",
+        lambda query: {"id": "9", "category_name": "음식점 > 카페", "category_group_name": "카페"},
+    )
+    monkeypatch.setattr(
+        classify_mod, "_llm_classify",
+        lambda merchant, category_name, category_group_name: classify_mod._LLMIndustryOutput(
+            industry_label="카페", confidence=0.88,
+        ),
+    )
+
+    result = classify_mod.classify("메가커피 역삼점")
+    assert result["industry_code"] == "CAFE"
+    assert result["source"] == "KAKAO"
+
+
+def test_vocabulary_mirror_is_self_consistent():
+    """미러(`app/schemas.py`)의 라벨 Literal과 코드표가 어긋나면 core가 400으로 막는다 —
+    그 전에 여기서 잡는다."""
+    from typing import get_args
+
+    from app.schemas import INDUSTRY_CODES, IndustryLabel
+
+    assert set(get_args(IndustryLabel)) == set(INDUSTRY_CODES)
+    assert len(set(INDUSTRY_CODES.values())) == len(INDUSTRY_CODES)   # 코드 중복 없음

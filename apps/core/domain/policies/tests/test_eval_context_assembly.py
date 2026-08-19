@@ -52,7 +52,7 @@ class Given:
     """정산 1건의 입력. **적지 않은 판정 컬럼은 null(=모름)로 남는다.**"""
     amount: int = 120_000
     merchant: str = "한우명가"
-    industry: str = "한식"            # ''이면 업종 미확인
+    industry: str = "한식"            # 저장 표기(정본으로 접힌다). ''이면 업종 미확인
     category: str = "접대"
     purpose: str = "거래처 미팅"
     card_type: str = CardType.PERSONAL
@@ -86,13 +86,13 @@ class Case:
 CASES = [
     # ── 거래에서 바로 나오는 사실
     Case(
-        "거래 기본 — 금액·시각·업종이 그대로 옮겨진다",
+        "거래 기본 — 금액·시각이 그대로, 업종은 정본 어휘로 접혀 옮겨진다",
         Given(amount=452_000, industry="한식", ts=WED_LUNCH),
         expect={
             "tx.amount": 452_000,
             "tx.payment_time": "13:00",
             "tx.payment_method": "법인카드",
-            "merchant.merchant_type": "한식",
+            "merchant.merchant_type": "일반음식점",   # 저장값 `한식` → 정본(§7-1)
             "merchant.merchant_info_resolved": True,
             "derived.is_late_night": False,
             "derived.is_weekend": False,
@@ -241,8 +241,8 @@ CASES = [
     ),
     Case(
         "금지업종 목록도 별표에서 불린으로 선해소된다",
-        Given(industry="유흥주점"),
-        expect={"merchant.merchant_type": "유흥주점", "merchant.forbidden": True},
+        Given(industry="유흥주점"),      # 규정 원문 표기 → 정본 `주점/유흥`으로 접힌다
+        expect={"merchant.merchant_type": "주점/유흥", "merchant.forbidden": True},
     ),
     Case(
         "금지 목록에 없는 업종 → False",

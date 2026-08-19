@@ -15,14 +15,14 @@ class GlobalRuleSeedTests(SimpleTestCase):
 
     def test_forbidden_merchant_rejects_at_first_gate(self):
         result = run_rule_engine(
-            {"merchant": {"merchant_type": "유흥업소"}, "category": {}, "tx": {}}, self.graph
+            {"merchant": {"merchant_type": "주점/유흥"}, "category": {}, "tx": {}}, self.graph
         )
         self.assertEqual(result.decision, "REJECT")
         self.assertEqual(result.path, ["R-002"])
 
     def test_cash_gift_certificate_rejects_at_second_gate(self):
         context = {
-            "merchant": {"merchant_type": "문구점"},
+            "merchant": {"merchant_type": "문구/사무용품"},
             "category": {"item_type": "상품권"},
             "tx": {"payment_method": "현금"},
         }
@@ -33,7 +33,7 @@ class GlobalRuleSeedTests(SimpleTestCase):
     def test_shared_card_without_actual_user_is_returned(self):
         """v2에서 추가된 공용카드 실사용자 게이트(R-004)."""
         context = {
-            "merchant": {"merchant_type": "문구점"},
+            "merchant": {"merchant_type": "문구/사무용품"},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "SHARED", "actual_user_recorded": False},
@@ -45,7 +45,7 @@ class GlobalRuleSeedTests(SimpleTestCase):
     def test_late_night_personal_use_goes_to_review(self):
         """R-006 — 「사적사용 의심」을 입력받지 않고 원자 사실을 조합해 판단한다(스키마 v3)."""
         context = {
-            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
+            "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
@@ -58,7 +58,7 @@ class GlobalRuleSeedTests(SimpleTestCase):
     def test_late_night_alone_is_not_enough(self):
         """조합이므로 심야 하나만으로는 걸리지 않는다 — 업종이 확인됐고 평일이면 통과."""
         context = {
-            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
+            "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
@@ -68,7 +68,7 @@ class GlobalRuleSeedTests(SimpleTestCase):
 
     def test_clean_transaction_passes_global_gate(self):
         context = {
-            "merchant": {"merchant_type": "문구점", "merchant_info_resolved": True},
+            "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
             "tx": {"payment_method": "카드"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},

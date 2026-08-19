@@ -81,7 +81,7 @@ class GraphScenarioMixin:
 #     R-002 금지업종 → R-003 상품권 현금 → R-004 공용카드 실사용자 → R-006 심야·휴일 → PASS
 # ════════════════════════════════════════════════════════════════
 CLEAN = {
-    "merchant__merchant_type": "한식",
+    "merchant__merchant_type": "일반음식점",
     "merchant__merchant_info_resolved": True,
     "category__item_type": "식사",
     "tx__payment_method": "법인카드",
@@ -103,8 +103,8 @@ class GlobalGateTests(GraphScenarioMixin, SimpleTestCase):
             decision="PASS", flags=[], path=GATE_PATH,
         ),
         Scenario(
-            "금지업종(주점) — 첫 게이트에서 즉시 반려",
-            facts={**CLEAN, "merchant__merchant_type": "주점"},
+            "금지업종(주점/유흥) — 첫 게이트에서 즉시 반려",
+            facts={**CLEAN, "merchant__merchant_type": "주점/유흥"},
             decision="REJECT", flags=["PROHIBITED_MERCHANT"], path=["R-002"],
         ),
         Scenario(

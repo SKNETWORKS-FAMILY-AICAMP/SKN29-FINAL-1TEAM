@@ -81,6 +81,10 @@ export function SettlementDetailModal({
   const [category, setCategory] = useState<Category>(item?.aiCategory ?? '접대')
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   const [aiSuggested, setAiSuggested] = useState(item?.aiSuggested ?? false)
+  // 가맹점 업종 — 사람이 고르는 값이 아니라 **서버가 조회해 준 사실**이라 입력칸이 없다.
+  //  화면이 들고 있다가 저장 때 같이 올린다(안 올리면 판정이 쓸 업종이 통째로 비어 버린다).
+  const [industry, setIndustry] = useState(item?.merchantIndustry ?? '')
+  const [industryCode, setIndustryCode] = useState(item?.merchantIndustryCode ?? '')
 
   // ── 좌측 업로드 상태 ──
   const [receiptUp, setReceiptUp] = useState(item?.evidence === 'OK')
@@ -110,12 +114,13 @@ export function SettlementDetailModal({
     date: dateStr,
     cardType,
     category,
+    merchantIndustry: industry || null,
     evidence: evidence === 'OK' ? 'attached' : 'missing',
     extraDocs: extraFiles.length,
     purpose: purpose || null,
     source: receiptUp ? 'vision_ocr' : 'manual',
     aiSuggested,
-  }), [merchant, amountText, dateStr, cardType, category, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
+  }), [merchant, amountText, dateStr, cardType, category, industry, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
 
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
@@ -142,6 +147,8 @@ export function SettlementDetailModal({
     if (d.merchant) setMerchant(String(d.merchant))
     if (d.amount) setAmountText(String(d.amount))
     if (d.category) { setCategory(d.category as Category); setAiSuggested(true) }
+    if (d.merchantIndustry !== undefined) setIndustry(String(d.merchantIndustry ?? ''))
+    if (d.merchantIndustryCode !== undefined) setIndustryCode(String(d.merchantIndustryCode ?? ''))
     if (d.purpose) setPurpose(String(d.purpose))
     if (d.evidence) setReceiptUp(d.evidence === 'OK')
     setHints(result.policyHints ?? [])
@@ -155,6 +162,7 @@ export function SettlementDetailModal({
     const result = text
       ? await reviseDraft(text, {
           merchant, amount: numOnly(amountText), category, aiCategory: category,
+          merchantIndustry: industry, merchantIndustryCode: industryCode,
           purpose, evidence, headcount: 0,
         })
       : await suggestDraft({ merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence })
@@ -184,6 +192,8 @@ export function SettlementDetailModal({
     evidence,
     user: user?.name ?? '나',
     purpose: purpose || undefined,
+    merchantIndustry: industry || undefined,
+    merchantIndustryCode: industryCode || undefined,
   })
 
   // 신규 저장 → createSettlement → 목록에 추가

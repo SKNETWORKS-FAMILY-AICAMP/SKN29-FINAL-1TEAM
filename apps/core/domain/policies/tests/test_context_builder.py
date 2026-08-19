@@ -109,12 +109,12 @@ class SeededTablesTests(TestCase):
         self.assertIsNone(unknown["merchant"]["forbidden"])
 
         known = empty_eval_context()
-        known["merchant"]["merchant_type"] = "한식"          # 알지만 금지 목록엔 없음
+        known["merchant"]["merchant_type"] = "일반음식점"    # 알지만 금지 목록엔 없음
         self.assertNotIn("merchant.forbidden", resolve_policy(known, tables))
         self.assertIs(known["merchant"]["forbidden"], False)
 
         banned = empty_eval_context()
-        banned["merchant"]["merchant_type"] = "유흥주점"
+        banned["merchant"]["merchant_type"] = "주점/유흥"    # 정본 어휘(별표 키와 같은 표기)
         resolve_policy(banned, tables)
         self.assertIs(banned["merchant"]["forbidden"], True)
 
