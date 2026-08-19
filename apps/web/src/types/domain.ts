@@ -122,11 +122,34 @@ export interface Settlement {
   ruleDecision?: RuleDecision | ''
   /** 판정이 붙인 사유 코드(`PROHIBITED_MERCHANT` 등). "왜 걸렸는지"가 여기 있다. */
   ruleFlags?: string[]
+  /**
+   * 위 코드를 사람이 읽을 형태로 편 것. **라벨의 원천은 서버 레지스트리**
+   * (`policies/flags.py`)다 — 프론트가 같은 사전을 복사해 두면 반드시 어긋난다.
+   */
+  ruleFlagInfo?: RuleFlagInfo[]
   ruleJudgedAt?: string | null
 }
 
 /** 룰 엔진 판정. 사람의 결정(APPROVE/RETURN/REJECT)이나 AI 권고와는 다른 축이다. */
 export type RuleDecision = 'PASS' | 'RETURN' | 'REJECT' | 'REVIEW'
+
+/**
+ * 네임드 플래그 — 판정이 남긴 **사유**다. 상태를 정하지 않는다(상태는 `ruleDecision` 한 축).
+ * `known=false`면 레지스트리에 없는 코드다 — 감추지 않고 코드 원문을 라벨로 쓴다.
+ * `arg`는 인자가 붙은 시스템 플래그(`UNRESOLVED_FACT:approval.pre_approval_obtained`)의 뒷부분.
+ */
+export interface RuleFlagInfo {
+  code: string
+  arg: string
+  /** 원본 문자열(`code` 또는 `code:arg`) — 그대로 서버에 되돌릴 때 쓴다. */
+  flag: string
+  label: string
+  severity: string
+  /** 해소 주체: SPENDER / TEAM_LEAD / APPROVER / ACCOUNTING / SYSTEM */
+  owner: string
+  category: string
+  known: boolean
+}
 
 /** ERP 수집 1회분 결과. `exhausted`면 준비된 표본을 다 받은 것이다. */
 export interface ImportResult {

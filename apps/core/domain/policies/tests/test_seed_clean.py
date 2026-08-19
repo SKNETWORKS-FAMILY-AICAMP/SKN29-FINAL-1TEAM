@@ -85,12 +85,14 @@ class DefaultGateJudgementTests(TestCase):
     def test_missing_receipt_returns(self):
         result = orchestrator.judge(_settlement(receipt=False), record=False)
         self.assertEqual(result.decision, "RETURN")
-        self.assertIn("MISSING_RECEIPT", result.flags)
+        # 어휘 통일: `MISSING_RECEIPT` → `EVIDENCE_MISSING`(레지스트리 기준).
+        #  같은 개념에 seed_rules/seed_clean이 다른 이름을 쓰고 있었다.
+        self.assertIn("EVIDENCE_MISSING", result.flags)
 
     def test_missing_purpose_returns(self):
         result = orchestrator.judge(_settlement(purpose=""), record=False)
         self.assertEqual(result.decision, "RETURN")
-        self.assertIn("MISSING_PURPOSE", result.flags)
+        self.assertIn("PURPOSE_UNCLEAR", result.flags)
 
     def test_unresolved_merchant_goes_to_review(self):
         result = orchestrator.judge(_settlement(industry=""), record=False)

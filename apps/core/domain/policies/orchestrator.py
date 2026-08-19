@@ -31,15 +31,16 @@ from django.db import transaction as db_tx
 
 from .context_builder import build_rule_context
 from .engine import RuleResult, run_rule_engine
+from .flags import SystemFlag
 from .eval_context import BUILDER_VERSION, EVAL_CONTEXT_SCHEMA_VERSION
 from .models import RuleGraph, RuleGraphStatus, RuleHit
 from .scope import GLOBAL, normalize_scope
 from .snapshot import graph_snapshot
 
 # 그래프가 없어서 판정할 수 없었음 — 통과와 구별해야 하는 상태.
-NO_GRAPH_FLAG = "NO_ACTIVE_RULE_GRAPH"
+NO_GRAPH_FLAG = SystemFlag.NO_ACTIVE_RULE_GRAPH.value
 # 게이트를 통과했지만 그 과목의 세부 그래프가 없음. 판정은 게이트의 PASS를 그대로 쓴다.
-NO_SCOPE_GRAPH_FLAG = "NO_SCOPE_RULE_GRAPH"
+NO_SCOPE_GRAPH_FLAG = SystemFlag.NO_SCOPE_RULE_GRAPH.value
 
 PASS = "PASS"
 

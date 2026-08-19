@@ -11,7 +11,7 @@ from domain.common.permissions import CanActivateRule, CanViewRule
 from . import services, simulation
 from .context_builder import load_tables, lookup
 from .eval_context import empty_eval_context
-from .models import RuleAuthoringMessage, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .models import RuleAuthoringMessage, RuleFlag, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .scope import normalize_scope
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
@@ -137,7 +137,31 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             services.activate(graph, _actor(request))
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
-        return Response(RuleGraphSerializer(graph).data)
+        data = RuleGraphSerializer(graph).data
+        # 레지스트리에 없는 플래그 — 활성화를 막지는 않되(고객 어휘일 수 있다) 승인자에게
+        # 알린다. 조용히 넘기면 오타가 그대로 화면·집계에 남는다.
+        data["unknownFlags"] = getattr(graph, "unknown_flags", [])
+        return Response(data)
+
+    # GET /api/rules/flags/  — 네임드 플래그 레지스트리(룰 편집 선택지·화면 라벨)
+    @action(detail=False, methods=["get"], url_path="flags")
+    def flag_registry(self, request):
+        """플래그 표기·분류의 단일 원천. 프론트가 라벨 사전을 따로 들고 있으면 곧 어긋난다.
+
+        `system=1`이면 엔진 전용 플래그도 포함한다(기본 제외) — 룰 편집 드롭다운에
+        `NO_ACTIVE_RULE_GRAPH`가 뜨면 룰이 그걸 스스로 붙일 수 있게 되어 의미가 뒤집힌다.
+        """
+        rows = RuleFlag.objects.filter(is_active=True)
+        if request.query_params.get("system") not in ("1", "true"):
+            rows = rows.filter(is_system=False)
+        return Response([
+            {
+                "code": r.code, "label": r.label, "description": r.description,
+                "category": r.category, "severity": r.severity, "owner": r.owner,
+                "isSystem": r.is_system,
+            }
+            for r in rows
+        ])
 
     @action(detail=True, methods=["get", "post"], url_path="messages")
     def messages(self, request, pk=None):

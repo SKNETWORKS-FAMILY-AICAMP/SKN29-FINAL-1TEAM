@@ -41,6 +41,7 @@ llm_wiki/
 - **Risk Review = MVP 2단계**(이상탐지→RAG 내규검증), 지도학습은 post-MVP. — 요구사항 §6
 - **룰 도메인 = 그래프(트리)**, ACTIVE·버전·롤백은 그래프 단위. 룰엔진 = 3단(EvalContext 조립 → 게이트/과목별 그래프 선택 → 결정론적 순회), 조건은 JSON-Logic류 DSL. — 기술 §4.2 / `_context/rule-engine.md`
 - **규정 임계값(policy) = 2층**: 저장층 `policy_tables`(별표 원본, 자유 JSON payload + `key_axes`) → 해소 규약(`RESOLVERS`) → 소비층 `ctx.policy.*` 고정 카탈로그. 조립기(`context_builder.build_rule_context`)·미해소 가드(`UNRESOLVED_POLICY_VAR` → REVIEW 강등) 구현 완료. — `_context/policy-domain.md` / 기술 §3.3
+- **판정 사유 = 네임드 플래그**: 2계층(시스템=닫힌 `SystemFlag` enum / 룰=열린 `RuleFlag` 레지스트리). **불변식 — 플래그는 상태머신을 움직이지 않는다**(상태는 `decision` 한 축). 레지스트리 행은 표시·분류 속성만 갖고 행동을 갖지 않는다(가지면 `rule_hits` 스냅샷으로 재현 불가한 세 번째 입력이 생긴다). 미등록 플래그는 **막지 않고 경고**(고객 규정에서 새 어휘가 생긴다). `code`는 데이터 계약이라 불변, `label`만 수정 가능. — `_context/rule-flags.md`
 - **가맹점 업종 구분**(캐시→카카오→웹), 비용분류 보조 힌트(세무 아님), MCC는 post-MVP. — 기술 §7-1
 - **인가 = 기능 단위(Capability) RBAC**: `team_aggregate`/`accounting_review`/`rule_view`/`rule_activate`/`governance_view`/`ai_lab` 6종. 유효능력 = 역할 기본 ∪ 개인 추가부여(`extra_capabilities`). — 기술 §3.1a
 
@@ -73,6 +74,7 @@ llm_wiki/
 | `_context/rule-engine.md` | 룰엔진 캐논 — EvalContext·DSL·게이트/과목별 그래프 예시·실행 워크스루·**§6 결정→상태 매핑(구현 완료)** | θ 폐기 반영 + 판정 동작 구현 반영(2026-08-14) |
 | `_context/rule-engine-design.md` | 룰엔진 엔지니어링 설계 원안 — DSL·순수 엔진·rule_hits 스냅샷·ACTIVE 완전성 게이트. 본문 일부(필드 카탈로그·모듈·로드맵)는 설계 당시 기준이라 현행과 다른 부분이 있어 상단 대조표로 구분해뒀다. 현재 상태는 `eval-context-guide.md`가 정본 | θ_pass/θ_reject 폐기 반영 완료 |
 | `_context/rule-seed-plan.md` | RULE 명세서 → RuleGraph 시드 구현 추적. §3.3 그래프 분할표 | 조립기 완료 반영. ⚠️ 본문의 "회식은 독립 scope" 서술은 §2 정정(2026-08-14)에 따라 무효 — 회식은 식대 scope 그래프에 편성된다 |
+| `_context/rule-flags.md` | 네임드 플래그(판정 사유 코드) 캐논 — 불변식(상태 불간섭)과 그 근거 3가지, 시스템/룰 2계층, `code` 불변 계약, 인자 붙는 플래그 규칙, 어휘 목록 8분류, 잡은 결함 4건(어휘 드리프트·프론트 사전 복사·`flag` 미검증·사유 프리셋 하드코딩), 활용처 표, API | 구현 완료 (`policies/flags.py`·`RuleFlag` 0016, 회귀 `test_flags.py`) |
 | `_context/policy-domain.md` | 규정 임계값(policy) 도메인 캐논 — 저장층(`policy_tables` 자유 JSON)/소비층(`ctx.policy.*` 고정 카탈로그)/해소 규약 2층 구조, 미해소 가드 | 구현 완료 (`policies/context_builder.py`·`tiger_tables.py`, EvalContext v2) |
 | `_context/evidence-extraction-agent.md` | 증빙자료 추출 Agent — 첨부 다종 문서(사전승인·회의록·출장계획서·영수증) → 판정 사실(EvalContext dot-path). Draft/Rule/Risk와의 경계, 관측 계약(부재 확인=명시값 / 미관측=경로 생략), 우선순위, `chunk_pdf`·비전 재사용, 종류별 추출 대상, 미결 5건 | 저장 구조·조립기 연결 완료 / 추출 로직 미착수 |
 | `_context/eval-context-sourcing.md` | EvalContext 데이터 출처 점검 + v3 다이어트 기록 — 필드를 A(데이터 있음·코드만)/B(컬럼·입력칸만)/C(도메인 신설)/D(제외)로 등급화, 부분 조립 실측·GLOBAL 게이트 병목, 첨부 문서 추출 축, v3 다이어트 101→46 실행 기록, 미결 쟁점 | 다이어트 실행 완료 |

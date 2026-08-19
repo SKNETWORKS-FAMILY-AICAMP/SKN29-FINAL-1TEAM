@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .flags import SystemFlag
 from .dsl import DSLValidationError, evaluate, extract_vars, resolve_path, validate_expr
 
 
@@ -25,8 +26,10 @@ DECISIONS = {"PASS", "REJECT", "REVIEW", "RETURN"}
 #   · UNRESOLVED_POLICY_VAR — 별표(policy_tables) 미적재·룩업 실패 → 표를 채우면 해결
 #   · UNRESOLVED_FACT       — SoR에 원천 데이터가 없음 → 모델·입력 화면이 필요
 POLICY_PREFIX = "policy."
-UNRESOLVED_POLICY_FLAG = "UNRESOLVED_POLICY_VAR"
-UNRESOLVED_FACT_FLAG = "UNRESOLVED_FACT"
+# 시스템 플래그는 닫힌 집합이다(`flags.SystemFlag`) — 엔진이 만들고 룰은 못 만든다.
+#  여기서 리터럴을 쓰면 레지스트리와 조용히 어긋나므로 enum을 참조한다.
+UNRESOLVED_POLICY_FLAG = SystemFlag.UNRESOLVED_POLICY_VAR.value
+UNRESOLVED_FACT_FLAG = SystemFlag.UNRESOLVED_FACT.value
 UNRESOLVED_FLAG = UNRESOLVED_POLICY_FLAG      # 하위 호환 별칭
 # 강등 스위치. False로 두면 플래그만 남기고 판정은 그대로 둔다(시연 중 임시 완화용 — PLAN R1).
 DEMOTE_ON_UNRESOLVED_POLICY = True
@@ -141,7 +144,7 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
     try:
         validate_graph(graph)
     except (GraphValidationError, ValueError):
-        return RuleResult("REVIEW", [], ["INVALID_RULE_GRAPH"], 0.0)
+        return RuleResult("REVIEW", [], [SystemFlag.INVALID_RULE_GRAPH.value], 0.0)
 
     nodes, routings, current = _parts(graph)
     referenced = referenced_vars_by_node(nodes)
@@ -151,7 +154,7 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
     visited: set[str] = set()
     while current:
         if current in visited:  # validate 이후 입력 변조에 대한 방어
-            return RuleResult("REVIEW", path, flags + ["RULE_GRAPH_CYCLE"], 0.0)
+            return RuleResult("REVIEW", path, flags + [SystemFlag.RULE_GRAPH_CYCLE.value], 0.0)
         visited.add(current)
         path.append(current)
         node = nodes[current]
@@ -174,4 +177,4 @@ def run_rule_engine(ctx: dict[str, Any], graph: dict[str, Any]) -> RuleResult:
         if decision == "PASS_THROUGH":
             decision = "PASS" if not candidates else "REVIEW"
         return _finalize(decision, path, flags, 1.0, unresolved)
-    return _finalize("REVIEW", path, flags + ["NO_TERMINAL_DECISION"], 0.0, unresolved)
+    return _finalize("REVIEW", path, flags + [SystemFlag.NO_TERMINAL_DECISION.value], 0.0, unresolved)

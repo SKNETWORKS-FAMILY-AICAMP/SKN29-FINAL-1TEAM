@@ -73,6 +73,9 @@ class SettlementSerializer(serializers.ModelSerializer):
     #  이상 여부를 흉내냈는데, 그 숫자는 어느 규정에서도 오지 않은 값이었다.
     ruleDecision = serializers.CharField(source="rule_decision", read_only=True)
     ruleFlags = serializers.JSONField(source="rule_flags", read_only=True)
+    # 사람이 읽을 사유 — 레지스트리(`policies.flags`)가 라벨의 단일 원천이다.
+    #  프론트에 같은 사전을 복사해 두면 곧 어긋난다(실제로 27 vs 9로 어긋나 있었다).
+    ruleFlagInfo = serializers.SerializerMethodField()
     ruleJudgedAt = serializers.DateTimeField(source="rule_judged_at", read_only=True)
 
     class Meta:
@@ -83,7 +86,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
-            "evalContext", "ruleDecision", "ruleFlags", "ruleJudgedAt",
+            "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -150,6 +153,24 @@ class SettlementSerializer(serializers.ModelSerializer):
         """
         r = self._risk(obj)
         return (r.stage2_verdict or {}).get("violation_verdict", "") if r else ""
+
+    def _flag_labels(self):
+        """요청당 한 번만 레지스트리를 읽는다. 목록 응답에서 행마다 조회하면 N+1이다.
+
+        DRF는 `many=True`여도 자식 시리얼라이저 **인스턴스 하나**를 재사용하므로
+        여기 캐시하면 요청 단위 캐시가 된다(프로세스에 남지 않아 admin 수정이 바로 반영된다).
+        """
+        if not hasattr(self, "_flag_label_cache"):
+            from domain.policies.flags import label_map
+
+            self._flag_label_cache = label_map()
+        return self._flag_label_cache
+
+    def get_ruleFlagInfo(self, obj):
+        from domain.policies.flags import describe
+
+        labels = self._flag_labels()
+        return [describe(flag, labels) for flag in (obj.rule_flags or [])]
 
     def get_evalContext(self, obj):
         """검토 화면이 보는 "판정 시점 사실" — **가장 최근 판정**의 스냅샷이다.

@@ -70,7 +70,7 @@ def default_gate_spec() -> dict:
             "n_receipt", "증빙 누락",
             {"==": [{"var": "evidence.has_valid_receipt"}, False]},
             "RETURN", "영수증 등 증빙이 확인되지 않은 건", 0,
-            severity="HIGH", flag="MISSING_RECEIPT",
+            severity="HIGH", flag="EVIDENCE_MISSING",
             when="영수증 등 증빙이 등록되지 않았을 때",
             then="증빙을 첨부해 다시 제출하도록 보완요청합니다",
         ),
@@ -78,7 +78,7 @@ def default_gate_spec() -> dict:
             "n_purpose", "지출 목적 미기재",
             {"==": [{"var": "evidence.expense_purpose_missing"}, True]},
             "RETURN", "지출 목적·사유가 비어 있는 건", 1,
-            severity="HIGH", flag="MISSING_PURPOSE",
+            severity="HIGH", flag="PURPOSE_UNCLEAR",
             when="지출 목적·사유를 적지 않았을 때",
             then="목적을 기재해 다시 제출하도록 보완요청합니다",
         ),
@@ -181,8 +181,12 @@ class Command(BaseCommand):
         # 직책·직급 기준 코드 — 사람보다 먼저. 규정 별표와 달리 **회사 마스터 데이터**라
         #  갓 설치한 상태에도 있어야 사람을 등록할 수 있다(정책 판단이 아니라 조직 사실이다).
         from domain.accounts.org_codes import seed_org_codes
+        from domain.policies.flags import seed_rule_flags
 
         seed_org_codes()
+        # 판정 사유 코드의 기준 어휘. 갓 설치한 회사에도 있어야 한다 — 규정이 아니라
+        # 제품이 제공하는 **표시·분류 어휘**다(고객 문서에서 새 코드가 추가될 수 있다).
+        seed_rule_flags()
         pos = {p.name: p for p in Position.objects.all()}
         title = {j.name: j for j in JobTitle.objects.all()}
         NONE = title["비직책자(공용카드)"]

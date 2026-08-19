@@ -388,11 +388,27 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   )
 }
 
+/** 네임드 플래그 어휘 — 서버 레지스트리가 단일 원천이라 화면은 받아 쓰기만 한다.
+ *  실패해도 빈 목록으로 둔다: 제안이 없을 뿐 자유 입력은 그대로 되므로 편집을 막지 않는다. */
+function useFlagRegistry() {
+  const [rows, setRows] = useState<{ code: string; label: string }[]>([])
+  useEffect(() => {
+    let cancelled = false
+    endpoints.ruleFlags()
+      .then(({ data }) => { if (!cancelled) setRows(data ?? []) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [])
+  return rows
+}
+
+
 function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChanged }: {
   graph: RuleGraph; node: GraphNode; onStartEdit: () => void; onDelete: () => void
   onReverted: (activeId: string) => void; onNodeChanged: (patch: Partial<GraphNode>) => void
 }) {
   const editable = graph.status === 'DRAFT'
+  const flagRegistry = useFlagRegistry()
   const [showCode, setShowCode] = useState(false)
   const [title, setTitle] = useState(node.title)
   const [description, setDescription] = useState(node.description ?? '')
@@ -475,7 +491,13 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       <div className="field"><label>액션</label><div className="grid-2" style={{ gap: 8 }}>
         <select disabled={!editable} value={action.decision ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, decision: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">결정 선택</option><option>PASS</option><option>REJECT</option><option>REVIEW</option><option>RETURN</option><option>PASS_THROUGH</option></select>
         <select disabled={!editable} value={action.severity ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, severity: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }}><option value="">심각도 선택</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select>
-        <input disabled={!editable} value={action.flag ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, flag: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="플래그" />
+        {/* 플래그는 자유 입력이되 **등록된 어휘를 먼저 제안**한다. 닫으면(select) 고객 규정에서
+            생성된 새 어휘를 못 쓰고, 완전히 열어두면 같은 개념에 다른 이름이 생긴다
+            (실제로 `EVIDENCE_MISSING` vs `MISSING_RECEIPT`로 갈렸었다). */}
+        <input disabled={!editable} list="rule-flag-registry" value={action.flag ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, flag: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="플래그 (등록 어휘 제안)" />
+        <datalist id="rule-flag-registry">
+          {flagRegistry.map((f) => <option key={f.code} value={f.code}>{f.label}</option>)}
+        </datalist>
         <input disabled={!editable} value={action.note ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, note: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="처리 안내/메모" />
         <input disabled={!editable} value={action.approver ?? ''} onBlur={() => void saveNow()} onChange={(event) => { const next = { ...action, approver: event.target.value }; setAction(next); onNodeChanged({ actionDetail: next }); markDirty() }} placeholder="확인·승인 주체" />
         <input value={`평가 우선순위 ${node.priority ?? 0}`} readOnly aria-label="평가 우선순위" />

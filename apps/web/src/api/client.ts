@@ -28,6 +28,9 @@ export const endpoints = {
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
+  // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
+  //  시스템 플래그는 기본 제외한다(룰이 `NO_ACTIVE_RULE_GRAPH`를 붙이면 의미가 뒤집힌다).
+  ruleFlags: () => api.get('/rules/flags/'),
   activateRule: (id: string) => api.post(`/rules/${id}/activate/`),
   rollbackRule: (id: string) => api.post(`/rules/${id}/rollback/`),
   // 버전 이력(같은 family 전체) 조회 · 특정 과거 버전으로 롤백

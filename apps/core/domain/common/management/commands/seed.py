@@ -76,8 +76,10 @@ class Command(BaseCommand):
         #  사용자보다 먼저 만든다(사람에 FK로 붙는다). 「직급체계」·별표1 원문 기준.
         #  **직책**이 결재권·카드한도 축이고, 직급은 처우 축이라 판정에 쓰이지 않는다.
         from domain.accounts.org_codes import check_table_keys, seed_org_codes
+        from domain.policies.flags import seed_rule_flags
 
         seed_org_codes()
+        seed_rule_flags()   # 판정 사유 코드 기준 어휘(네임드 플래그)
         pos = {p.name: p for p in Position.objects.all()}
         title = {j.name: j for j in JobTitle.objects.all()}
         # 별표 축 값이 코드 테이블에 없으면 그 직급/직책의 한도가 **조용히** 회사 기본값

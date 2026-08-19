@@ -486,6 +486,39 @@ class RuleSimulationResult(models.Model):
         ordering = ["order", "id"]
 
 
+class RuleFlag(models.Model):
+    """네임드 플래그 레지스트리 — 판정 사유 코드의 단일 진실 원천 (`policies/flags.py`).
+
+    **행동을 갖지 않는다.** 여기 있는 건 표시·분류 속성뿐이고, 정산 상태는 `decision`
+    한 축이 정한다. 레지스트리가 상태를 바꾸면 `rule_hits` 스냅샷으로 재현할 수 없는
+    세 번째 입력이 생긴다 — 상세는 `flags.py` 모듈 docstring.
+
+    **열린 레지스트리다.** 고객 규정에서 Rule Agent가 새 플래그를 만들 수 있으므로
+    미등록 코드도 동작은 한다(원문 표시). ACTIVE 전환 때 경고로만 남긴다.
+    """
+    # 데이터 계약. 이 코드가 Risk Review 프롬프트 입력이자 룰 정밀도 집계의 키다 —
+    # 바꾸면 과거 통계와 비교가 끊긴다. 표기는 `label`에서 바꾼다.
+    code = models.CharField("코드", max_length=64, unique=True)
+    label = models.CharField("표기", max_length=60)
+    description = models.TextField("설명", blank=True)
+    category = models.CharField("분류", max_length=20, blank=True)
+    severity = models.CharField("심각도", max_length=10, blank=True)
+    # 누가 해소하는가 — 화면이 "고쳐주세요"와 "결재해주세요"를 구분하는 데만 쓴다.
+    owner = models.CharField("해소 주체", max_length=20, blank=True)
+    # 엔진이 만드는 플래그(닫힌 집합)인지. 룰 편집 화면의 선택지에서 제외한다 —
+    # 룰이 `NO_ACTIVE_RULE_GRAPH`를 스스로 붙이면 의미가 뒤집힌다.
+    is_system = models.BooleanField("시스템 플래그", default=False)
+    is_active = models.BooleanField("사용", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["category", "code"]
+        verbose_name = verbose_name_plural = "판정 플래그"
+
+    def __str__(self):
+        return f"{self.code} ({self.label})"
+
+
 class RuleHit(models.Model):
     """Rule 판정 로그 — 판정 입력 전체를 보존해 재현·감사를 지원."""
     transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True, on_delete=models.SET_NULL)

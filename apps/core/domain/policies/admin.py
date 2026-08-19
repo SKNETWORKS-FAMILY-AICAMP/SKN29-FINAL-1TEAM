@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from .models import (
-    PolicyClause, PolicyDoc, PolicyFolder, PolicyTable, RuleGraph, RuleGraphVersion,
-    RuleHit, RuleNode, RuleRouting,
+    PolicyClause, PolicyDoc, PolicyFolder, PolicyTable, RuleFlag, RuleGraph,
+    RuleGraphVersion, RuleHit, RuleNode, RuleRouting,
 )
 
 
@@ -42,3 +42,18 @@ admin.site.register(RuleHit)
 admin.site.register(PolicyFolder)
 # 조항은 적재가 만들지만, 결정(규칙 생성 안 함 + 사유)을 admin에서 되돌려야 할 때가 있다.
 admin.site.register(PolicyClause)
+
+
+@admin.register(RuleFlag)
+class RuleFlagAdmin(admin.ModelAdmin):
+    """네임드 플래그 레지스트리 — 판정 사유 코드의 표기·분류.
+
+    ⚠️ **`code`는 데이터 계약이다.** Risk Review 프롬프트 입력이자 룰 정밀도 집계의 키라,
+    바꾸면 과거 `rule_hits`·통계와 비교가 끊긴다. 표기를 고치려면 `label`을 쓴다.
+    행이 **행동을 갖지 않는다**는 것도 중요하다 — 상태는 `decision`이 정한다(`flags.py`).
+    """
+    list_display = ("code", "label", "category", "severity", "owner", "is_system", "is_active")
+    list_filter = ("category", "severity", "owner", "is_system", "is_active")
+    list_editable = ("label", "severity", "owner", "is_active")
+    search_fields = ("code", "label", "description")
+    readonly_fields = ("code", "is_system")   # 계약이라 화면에서 못 바꾼다(코드/시드로만)

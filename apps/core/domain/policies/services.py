@@ -6,6 +6,7 @@ from domain.common.models import AuditLog
 
 from .engine import validate_graph
 from .eval_context import validate_graph_vars
+from .flags import unknown_flags
 from .models import (
     RULE_SCOPE_CHOICES, RuleGraph, RuleGraphStatus, RuleGraphVersion, RuleNode, RuleRouting, RuleTestCase,
 )
@@ -139,6 +140,10 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     """승인 → ACTIVE 전이 (그래프 단위). 동일 스코프의 기존 ACTIVE는 ARCHIVED.
 
     자동 승인 금지: 반드시 관리자 호출로만 실행된다(FR-RV-04).
+
+    미등록 플래그는 `graph.unknown_flags`에 실어 보내되 **막지 않는다** — 고객 규정에서
+    생성된 룰이 새 어휘를 쓸 수 있고, 여기서 거부하면 룰 생성 자체가 멈춘다. 오타와 새
+    어휘를 시스템은 구별할 수 없고, 아는 건 승인하는 사람뿐이다.
     """
     # 기존 ACTIVE를 건드리기 전에 새 그래프의 실행 가능성을 hard gate로 검증한다.
     snapshot = _snapshot(graph)
@@ -146,6 +151,7 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     missing = validate_graph_vars(snapshot)
     if missing:
         raise ValueError(f"EvalContext에 정의되지 않은 경로입니다: {', '.join(sorted(missing))}")
+    graph.unknown_flags = unknown_flags(snapshot)   # 응답용 경고(저장하지 않는다)
 
     RuleGraph.objects.filter(scope=graph.scope, status=RuleGraphStatus.ACTIVE).exclude(pk=graph.pk).update(
         status=RuleGraphStatus.ARCHIVED
