@@ -241,7 +241,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 
 /* ── S-04 Rule 콘솔 : 작업 화면 전폭 + 초안 그래프 트리 ── */
 .page:has(.rule-console-full) { max-width: none; overflow-x: auto; }
-.rule-draft-grid { display: grid; grid-template-columns: 450px minmax(520px, 1.4fr) minmax(340px, 1fr); min-width: 1350px; gap: var(--space-4); align-items: start; }
+.rule-draft-grid { display: grid; grid-template-columns: 420px minmax(480px, 1.3fr) minmax(380px, 1fr); min-width: 1300px; gap: var(--space-4); align-items: start; }
 .rule-console-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 .rule-console-tabs .btn { border-color: transparent; background: transparent; box-shadow: none; }
 .rule-console-tabs .btn.primary { color: #fff; background: var(--primary); box-shadow: var(--shadow-sm); }
@@ -519,8 +519,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .note { font-size: var(--text-meta); color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); }
 
 /* 반응형 */
-@media (max-width: 1350px) and (min-width: 1051px) {
-  .rule-draft-grid { grid-template-columns: 450px minmax(520px, 1fr); min-width: 1000px; }
+/* 3열이 나란히 놓이려면 사이드바(최대 234px)를 빼고도 1300px+380px = 1680px는 있어야 한다.
+   그보다 좁으면(흔한 창 크기 대부분) 대화형 지시·수정 패널이 잘리므로, 왼쪽 두 열만 나란히 두고
+   패널은 아래로 전폭 내려서 잘리지 않게 한다. */
+@media (max-width: 1900px) and (min-width: 1051px) {
+  .rule-draft-grid { grid-template-columns: 420px minmax(480px, 1fr); min-width: 980px; }
   .rule-draft-grid > :nth-child(3) { grid-column: 1 / -1; }
 }
 @media (max-width: 1050px) {

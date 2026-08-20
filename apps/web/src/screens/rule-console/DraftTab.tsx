@@ -300,7 +300,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
           <div className="card-head" style={{ alignItems: 'flex-start' }}>
             <div><h3>룰 그래프 보기 ({visibleGraphs.length})</h3><div className="text-meta">실제 그래프와 버전별 노드</div></div>
           </div>
-          <div className="row" style={{ padding: '0 12px 8px', gap: 6 }}>
+          <div className="row" style={{ padding: '12px 12px 8px', gap: 6 }}>
             <button className={'btn sm' + (nodeFilter === 'all' ? ' primary' : '')} onClick={() => setNodeFilter('all')}>전체보기</button>
             <button className={'btn sm' + (nodeFilter === 'modified' ? ' primary' : '')} onClick={() => setNodeFilter('modified')}>수정건 보기</button>
             <div className="spacer" />

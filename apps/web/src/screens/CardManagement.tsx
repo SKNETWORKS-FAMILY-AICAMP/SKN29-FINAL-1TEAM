@@ -152,7 +152,7 @@ export function CardManagement() {
 
       <div className="page-inner">
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-          <label className="search-box" style={{ width: '100%', marginBottom: 12 }}>
+          <label className="search-box" style={{ width: '100%', marginBottom: 20 }}>
             <Search size={14} />
             <input
               style={{ width: '100%' }}
@@ -161,7 +161,7 @@ export function CardManagement() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          <div className="filter-bar" style={{ padding: 0, border: 'none' }}>
+          <div className="filter-bar" style={{ padding: 0, border: 'none', gap: 14 }}>
             <span className="text-meta">카드분류</span>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as CardType | 'ALL')}>
               <option value="ALL">전체 팀</option>
