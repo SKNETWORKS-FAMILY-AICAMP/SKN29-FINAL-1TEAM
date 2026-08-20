@@ -1,75 +1,13 @@
-import { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { Bell, LogOut } from 'lucide-react'
-import { useRole } from '../../context/RoleContext'
-import { useAuth } from '../../context/AuthContext'
-import { USE_MOCK } from '../../api/config'
-import { ROLE_LABEL, type Role } from '../../types/domain'
+import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { NotificationPanel } from './NotificationPanel'
-import { notifications as initialNotifications, type AppNotification } from '../../data/mock'
 
-const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'ACCOUNTANT_LEAD', 'EXECUTIVE']
-
+// 시안 실측: 별도 상단바(알림·아바타) 없이 히어로 배너가 화면 최상단부터 시작한다.
+// 사용자 아바타·알림·로그아웃·데모 역할전환은 모두 Sidebar가 소유한다.
 export function AppLayout() {
-  const nav = useNavigate()
-  const { role, setRole } = useRole()
-  const { user, logout } = useAuth()
-  const [notifOpen, setNotifOpen] = useState(false)
-  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
-  const hasUnread = notifications.some((n) => n.unread)
-
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
-  const markOneRead = (id: string) => setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)))
-
-  // 로그인 플로우(O-1/R-0) 진입 전에도 기존 5개 화면을 데모 role-switch로 볼 수 있도록,
-  // 인증된 user가 없으면 현재 선택된 role로 아바타 표시를 대신한다.
-  const displayName = user?.name ?? ROLE_LABEL[role]
-  const displayMeta = user ? `${user.position} · ${user.dept}` : '데모 모드'
-
   return (
     <div className="app-shell">
       <Sidebar />
       <div className="main-area">
-        <header className="topbar">
-          {USE_MOCK && (
-            <select
-              className="text-meta"
-              style={{ border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-control)', padding: '4px 8px' }}
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              aria-label="데모 역할 전환"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-              ))}
-            </select>
-          )}
-          <div style={{ position: 'relative' }}>
-            <button className="notif-btn" aria-label="알림" onClick={() => setNotifOpen((v) => !v)}>
-              <Bell size={18} />
-              {hasUnread && <span className="dot" />}
-            </button>
-            {notifOpen && (
-              <NotificationPanel
-                notifications={notifications}
-                onClose={() => setNotifOpen(false)}
-                onMarkAllRead={markAllRead}
-                onMarkOneRead={markOneRead}
-              />
-            )}
-          </div>
-          <div className="user-chip">
-            <div className="avatar">{displayName.slice(0, 1)}</div>
-            <div className="who">
-              <div className="name">{displayName}</div>
-              <div className="meta">{displayMeta}</div>
-            </div>
-          </div>
-          <button className="notif-btn" aria-label="로그아웃" title="로그아웃" onClick={() => { logout(); nav('/login') }}>
-            <LogOut size={18} />
-          </button>
-        </header>
         <main className="page">
           <Outlet />
         </main>

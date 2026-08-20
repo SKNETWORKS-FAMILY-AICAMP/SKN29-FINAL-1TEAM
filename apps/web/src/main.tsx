@@ -5,6 +5,7 @@ import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { RoleProvider } from './context/RoleContext'
 import { SettlementsProvider } from './context/SettlementsContext'
+import 'pretendard/dist/web/static/pretendard.css'
 import './styles/global.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

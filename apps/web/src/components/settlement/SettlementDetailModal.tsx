@@ -32,6 +32,8 @@ interface AiComment { icon: 'ocr' | 'doc' | 'ai'; text: string }
 interface ExtraFile { id: string; name: string }
 
 const numOnly = (s: string) => Number(s.replace(/[^0-9]/g, '') || '0')
+// 상태 변경 이력 타임라인 점 색 — 상태값을 매핑하지 않고 진행 단계를 순환색으로 표현(시안 실측: 회색→파랑→amber→빨강)
+const TIMELINE_TONES = ['gray', 'blue', 'amber', 'red']
 
 export function SettlementDetailModal({
   item,
@@ -94,7 +96,8 @@ export function SettlementDetailModal({
   const [comments, setComments] = useState<AiComment[]>([])
   const [hints, setHints] = useState<PolicyHint[]>([])
   const [instruction, setInstruction] = useState('')
-  const [factOpen, setFactOpen] = useState(false)
+  // 신규 등록(F-1) 시안은 방금 생성된 fact.json을 펼쳐서 보여준다 — 기존 건 조회는 접어둔 채 시작.
+  const [factOpen, setFactOpen] = useState(isCreate)
 
   const [pending, setPending] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
@@ -355,7 +358,7 @@ export function SettlementDetailModal({
     : `정산 상세${readOnly ? '' : ' · 수정'} · ${item!.id}`
 
   return (
-    <Modal title={title} onClose={onClose} footer={footer} maxWidth={1040}>
+    <Modal title={title} onClose={onClose} footer={footer} maxWidth={1040} dark>
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{merchant || (isCreate ? '신규 지출' : '—')}</div>
@@ -377,7 +380,7 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head">
               <h3>영수증</h3>
-              {receiptUp && <span className="tag ai"><Check size={11} /> Vision 판독</span>}
+              {receiptUp && <span className="tag ok"><Check size={11} /> Vision 판독</span>}
             </div>
             <div className="card-body">
               <div style={{
@@ -435,15 +438,15 @@ export function SettlementDetailModal({
               ) : (
                 <ul className="timeline">
                   {auditTrail?.map((ev, i) => (
-                    <li key={i}>
+                    <li key={i} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
                       <div style={{ fontSize: 13 }}>{ev.status}{ev.note ? ` — ${ev.note}` : ''}</div>
                       <div className="t-meta">{ev.actor} · {ev.timestamp}</div>
                     </li>
                   )) ?? (
                     <>
-                      <li><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item!.date} 09:12</div></li>
-                      <li><div>SUBMITTED — 제출</div><div className="t-meta">{item!.user} · 09:40</div></li>
-                      <li><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
+                      <li className="gray"><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item!.date} 09:12</div></li>
+                      <li className="blue"><div>SUBMITTED — 제출</div><div className="t-meta">{item!.user} · 09:40</div></li>
+                      <li className="amber"><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
                     </>
                   )}
                 </ul>
@@ -511,8 +514,7 @@ export function SettlementDetailModal({
                     {hints.map((hint, index) => (
                       <div key={index} style={{
                         padding: '8px 10px', borderRadius: 'var(--radius-control)', fontSize: 12.5, lineHeight: 1.6,
-                        background: hint.level === 'warn' ? 'var(--tone-amber-bg)' : 'var(--surface-2)',
-                        borderLeft: `3px solid ${hint.level === 'warn' ? 'var(--tone-amber)' : 'var(--border-strong)'}`,
+                        background: hint.level === 'warn' ? 'var(--tone-amber-bg)' : 'var(--primary-soft)',
                       }}>
                         <div className="row" style={{ gap: 6 }}>
                           <span className="tag">{hint.clause}</span>

@@ -48,21 +48,33 @@
   --radius-overlay: 12px;
   --radius-pill: 999px;
 
-  /* 사이드바(다크) — 화면설계서 지정값 */
-  --sidebar-bg: #101828;
-  --sidebar-active-bg: #1d2b45;
+  /* 사이드바(다크) — 시안 실측(`.personal/frontend/sidebar/`) 기반. 기본 접힘 118px, 호버 시 234px로 펼쳐짐 */
+  --sidebar-width: 118px;
+  --sidebar-width-expanded: 234px;
+  --sidebar-bg: #0c1736;
+  --sidebar-active-bg: #1d2b52;
   --sidebar-text: #ffffff;
   --sidebar-text-muted: #cbd5e1;
   --sidebar-sub: #8896ab;
   --sidebar-dot: #475569;
-  --sidebar-brand: #2563eb;
+  --sidebar-brand: #2b5ce0;
+  --sidebar-brand-accent: #e3392c;
+
+  /* 히어로 배너(S-01·S-02) — 실측 대각선 그라디언트 */
+  --hero-grad: linear-gradient(135deg, #101829 0%, #1b237e 100%);
+
+  /* 진행률 바·KPI 상단 악센트 전용 채도 높은 색(S-02 실측) — 뱃지/본문 텍스트의 --tone-* 와는 별개 팔레트 */
+  --accent-purple: #7b68ee;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-green: #22c55e;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: 'Malgun Gothic', '맑은 고딕', system-ui, -apple-system, sans-serif;
+  font-family: 'Pretendard', 'Malgun Gothic', '맑은 고딕', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: var(--text-value);
@@ -83,51 +95,95 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* ── 레이아웃 ─────────────────────────────── */
 .app-shell { min-height: 100vh; display: flex; }
 
-/* 좌측 세로 사이드바(다크) — 화면설계서 전 화면 공통 */
+/* 좌측 세로 사이드바(다크) — 시안 실측(`.personal/frontend/sidebar/`): 기본은 아이콘 전용(118px),
+   마우스를 올리면 라벨이 있는 234px 폭으로 펼쳐진다. 레이아웃 리플로우 없이 뜨도록 항상 fixed로
+   띄우고, main-area 쪽에 접힌 폭만큼 여백을 고정으로 잡아둔다. */
 .sidebar {
-  width: 240px; flex-shrink: 0; background: var(--sidebar-bg);
-  display: flex; flex-direction: column; padding: var(--space-5) 0;
-  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  width: var(--sidebar-width); flex-shrink: 0; background: var(--sidebar-bg);
+  display: flex; flex-direction: column; align-items: center; padding: 24px 0 20px;
+  position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; overflow-x: hidden; z-index: 30;
+  transition: width 160ms cubic-bezier(0.23,1,0.32,1);
 }
-.sidebar-brand { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-6); }
-.sidebar-brand .logo { width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--sidebar-brand); flex-shrink: 0; }
-.sidebar-brand .name { font-size: 15px; font-weight: 700; color: var(--sidebar-text); line-height: 1.3; }
-.sidebar-brand .sub { font-size: 9.5px; color: var(--sidebar-sub); line-height: 1.3; }
+.sidebar.expanded { width: var(--sidebar-width-expanded); align-items: stretch; box-shadow: 12px 0 32px rgba(8,12,30,0.35); }
+.sidebar-brand { flex-shrink: 0; margin-bottom: 28px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.sidebar.expanded .sidebar-brand { justify-content: flex-start; padding-left: 24px; }
+.sidebar-brand .logo {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--sidebar-brand); position: relative; flex-shrink: 0;
+}
+.sidebar-brand .logo::after {
+  content: ''; position: absolute; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--sidebar-brand-accent); border: 2px solid var(--sidebar-bg);
+}
+.sidebar-brand .brand-name { font-size: 17px; font-weight: 800; color: var(--sidebar-text); white-space: nowrap; }
 
-.sidebar-nav { display: flex; flex-direction: column; margin-top: var(--space-3); }
-.sidebar-nav a {
-  display: flex; align-items: center; gap: var(--space-3); padding: 11px var(--space-6);
-  color: var(--sidebar-text-muted); font-size: 13.5px; text-decoration: none;
-  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1);
+.sidebar-user { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; text-align: center; }
+.sidebar-user .avatar {
+  width: 56px; height: 56px; border-radius: 50%; background: var(--sidebar-brand); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0;
 }
-.sidebar-nav a .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sidebar-dot); flex-shrink: 0; }
-.sidebar-nav a:hover { color: var(--sidebar-text); }
-.sidebar-nav a.active { background: var(--sidebar-active-bg); color: var(--sidebar-text); font-weight: 500; }
-.sidebar-nav a.active .dot { background: var(--primary); }
+.sidebar-user .name { margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--sidebar-text); line-height: 1.3; }
+.sidebar-user .meta { font-size: 11.5px; color: var(--sidebar-sub); margin-top: 2px; }
 
-/* 우측 메인 영역 — 상단 스트립(알림·아바타) + 라우트 컨텐츠 */
-.main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.topbar {
-  height: 56px; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-4);
-  padding: 0 var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface);
+.sidebar-nav { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; width: 100%; }
+.sidebar-icon-btn {
+  width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0; position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  color: var(--sidebar-text-muted); text-decoration: none; border: none; background: transparent; cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1), width 160ms, margin 160ms;
 }
-.user-chip { display: flex; align-items: center; gap: var(--space-2); }
-.user-chip .avatar {
-  width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+.sidebar-icon-btn:hover { color: var(--sidebar-text); background: rgba(255,255,255,0.06); }
+.sidebar-icon-btn.active { background: var(--sidebar-active-bg); color: var(--sidebar-text); }
+.sidebar-icon-btn .dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--tone-red); border: 1.5px solid var(--sidebar-bg); }
+/* 펼침 상태에서는 버튼이 라벨까지 넓어지므로, 점은 버튼 오른쪽 끝이 아니라 아이콘 옆에 붙인다 */
+.sidebar.expanded .sidebar-icon-btn .dot { left: 24px; right: auto; top: 8px; }
+.sidebar-label { font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+/* 펼침 상태 — 아이콘 왼쪽 정렬 + 라벨, 활성 표시는 원형 배경 대신 왼쪽 파란 세로 바(시안 실측) */
+.sidebar.expanded .sidebar-icon-btn {
+  width: calc(100% - 24px); margin: 0 12px; justify-content: flex-start; padding-left: 12px; border-radius: var(--radius-control);
 }
-.user-chip .who { line-height: 1.3; }
-.user-chip .name { font-size: 13px; font-weight: 700; }
-.user-chip .meta { font-size: 11px; color: var(--muted); }
-.notif-btn {
-  position: relative; border: none; background: none; cursor: pointer; color: var(--muted);
-  width: 36px; height: 36px; border-radius: var(--radius-control); display: flex; align-items: center; justify-content: center;
-  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
+.sidebar.expanded .sidebar-icon-btn.active { background: transparent; box-shadow: inset 3px 0 0 var(--primary); }
+
+.sidebar-spacer { flex: 1; }
+.sidebar-logout {
+  width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; background: var(--surface); color: var(--primary); cursor: pointer; font-weight: 700; font-size: 13.5px;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), width 160ms;
 }
-.notif-btn:hover { background: var(--surface-2); }
-.notif-btn .dot { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--tone-red); border: 1.5px solid var(--surface); }
+.sidebar-logout:hover { background: var(--surface-2); }
+.sidebar.expanded .sidebar-logout { width: calc(100% - 24px); margin: 0 12px; border-radius: var(--radius-pill); }
+
+/* fixed 사이드바가 문서 흐름에서 빠지므로, 콘텐츠 영역에 접힌 폭만큼 고정 여백을 잡아둔다 */
+.main-area { margin-left: var(--sidebar-width); }
+
+/* 개발 전용 데모 역할 전환 — 시안에 없는 디버그 도구라 뷰포트 구석에 최소한으로 띄운다 */
+.dev-role-switch { position: fixed; top: 12px; right: 12px; z-index: 40; opacity: 0.55; transition: opacity 150ms; }
+.dev-role-switch:hover, .dev-role-switch:focus-within { opacity: 1; }
+.dev-role-switch select { font-size: 11px; padding: 3px 6px; }
+
+/* 우측 메인 영역 — 라우트 컨텐츠(상단 스트립 없음, 히어로 배너가 화면 최상단부터 시작) */
+.main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+
+/* 히어로 배너(S-01·S-02 공통) — 다크 대각선 그라디언트, 콘텐츠 영역 폭 전체로 블리드 */
+.hero-band {
+  background: var(--hero-grad); color: var(--sidebar-text); padding: 24px 40px 28px;
+}
+.hero-band .page-head { margin-bottom: 0; }
+.hero-band .page-head .screen-id { display: none; }
+.hero-band .page-head h1 { color: var(--sidebar-text); }
+.hero-band .page-head .sub { color: var(--sidebar-text-muted); margin-top: 4px; }
+/* 히어로 안에 얹힌 흰 카드(S-02 팀 예산 현황)는 히어로의 흰 글자색을 물려받지 않고 평소 색으로 되돌린다 */
+.hero-band .card { color: var(--text); }
+.hero-band .kpi-grid { margin: 20px 0 0; }
+.scope-chip-row { display: flex; gap: var(--space-4); margin-top: 14px; }
+.scope-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sidebar-text-muted); }
+.scope-chip .sw { width: 13px; height: 13px; border-radius: 4px; background: #b9bce0; flex-shrink: 0; }
 
 .page { padding: var(--space-6); max-width: 1280px; width: 100%; margin: 0 auto; }
+/* 히어로 배너를 쓰는 화면(S-01·S-02)은 배너가 사이드바 바로 옆부터 화면 끝까지 블리드되고,
+   그 아래 본문만 기존 1280px 중앙 컬럼을 유지한다(시안 실측). */
+.page:has(.hero-band) { max-width: none; padding: 0; }
+.page-inner { max-width: 1280px; width: 100%; margin: 0 auto; padding: var(--space-6); }
 .page-head { margin-bottom: var(--space-4); }
 .page-head h1 { font-size: var(--text-h1); }
 .page-head .sub { color: var(--muted); font-size: var(--text-body); margin-top: var(--space-1); }
@@ -152,17 +208,24 @@ textarea:focus-visible, [tabindex]:focus-visible {
   position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--space-4); transition: border-color 150ms cubic-bezier(0.23,1,0.32,1);
 }
-.kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--primary); }
+.kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--kpi-accent, var(--primary)); }
 .kpi.warn::before { background: var(--tone-red); }
 .kpi.ok::before { background: var(--tone-green); }
 .kpi.caution::before { background: var(--tone-amber); }
 .kpi:hover { border-color: var(--border-strong); }
 .kpi .label { color: var(--muted); font-size: var(--text-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.kpi .value { font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.kpi .value { color: var(--text); font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .kpi .value small { font-size: var(--text-body); font-weight: 600; color: var(--muted); margin-left: var(--space-1); letter-spacing: normal; }
 .kpi.warn .value { color: var(--tone-red); }
 .kpi.ok .value { color: var(--tone-green); }
 .kpi.caution .value { color: var(--tone-amber); }
+/* S-01 히어로 KPI 실측 — 상단 색상 바 없이 흰 카드, 텍스트 중앙정렬, 라운드 확대 */
+.kpi.flat { border-radius: 16px; text-align: center; border-color: transparent; }
+.kpi.flat::before { display: none; }
+.kpi.flat .label { text-transform: none; letter-spacing: normal; font-weight: 500; color: #9497b8; }
+.kpi.flat.warn { background: #fff5f5; }
+/* "반려" 카드처럼 값은 그대로 두고 라벨만 톤 색으로 강조(시안 실측) */
+.kpi.label-warn .label { color: var(--tone-amber); font-weight: 700; }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
@@ -325,6 +388,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .team-budget-item { flex: 1 1 calc(20% - var(--space-3)); min-width: 150px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
 .team-budget-item.caution { background: #fff8df; border-color: #ead798; }
 .team-budget-item.danger { background: var(--tone-red-bg); border-color: #f3c9c5; }
+.team-budget-item.safe { background: var(--tone-green-bg); border-color: #bfe6d1; }
 .multi-select { position: relative; }
 .multi-select summary { list-style: none; cursor: pointer; min-width: 132px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); font-size: var(--text-body); font-weight: 600; }
 .multi-select summary::-webkit-details-marker { display: none; }
@@ -342,6 +406,10 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .tag.ai { background: var(--ai-soft); color: var(--ai); border-color: #f0dfae; }
 .tag.warn { background: var(--tone-red-bg); color: var(--tone-red); border-color: #f3c9c5; }
 .tag.ok { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
+.tag.caution { background: var(--tone-amber-bg); color: var(--tone-amber); border-color: #ead9ad; }
+
+/* S-01 지출 증빙 테이블 — 뱃지 없이 톤 색 굵은 텍스트(시안 실측) */
+.status-text { font-weight: 700; font-size: var(--text-body); }
 
 /* ── 버튼 ─────────────────────────────────── */
 .btn {
@@ -365,6 +433,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .filter-bar select, .filter-bar input {
   padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); font-size: var(--text-body);
 }
+.filter-bar .search-box {
+  display: flex; align-items: center; gap: 6px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--muted);
+}
+.filter-bar .search-box input { border: none; padding: 0; font-size: var(--text-body); outline: none; background: transparent; }
 
 /* ── 파이프라인(S-03) ─────────────────────── */
 .pipeline { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-meta); font-weight: 600; }
@@ -395,6 +468,10 @@ textarea:focus-visible, [tabindex]:focus-visible {
   box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: modal-in 180ms cubic-bezier(0.23,1,0.32,1);
 }
 .modal-head { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-head.dark { background: var(--hero-grad); border-bottom-color: transparent; border-radius: var(--radius-overlay) var(--radius-overlay) 0 0; }
+.modal-head.dark h3 { color: var(--sidebar-text); }
+.modal-head.dark .x-btn { color: var(--sidebar-text); }
+.modal-head.dark .x-btn:hover { background: rgba(255,255,255,0.12); }
 .modal-body { padding: var(--space-5); }
 .modal-foot { padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border); display: flex; gap: var(--space-2); justify-content: flex-end; }
 .x-btn {
@@ -416,6 +493,10 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .timeline li { position: relative; padding: 0 0 var(--space-3) var(--space-5); border-left: 2px solid var(--border); }
 .timeline li:last-child { border-left-color: transparent; }
 .timeline li::before { content: ''; position: absolute; left: -6px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+.timeline li.gray::before { background: var(--tone-gray); }
+.timeline li.blue::before { background: var(--tone-blue); }
+.timeline li.amber::before { background: var(--tone-amber); }
+.timeline li.red::before { background: var(--tone-red); }
 .timeline .t-meta { color: var(--muted); font-size: var(--text-caption); }
 
 /* ── 폼 ───────────────────────────────────── */
@@ -515,7 +596,8 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* ── F-3 알림 패널 (알림벨 드롭다운) ───────── */
 .notif-backdrop { position: fixed; inset: 0; z-index: 55; background: transparent; }
 .notif-panel {
-  position: absolute; top: 64px; right: var(--space-6); width: 400px; max-height: 70vh; overflow-y: auto;
+  /* 사이드바 알림벨 옆에 뜨는 팝오버 — 벨이 사이드바 안에 있어 뷰포트 기준 고정 위치로 앉힌다 */
+  position: fixed; top: 16px; left: calc(var(--sidebar-width) + 12px); width: 400px; max-height: 70vh; overflow-y: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-overlay);
   box-shadow: 0 20px 40px rgba(16,24,40,0.16); z-index: 56; animation: modal-in 160ms cubic-bezier(0.23,1,0.32,1);
 }

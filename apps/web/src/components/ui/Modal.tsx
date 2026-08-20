@@ -10,6 +10,7 @@ export function Modal({
   children,
   footer,
   maxWidth,
+  dark,
 }: {
   title: string
   onClose: () => void
@@ -17,6 +18,8 @@ export function Modal({
   footer?: ReactNode
   /** 기본 880px. 그래프/트리 탐색기처럼 넓은 콘텐츠에 사용(예: 1360). */
   maxWidth?: number
+  /** 헤더를 히어로 배너와 같은 다크 그라디언트로(S-01 세부조회 모달 시안 실측). */
+  dark?: boolean
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -62,7 +65,7 @@ export function Modal({
         style={maxWidth ? { maxWidth } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-head">
+        <div className={'modal-head' + (dark ? ' dark' : '')}>
           <h3 id={titleId}>{title}</h3>
           <button className="x-btn" onClick={onClose} aria-label="닫기"><X size={18} /></button>
         </div>

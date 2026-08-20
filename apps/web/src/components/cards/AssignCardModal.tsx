@@ -1,0 +1,103 @@
+// S-09 (모달) 배정 변경 — 팀카드/개인카드 배정 대상을 바꾼다.
+import { useState } from 'react'
+import { CreditCard } from 'lucide-react'
+import { Modal } from '../ui/Modal'
+
+export function AssignCardModal({
+  number,
+  currentLabel,
+  teams,
+  people,
+  onClose,
+  onConfirm,
+}: {
+  number: string
+  currentLabel: string
+  teams: string[]
+  people: string[]
+  onClose: () => void
+  onConfirm: (target: { mode: 'TEAM' | 'PERSONAL'; value: string; reason: string }) => void
+}) {
+  const [mode, setMode] = useState<'TEAM' | 'PERSONAL'>('TEAM')
+  const [team, setTeam] = useState(teams[0] ?? '')
+  const [person, setPerson] = useState(people[0] ?? '')
+  const [reason, setReason] = useState('')
+
+  const canConfirm = reason.trim() !== ''
+
+  const footer = (
+    <>
+      <button className="btn" onClick={onClose}>취소</button>
+      <button
+        className="btn primary"
+        disabled={!canConfirm}
+        onClick={() => onConfirm({ mode, value: mode === 'TEAM' ? team : person, reason })}
+      >
+        배정 변경 확정
+      </button>
+    </>
+  )
+
+  return (
+    <Modal title="카드 배정 변경" onClose={onClose} footer={footer} maxWidth={480}>
+      <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '12px 14px' }}>
+        <div className="text-meta">현재 배정</div>
+        <div className="row" style={{ gap: 8, margin: '6px 0' }}>
+          <span style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 18,
+            borderRadius: 4, background: 'var(--primary)', flexShrink: 0,
+          }}>
+            <CreditCard size={11} color="#fff" />
+          </span>
+          <b style={{ fontSize: 13.5 }}>{number}</b>
+        </div>
+        <div className="text-meta">현재: {currentLabel}</div>
+      </div>
+
+      <div style={{ textAlign: 'center', color: 'var(--muted)', margin: '10px 0' }}>↓</div>
+
+      <div className="field">
+        <label>새 배정 정보</label>
+        <div className="row" style={{ gap: 8 }}>
+          {(['TEAM', 'PERSONAL'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className="btn"
+              style={{
+                flex: 1, justifyContent: 'center', fontWeight: 700,
+                ...(mode === m
+                  ? { background: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary)' }
+                  : undefined),
+              }}
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+            >
+              {m === 'TEAM' ? '팀 배정' : '개인 배정'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <label>배정 팀 선택</label>
+        <select value={team} onChange={(e) => setTeam(e.target.value)} disabled={mode !== 'TEAM'}>
+          {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      <div className="field">
+        <label>배정 개인 선택 (개인 배정 시)</label>
+        <select value={person} onChange={(e) => setPerson(e.target.value)} disabled={mode !== 'PERSONAL'}>
+          {people.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+
+      <div className="field" style={{ marginBottom: 8 }}>
+        <label>변경 사유 <span style={{ color: 'var(--tone-red)' }}>*</span></label>
+        <textarea rows={2} placeholder="예: 부서 이동에 따른 카드 재배정" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <div className="text-meta">배정 변경 내역은 카드 이력에 기록되며 되돌릴 수 없습니다.</div>
+    </Modal>
+  )
+}

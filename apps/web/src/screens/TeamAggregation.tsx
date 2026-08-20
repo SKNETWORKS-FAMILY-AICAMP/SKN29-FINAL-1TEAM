@@ -149,27 +149,32 @@ export function TeamAggregation() {
 
   return (
     <>
-      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span className="screen-id">S-02</span>
-          <h1>팀 취합·제출 · {teamName}</h1>
-          <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
+      <div className="hero-band">
+        <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1>팀 취합·제출 · {teamName}</h1>
+            <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
+          </div>
+          <span className="badge" style={{ color: 'var(--tone-red)', background: 'var(--tone-red-bg)', padding: '6px 14px', fontSize: 13 }}>마감 D-2</span>
         </div>
-        <span className="tag warn">마감 D-2</span>
-      </div>
 
-      {/* ① 팀 통계 대시보드 — 취합 목록과 스코프가 다르다(전 상태 집계). */}
-      <div className="text-meta" style={{ margin: '0 0 8px' }}>
-        팀 통계 · {monthLabel(month)} · {teamName} — 최종반려를 제외한 이번 달 전체 내역 {stats.count}건 기준
-      </div>
-      <div className="kpi-grid">
-        <KpiCard label="지출 등록 인원" value={stats.members} unit="명" />
-        <KpiCard label="이번 달 총 사용액" value={won(stats.total)} />
-        <KpiCard label="이상 건" value={stats.anomalous} unit="건" warn={stats.anomalous > 0} />
-        <KpiCard label="정상 건" value={stats.normal} unit="건" />
-      </div>
+        <div className="scope-chip-row">
+          <span className="scope-chip"><span className="sw" />이번 달 ({monthLabel(month)})</span>
+          <span className="scope-chip"><span className="sw" style={{ background: 'var(--tone-purple)' }} />{teamName}</span>
+        </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+        {/* ① 팀 통계 대시보드 — 취합 목록과 스코프가 다르다(전 상태 집계). */}
+        <div className="kpi-grid">
+          <KpiCard flat={false} accent="var(--accent-purple)" label="지출 증빙 인원" value={stats.members} unit="명" />
+          <KpiCard accent="var(--accent-amber)" label="총 사용액" value={won(stats.total)} />
+          <KpiCard accent="var(--accent-red)" warn label="이상 건" value={stats.anomalous} unit="건" />
+          <KpiCard accent="var(--accent-green)" label="정상 건" value={stats.normal} unit="건" />
+        </div>
+        <div className="text-meta" style={{ margin: '10px 0 0', color: 'var(--sidebar-text-muted)' }}>
+          팀 통계 · {monthLabel(month)} · {teamName} — 최종반려를 제외한 이번 달 전체 내역 {stats.count}건 기준
+        </div>
+
+      <div className="card" style={{ marginTop: 16, marginBottom: 0 }}>
         <div className="card-head">
           <h3>팀 예산 현황 · {monthLabel(month)}</h3>
           <span className="tag" style={{ color: budgetTone, borderColor: budgetTone }}>{budgetRateLabel}</span>
@@ -205,12 +210,13 @@ export function TeamAggregation() {
               const remaining = c.limit - c.used
               const remainingRate = c.limit > 0 ? remaining / c.limit : 0
               const tone = remainingRate <= 0.2 ? 'danger' : remainingRate <= 0.5 ? 'caution' : 'safe'
-              const barColor = tone === 'danger' ? 'var(--tone-red)' : tone === 'caution' ? 'var(--tone-amber)' : 'var(--tone-green)'
+              // 항목별 미니카드는 배지·바·금액 모두 채도 높은 accent 색(시안 실측) — 카드 배경 틴트는 무채색 계열 tone 유지
+              const barColor = tone === 'danger' ? 'var(--accent-red)' : tone === 'caution' ? 'var(--accent-amber)' : 'var(--accent-green)'
               return (
                 <div key={c.label} className={`team-budget-item ${tone}`}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 6px', borderRadius: 999, background: barColor + '22', color: barColor }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: barColor, color: '#fff' }}>
                       {remainingRate < 0 ? `초과 ${pct(remainingRate)}` : `잔여 ${pct(remainingRate)}`}
                     </span>
                   </div>
@@ -227,7 +233,9 @@ export function TeamAggregation() {
           </div>
         </div>
       </div>
+      </div>
 
+      <div className="page-inner">
       {!canManage && (
         <div className="card">
           <div className="card-body text-meta">
@@ -357,6 +365,7 @@ export function TeamAggregation() {
         })}
       </div>
       </>)}
+      </div>
 
       {selected && (
         <SettlementDetailModal

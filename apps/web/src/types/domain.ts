@@ -48,7 +48,7 @@ export type SettlementStatus =
   | 'CONFIRMED'
   | 'ERP_VOUCHER_DRAFTED'
 
-type Tone =
+export type Tone =
   | 'gray' | 'blue' | 'amber' | 'orange' | 'purple' | 'red' | 'green' | 'teal'
 
 export const STATUS_META: Record<SettlementStatus, { label: string; tone: Tone }> = {
@@ -85,6 +85,16 @@ export const CARD_NEEDS_EXTRA_INPUT: Record<CardType, boolean> = {
 // ── 비용 분류(6종 기본) ───────────────────
 export type Category = '회식' | '회의' | '식대' | '출장' | '접대' | '비품'
 export const CATEGORIES: Category[] = ['회식', '회의', '식대', '출장', '접대', '비품']
+
+/** 비용분류 뱃지 색상 — 시안 실측(식대=amber·비품=gray·출장=purple·접대=red) 기반, 회식·회의는 준하는 톤으로 확장. */
+export const CATEGORY_TONE: Record<Category, Tone> = {
+  식대: 'amber',
+  비품: 'gray',
+  출장: 'purple',
+  접대: 'red',
+  회식: 'orange',
+  회의: 'teal',
+}
 
 // ── 엔티티 ────────────────────────────────
 export interface Settlement {

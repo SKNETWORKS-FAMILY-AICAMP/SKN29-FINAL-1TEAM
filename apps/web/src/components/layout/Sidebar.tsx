@@ -1,55 +1,142 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import {
+  Bell, LogOut, Receipt, Landmark, CreditCard, MapPin, CalendarCheck, ListChecks, PenLine, Briefcase,
+} from 'lucide-react'
 import type { Capability } from '../../types/domain'
 import { useCan } from '../../lib/capabilities'
+import { useAuth } from '../../context/AuthContext'
+import { useRole } from '../../context/RoleContext'
+import { ROLE_LABEL, type Role } from '../../types/domain'
+import { NotificationPanel } from './NotificationPanel'
+import { notifications as initialNotifications, type AppNotification } from '../../data/mock'
+import { USE_MOCK } from '../../api/config'
 
 interface MenuItem {
   to: string
   label: string
-  /** 필요 기능 권한. 없으면 인증만으로 노출(내 지출·팀 현황). */
-  capability?: Capability
+  icon: typeof Receipt
+  /** 필요 기능 권한(들). 없으면 인증만으로 노출(내 지출). 배열이면 하나라도 있으면 노출. */
+  capability?: Capability | Capability[]
 }
 
-// 화면설계서 §1 화면 목록 — 기능 단위(Capability) 게이트(백 §3.1a).
-//  · 내 지출·팀 현황: 공통(권한 불필요, 팀 현황의 개별건 처리 컨트롤은 team_aggregate로 별도 게이트)
-//  · 검토 워크스페이스: accounting_review
-//  · Rule 콘솔: rule_view(열람) — ACTIVE 전환 버튼만 rule_activate로 별도 게이트  · 거버넌스: governance_view
-//  · AI-LAB(AI 기능 독립 실행): ai_lab — 프롬프트·모델 내부가 보이고 LLM 비용이 나가는 관리자 도구
-//  · 규정 문서 관리(/policy-docs): rule_view — 규정은 룰의 원천이고, 적재는 임베딩 비용을 쓰면서
-//    모든 판정이 인용하는 코퍼스를 바꾼다. 백엔드 `PolicyDocViewSet`도 같은 capability를 요구한다.
+// 화면설계서 §1 화면 목록 — 기능 단위(Capability) 게이트(백 §3.1a). 시안 실측(`.personal/frontend/sidebar/`,
+// 역할별 펼침 상태 5종 + 접힘 1종)이 정답 — 라벨·아이콘·순서는 그 파일들 기준.
+//  · 내 지출: 공통(권한 불필요)
+//  · 팀 예산(팀 취합·제출, S-02, 본인 팀만): team_aggregate — 팀장 전용
+//  · 예산 관리(전사 팀별 예산 조회, 신규): accounting_review 또는 governance_view — 회계·임원진 전용,
+//    팀장의 "팀 예산"과는 다른 화면(`.personal/frontend/예산관리/Frame 21.svg`)
+//  · 카드 관리(S-09, 법인카드 배정·회수): accounting_review — 회계 업무 범주라 기존 검토 권한과 함께 묶는다
+//    (전용 capability를 새로 만들면 백엔드 동기화가 필요해 이번 프론트 작업 범위를 벗어난다)
+//  · 증빙 검토(검토 워크스페이스): accounting_review  · 규정 문서: rule_view  · RULE 콘솔: rule_view(열람)
+//  · 거버넌스: governance_view  · AI-LAB: ai_lab
 const MENU: MenuItem[] = [
-  { to: '/my-expenses', label: '내 지출' },
-  { to: '/team', label: '팀 현황' },
-  // 회계 검토 = Risk Review. 이상탐지 점수·RAG 내규검증 결과가 여기 한 화면에 모인다
-  // (별도 '위험 검토 큐' 화면은 중복이라 제거했다 — 같은 큐를 두 곳에서 처리하면
-  //  어느 쪽이 최신인지 알 수 없다).
-  { to: '/review', label: '검토 워크스페이스', capability: 'accounting_review' },
-  { to: '/policy-docs', label: '규정 문서 관리', capability: 'rule_view' },
-  { to: '/rules', label: 'Rule 콘솔', capability: 'rule_view' },
-  { to: '/governance', label: '거버넌스 대시보드', capability: 'governance_view' },
-  { to: '/ai-lab', label: 'AI-LAB (관리자)', capability: 'ai_lab' },
+  { to: '/my-expenses', label: '지출 증빙', icon: Receipt },
+  { to: '/team', label: '팀 예산', icon: Landmark, capability: 'team_aggregate' },
+  { to: '/budget', label: '예산 관리', icon: Landmark, capability: ['accounting_review', 'governance_view'] },
+  { to: '/cards', label: '카드 관리', icon: CreditCard, capability: 'accounting_review' },
+  { to: '/policy-docs', label: '규정 문서', icon: MapPin, capability: 'rule_view' },
+  { to: '/review', label: '증빙 검토', icon: CalendarCheck, capability: 'accounting_review' },
+  { to: '/rules', label: 'RULE 콘솔', icon: ListChecks, capability: 'rule_view' },
+  { to: '/governance', label: '거버넌스', icon: PenLine, capability: 'governance_view' },
+  { to: '/ai-lab', label: 'AI-LAB', icon: Briefcase, capability: 'ai_lab' },
 ]
+
+const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'ACCOUNTANT_LEAD', 'EXECUTIVE']
 
 export function Sidebar() {
   const can = useCan()
-  const items = MENU.filter((m) => !m.capability || can(m.capability))
+  const nav = useNavigate()
+  const { user, logout } = useAuth()
+  const { role, setRole } = useRole()
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
+  const hasUnread = notifications.some((n) => n.unread)
+  const items = MENU.filter((m) => {
+    const cap = m.capability
+    if (!cap) return true
+    return Array.isArray(cap) ? cap.some(can) : can(cap)
+  })
+
+  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+  const markOneRead = (id: string) => setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)))
+
+  // 로그인 플로우(O-1/R-0) 진입 전에도 기존 5개 화면을 데모 role-switch로 볼 수 있도록,
+  // 인증된 user가 없으면 현재 선택된 role로 아바타 표시를 대신한다.
+  const displayName = user?.name ?? ROLE_LABEL[role]
+  const displayMeta = user ? user.position : '데모 모드'
 
   return (
-    <aside className="sidebar">
+    <aside
+      className={'sidebar' + (expanded ? ' expanded' : '')}
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+    >
       <div className="sidebar-brand">
         <div className="logo" />
-        <div>
-          <div className="name">TIGER</div>
-          <div className="sub">정산 자동화 플랫폼</div>
-        </div>
+        {expanded && <span className="brand-name">법산</span>}
       </div>
+
+      <div className="sidebar-user">
+        <div className="avatar">{displayName.slice(0, 1)}</div>
+        <div className="name">{displayName}</div>
+        <div className="meta">{displayMeta}</div>
+      </div>
+
       <nav className="sidebar-nav">
         {items.map((m) => (
-          <NavLink key={m.to} to={m.to} className={({ isActive }) => (isActive ? 'active' : '')}>
-            <span className="dot" />
-            {m.label}
+          <NavLink
+            key={m.to}
+            to={m.to}
+            title={m.label}
+            aria-label={m.label}
+            className={({ isActive }) => 'sidebar-icon-btn' + (isActive ? ' active' : '')}
+          >
+            <m.icon size={20} />
+            {expanded && <span className="sidebar-label">{m.label}</span>}
           </NavLink>
         ))}
+        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="sidebar-icon-btn"
+            title="알림"
+            aria-label="알림"
+            onClick={() => setNotifOpen((v) => !v)}
+          >
+            <Bell size={20} />
+            {expanded && <span className="sidebar-label">알림</span>}
+            {hasUnread && <span className="dot" />}
+          </button>
+          {notifOpen && createPortal(
+            <NotificationPanel
+              notifications={notifications}
+              onClose={() => setNotifOpen(false)}
+              onMarkAllRead={markAllRead}
+              onMarkOneRead={markOneRead}
+            />,
+            document.body,
+          )}
+        </div>
       </nav>
+
+      <div className="sidebar-spacer" />
+
+      <button className="sidebar-logout" title="로그아웃" aria-label="로그아웃" onClick={() => { logout(); nav('/login') }}>
+        <LogOut size={20} />
+        {expanded && <span>Logout</span>}
+      </button>
+
+      {USE_MOCK && (
+        <div className="dev-role-switch">
+          <select value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label="데모 역할 전환">
+            {ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </aside>
   )
 }

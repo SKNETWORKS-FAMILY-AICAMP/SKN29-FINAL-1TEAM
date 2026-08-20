@@ -8,6 +8,8 @@ import { RuleConsole } from './screens/rule-console/RuleConsole'
 import { GovernanceDashboard } from './screens/GovernanceDashboard'
 import { AiLab } from './screens/ai-lab/AiLab'
 import { PolicyDocuments } from './screens/PolicyDocuments'
+import { CardManagement } from './screens/CardManagement'
+import { BudgetManagement } from './screens/BudgetManagement'
 import { LoginScreen } from './screens/auth/LoginScreen'
 import { RoleSelectScreen } from './screens/auth/RoleSelectScreen'
 import { OnboardingWizard } from './screens/onboarding/OnboardingWizard'
@@ -42,6 +44,10 @@ export default function App() {
         <Route index element={<Navigate to="/my-expenses" replace />} />
         <Route path="/my-expenses" element={<MyExpenses />} />
         <Route path="/team" element={<TeamAggregation />} />
+        {/* S-09 법인카드 관리 — 회계. 사이드바 노출은 Capability `accounting_review`. */}
+        <Route path="/cards" element={<CardManagement />} />
+        {/* 예산 관리(전사 팀별 조회) — 회계·임원진. 팀장의 /team(팀 예산)과는 다른 화면. */}
+        <Route path="/budget" element={<BudgetManagement />} />
         <Route path="/review" element={<ReviewWorkspace />} />
         <Route path="/rules" element={<RuleConsole />} />
         {/* 규정 문서(RAG 소스) 업로드·적재. 인가는 사이드바·백엔드 모두 `rule_view`. */}

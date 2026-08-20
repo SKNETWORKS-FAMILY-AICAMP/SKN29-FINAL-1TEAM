@@ -1,6 +1,6 @@
 // F-1 증빙 파일 추가 제출 모달 — 보완요청(RETURNED) 건에 영수증 외 파일(계약서·이체확인증 등)을 추가 첨부.
 import { useState } from 'react'
-import { FileText, Image, Upload, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 
 interface EvidenceFile {
@@ -43,11 +43,11 @@ export function AdditionalEvidenceModal({
 
       <div
         style={{
-          background: 'var(--surface-2)', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-control)',
+          background: 'var(--primary-soft)', border: '1px dashed var(--primary)', borderRadius: 'var(--radius-control)',
           padding: '32px', textAlign: 'center', color: 'var(--muted)',
         }}
       >
-        <Upload size={24} style={{ margin: '0 auto 8px' }} />
+        <Upload size={24} color="var(--primary)" style={{ margin: '0 auto 8px' }} />
         <div style={{ fontSize: 12.5 }}>파일을 드래그하거나 클릭하여 업로드하세요</div>
         <div className="text-meta" style={{ marginTop: 4 }}>PDF, JPG, PNG, DOCX, XLSX · 파일당 최대 20MB</div>
       </div>
@@ -61,7 +61,14 @@ export function AdditionalEvidenceModal({
         {files.map((f) => (
           <div key={f.id} className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '10px 12px' }}>
             <div className="row" style={{ gap: 10 }}>
-              {f.type === 'pdf' ? <FileText size={18} color="var(--tone-red)" /> : <Image size={18} color="var(--tone-purple)" />}
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                width: 36, height: 36, borderRadius: 'var(--radius-control)', fontSize: 10, fontWeight: 800,
+                background: f.type === 'pdf' ? 'var(--tone-red-bg)' : 'var(--primary-soft)',
+                color: f.type === 'pdf' ? 'var(--tone-red)' : 'var(--primary)',
+              }}>
+                {f.type === 'pdf' ? 'PDF' : 'IMG'}
+              </span>
               <div>
                 <div style={{ fontSize: 12.5, fontWeight: 500 }}>{f.name}</div>
                 <div className="text-meta">{f.size}</div>
