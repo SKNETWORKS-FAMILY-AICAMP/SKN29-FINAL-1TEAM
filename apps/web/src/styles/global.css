@@ -223,6 +223,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .kpi.flat { border-radius: 16px; text-align: center; border-color: transparent; }
 .kpi.flat::before { display: none; }
 .kpi.flat .label { text-transform: none; letter-spacing: normal; font-weight: 500; color: #9497b8; }
+/* 큰 금액(억 단위)이 5열 카드 폭을 넘기면 카드 밖으로 흘러나가던 문제 — 폭에 맞춰 줄어들고, 그래도
+   넘치면 잘리지 않고 줄바꿈되게 한다. */
+.kpi.flat .value { font-size: clamp(17px, 1.7vw, 28px); overflow-wrap: anywhere; }
 .kpi.flat.warn { background: #fff5f5; }
 /* "반려" 카드처럼 값은 그대로 두고 라벨만 톤 색으로 강조(시안 실측) */
 .kpi.label-warn .label { color: var(--tone-amber); font-weight: 700; }
