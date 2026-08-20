@@ -106,15 +106,22 @@ anomaly_score: {anomaly_score:.3f}
 
 
 def _format_chunks(chunks: list[dict]) -> str:
+    """policy_docs 검색 결과를 LLM 프롬프트용 텍스트로 조립.
+
+    [수정 2026-08-19] `store.search()`가 잎 청크의 부모(조문 전체)를 이미 가져오고 있었는데,
+    여기서는 잎 청크 원문(`text`)을 400자로 자른 것만 써서 애써 가져온 문맥이 프롬프트 직전에
+    버려지고 있었다 — 긴 조는 항 단위로 쪼개져 검색되므로 잎 하나만 보이면 같은 조의 다른 항이
+    통째로 안 보인다. 이제 부모(조 전문)를 **덧붙인다**(잎을 대체하지 않는다):
+    검색이 실제로 걸린 잎을 앞에 두고 조 전문을 맥락으로 잇는 편이, 조 전문만 넘겨 어느 항이
+    걸린 건지 지워버리는 것보다 근거가 뾰족하다. 부모가 없거나(atomic 청크) 잎과 같으면 잎만 쓴다.
+    """
     if not chunks:
         return "(검색 결과 없음)"
     lines = []
     for c in chunks:
         line = f"- {c['citation']}: {c['text'][:400]}"
-        # 긴 조는 항 단위로 쪼개져 검색되므로, 잎 하나만 보이면 같은 조의 다른 항(맥락)이
-        # 빠진다. 부모(조 전문)를 붙여 채운다 — 인용은 잎의 citation을 그대로 쓴다(부모를
-        # 인용하면 "제N조" 통째로가 근거로 찍혀 근거가 뭉툭해진다). rule_agent_v0/agent.py
-        # ::_format_chunks와 동일 계약.
+        # 인용은 잎의 citation을 그대로 쓴다 — 부모를 인용하면 "제N조" 통째로가 근거로 찍혀
+        # 근거가 뭉툭해진다. rule_agent_v0/agent.py::_format_chunks와 동일 계약.
         if c.get("parent_text") and c["parent_text"] != c["text"]:
             line += f"\n  (같은 조 전문 — 맥락 참고용, 인용은 위 citation을 쓸 것): {c['parent_text'][:800]}"
         lines.append(line)

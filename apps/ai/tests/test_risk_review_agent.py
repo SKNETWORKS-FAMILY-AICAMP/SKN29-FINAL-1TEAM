@@ -63,6 +63,13 @@ def test_format_chunks_omits_parent_block_when_parent_text_missing():
     assert "출장 신청은 사전에 한다." in out
 
 
+def test_format_chunks_caps_length_to_avoid_runaway_prompt():
+    """조 전문이 아무리 길어도 프롬프트가 폭주하지 않게 잘린다(잎 400 + 부모 800 상한)."""
+    chunks = [{"citation": "테스트", "text": "짧은 잎", "parent_text": "가" * 5000}]
+    result = _format_chunks(chunks)
+    assert len(result) < 1300
+
+
 def test_format_chunks_empty_list_unchanged():
     assert _format_chunks([]) == "(검색 결과 없음)"
 
