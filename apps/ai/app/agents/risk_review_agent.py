@@ -159,7 +159,9 @@ def _stage2(summary: dict, stage1: dict) -> dict:
     contribs = stage1.get("contribs", [])
     query = build_query(summary["category"], summary["merchant"], contribs, summary)
 
-    policy_hits = tools.search_policy(query)["chunks"]
+    # rerank=True: 벡터 top-k를 그대로 쓰면 화제만 겹치는 조항(예: "위반 시 조치")이
+    # 섞여 들어와 결론이 흐려진다 — LLM이 실제로 이 질의에 답하는 것만 추려서 넘긴다.
+    policy_hits = tools.search_policy(query, rerank=True)["chunks"]
     case_hits = tools.search_cases(query)["similar_cases"]
 
     user_prompt = _build_user_prompt(summary, stage1, policy_hits, case_hits)

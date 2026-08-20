@@ -23,10 +23,16 @@ from __future__ import annotations
 from typing import Any
 
 from app.rag.embedding import store
+from app.rag.retrieval.rerank import rerank as _rerank
 
 # 규정 우선. 세법(tax_refs)은 조문 자체가 룰이 되기보다 근거 보강이라 옵션으로 둔다.
 POLICY_COLLECTION = "policy_docs"
 LAW_COLLECTION = "tax_refs"
+
+# rerank=True일 때 top_k보다 얼마나 넉넉히 뽑을지. LLM이 실제로 고를 여지를 주되
+# 프롬프트가 무한정 커지지 않게 상한을 둔다.
+_RERANK_OVERFETCH = 3
+_RERANK_MAX_CANDIDATES = 20
 
 
 def _normalize(hit: dict[str, Any], collection: str) -> dict[str, Any]:
@@ -51,22 +57,30 @@ def _normalize(hit: dict[str, Any], collection: str) -> dict[str, Any]:
 
 
 def search_policy(
-    query: str, top_k: int = 6, *, include_law: bool = False
+    query: str, top_k: int = 6, *, include_law: bool = False, rerank: bool = False
 ) -> list[dict[str, Any]]:
     """규정 조항 검색. 반환 청크에는 citation(「문서명」 제N조 …)이 항상 포함된다.
 
     `include_law=True`면 세법(`tax_refs`)도 같은 질의로 검색해 유사도 순으로 합친다.
     두 컬렉션은 같은 임베딩 신원(`3-large@1024`)을 쓰므로 점수를 직접 비교해도 된다.
+
+    `rerank=True`면 벡터 top-k를 그대로 쓰지 않는다 — top_k보다 넉넉히 뽑아 LLM이
+    질의에 실제로 답하는 것만 추려 top_k로 좁힌다(`rag/retrieval/rerank.py`). 벡터
+    유사도는 화제가 같으면 뽑지 질의에 답하는지는 모르기 때문 — LLM 호출 1회가 붙는
+    대가로 근거 정밀도를 올린다.
     """
+    fetch_k = min(top_k * _RERANK_OVERFETCH, _RERANK_MAX_CANDIDATES) if rerank else top_k
     hits = [
         _normalize(h, POLICY_COLLECTION)
-        for h in store.search(query, collection_name=POLICY_COLLECTION, top_k=top_k)
+        for h in store.search(query, collection_name=POLICY_COLLECTION, top_k=fetch_k)
     ]
     if include_law:
         hits += [
             _normalize(h, LAW_COLLECTION)
-            for h in store.search(query, collection_name=LAW_COLLECTION, top_k=top_k)
+            for h in store.search(query, collection_name=LAW_COLLECTION, top_k=fetch_k)
         ]
         hits.sort(key=lambda h: h["score"] if h["score"] is not None else -1, reverse=True)
-        hits = hits[:top_k]
+        hits = hits[:fetch_k]
+    if rerank:
+        hits = _rerank(query, hits, top_n=top_k)
     return hits

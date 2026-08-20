@@ -57,7 +57,11 @@ def classify_merchant(merchant: str, place_hint: str | None = None) -> dict:
 
 
 def search_policy(
-    query: str, top_k: int = 6, include_law: bool = False, filters: dict | None = None
+    query: str,
+    top_k: int = 6,
+    include_law: bool = False,
+    filters: dict | None = None,
+    rerank: bool = False,
 ) -> dict:
     """규정 청크 RAG 검색 (Chroma 직접). Rule/Risk 공용 tool.
 
@@ -67,15 +71,19 @@ def search_policy(
     스토어라 여기서 쓰지 않는다(승격하면 2차 검증이 빈 결과만 도는 죽은 경로가 된다).
     Risk Review Agent도 **이 tool을 거쳐** 같은 검색 경로·로깅을 공유해야 한다(§5).
 
+    `rerank=True`면 벡터 top-k 대신 LLM이 질의에 실제로 답하는 후보만 추린다
+    (`rag/retrieval/rerank.py`) — Rule Agent가 tool-calling 중 근거가 부정확하다고
+    판단하면 직접 켤 수 있고, Risk Review 2차 검증은 항상 켠 채로 부른다.
+
     조회 실패는 감추지 않고 올린다 — 빈 결과와 장애를 구분해야 "규정이 아직 안 실렸다"와
     "Chroma가 죽었다"를 화면에서 가려낼 수 있다.
     """
     from app.agents.rule_agent_v0.search import search_policy as _search
 
-    hits = _search(query, top_k=top_k, include_law=include_law)
+    hits = _search(query, top_k=top_k, include_law=include_law, rerank=rerank)
     if filters:
         hits = [h for h in hits if all(h.get("metadata", {}).get(k) == v for k, v in filters.items())]
-    logger.info("search_policy q=%r top_k=%d hits=%d", query, top_k, len(hits))
+    logger.info("search_policy q=%r top_k=%d rerank=%s hits=%d", query, top_k, rerank, len(hits))
     return {"query": query, "chunks": hits}
 
 
