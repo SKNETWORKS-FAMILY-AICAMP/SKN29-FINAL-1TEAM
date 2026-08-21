@@ -158,13 +158,21 @@ export async function rerunRiskReview(id: string): Promise<boolean> {
   }
 }
 
-/** 보완요청·반려 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
+/** 사유를 받는 결정 — 승인도 포함한다(AI·룰과 다르게 판단할 때). */
+export type DecisionKind = 'APPROVE' | 'RETURN' | 'REJECT'
+
+/** 결정 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
 export interface DecisionReasonDraft {
   reason: string
   detail: string
   source: 'ai' | 'fallback'
   /** 사유 선택지 — **서버가 준다**. 화면과 LLM이 같은 목록을 봐야 어긋나지 않는다. */
   options: string[]
+  /**
+   * 이 결정이 **기계 판단과 다른가**. 판별을 프론트에 복사하지 않는다 — 사례 기록
+   * (`decision_cases.expected_decision`)과 같은 규약을 서버가 한 곳에서 쓴다.
+   */
+  divergence?: { expected: string; expectedFrom: 'AI' | 'RULE' | ''; diverges: boolean }
 }
 
 /**
@@ -174,7 +182,7 @@ export interface DecisionReasonDraft {
  * 초안 생성에 묶이면 ai가 죽었을 때 정산이 멈춘다.
  */
 export async function fetchDecisionReason(
-  id: string, decision: 'RETURN' | 'REJECT',
+  id: string, decision: DecisionKind,
 ): Promise<DecisionReasonDraft | null> {
   if (USE_MOCK) { await mockDelay(); return null }
   try {

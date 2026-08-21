@@ -10,7 +10,9 @@ def backfill_state(apps, schema_editor):
     **이미 검토를 마친 과거 건이 화면에서 「룰 판정으로 통과된 건」으로 표시**된다.
     """
     Settlement = apps.get_model("settlements", "Settlement")
-    Settlement.objects.filter(risk_reviews__isnull=False).distinct().update(risk_review_state="DONE")
+    RiskReview = apps.get_model("risk", "RiskReview")
+    reviewed = RiskReview.objects.values_list("settlement_id", flat=True).distinct()
+    Settlement.objects.filter(pk__in=list(reviewed)).update(risk_review_state="DONE")
 
 
 def noop(apps, schema_editor):
@@ -21,6 +23,9 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('settlements', '0011_attachment_file'),
+        #  아래 백필이 `RiskReview`를 읽는다. 의존을 안 걸면 과거 상태의 앱 레지스트리에
+        #  risk 앱이 없어 역참조(`risk_reviews`)가 해석되지 않는다(FieldError).
+        ('risk', '0001_initial'),
     ]
 
     operations = [

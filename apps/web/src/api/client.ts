@@ -36,7 +36,7 @@ export const endpoints = {
   // AI 위험 검토 재실행 — 실패했거나 결과가 안 온 IN_REVIEW 건만.
   //  `/judge/`로는 안 된다(판정 재실행은 SUBMITTED→RPA_JUDGED 전이를 전제한다).
   rerunRiskReview: (id: string) => api.post(`/settlements/${id}/risk-review/`),
-  decisionReason: (id: string, decision: 'RETURN' | 'REJECT') =>
+  decisionReason: (id: string, decision: 'APPROVE' | 'RETURN' | 'REJECT') =>
     api.post(`/settlements/${id}/decision-reason/`, { decision }, { timeout: 40_000 }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
   // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
@@ -95,6 +95,9 @@ export const endpoints = {
   // 규정 문서 관리 — RAG 소스 문서 업로드·적재. 업로드는 접수만 하고 파싱·임베딩은
   // 백그라운드로 도므로, 화면은 목록을 폴링해 status가 DONE/FAILED가 되는 걸 지켜본다.
   policyDocs: () => api.get('/policy-docs/'),
+  // 결정 사례(월별) — 문서 관리의 「결정 사례」 트리. `PolicyDoc`이 아니라 `DecisionCase`를
+  //  읽는다(사례는 이미 case_history에 적재돼 있어 문서 파이프라인에 태우면 이중 적재된다).
+  decisionCases: (month?: string) => api.get('/policy-docs/cases/', { params: month ? { month } : undefined }),
   uploadPolicyDoc: (data: FormData) => api.post('/policy-docs/', data, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120_000,   // 업로드 자체(수십 MB)에 걸리는 시간. 적재는 여기 포함되지 않는다.

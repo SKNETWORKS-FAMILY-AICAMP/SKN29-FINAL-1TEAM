@@ -41,3 +41,83 @@ class DecisionLabel(models.Model):
     label = models.CharField(max_length=10, choices=Label.choices)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DecisionCase(models.Model):
+    """**AI·룰과 다른 사람의 판단**을 사례로 남긴 기록 — RAG `case_history`의 원천.
+
+    ## 왜 「다른 판단」만 남기나
+
+    AI 권고대로 처리한 건은 새로 배울 게 없다. 사례의 가치는 **"AI는 이렇게 봤는데
+    사람은 다르게 판단했다, 그 이유는 이것이다"** 에 있다 — 다음에 비슷한 건이 오면
+    2차 RAG 검증이 이 기록을 근거로 끌어와, 같은 실수를 반복하지 않게 한다.
+
+    모든 결정을 다 넣으면 검색이 **다수결에 묻힌다**: 대부분은 AI 권고와 일치하므로
+    유사도 상위가 전부 "권고대로 처리함"으로 채워지고, 정작 봐야 할 예외가 밀려난다.
+
+    ## 왜 스냅샷인가
+
+    `text`·`facts`는 **결정 시점의 사실을 얼려 둔 것**이다. 정산은 이후에도 고쳐질 수
+    있는데(보완요청 → 수정 → 재제출), 검색이 지금 값을 따라가면 "그때 왜 그렇게 판단
+    했는가"를 설명할 수 없게 된다. `rule_hits.eval_context`가 판정 스냅샷을 남기는 것과
+    같은 이유다.
+
+    ## 인덱싱은 별개다
+
+    `indexed_at`이 비어 있으면 아직 Chroma(`case_history`)에 안 올라간 것이다. 적재
+    실패가 **결정을 되돌리지 않는다** — 결정은 이미 확정됐고 사례는 나중에 다시 올리면
+    된다(`domain/risk/case_index.py`).
+    """
+
+    class Source(models.TextChoices):
+        """사람이 무엇과 다르게 판단했는가 — 사례의 성격을 가른다."""
+        AI = "AI", "AI 권고와 다름"
+        RULE = "RULE", "룰 판정과 다름"
+
+    settlement = models.ForeignKey(
+        "settlements.Settlement", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="decision_cases",
+        help_text="정산이 지워져도 사례는 남는다 — 이미 임베딩돼 검색에 쓰이고 있다.",
+    )
+    #: Chroma 문서 id. 사람이 읽는 값이 아니라 **적재 멱등성의 키**다(재적재해도 중복되지 않는다).
+    case_id = models.CharField(max_length=64, unique=True)
+    category = models.CharField("비용분류", max_length=20, blank=True)
+    #: 사람의 최종 결정 — APPROVE / RETURN / REJECT.
+    outcome = models.CharField(max_length=10)
+    #: 사람이 뒤집은 대상. 둘 다 있을 수 있지만 **비교 기준 하나**만 남긴다(AI 우선).
+    diverged_from = models.CharField(max_length=8, choices=Source.choices)
+    expected = models.CharField("AI 권고 또는 룰 판정", max_length=16, blank=True)
+    ai_recommendation = models.CharField(max_length=10, blank=True)
+    rule_decision = models.CharField(max_length=10, blank=True)
+    rule_flags = models.JSONField(default=list, blank=True)
+    #: **회계 담당자가 쓴 사유.** 이 문장이 사례의 핵심이다 — 판정 사실만으로는
+    #  "왜 다르게 봤는지"를 알 수 없다.
+    reason = models.TextField()
+    #: 임베딩 대상 본문(스냅샷). 검색이 실제로 매칭하는 텍스트라 자체로 완결돼야 한다.
+    text = models.TextField()
+    #: 결정 시점 사실 요약(금액·가맹점·업종 등). 감사·재현용이며 임베딩하지 않는다.
+    facts = models.JSONField(default=dict, blank=True)
+    citation = models.CharField("표시용 출처", max_length=100, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    decided_at = models.DateTimeField(auto_now_add=True)
+    indexed_at = models.DateTimeField("Chroma 적재 시각", null=True, blank=True)
+    index_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-decided_at"]
+        indexes = [models.Index(fields=["indexed_at"], name="ix_decisioncase_indexed")]
+
+    def __str__(self):
+        return f"{self.case_id} {self.expected}→{self.outcome}"
+
+    def to_payload(self) -> dict:
+        """`case_store.upsert_cases()` 계약 그대로 — 골든 데이터와 같은 모양이다."""
+        return {
+            "case_id": self.case_id,
+            "text": self.text,
+            "outcome": self.outcome,
+            "category": self.category,
+            "citation": self.citation or self.case_id,
+        }

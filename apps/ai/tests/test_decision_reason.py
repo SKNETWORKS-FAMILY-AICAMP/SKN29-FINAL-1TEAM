@@ -93,8 +93,21 @@ def test_실패는_502다_빈_성공이_아니다(monkeypatch):
 
 
 @pytest.mark.parametrize("payload", [
-    _payload(decision="APPROVE"),   # 승인은 사유 초안 대상이 아니다
+    _payload(decision="CONFIRM"),   # 알 수 없는 처리 구분
     _payload(options=[]),           # 선택지가 없으면 목록 밖 값을 만들게 된다
 ])
 def test_입력_검증(payload):
     assert client.post(URL, json=payload).status_code == 400
+
+
+def test_승인은_감사_기록으로_쓴다():
+    """승인 사유는 지출자에게 가는 안내가 아니라 **왜 기계 판단을 따르지 않았는지**다."""
+    prompt = decision_reason_agent._user_prompt(_payload(
+        decision="APPROVE",
+        options=["업무관련성 확인됨", "AI 과탐지(오탐)", "기타"],
+        divergence={"expected": "RETURN", "expectedFrom": "AI", "diverges": True},
+    ))
+    assert "처리 구분: 승인" in prompt
+    assert "감사 기록" in prompt
+    assert "기계는 `RETURN`로 봤는데" in prompt
+    assert "지어내지 마세요" in prompt

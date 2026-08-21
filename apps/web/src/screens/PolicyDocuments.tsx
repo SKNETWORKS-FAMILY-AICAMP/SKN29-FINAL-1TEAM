@@ -8,7 +8,7 @@
 // 업로드는 **접수만** 하고 파싱·청킹·임베딩·적재는 백그라운드로 돈다(문서당 수십 초~분).
 // 그래서 진행 중인 문서가 있을 때만 목록을 폴링한다.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, FileText, RefreshCw, Search, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, FileText, RefreshCw, Search, Trash2, Upload, Scale } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
   EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META,
@@ -16,6 +16,7 @@ import {
 } from '../types/domain'
 import { KpiCard } from '../components/ui/KpiCard'
 import { FolderTree } from './policy-docs/FolderTree'
+import { DecisionCasePanel, monthLabel, useDecisionCases } from './policy-docs/DecisionCasePanel'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
 import { ClauseCard } from './policy-docs/ClauseAccordion'
 import './policy-docs/policy-docs.css'
@@ -42,6 +43,12 @@ export function PolicyDocuments() {
   const [error, setError] = useState('')
 
   const selected = docs.find((d) => d.id === selectedId) ?? null
+
+  //  「결정 사례」는 문서 트리와 **다른 종류**라 선택 상태를 따로 둔다(문서 id와 섞으면
+  //  둘 중 무엇이 선택됐는지 화면이 매번 되물어야 한다). ''=전체 월.
+  const [caseMonth, setCaseMonth] = useState<string | null>(null)
+  const casesOpen = caseMonth !== null
+  const cases = useDecisionCases(caseMonth ?? '', casesOpen)
 
   const load = useCallback(async () => {
     try {
@@ -108,7 +115,8 @@ export function PolicyDocuments() {
 
   /** 폴더·이동 조작은 전부 서버가 정본이라, 성공하면 트리를 다시 읽는다. */
   const treeActions = {
-    onSelect: setSelectedId,
+    // 문서를 고르면 사례 보기를 끈다 — 오른쪽 패널의 주인은 하나여야 한다.
+    onSelect: (id: string | null) => { setCaseMonth(null); setSelectedId(id) },
     onCreateFolder: (name: string, parentId: number | null) =>
       withBusy(async () => { await endpoints.createPolicyFolder(name, parentId); await load() },
         '폴더를 만들지 못했습니다.'),
@@ -191,12 +199,29 @@ export function PolicyDocuments() {
           </div>
           {loading
             ? <div className="text-meta" style={{ padding: 16 }}>불러오는 중…</div>
-            : <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
-                          query={query} actions={treeActions} busy={busy} />}
+            : (
+              <>
+                <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
+                            query={query} actions={treeActions} busy={busy} />
+                <CaseTree
+                  months={cases.months}
+                  selected={caseMonth}
+                  onSelect={(m) => { setCaseMonth(m); setSelectedId(null) }}
+                />
+              </>
+            )}
         </aside>
 
         <section className="card pd-preview">
-          {!selected ? (
+          {casesOpen ? (
+            <DecisionCasePanel
+              month={caseMonth ?? ''}
+              months={cases.months}
+              cases={cases.cases}
+              total={cases.total}
+              loading={cases.loading}
+            />
+          ) : !selected ? (
             <div className="pd-empty">
               <div style={{ fontSize: 40 }} aria-hidden>📄</div>
               <b>왼쪽에서 문서를 선택하면 상세 정보를 볼 수 있어요</b>
@@ -327,5 +352,49 @@ export function PolicyDocuments() {
         />
       )}
     </>
+  )
+}
+
+/** 트리 하단의 「결정 사례」 — 문서와 다른 종류라 폴더 트리와 나란히 둔다. */
+function CaseTree({ months, selected, onSelect }: {
+  months: { key: string; count: number; indexed: number }[]
+  selected: string | null
+  onSelect: (month: string | null) => void
+}) {
+  const total = months.reduce((s, m) => s + m.count, 0)
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+      <button
+        type="button"
+        className="pd-node"
+        style={{ width: '100%', fontWeight: 700, ...(selected === '' ? { background: 'var(--primary-soft)' } : {}) }}
+        onClick={() => onSelect(selected === null ? '' : null)}
+      >
+        <Scale size={13} /> 결정 사례
+        <span className="text-meta" style={{ marginLeft: 'auto' }}>{total}</span>
+      </button>
+      {selected !== null && (
+        <div style={{ paddingLeft: 18 }}>
+          {months.length === 0 ? (
+            <div className="text-meta" style={{ padding: '6px 8px' }}>아직 기록된 사례가 없습니다.</div>
+          ) : months.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className="pd-node"
+              style={{ width: '100%', ...(selected === m.key ? { background: 'var(--primary-soft)' } : {}) }}
+              onClick={() => onSelect(m.key)}
+            >
+              {monthLabel(m.key)}
+              <span className="text-meta" style={{ marginLeft: 'auto' }}>
+                {m.count}
+                {/* 미적재는 검색에 안 잡힌다 — 숨기면 "왜 인용이 안 되지"를 아무도 못 본다. */}
+                {m.indexed < m.count && ` (미적재 ${m.count - m.indexed})`}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

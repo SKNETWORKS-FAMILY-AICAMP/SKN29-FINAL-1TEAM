@@ -24,6 +24,19 @@ import { currentMonth, isInMonth, monthLabel } from '../lib/period'
 // 반드시 갈라 놓아야 한다: AI **권장** 승인 / 사람이 승인해 **확정 대기**(PENDING_CONFIRM) /
 // **확정 완료**(CONFIRMED).
 type Reco = 'APPROVE' | 'RETURN' | 'REJECT'
+
+//  룰 판정 → 사람 결정 대응. 서버(`decision_cases.RULE_TO_HUMAN`)와 같은 표다 —
+//  룰의 `REVIEW`는 판단을 미룬 것이라 비교 대상이 아니다(무엇과도 "다르다"고 할 수 없다).
+const RULE_TO_HUMAN: Record<string, Reco> = { PASS: 'APPROVE', RETURN: 'RETURN', REJECT: 'REJECT' }
+
+/**
+ * 이 결정이 **기계 판단과 다른가.** AI 권고 우선, 없으면 룰 판정과 비교한다.
+ * 사유를 받을지 정하는 기준이고, 서버가 사례를 남기는 기준과 같아야 한다.
+ */
+function divergesFromMachine(item: ReviewItem, decision: Reco): boolean {
+  const expected = item.aiRecommendation || RULE_TO_HUMAN[item.ruleDecision ?? ''] || ''
+  return Boolean(expected) && expected !== decision
+}
 type RecoOrNone = ReviewItem['aiRecommendation']
 const RECO_LABEL: Record<Reco, { text: string; abbr: string; cls: string }> = {
   APPROVE: { text: '승인', abbr: '승인', cls: 'ok' },
@@ -81,7 +94,7 @@ export function ReviewWorkspace() {
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [showHistory, setShowHistory] = useState(false)
   const [showFact, setShowFact] = useState(false)
-  const [modal, setModal] = useState<{ decision: 'RETURN' | 'REJECT'; ids: string[] } | null>(null)
+  const [modal, setModal] = useState<{ decision: Reco; ids: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>('PENDING')
   const isHistory = view === 'HISTORY'
@@ -176,11 +189,23 @@ export function ReviewWorkspace() {
     setBusy(false)
   }
 
-  // 상세 패널 단건 처리 — 승인은 즉시, 보완·반려는 사유 모달.
+  /**
+   * 상세 패널 단건 처리.
+   *
+   * **기계 판단과 다르면 승인도 사유를 받는다** — 그 사유가 결정 사례로 저장돼 다음
+   * 검토의 근거가 된다(`domain/risk/decision_cases`). 권고대로 승인하는 건 설명할 게
+   * 없으므로 그대로 처리한다.
+   *
+   * 다름 판정은 **서버 값을 쓴다**(`aiRecommendation` → 없으면 `ruleDecision`) — 같은
+   * 규약을 프론트에 복사하면 사유를 받는 기준과 사례를 남기는 기준이 곧 갈린다.
+   */
   const decideOne = (decision: Reco) => {
     if (!sel) return
-    if (decision === 'APPROVE') applyDecision('APPROVE', [sel.id])
-    else setModal({ decision, ids: [sel.id] })
+    if (decision === 'APPROVE' && !divergesFromMachine(sel, 'APPROVE')) {
+      applyDecision('APPROVE', [sel.id])
+      return
+    }
+    setModal({ decision, ids: [sel.id] })
   }
   // 리스트의 권장 처리 배지 클릭 → 해당 건 처리. **승인은 여기서 하지 않는다** —
   //  목록에서 원클릭 승인하면 화면을 열어보지 않고 통과시키게 된다(승인은 상세에서만).
@@ -460,11 +485,26 @@ export function ReviewWorkspace() {
                   </button>
                   {showHistory && (
                     <div className="card-body">
-                      <ul className="timeline">
-                        <li><div>DRAFT → SUBMITTED</div><div className="t-meta">{sel.user} · {sel.date}</div></li>
-                        <li><div>SUBMITTED → RPA_JUDGED (Rule 미매칭)</div><div className="t-meta">Rule Agent</div></li>
-                        <li><div>RPA_JUDGED → IN_REVIEW (Risk Review 이관)</div><div className="t-meta">①이상탐지 → ②RAG검증</div></li>
-                      </ul>
+                      {/* **실제 이력이다.** 예전엔 세 줄을 하드코딩해서, 누가 무슨 사유로
+                          처리했는지가 화면에 아예 없었다. */}
+                      {(sel.events ?? []).length === 0 ? (
+                        <div className="text-meta">기록된 상태 변경이 없습니다.</div>
+                      ) : (
+                        <ul className="timeline">
+                          {(sel.events ?? []).map((ev) => (
+                            <li key={ev.id}>
+                              <div>{ev.fromState || '(신규)'} → {ev.toState}</div>
+                              <div className="t-meta">
+                                {/* 처리자를 남긴다 — "누가 이 결정을 내렸나"가 감사의 첫 질문이다. */}
+                                {ev.actor ?? '시스템'} · {ev.createdAt.replace('T', ' ').slice(0, 16)}
+                              </div>
+                              {ev.reason && (
+                                <div className="t-meta" style={{ whiteSpace: 'pre-wrap' }}>{ev.reason}</div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>

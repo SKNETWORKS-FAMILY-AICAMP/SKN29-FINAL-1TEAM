@@ -89,6 +89,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     # **Risk Review(이상탐지+RAG)를 거쳤는가.** 룰 판정 PASS로 승인 대기에 바로 온 건은
     #  거치지 않는다(`risk_review.schedule`은 IN_REVIEW만 예약한다). 이 값이 없으면 화면이
     #  `anomaly_score`가 없는 것과 **0점인 것**을 구분하지 못해 "정상 0점"으로 그린다.
+    #  상태 변경 이력 — viewset이 이미 `events`를 prefetch하므로 목록에 실어도 추가 쿼리가
+    #  없다. 검토 화면이 **누가 무슨 사유로** 처리했는지를 상세 조회 없이 보여준다
+    #  (예전엔 화면이 이력을 하드코딩한 세 줄로 흉내내고 있었다).
+    events = SettlementEventSerializer(many=True, read_only=True)
     riskReviewed = serializers.SerializerMethodField()
     #  **「결과가 없다」의 세 가지 상황을 가른다** — 미실시(룰 통과) / 검토 중 / 실패.
     #  결과 유무만 보면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
@@ -104,7 +108,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
-            "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError",
+            "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError", "events",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -257,8 +261,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
         ]
 
 class SettlementDetailSerializer(SettlementSerializer):
-    """상세: Audit Trail(상태 이력) + Risk(이상탐지+RAG) 포함."""
-    events = SettlementEventSerializer(many=True, read_only=True)
+    """상세: Risk(이상탐지+RAG) 원본 + 첨부 + facts 포함. (`events`는 베이스로 올렸다)"""
     risk = serializers.SerializerMethodField()
     additionalEvidence = serializers.SerializerMethodField()
     facts = serializers.SerializerMethodField()
@@ -266,7 +269,7 @@ class SettlementDetailSerializer(SettlementSerializer):
     class Meta(SettlementSerializer.Meta):
         # `ruleHits`는 베이스로 올렸다 — 검토 화면이 목록에서 바로 판정 경로를 본다.
         fields = SettlementSerializer.Meta.fields + [
-            "events", "risk", "additionalEvidence", "facts",
+            "risk", "additionalEvidence", "facts",
         ]
 
     def get_risk(self, obj):

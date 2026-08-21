@@ -431,8 +431,11 @@ class SettlementViewSet(viewsets.ModelViewSet):
         """
         settlement = self.get_object()
         decision = str(request.data.get("decision") or "RETURN").upper()
-        if decision not in {"RETURN", "REJECT"}:
-            return Response({"detail": "decision은 RETURN 또는 REJECT여야 합니다."}, status=400)
+        if decision not in decision_reasons.DECISIONS:
+            return Response(
+                {"detail": f"decision은 {', '.join(decision_reasons.DECISIONS)} 중 하나여야 합니다."},
+                status=400,
+            )
         return Response(decision_reasons.draft(settlement, decision))
 
     # POST /api/settlements/{id}/judge/  (RPA 1차판정 — 재판정·수동 실행용)

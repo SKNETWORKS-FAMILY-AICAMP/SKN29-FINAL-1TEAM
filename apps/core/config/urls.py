@@ -8,7 +8,11 @@ from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
 from domain.common.views import AiLabProxyView, DashboardView, health
 from domain.cards.views import CardViewSet
 from domain.erp.views import ErpVoucherViewSet
-from domain.policies.policy_doc_views import IngestCallbackView, PolicyDocViewSet
+from domain.policies.policy_doc_views import (
+    DecisionCaseListView,
+    IngestCallbackView,
+    PolicyDocViewSet,
+)
 from domain.policies.rule_agent_v0_views import ActionSchemaView, EvalContextSchemaView
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import (
@@ -46,6 +50,8 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/dashboard/<str:role>/", DashboardView.as_view(), name="dashboard"),
+    # 결정 사례(월별) — 문서 관리 화면의 「결정 사례」 트리. PolicyDoc이 아니라 DecisionCase를 읽는다.
+    path("api/policy-docs/cases/", DecisionCaseListView.as_view(), name="policy_doc_cases"),
     path("api/team-budget/", TeamBudgetView.as_view(), name="team_budget"),
     # 전 팀 예산 현황(S-08). 팀 하나짜리 위 뷰와 응답 셰이프가 달라 URL을 나눈다.
     path("api/team-budget/overview/", TeamBudgetOverviewView.as_view(), name="team_budget_overview"),

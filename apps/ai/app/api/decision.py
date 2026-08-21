@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 @router.post("/decision-reason")
 def decision_reason(payload: dict = Body(...)) -> dict:
-    if str(payload.get("decision") or "").upper() not in {"RETURN", "REJECT"}:
-        raise HTTPException(status_code=400, detail="decision은 RETURN 또는 REJECT여야 합니다.")
+    if str(payload.get("decision") or "").upper() not in {"APPROVE", "RETURN", "REJECT"}:
+        raise HTTPException(status_code=400, detail="decision은 APPROVE/RETURN/REJECT 중 하나여야 합니다.")
     if not payload.get("options"):
         raise HTTPException(status_code=400, detail="사유 선택지(options)가 필요합니다.")
     try:

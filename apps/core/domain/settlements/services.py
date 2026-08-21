@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from domain.common.models import AuditLog
 from domain.erp.models import ErpVoucher
+from domain.risk import case_index, decision_cases
 from domain.risk.models import DecisionLabel
 
 from .models import Settlement, SettlementEvent
@@ -204,8 +205,14 @@ def review(settlement, decision: str, actor=None, reason: str = ""):
     note = _override_note(settlement, decision)
     if note:
         reason = f"{note} {reason}".strip()
+    #  사례는 **전이 전에** 판단한다 — 전이 후엔 `rule_decision`·`risk_reviews`는 그대로지만
+    #  상태가 바뀌어 "무엇과 다르게 판단했는가"의 맥락(승인대기였는지 검토중이었는지)이 흐려진다.
+    case = decision_cases.record(settlement, decision, actor, reason)
     transition(settlement, REVIEW_MAP[decision], actor, reason)
     DecisionLabel.objects.create(settlement=settlement, label=decision, actor=actor)
+    if case is not None:
+        # 적재는 커밋 후. 실패해도 결정을 되돌리지 않는다(사례는 나중에 다시 올리면 된다).
+        case_index.schedule(case)
     return settlement
 
 
