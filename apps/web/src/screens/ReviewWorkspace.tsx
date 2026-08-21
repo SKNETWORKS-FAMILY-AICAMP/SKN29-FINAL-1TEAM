@@ -205,22 +205,24 @@ export function ReviewWorkspace() {
 
   return (
     <div className="review-ws">
-      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span className="screen-id">S-03</span>
-          <h1>검토 워크스페이스</h1>
-          <div className="sub">Rule 미매칭·불확실 건만 위험도순으로 정렬합니다. 최종 결정은 사람이 수행합니다.</div>
-        </div>
-        {/* 요약 지표 — 제목 우측 상단에 작게 */}
-        <div className="head-stats">
-          <div className="head-stat"><span className="v">82%</span><span className="l">자동처리율</span></div>
-          <div className="head-stat"><span className="v">{pending.length}건</span><span className="l">검토 대기</span></div>
-          <div className="head-stat"><span className="v">{awaiting.length}건</span><span className="l">확정 대기</span></div>
-          <div className="head-stat"><span className="v">6.2분</span><span className="l">평균 검토 시간</span></div>
+      <div className="hero-band">
+        <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <span className="screen-id">S-03</span>
+            <h1>검토 워크스페이스</h1>
+            <div className="sub">Rule 미매칭·불확실 건만 위험도순으로 정렬합니다. 최종 결정은 사람이 수행합니다.</div>
+          </div>
+          {/* 요약 지표 — 제목 우측 상단에 작게 */}
+          <div className="head-stats">
+            <div className="head-stat"><span className="v">82%</span><span className="l">자동처리율</span></div>
+            <div className="head-stat"><span className="v">{pending.length}건</span><span className="l">검토 대기</span></div>
+            <div className="head-stat"><span className="v">{awaiting.length}건</span><span className="l">확정 대기</span></div>
+            <div className="head-stat"><span className="v">6.2분</span><span className="l">평균 검토 시간</span></div>
+          </div>
         </div>
       </div>
 
-      <div className="split">
+      <div className="split" style={{ padding: 'var(--space-6)' }}>
           {/* Review List */}
           <div className="card">
             <div className="card-head">

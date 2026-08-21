@@ -90,6 +90,9 @@ export function DecisionReasonModal({
     return (
       <Modal title="반려 확인" onClose={onClose} footer={footer}>
         <div className="stack" style={{ alignItems: 'center', textAlign: 'center', gap: 8 }}>
+          <span className="tag" style={{ color: 'var(--tone-orange)', background: 'var(--tone-orange-bg)', borderColor: 'transparent' }}>
+            2단계 확인
+          </span>
           <AlertTriangle size={28} color="var(--tone-red)" />
           <h3>정말 반려하시겠습니까?</h3>
           <p className="text-meta" style={{ margin: 0 }}>

@@ -173,7 +173,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .hero-band .page-head h1 { color: var(--sidebar-text); }
 .hero-band .page-head .sub { color: var(--sidebar-text-muted); margin-top: 4px; }
 /* 히어로 안에 얹힌 흰 카드(S-02 팀 예산 현황)는 히어로의 흰 글자색을 물려받지 않고 평소 색으로 되돌린다 */
-.hero-band .card { color: var(--text); }
+.hero-band .card, .hero-band .head-stat { color: var(--text); }
 .hero-band .kpi-grid { margin: 20px 0 0; }
 .scope-chip-row { display: flex; gap: var(--space-4); margin-top: 14px; }
 .scope-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sidebar-text-muted); }
