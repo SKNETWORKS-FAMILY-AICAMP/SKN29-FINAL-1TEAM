@@ -144,6 +144,20 @@ export async function confirmSettlement(id: string): Promise<SettlementStatus | 
   } catch { return null }
 }
 
+/**
+ * AI 위험 검토 재실행. 실패해도 화면을 막지 않는다 — 결과 없이도 증빙·판정 사유로
+ * 판단할 수 있어야 한다.
+ */
+export async function rerunRiskReview(id: string): Promise<boolean> {
+  if (USE_MOCK) { await mockDelay(); return true }
+  try {
+    await endpoints.rerunRiskReview(id)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** 보완요청·반려 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
 export interface DecisionReasonDraft {
   reason: string

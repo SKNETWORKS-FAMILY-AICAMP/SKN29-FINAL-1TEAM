@@ -33,6 +33,9 @@ export const endpoints = {
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
   // 보완요청·반려 **사유 초안** — Draft Agent가 판정 사유와 내역을 보고 문장을 채운다.
   //  결정 모달이 열릴 때 부른다. ai가 없어도 서버가 판정 플래그로 폴백하므로 항상 응답한다.
+  // AI 위험 검토 재실행 — 실패했거나 결과가 안 온 IN_REVIEW 건만.
+  //  `/judge/`로는 안 된다(판정 재실행은 SUBMITTED→RPA_JUDGED 전이를 전제한다).
+  rerunRiskReview: (id: string) => api.post(`/settlements/${id}/risk-review/`),
   decisionReason: (id: string, decision: 'RETURN' | 'REJECT') =>
     api.post(`/settlements/${id}/decision-reason/`, { decision }, { timeout: 40_000 }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),

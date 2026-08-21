@@ -90,6 +90,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     #  거치지 않는다(`risk_review.schedule`은 IN_REVIEW만 예약한다). 이 값이 없으면 화면이
     #  `anomaly_score`가 없는 것과 **0점인 것**을 구분하지 못해 "정상 0점"으로 그린다.
     riskReviewed = serializers.SerializerMethodField()
+    #  **「결과가 없다」의 세 가지 상황을 가른다** — 미실시(룰 통과) / 검토 중 / 실패.
+    #  결과 유무만 보면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
+    riskReviewState = serializers.CharField(source="risk_review_state", read_only=True)
+    riskReviewError = serializers.CharField(source="risk_review_error", read_only=True)
 
     class Meta:
         model = Settlement
@@ -100,7 +104,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
-            "ruleHits", "riskReviewed",
+            "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 

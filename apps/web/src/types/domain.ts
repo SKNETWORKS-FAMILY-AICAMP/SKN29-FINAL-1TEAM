@@ -151,7 +151,17 @@ export interface Settlement {
    * 구분하지 못해 아무도 안 본 건을 "이상 없음 0점"으로 그린다.
    */
   riskReviewed?: boolean
+  /**
+   * Risk Review 진행 상태. **`riskReviewed`(결과 유무)만으로는 세 상황이 뭉친다** —
+   * 미실시(룰 통과라 대상이 아님) / 검토 중(최대 60초) / 실패(ai 미기동·타임아웃).
+   * 구분하지 않으면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
+   */
+  riskReviewState?: RiskReviewState
+  riskReviewError?: string
 }
+
+export type RiskReviewState = 'NOT_STARTED' | 'RUNNING' | 'DONE' | 'FAILED'
+
 
 /** 룰 엔진 판정. 사람의 결정(APPROVE/RETURN/REJECT)이나 AI 권고와는 다른 축이다. */
 export type RuleDecision = 'PASS' | 'RETURN' | 'REJECT' | 'REVIEW'

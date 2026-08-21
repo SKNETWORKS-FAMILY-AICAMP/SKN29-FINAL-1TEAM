@@ -24,9 +24,9 @@ from domain.common.permissions import (
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import decision_reasons, draft_agent, erp_import, evidence_extract, services
+from . import decision_reasons, draft_agent, erp_import, evidence_extract, risk_review, services
 from .attachments import Attachment, AttachmentKind
-from .models import Settlement, TeamBudget
+from .models import Settlement, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
 
 #  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
@@ -403,6 +403,23 @@ class SettlementViewSet(viewsets.ModelViewSet):
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
+
+    # POST /api/settlements/{id}/risk-review/  — AI 위험 검토 재실행
+    @action(detail=True, methods=["post"], url_path="risk-review")
+    def rerun_risk_review(self, request, pk=None):
+        """실패한(또는 결과가 안 온) Risk Review를 다시 돌린다.
+
+        `/judge/`로는 안 된다 — 판정 재실행은 `SUBMITTED → RPA_JUDGED` 전이를 전제하는데
+        이 건은 이미 `IN_REVIEW`다. 상태를 건드리지 않고 **AI 호출만** 다시 예약한다.
+        """
+        settlement = self.get_object()
+        if settlement.status != SettlementStatus.IN_REVIEW:
+            return Response(
+                {"detail": "검토중(IN_REVIEW) 건만 위험 검토를 다시 실행할 수 있습니다."}, status=400,
+            )
+        risk_review.schedule(settlement)
+        settlement.refresh_from_db()
+        return Response(self.get_serializer(settlement).data)
 
     # POST /api/settlements/{id}/decision-reason/  — 보완요청·반려 사유 **초안**
     @action(detail=True, methods=["post"], url_path="decision-reason")

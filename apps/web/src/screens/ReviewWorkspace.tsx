@@ -1,18 +1,18 @@
 // S-03 검토 워크스페이스 — 회계 담당자.
 // FR-UI-03, FR-RR-01~08, FR-RL-01~02, FR-DB-04
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
-import { RulePassedNotice } from '../components/settlement/RulePassedNotice'
+import { RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { confirmSettlement, reviewSettlement } from '../api/settlementService'
+import { confirmSettlement, reviewSettlement, rerunRiskReview } from '../api/settlementService'
 import { AWAITING_CONFIRM_STATUSES, REVIEW_HISTORY_STATUSES } from '../api/settlements'
 import { useSettlements } from '../context/SettlementsContext'
 import { useCan } from '../lib/capabilities'
@@ -70,8 +70,11 @@ const OUTCOME_BY_STATUS: Partial<Record<ReviewItem['status'], Reco>> = {
 }
 const outcomeOf = (item: ReviewItem): RecoOrNone => OUTCOME_BY_STATUS[item.status] ?? item.aiRecommendation
 
+//  AI 위험 검토가 도는 동안 목록을 되읽는 주기. 판독이 보통 수십 초라 3초면 충분하다.
+const RISK_REVIEW_POLL_MS = 3000
+
 export function ReviewWorkspace() {
-  const { reviewItems: items, updateStatus } = useSettlements()
+  const { reviewItems: items, updateStatus, refresh } = useSettlements()
   const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
   const [selId, setSelId] = useState<string | undefined>(items[0]?.id)
   const [filter, setFilter] = useState<Filter>('ALL')
@@ -192,6 +195,22 @@ export function ReviewWorkspace() {
     setModal({ decision: filter, ids: [...checked] })
   }
 
+  //  AI 위험 검토가 도는 동안(RUNNING) 목록을 되읽는다 — 결과가 도착하면 화면이 스스로
+  //  갱신돼야 한다. 도는 건이 없으면 폴링하지 않는다(끝났는데 계속 두드리면 서버만 친다).
+  const anyRunning = items.some((i) => i.riskReviewState === 'RUNNING')
+  useEffect(() => {
+    if (!anyRunning) return
+    const t = setInterval(() => refresh(), RISK_REVIEW_POLL_MS)
+    return () => clearInterval(t)
+  }, [anyRunning, refresh])
+
+  const retryRiskReview = async (id: string) => {
+    setBusy(true)
+    await rerunRiskReview(id)
+    refresh()
+    setBusy(false)
+  }
+
   const modalItem = modal ? source.find((i) => i.id === modal.ids[0]) : undefined
 
   //  빈 상태 문구는 한 곳에서 만든다 — 목록·상세·액션이 서로 다른 말을 하면 사용자가
@@ -281,9 +300,10 @@ export function ReviewWorkspace() {
             )}
             <ul className="review-list">
               {listed.map((i) => {
-                // Risk Review를 거치지 않은 건(룰 PASS로 승인 대기 직행)은 **점수가 없다**.
-                // 0으로 그리면 "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
-                const score = i.riskReviewed ? Math.round(i.anomalyScore * 100) : null
+                // 점수가 없는 세 상황(미실시·검토 중·실패)을 뭉개지 않는다 — 0으로 그리면
+                // "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
+                const scoreLabel = riskScoreLabel(i.riskReviewState, i.anomalyScore)
+                const score = i.riskReviewState === 'DONE' ? Math.round(i.anomalyScore * 100) : null
                 const reco = recoLabel(i.aiRecommendation)
                 return (
                   <li
@@ -306,9 +326,9 @@ export function ReviewWorkspace() {
                     <span
                       className="risk-score"
                       style={{ color: score === null ? 'var(--muted)' : riskColor(score) }}
-                      title={score === null ? '이상탐지를 거치지 않은 건입니다(룰 판정 통과)' : undefined}
+                      title={riskScoreTitle(i.riskReviewState)}
                     >
-                      {score ?? '-'}
+                      {scoreLabel}
                     </span>
                     <div className="review-item-body">
                       <div className="review-item-top">
@@ -456,14 +476,10 @@ export function ReviewWorkspace() {
                 <div className="card">
                   <div className="card-head">
                     <h3>① 이상탐지 결과</h3>
-                    <span className="tag" style={sel.riskReviewed
-                      ? { color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }
-                      : { color: 'var(--muted)' }}>
-                      anomaly {sel.riskReviewed ? sel.anomalyScore.toFixed(2) : '-'}
-                    </span>
+                    <RiskScoreBadge item={sel} />
                   </div>
                   <div className="card-body">
-                    {sel.riskReviewed ? (
+                    {sel.riskReviewState === 'DONE' ? (
                       <>
                         <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
                         <div className="stack">
@@ -473,7 +489,7 @@ export function ReviewWorkspace() {
                         </div>
                       </>
                     ) : (
-                      <RulePassedNotice item={sel} />
+                      <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />
                     )}
                   </div>
                 </div>
@@ -489,10 +505,15 @@ export function ReviewWorkspace() {
                           {VERDICT_LABEL[sel.violationVerdict]}
                         </span>
                       )}
-                      <span className={'tag ' + recoLabel(sel.aiRecommendation).cls}>
-                        {sel.aiRecommendation
+                      {/* 「권장 없음」의 이유를 상태별로 갈라 적는다 — 「미실행」한 마디로는
+                          도는 중인 건과 끝난 건이 같아 보인다. */}
+                      <span className={'tag ' + (sel.riskReviewState === 'DONE' ? recoLabel(sel.aiRecommendation).cls : '')}
+                            style={sel.riskReviewState === 'DONE' ? undefined : { color: 'var(--muted)' }}>
+                        {sel.riskReviewState === 'DONE' && sel.aiRecommendation
                           ? `AI 권장: ${recoLabel(sel.aiRecommendation).text} · ${pct(sel.aiConfidence)}`
-                          : 'AI 권장 없음 (미실행)'}
+                          : sel.riskReviewState === 'RUNNING' ? 'AI 권장: 검토 중'
+                            : sel.riskReviewState === 'FAILED' ? 'AI 권장 없음 (검토 실패)'
+                              : 'AI 권장 없음 (검토 대상 아님)'}
                       </span>
                     </span>
                   </div>
@@ -503,17 +524,20 @@ export function ReviewWorkspace() {
                         근거가 부족해 <b>판단을 보류</b>한 건입니다. 아래 내용은 참고용이며, 증빙·사유를 직접 확인해주세요.
                       </p>
                     )}
-                    {sel.ragReport
-                      ? <Markdown source={sel.ragReport} />
-                      : (
-                        <p style={{ margin: '0 0 12px' }}>
-                          {!sel.aiRecommendation
-                            ? 'Risk Review Agent가 아직 실행되지 않았습니다. 아래 근거 없이 판단하지 마세요.'
-                            : sel.ragRefs.length === 0
-                              ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
-                              : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${recoLabel(sel.aiRecommendation).text}을(를) 권장합니다.`}
-                        </p>
-                      )}
+                    {/* **결과가 오기 전에 결론처럼 읽히는 문장을 쓰지 않는다.** 예전엔 검토
+                        중인 건에도 "이상 신호가 낮아 내규 위반 소지가 크지 않습니다"가 떠서,
+                        아직 돌지도 않은 판단을 이미 난 것처럼 보여줬다. */}
+                    {sel.riskReviewState !== 'DONE' ? (
+                      <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />
+                    ) : sel.ragReport ? (
+                      <Markdown source={sel.ragReport} />
+                    ) : (
+                      <p style={{ margin: '0 0 12px' }}>
+                        {sel.ragRefs.length === 0
+                          ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
+                          : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${recoLabel(sel.aiRecommendation).text}을(를) 권장합니다.`}
+                      </p>
+                    )}
                     {sel.ragRefs.length > 0 && (
                       <div className="stack" style={{ marginTop: sel.ragReport ? 14 : 0 }}>
                         <div className="text-meta" style={{ fontWeight: 700 }}>참조 근거 {sel.ragRefs.length}건</div>
