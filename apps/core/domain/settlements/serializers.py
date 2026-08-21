@@ -133,9 +133,15 @@ class SettlementSerializer(serializers.ModelSerializer):
         return f"{card.name or card.get_card_type_display()}" + (f" {card.number_masked}" if card.number_masked else "")
 
     def get_evidence(self, obj):
-        # 증빙 '누락'은 하드 플래그로 차단하지 않는다 — 영수증 없이도 자동 유연처리 지원(AI가 별도 판단).
-        # 영수증이 매칭되면 'OK', 없어도 누락으로 막지 않고 'OK'로 통과시킨다(누락 여부 판단은 AI 몫, post-MVP).
-        return "OK"
+        """증빙이 **실제로 있는가**. 판정이 보는 사실(`evidence.has_valid_receipt`)과 같은 기준이다.
+
+        예전엔 무조건 `"OK"`를 돌려줬다 — 화면은 전건 「증빙 완료」로 보이는데 판정은
+        「증빙 누락」으로 걸어서, 담당자가 화면과 판정 사유가 어긋나는 걸 설명할 수 없었다.
+        (누락을 **차단하지 않는다**는 원래 방침은 그대로다 — 차단은 룰이 정하고 여기는 표시만 한다.)
+        """
+        if not obj.transaction_id:
+            return "MISSING"
+        return "OK" if obj.transaction.receipts.exclude(status="MISSING").exists() else "MISSING"
 
     def get_claimPending(self, obj):
         return obj.submitted_by_id is None and obj.status == "DRAFT"

@@ -15,6 +15,7 @@
 """
 from decimal import Decimal
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -92,6 +93,15 @@ class PendingConfirmOverrideTests(TestCase):
         self.assertEqual(self.settlement.status, S.PENDING_CONFIRM)
 
 
+#: 신규 등록은 **영수증이 필수**다(`test_create_receipt.py`) — 카드 검증만 보려는
+#  테스트도 파일을 함께 보내야 한다.
+PNG = bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"0" * 32
+
+
+def _receipt():
+    return SimpleUploadedFile("r.png", PNG, content_type="image/png")
+
+
 class MyCardsTests(TestCase):
     def setUp(self):
         self.team = Team.objects.create(name="영업팀", bu="영업본부")
@@ -133,8 +143,8 @@ class MyCardsTests(TestCase):
     def test_고른_카드가_그대로_붙는다(self):
         r = self.client.post("/api/settlements/", {
             "merchant": "카페", "amount": "9000", "date": "2026-08-20",
-            "cardId": self.team_card.id, "category": Category.MEAL,
-        }, format="json")
+            "cardId": self.team_card.id, "category": Category.MEAL, "receipt": _receipt(),
+        }, format="multipart")
         self.assertEqual(r.status_code, 201)
         settlement = Settlement.objects.get(pk=r.json()["id"])
         self.assertEqual(settlement.transaction.card_id, self.team_card.id)
@@ -143,8 +153,8 @@ class MyCardsTests(TestCase):
     def test_남의_개인카드는_붙지_않는다(self):
         r = self.client.post("/api/settlements/", {
             "merchant": "카페", "amount": "9000", "date": "2026-08-20",
-            "cardId": self.others.id, "category": Category.MEAL,
-        }, format="json")
+            "cardId": self.others.id, "category": Category.MEAL, "receipt": _receipt(),
+        }, format="multipart")
         self.assertEqual(r.status_code, 201)
         settlement = Settlement.objects.get(pk=r.json()["id"])
         self.assertIsNone(settlement.transaction.card_id)   # 조용히 남의 카드를 붙이지 않는다
@@ -153,16 +163,16 @@ class MyCardsTests(TestCase):
         """하위호환 — 그래도 `first()`로 아무 카드나 집지 않는다."""
         r = self.client.post("/api/settlements/", {
             "merchant": "카페", "amount": "9000", "date": "2026-08-20",
-            "cardType": CardType.PERSONAL, "category": Category.MEAL,
-        }, format="json")
+            "cardType": CardType.PERSONAL, "category": Category.MEAL, "receipt": _receipt(),
+        }, format="multipart")
         settlement = Settlement.objects.get(pk=r.json()["id"])
         self.assertEqual(settlement.transaction.card_id, self.mine.id)
 
     def test_수정에서도_카드를_바꿀_수_있다(self):
         created = self.client.post("/api/settlements/", {
             "merchant": "카페", "amount": "9000", "date": "2026-08-20",
-            "cardId": self.mine.id, "category": Category.MEAL,
-        }, format="json").json()
+            "cardId": self.mine.id, "category": Category.MEAL, "receipt": _receipt(),
+        }, format="multipart").json()
         r = self.client.patch(f"/api/settlements/{created['id']}/",
                               {"cardId": self.team_card.id}, format="json")
         self.assertEqual(r.status_code, 200)
@@ -171,8 +181,8 @@ class MyCardsTests(TestCase):
     def test_수정에서_남의_카드로_바꾸면_400(self):
         created = self.client.post("/api/settlements/", {
             "merchant": "카페", "amount": "9000", "date": "2026-08-20",
-            "cardId": self.mine.id, "category": Category.MEAL,
-        }, format="json").json()
+            "cardId": self.mine.id, "category": Category.MEAL, "receipt": _receipt(),
+        }, format="multipart").json()
         r = self.client.patch(f"/api/settlements/{created['id']}/",
                               {"cardId": self.others.id}, format="json")
         self.assertEqual(r.status_code, 400)

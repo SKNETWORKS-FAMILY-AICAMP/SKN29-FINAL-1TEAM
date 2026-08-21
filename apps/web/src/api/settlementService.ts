@@ -14,13 +14,22 @@ export async function fetchSettlementDetail(item: Settlement): Promise<Settlemen
 const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 250))
 
 /** F-1: 신규 지출 등록(영수증 업로드 + AI 판독 확인 후 제출). id/status는 서버가 생성 — mock에서는 흉내낸다. */
-export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>): Promise<Settlement> {
+export async function createSettlement(
+  draft: Omit<Settlement, 'id' | 'status'>, receipt: File,
+): Promise<Settlement> {
   if (USE_MOCK) {
     await mockDelay()
     // 신규 건은 '개인 보유중(DRAFT)'으로 생성 — 이후 목록에서 제출
     return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'DRAFT' }
   }
-  const res = await endpoints.createSettlement(draft)
+  //  **영수증 파일과 함께 보낸다**(multipart). 예전엔 `evidence: 'OK'` 한 글자만 보내면
+  //  서버가 있지도 않은 경로로 Receipt를 만들어, 증빙이 있다고 기록됐지만 파일이 없었다.
+  const form = new FormData()
+  for (const [key, value] of Object.entries(draft)) {
+    if (value !== undefined && value !== null) form.append(key, String(value))
+  }
+  form.append('receipt', receipt)
+  const res = await endpoints.createSettlement(form)
   return res.data
 }
 

@@ -98,8 +98,38 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     # POST /api/settlements/  (신규 지출 등록 — 거래+정산 생성)
+    #  영수증 파일을 함께 받으므로 multipart를 허용한다(JSON도 계속 받는다 — 옛 호출부).
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def create(self, request, *args, **kwargs):
+        """신규 지출 등록. **영수증 파일이 필수다.**
+
+        예전엔 화면이 `evidence: "OK"` 한 글자만 보내면 서버가 `receipts/<tx>.jpg`라는
+        **있지도 않은 경로**로 `Receipt`를 만들었다 — 증빙이 있다고 기록됐지만 파일은
+        어디에도 없었고, 판정(`evidence.has_valid_receipt`)은 그걸 사실로 읽었다.
+        비전 판독도 열 파일이 없어 돌 수 없었다.
+
+        이제 실제 파일을 받아 저장하고, 같은 파일을 `Attachment(RECEIPT)`로도 걸어
+        **업로드가 곧 판독 트리거**가 되게 한다(첨부 경로와 같은 규약).
+        """
         d = request.data
+        upload = request.FILES.get("receipt")
+        if upload is None:
+            return Response(
+                {"detail": "영수증 파일이 필요합니다. 지출 등록에는 증빙 첨부가 필수입니다."},
+                status=400,
+            )
+        if not (upload.name or "").lower().endswith(ALLOWED_ATTACHMENT_SUFFIXES):
+            return Response(
+                {"detail": f"지원하지 않는 형식입니다: {upload.name} "
+                           f"({', '.join(ALLOWED_ATTACHMENT_SUFFIXES)}만 가능)"},
+                status=400,
+            )
+        if upload.size > MAX_ATTACHMENT_BYTES:
+            return Response(
+                {"detail": f"파일이 너무 큽니다. {MAX_ATTACHMENT_BYTES // (1024 * 1024)}MB 이하만 올릴 수 있습니다."},
+                status=400,
+            )
         raw_date = (d.get("date") or "")[:10]
         pd = parse_date(raw_date) if raw_date else None
         ts = timezone.make_aware(datetime.combine(pd, time(12, 0))) if pd else timezone.now()
@@ -114,8 +144,6 @@ class SettlementViewSet(viewsets.ModelViewSet):
         tx = Transaction.objects.create(
             card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
         )
-        if d.get("evidence") == "OK":
-            Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
         actor = _actor(request)
         industry_code, industry_label = industry_vocab.resolve(
             d.get("merchantIndustryCode") or d.get("merchantIndustry")
@@ -129,6 +157,21 @@ class SettlementViewSet(viewsets.ModelViewSet):
             purpose=d.get("purpose", ""), submitted_by=actor,
             team=getattr(actor, "team", None), status="DRAFT",
         )
+
+        #  같은 파일을 두 자리에 건다. 역할이 다르다:
+        #   · `Receipt` — 거래-영수증 매칭(판정의 `evidence.has_valid_receipt`가 이걸 본다)
+        #   · `Attachment(RECEIPT)` — 판독 대상(비전이 품목·주류 여부 등 **판정 사실**을 뽑는다)
+        attachment = Attachment.objects.create(
+            settlement=s, kind=AttachmentKind.RECEIPT, file=upload,
+            original_name=upload.name[:200], mime_type=(upload.content_type or "")[:100],
+            uploaded_by=actor,
+        )
+        attachment.file_ref = attachment.file.name
+        attachment.save(update_fields=["file_ref"])
+        Receipt.objects.create(
+            matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=attachment.file_ref,
+        )
+        evidence_extract.schedule(attachment)
         return Response(self.get_serializer(s).data, status=201)
 
     # PATCH /api/settlements/{id}/  — 상세 화면 수정 저장

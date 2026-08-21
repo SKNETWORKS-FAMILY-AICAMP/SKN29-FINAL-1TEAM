@@ -166,7 +166,7 @@ class Command(BaseCommand):
         sales_shared_card = Card.objects.create(card_type=CardType.SHARED, name="영업본부 공용", number_masked="**** 7700", team=sales, limit_amount=4_000_000)
         shared_card = Card.objects.create(card_type=CardType.SHARED, name="AI·개발팀 공용", number_masked="**** 9999", team=devai, limit_amount=4_000_000)
         devai_team_card = Card.objects.create(card_type=CardType.TEAM, name="AI·개발팀 팀카드", number_masked="**** 9001", team=devai, limit_amount=5_000_000)
-        postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="후정산 청구", number_masked="후정산", limit_amount=2_000_000)
+        postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="개인카드 후정산", number_masked="후정산", limit_amount=2_000_000)
         sales_prepaid = Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales, limit_amount=1_000_000)
 
         # 캐시는 **정본 업종 어휘**로만 심는다(§7-1). 예전엔 카카오 group code(CE7·FD6…)와

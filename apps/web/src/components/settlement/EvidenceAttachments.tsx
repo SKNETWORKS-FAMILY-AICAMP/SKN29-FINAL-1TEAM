@@ -1,7 +1,15 @@
 // 증빙 첨부 + 판독 결과 — S-01 지출 증빙 화면(상세 모달 좌측).
 //
-// **업로드가 곧 판독 트리거**다. 별도 "분석" 버튼을 두지 않는다 — 아무도 누르지 않고,
-// 추출 결과 없이 제출되면 판정이 그 사실을 `null`(모름)로 보고 검토로 강등한다.
+// ## 흐름: 파일 고르기 → 종류 정하기 → 확인
+//
+// **문서를 보고 나서 종류를 정한다.** 종류를 먼저 고르게 하면 기본값(영수증) 그대로
+// 올리기 쉽고, 종류가 틀리면 **엉뚱한 항목을 뽑으라는 지시**가 열려 없는 사실이 만들어진다
+// (`vision/document.py`의 `TARGETS`가 종류별로 허용 경로를 가른다 — 회의록에서 출장
+// 지역등급을 찾게 두면 지어낸다).
+//
+// **확인이 곧 판독 트리거**다. 올리고 나서 따로 "분석" 버튼을 누르게 하지 않는다 —
+// 아무도 누르지 않고, 추출 결과 없이 제출되면 판정이 그 사실을 `null`(모름)로 보고
+// 검토로 강등한다. 확인 전에 **무엇이 판독될지**(판독 항목)를 먼저 보여준다.
 //
 // 판독은 서버에서 비동기로 돈다(수십 초). 그래서 업로드 직후 상태는 대개 `PENDING`이고,
 // 여기서 목록을 폴링해 결과가 도착하는 걸 지켜본다(규정 문서 적재 화면과 같은 방식).
@@ -31,6 +39,10 @@ export function EvidenceAttachments({
   onFactsExtracted?: (attachment: Attachment) => void
 }) {
   const [items, setItems] = useState<Attachment[]>([])
+  //  **파일을 먼저 고르고, 그다음에 종류를 정한다.** 문서를 안 보고 종류부터 고르라고 하면
+  //  기본값(영수증) 그대로 올리기 쉽고, 종류가 틀리면 **엉뚱한 항목을 뽑으라는 지시**가
+  //  열려 없는 사실이 만들어진다(`vision/document.py`의 TARGETS가 종류로 갈린다).
+  const [staged, setStaged] = useState<File | null>(null)
   const [kind, setKind] = useState<AttachmentKind>('RECEIPT')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -63,20 +75,30 @@ export function EvidenceAttachments({
     return () => clearInterval(t)
   }, [items, settlementId, load])
 
-  const pick = async (file: File | undefined) => {
-    if (!file || !settlementId) return
+  /** ① 파일 고르기 — 아직 올리지 않는다. 화면이 들고 있다가 종류 확인 후 보낸다. */
+  const stage = (file: File | undefined) => {
+    if (!file) return
+    setError('')
+    setStaged(file)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  /** ② 종류를 정하고 확인 — 이때 올라가고, 서버가 판독을 예약한다. */
+  const confirmUpload = async () => {
+    if (!staged || !settlementId) return
     setBusy(true)
     setError('')
     try {
-      const created = await uploadAttachment(settlementId, file, kind)
+      const created = await uploadAttachment(settlementId, staged, kind)
       setItems((prev) => [...prev, created])
+      setStaged(null)
+      setKind('RECEIPT')
     } catch (e: unknown) {
       // 서버가 사유를 준다(형식·용량). 삼키면 사용자는 "올라갔나?"만 남는다.
       const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(detail ?? '업로드에 실패했습니다.')
     } finally {
       setBusy(false)
-      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -98,7 +120,7 @@ export function EvidenceAttachments({
     <div className="card">
       <div className="card-head">
         <h3>증빙 자료</h3>
-        <span className="text-meta">업로드하면 자동 판독</span>
+        <span className="text-meta">종류를 확인하면 판독이 시작됩니다</span>
       </div>
       <div className="card-body">
         {!settlementId ? (
@@ -107,29 +129,72 @@ export function EvidenceAttachments({
           <>
             {!readOnly && (
               <>
-                <div className="field" style={{ marginBottom: 8 }}>
-                  <label>문서 종류</label>
-                  <select value={kind} onChange={(e) => setKind(e.target.value as AttachmentKind)}>
-                    {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
-                  </select>
-                  {/* 종류가 "무엇을 뽑을지"를 정한다 — 고르기 전에 알려준다. */}
-                  {selected && <div className="text-meta" style={{ marginTop: 4 }}>판독 항목: {selected.extracts}</div>}
-                </div>
                 <input
                   ref={fileRef}
                   type="file"
                   accept={ACCEPT}
                   style={{ display: 'none' }}
-                  onChange={(e) => void pick(e.target.files?.[0])}
+                  onChange={(e) => stage(e.target.files?.[0])}
                 />
-                <button
-                  className="btn primary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => fileRef.current?.click()}
-                  disabled={busy}
-                >
-                  {busy ? <><Loader2 size={14} className="spin" /> 업로드 중…</> : <><Paperclip size={14} /> 파일 선택 (PDF·이미지)</>}
-                </button>
+
+                {/* ① 파일을 먼저 고른다 */}
+                {!staged ? (
+                  <button
+                    className="btn primary"
+                    style={{ width: '100%', justifyContent: 'center' }}
+                    onClick={() => fileRef.current?.click()}
+                    disabled={busy}
+                  >
+                    <Paperclip size={14} /> 파일 선택 (PDF·이미지)
+                  </button>
+                ) : (
+                  /* ②③ 고른 파일을 보여주고, 종류를 정한 뒤 확인하면 올라간다 */
+                  <div style={{
+                    border: '1px solid var(--primary)', background: 'var(--primary-soft)',
+                    borderRadius: 'var(--radius-control)', padding: '12px 14px',
+                  }}>
+                    <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div className="row" style={{ gap: 8, minWidth: 0 }}>
+                        <FileText size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, wordBreak: 'break-all' }}>{staged.name}</div>
+                          <div className="text-meta">{(staged.size / 1024).toFixed(0)}KB · 아직 올리지 않았습니다</div>
+                        </div>
+                      </div>
+                      <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="취소"
+                              onClick={() => setStaged(null)} disabled={busy}>
+                        <X size={13} />
+                      </button>
+                    </div>
+
+                    <div className="field" style={{ margin: '12px 0 8px' }}>
+                      <label>이 문서는 어떤 종류인가요?</label>
+                      <select value={kind} onChange={(e) => setKind(e.target.value as AttachmentKind)} disabled={busy}>
+                        {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+                      </select>
+                      {/* 종류가 **무엇을 뽑을지**를 정한다 — 확인 전에 무엇이 판독될지 알린다. */}
+                      {selected && (
+                        <div className="text-meta" style={{ marginTop: 4 }}>
+                          판독 항목: {selected.extracts}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="row" style={{ gap: 6 }}>
+                      <button className="btn" onClick={() => fileRef.current?.click()} disabled={busy}>다시 고르기</button>
+                      <button
+                        className="btn primary"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => void confirmUpload()}
+                        disabled={busy}
+                      >
+                        {busy
+                          ? <><Loader2 size={14} className="spin" /> 올리는 중…</>
+                          : <><Check size={14} /> 첨부하고 판독 시작</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

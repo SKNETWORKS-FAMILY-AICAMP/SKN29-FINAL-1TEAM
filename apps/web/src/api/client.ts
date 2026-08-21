@@ -12,7 +12,12 @@ export const endpoints = {
   health: () => api.get('/health/'),
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
   settlement: (id: string) => api.get(`/settlements/${id}/`),
-  createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
+  // F-1 신규 지출 등록 — **영수증 파일 필수**라 multipart로 보낸다(서버가 Receipt +
+  //  Attachment(RECEIPT)를 만들고 비전 판독을 예약한다).
+  createSettlement: (data: FormData) => api.post('/settlements/', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,
+  }),
   deleteSettlement: (id: string) => api.delete(`/settlements/${id}/`), // '내 지출' 미제출 건 삭제
   // 상세 화면 수정 저장. **제출·올림 버튼이 전이 전에 먼저 부른다** — 이게 없던 동안
   //  모달은 제목만 '수정'이었고 고친 값이 서버에 닿지 않았다(판정이 옛 값으로 돌았다).
