@@ -24,7 +24,7 @@ import {
   reviseDraft, submitSettlements, suggestDraft, updateSettlement,
   type DraftSuggestion, type PolicyHint,
 } from '../../api/settlementService'
-import { ReturnReasonModal } from './ReturnReasonModal'
+import { DecisionReasonModal } from './DecisionReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
 import { RuleJudgementPanel } from './RuleJudgementPanel'
 import type { Attachment } from '../../api/attachmentService'
@@ -106,7 +106,8 @@ export function SettlementDetailModal({
   const [factOpen, setFactOpen] = useState(isCreate)
 
   const [pending, setPending] = useState(false)
-  const [showReturnModal, setShowReturnModal] = useState(false)
+  //  결정은 **항상 사유 모달을 거친다** — 팀 반려가 확인 없이 바로 나가던 것도 여기로 합쳤다.
+  const [decisionTarget, setDecisionTarget] = useState<'RETURN' | 'REJECT' | null>(null)
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
@@ -297,40 +298,44 @@ export function SettlementDetailModal({
     nav(`/erp/${item.id}`)
   }
 
-  const reject = async () => {
-    if (!item) return
+  /**
+   * 보완요청·반려 사유 확정. **팀 취합 뷰면 팀 결정**(TEAM_RETURNED/TEAM_REJECTED),
+   * 그 외(회계 검토)면 회계 결정(RETURNED/REJECT)이다.
+   *
+   * 예전엔 실패가 통째로 삼켜져 **버튼이 죽은 것처럼** 보였다 — 팀 뷰에서 본인 건을 열면
+   * `canTeamDecide`가 false가 되어 회계 API(`reviewSettlement`)로 나갔고, 권한이 없어
+   * 403이 나도 화면엔 아무 일도 일어나지 않았다. 이제 사유를 그대로 보여준다.
+   */
+  const decideWithReason = async (reason: string, detail: string) => {
+    if (!item || !decisionTarget) return
+    const msg = [reason, detail].filter(Boolean).join(' — ')
     setPending(true)
-    const status = await reviewSettlement(item.id, 'REJECT')
-    onStatusChange?.(item.id, status)
-    setPending(false)
-    onClose()
+    try {
+      const status = isTeamView
+        ? await decideTeamSettlement(item.id, decisionTarget, msg)
+        : await reviewSettlement(item.id, decisionTarget, msg)
+      onStatusChange?.(item.id, status)
+      setDecisionTarget(null)
+      onClose()
+    } catch (e: unknown) {
+      const detailMsg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      window.alert(detailMsg ?? '처리에 실패했습니다.')
+    } finally {
+      setPending(false)
+    }
   }
 
-  // 팀 반려 — 팀 취합 단계 반려(회계 반려와 별개 상태)
-  const teamReject = async () => {
-    if (!item) return
-    setPending(true)
-    const status = await decideTeamSettlement(item.id, 'REJECT')
-    onStatusChange?.(item.id, status)
-    setPending(false)
-    onClose()
-  }
-
-  // 보완요청 사유 확정 — 팀 뷰면 팀 보완요청(TEAM_RETURNED), 아니면 회계 보완요청(RETURNED)
-  const returnWithReason = async (reason: string, detail: string) => {
-    if (!item) return
-    const msg = detail ? `${reason} — ${detail}` : reason
-    const status = canTeamDecide
-      ? await decideTeamSettlement(item.id, 'RETURN', msg)
-      : await reviewSettlement(item.id, 'RETURN', msg)
-    onStatusChange?.(item.id, status)
-    setShowReturnModal(false)
-    onClose()
-  }
-
-  // F-2: 보완요청 사유는 별도 모달에서 (상세 모달은 잠시 숨김)
-  if (showReturnModal && item) {
-    return <ReturnReasonModal item={item} onClose={() => setShowReturnModal(false)} onSubmit={returnWithReason} />
+  // F-2: 사유는 별도 모달에서 (상세 모달은 잠시 숨김)
+  if (decisionTarget && item) {
+    return (
+      <DecisionReasonModal
+        item={item}
+        decision={decisionTarget}
+        busy={pending}
+        onClose={() => setDecisionTarget(null)}
+        onConfirm={decideWithReason}
+      />
+    )
   }
 
   const canSave = merchant.trim() !== '' && numOnly(amountText) > 0
@@ -346,23 +351,26 @@ export function SettlementDetailModal({
           {pending ? '저장 중…' : '저장(등록)'}
         </button>
       ) : canTeamDecide ? (
+        /* 팀 취합 — 목록 행과 **같은 버튼 세트**다(화면마다 눌러야 할 자리가 다르면 안 된다).
+           제출은 사유 없이 바로 회계로 올리고, 보완·반려는 사유 모달을 거친다. */
         <>
-          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>팀 보완요청</button>
-          <button className="btn reject" onClick={teamReject} disabled={pending}>팀 반려</button>
-          {/* 이상 건은 제출 불가 — 보완요청·반려로 처리 유도 */}
+          <button className="btn return" onClick={() => setDecisionTarget('RETURN')} disabled={pending}>보완요청</button>
+          <button className="btn reject" onClick={() => setDecisionTarget('REJECT')} disabled={pending}>반려</button>
           <button
             className="btn primary"
             onClick={submit}
             disabled={pending || isAnomaly}
-            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 팀 보완요청·팀 반려로 처리하세요.' : undefined}
+            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 보완요청·반려로 처리하세요.' : undefined}
           >
-            {isAnomaly ? '제출 불가 (이상 건)' : '제출(SUBMITTED)'}
+            {isAnomaly ? '제출 불가 (이상 건)' : '제출'}
           </button>
         </>
-      ) : canReview ? (
+      ) : canReview && !isTeamView ? (
+        /* 회계 검토 — 여기의 「승인」은 회계 담당자 본인의 결정(→ 승인대기)이다.
+           팀 취합 뷰에서는 이 세트를 절대 띄우지 않는다(팀장이 회계 결정을 내리게 된다). */
         <>
-          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>보완요청(RETURNED)</button>
-          <button className="btn reject" onClick={reject} disabled={pending}>반려(REJECT)</button>
+          <button className="btn return" onClick={() => setDecisionTarget('RETURN')} disabled={pending}>보완요청(RETURNED)</button>
+          <button className="btn reject" onClick={() => setDecisionTarget('REJECT')} disabled={pending}>반려(REJECT)</button>
           {/* FR-ST-03: 확신 통과 건이라도 사람 확정 필수 */}
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>

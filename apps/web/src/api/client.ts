@@ -31,6 +31,10 @@ export const endpoints = {
     api.post(`/settlements/${id}/review/`, { decision, reason }),
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
+  // 보완요청·반려 **사유 초안** — Draft Agent가 판정 사유와 내역을 보고 문장을 채운다.
+  //  결정 모달이 열릴 때 부른다. ai가 없어도 서버가 판정 플래그로 폴백하므로 항상 응답한다.
+  decisionReason: (id: string, decision: 'RETURN' | 'REJECT') =>
+    api.post(`/settlements/${id}/decision-reason/`, { decision }, { timeout: 40_000 }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
   // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
   //  시스템 플래그는 기본 제외한다(룰이 `NO_ACTIVE_RULE_GRAPH`를 붙이면 의미가 뒤집힌다).

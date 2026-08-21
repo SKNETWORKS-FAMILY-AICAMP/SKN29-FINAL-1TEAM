@@ -24,7 +24,7 @@ from domain.common.permissions import (
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import draft_agent, erp_import, evidence_extract, services
+from . import decision_reasons, draft_agent, erp_import, evidence_extract, services
 from .attachments import Attachment, AttachmentKind
 from .models import Settlement, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
@@ -366,6 +366,20 @@ class SettlementViewSet(viewsets.ModelViewSet):
         except services.TransitionError as e:
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
+
+    # POST /api/settlements/{id}/decision-reason/  — 보완요청·반려 사유 **초안**
+    @action(detail=True, methods=["post"], url_path="decision-reason")
+    def decision_reason(self, request, pk=None):
+        """결정 사유 모달이 열릴 때 부른다. 판정 결과와 내역을 보고 문장을 채워 준다.
+
+        **대신 결정해 주지 않는다** — 초안은 화면에서 편집 가능하고, 저장되는 건 사람이
+        최종적으로 보낸 문구다. ai가 없어도 판정 플래그로 폴백하므로 결정이 막히지 않는다.
+        """
+        settlement = self.get_object()
+        decision = str(request.data.get("decision") or "RETURN").upper()
+        if decision not in {"RETURN", "REJECT"}:
+            return Response({"detail": "decision은 RETURN 또는 REJECT여야 합니다."}, status=400)
+        return Response(decision_reasons.draft(settlement, decision))
 
     # POST /api/settlements/{id}/judge/  (RPA 1차판정 — 재판정·수동 실행용)
     @action(detail=True, methods=["post"])

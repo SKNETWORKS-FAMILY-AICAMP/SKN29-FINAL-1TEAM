@@ -144,6 +144,33 @@ export async function confirmSettlement(id: string): Promise<SettlementStatus | 
   } catch { return null }
 }
 
+/** 보완요청·반려 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
+export interface DecisionReasonDraft {
+  reason: string
+  detail: string
+  source: 'ai' | 'fallback'
+  /** 사유 선택지 — **서버가 준다**. 화면과 LLM이 같은 목록을 봐야 어긋나지 않는다. */
+  options: string[]
+}
+
+/**
+ * 결정 모달이 열릴 때 사유 초안을 받아온다.
+ *
+ * 실패해도 모달을 막지 않는다 — 초안이 없으면 사람이 직접 쓰면 되고, 결정 자체가
+ * 초안 생성에 묶이면 ai가 죽었을 때 정산이 멈춘다.
+ */
+export async function fetchDecisionReason(
+  id: string, decision: 'RETURN' | 'REJECT',
+): Promise<DecisionReasonDraft | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  try {
+    const { data } = await endpoints.decisionReason(id, decision)
+    return data
+  } catch {
+    return null
+  }
+}
+
 /** S-02/S-06: 팀 취합 단계의 보완요청·반려(회계 결정과 별도 상태). */
 export async function decideTeamSettlement(
   id: string,
