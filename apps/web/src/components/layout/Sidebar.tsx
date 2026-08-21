@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  Bell, LogOut, Printer, Landmark, CreditCard, Shield, ClipboardCheck, ListChecks, Bot,
+  Bell, LogOut, Printer, Landmark, WalletMinimal, CreditCard, Shield, ClipboardCheck, ListChecks, Bot,
 } from 'lucide-react'
 import type { Capability } from '../../types/domain'
 import { useCan } from '../../lib/capabilities'
@@ -34,7 +34,7 @@ interface MenuItem {
 //  · AI-LAB: ai_lab
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '지출 증빙', icon: Printer },
-  { to: '/team', label: '팀 예산', icon: Landmark, capability: 'team_aggregate' },
+  { to: '/team', label: '팀 예산', icon: WalletMinimal, capability: 'team_aggregate' },
   { to: '/budget', label: '예산 관리', icon: Landmark, capability: ['accounting_review', 'governance_view'] },
   { to: '/cards', label: '카드 관리', icon: CreditCard, capability: 'accounting_review' },
   { to: '/policy-docs', label: '규정 문서', icon: Shield, capability: 'rule_view' },

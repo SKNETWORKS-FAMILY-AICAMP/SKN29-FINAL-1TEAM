@@ -69,47 +69,51 @@ export function AiLab() {
 
   return (
     <div className="ai-lab-full">
-      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span className="screen-id">AI-LAB</span>
-          <h1><FlaskConical size={18} style={{ verticalAlign: -3, marginRight: 6 }} />AI 기능 실험실 (관리자)</h1>
-          <div className="sub">
-            정산 흐름을 거치지 않고 AI 기능만 단독 실행합니다. 운영과 <b>같은 코드</b>를 호출하며,
-            결과에 더해 프롬프트·원본 응답·토큰·지연·검색 점수를 그대로 보여줍니다.
+      <div className="hero-band">
+        <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <span className="screen-id">AI-LAB</span>
+            <h1><FlaskConical size={18} style={{ verticalAlign: -3, marginRight: 6 }} />AI 기능 실험실 (관리자)</h1>
+            <div className="sub">
+              정산 흐름을 거치지 않고 AI 기능만 단독 실행합니다. 운영과 <b>같은 코드</b>를 호출하며,
+              결과에 더해 프롬프트·원본 응답·토큰·지연·검색 점수를 그대로 보여줍니다.
+            </div>
           </div>
         </div>
-      </div>
 
-      {USE_MOCK && (
-        <div className="note" style={{ marginBottom: 12 }}>
-          현재 프론트가 <b>mock 모드</b>(VITE_USE_MOCK=true)입니다 — AI-LAB은 mock이 없고 실제 백엔드(core·ai)를
-          호출하므로, 서비스가 떠 있지 않으면 실행이 실패합니다.
-        </div>
-      )}
-
-      <StatusStrip {...ctx} />
-
-      <div className="filter-bar rule-console-tabs" role="tablist" aria-label="AI-LAB 기능 전환">
-        {MODULES.map((m) => (
-          <button
-            key={m.key}
-            role="tab"
-            aria-selected={tab === m.key}
-            className={'btn' + (tab === m.key ? ' primary' : '')}
-            onClick={() => setTab(m.key)}
-          >
-            {m.label}
-          </button>
-        ))}
-        <span className="lab-planned">
-          예정:
-          {PLANNED.map((p) => (
-            <span key={p.label} className="lab-chip disabled" title={p.note}>{p.label}</span>
+        <div className="filter-bar rule-console-tabs" role="tablist" aria-label="AI-LAB 기능 전환" style={{ marginTop: 16 }}>
+          {MODULES.map((m) => (
+            <button
+              key={m.key}
+              role="tab"
+              aria-selected={tab === m.key}
+              className={'btn' + (tab === m.key ? ' primary' : '')}
+              onClick={() => setTab(m.key)}
+            >
+              {m.label}
+            </button>
           ))}
-        </span>
+          <span className="lab-planned">
+            예정:
+            {PLANNED.map((p) => (
+              <span key={p.label} className="lab-chip disabled" title={p.note}>{p.label}</span>
+            ))}
+          </span>
+        </div>
       </div>
 
-      {active.render(ctx)}
+      <div style={{ padding: 'var(--space-6)' }}>
+        {USE_MOCK && (
+          <div className="note" style={{ marginBottom: 12 }}>
+            현재 프론트가 <b>mock 모드</b>(VITE_USE_MOCK=true)입니다 — AI-LAB은 mock이 없고 실제 백엔드(core·ai)를
+            호출하므로, 서비스가 떠 있지 않으면 실행이 실패합니다.
+          </div>
+        )}
+
+        <StatusStrip {...ctx} />
+
+        {active.render(ctx)}
+      </div>
     </div>
   )
 }
