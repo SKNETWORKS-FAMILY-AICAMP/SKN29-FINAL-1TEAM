@@ -7,7 +7,7 @@
 //
 // 업로드는 **접수만** 하고 파싱·청킹·임베딩·적재는 백그라운드로 돈다(문서당 수십 초~분).
 // 그래서 진행 중인 문서가 있을 때만 목록을 폴링한다.
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, FileText, RefreshCw, Search, Trash2, Upload } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
@@ -19,6 +19,10 @@ import { FolderTree } from './policy-docs/FolderTree'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
 import { ClauseCard } from './policy-docs/ClauseAccordion'
 import './policy-docs/policy-docs.css'
+
+// pdfjs-dist는 무겁다(수백KB) — 열 때만 불러온다. 목록·조항 화면은 대부분의 방문에서
+// 원본 뷰어를 아예 열지 않으므로, 정적 import로 두면 아무도 안 쓰는 무게를 매번 진다.
+const DocumentRenderModal = lazy(() => import('./policy-docs/DocumentRenderModal').then((m) => ({ default: m.DocumentRenderModal })))
 
 const POLL_MS = 4000
 // 판정 근거로 인용되는 컬렉션. org_docs(조직도·직급체계)는 여기 없다 — 결재선의 SoR은
@@ -37,6 +41,7 @@ export function PolicyDocuments() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [rendering, setRendering] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -219,15 +224,13 @@ export function PolicyDocuments() {
                   {selected.superseded && <span className="pd-badge gray">이전 버전</span>}
                 </div>
                 <div className="row" style={{ gap: 6 }}>
-                  {/* 원본은 새 탭에서 브라우저 내장 PDF 뷰어로 연다 — 페이지 이동·확대·검색·
-                      인쇄가 전부 거기 있으므로 우리가 다시 만들 이유가 없다.
-                      적재 상태와 무관하게 열 수 있다: 파싱이 실패했을 때야말로 원본을 봐야 한다. */}
-                  <a className={`btn sm${selected.fileName ? '' : ' disabled'}`}
-                     href={selected.fileName ? endpoints.policyDocFileUrl(selected.id) : undefined}
-                     target="_blank" rel="noreferrer"
-                     title={selected.fileName ? '새 탭에서 원본 PDF 보기' : '원본 파일이 없습니다'}>
+                  {/* 문서 렌더링(모달) — 페이지 단위 원본 보기. 적재 상태와 무관하게 열 수 있다:
+                      파싱이 실패했을 때야말로 원본을 봐야 한다. 새 탭·다운로드는 모달 안에 있다. */}
+                  <button className="btn sm" disabled={!selected.fileName}
+                          title={selected.fileName ? '문서를 페이지 단위로 봅니다' : '원본 파일이 없습니다'}
+                          onClick={() => setRendering(true)}>
                     <FileText size={11} /> 원본 보기
-                  </a>
+                  </button>
                   <button className="btn sm" disabled={busy || EMBEDDING_IN_PROGRESS.includes(selected.status)}
                           onClick={() => void withBusy(async () => {
                             await endpoints.reembedPolicyDoc(selected.id); await load()
@@ -331,6 +334,20 @@ export function PolicyDocuments() {
           onClose={() => setUploadOpen(false)}
           onSubmit={(input) => void upload(input)}
         />
+      )}
+
+      {rendering && selected && (
+        <Suspense fallback={
+          <div className="modal-backdrop" onClick={() => setRendering(false)}>
+            <div className="text-meta" style={{ color: 'var(--sidebar-text)', margin: 'auto' }}>뷰어를 불러오는 중…</div>
+          </div>
+        }>
+          <DocumentRenderModal
+            doc={selected}
+            onClose={() => setRendering(false)}
+            onViewClauses={() => setRendering(false)}
+          />
+        </Suspense>
       )}
     </>
   )
