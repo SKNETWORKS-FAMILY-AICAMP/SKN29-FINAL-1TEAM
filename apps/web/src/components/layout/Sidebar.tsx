@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  Bell, LogOut, Printer, Landmark, CreditCard, Shield, ClipboardCheck, ListChecks, Gavel, Bot,
+  Bell, LogOut, Printer, Landmark, CreditCard, Shield, ClipboardCheck, ListChecks, Bot,
 } from 'lucide-react'
 import type { Capability } from '../../types/domain'
 import { useCan } from '../../lib/capabilities'
@@ -25,12 +25,13 @@ interface MenuItem {
 // 역할별 펼침 상태 5종 + 접힘 1종)이 정답 — 라벨·아이콘·순서는 그 파일들 기준.
 //  · 내 지출: 공통(권한 불필요)
 //  · 팀 예산(팀 취합·제출, S-02, 본인 팀만): team_aggregate — 팀장 전용
-//  · 예산 관리(전사 팀별 예산 조회, 신규): accounting_review 또는 governance_view — 회계·임원진 전용,
-//    팀장의 "팀 예산"과는 다른 화면(`.personal/frontend/예산관리/Frame 21.svg`)
+//  · 예산 관리(전사 팀별 예산 조회): accounting_review 또는 governance_view — 회계·임원진 전용,
+//    팀장의 "팀 예산"과는 다른 화면(`.personal/frontend/예산관리/`) — 구 거버넌스 대시보드의
+//    계정과목 지출 추세·예산 산정 지표를 흡수했다(거버넌스 메뉴는 팀 결정으로 폐지)
 //  · 카드 관리(S-09, 법인카드 배정·회수): accounting_review — 회계 업무 범주라 기존 검토 권한과 함께 묶는다
 //    (전용 capability를 새로 만들면 백엔드 동기화가 필요해 이번 프론트 작업 범위를 벗어난다)
 //  · 증빙 검토(검토 워크스페이스): accounting_review  · 규정 문서: rule_view  · RULE 콘솔: rule_view(열람)
-//  · 거버넌스: governance_view  · AI-LAB: ai_lab
+//  · AI-LAB: ai_lab
 const MENU: MenuItem[] = [
   { to: '/my-expenses', label: '지출 증빙', icon: Printer },
   { to: '/team', label: '팀 예산', icon: Landmark, capability: 'team_aggregate' },
@@ -39,7 +40,6 @@ const MENU: MenuItem[] = [
   { to: '/policy-docs', label: '규정 문서', icon: Shield, capability: 'rule_view' },
   { to: '/review', label: '증빙 검토', icon: ClipboardCheck, capability: 'accounting_review' },
   { to: '/rules', label: 'RULE 콘솔', icon: ListChecks, capability: 'rule_view' },
-  { to: '/governance', label: '거버넌스', icon: Gavel, capability: 'governance_view' },
   { to: '/ai-lab', label: 'AI-LAB', icon: Bot, capability: 'ai_lab' },
 ]
 

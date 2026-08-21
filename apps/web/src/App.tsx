@@ -5,7 +5,6 @@ import { MyExpenses } from './screens/MyExpenses'
 import { TeamAggregation } from './screens/TeamAggregation'
 import { ReviewWorkspace } from './screens/ReviewWorkspace'
 import { RuleConsole } from './screens/rule-console/RuleConsole'
-import { GovernanceDashboard } from './screens/GovernanceDashboard'
 import { AiLab } from './screens/ai-lab/AiLab'
 import { PolicyDocuments } from './screens/PolicyDocuments'
 import { CardManagement } from './screens/CardManagement'
@@ -28,7 +27,7 @@ function RequireAuth({ children }: { children: ReactElement }) {
 
 // 화면설계서 §1 화면 목록 ↔ 라우트 매핑
 //  O-1 /login · R-0 /select-role · EMP/ACC/EXE /onboarding/:role/:step
-//  S-01 /my-expenses · S-02 /team · S-03 /review · S-04 /rules · S-05 /governance
+//  S-01 /my-expenses · S-02 /team · S-03 /review · S-04 /rules · S-08 /budget
 //  S-06(정산 상세)는 공통 모달로 각 목록 화면에서 호출.
 export default function App() {
   return (
@@ -52,7 +51,6 @@ export default function App() {
         <Route path="/rules" element={<RuleConsole />} />
         {/* 규정 문서(RAG 소스) 업로드·적재. 인가는 사이드바·백엔드 모두 `rule_view`. */}
         <Route path="/policy-docs" element={<PolicyDocuments />} />
-        <Route path="/governance" element={<GovernanceDashboard />} />
         {/* AI-LAB(관리자) — AI 기능 독립 실행. 사이드바 노출은 Capability `ai_lab`로 게이트. */}
         <Route path="/ai-lab" element={<AiLab />} />
         {/* 구 '/risk-review-v0'(Review List v0)은 제거됐다 — 회계 검토는 /review 한 곳이다.

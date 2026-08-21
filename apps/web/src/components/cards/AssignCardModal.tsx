@@ -1,6 +1,5 @@
 // S-09 (모달) 배정 변경 — 팀카드/개인카드 배정 대상을 바꾼다.
 import { useState } from 'react'
-import { CreditCard } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import type { CardOption } from '../../api/cardService'
 
@@ -45,11 +44,8 @@ export function AssignCardModal({
       <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '12px 14px' }}>
         <div className="text-meta">현재 배정</div>
         <div className="row" style={{ gap: 8, margin: '6px 0' }}>
-          <span style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 18,
-            borderRadius: 4, background: 'var(--primary)', flexShrink: 0,
-          }}>
-            <CreditCard size={11} color="#fff" />
+          <span style={{ position: 'relative', width: 24, height: 18, borderRadius: 4, background: 'var(--primary)', flexShrink: 0 }}>
+            <span style={{ position: 'absolute', left: 3, top: 4, width: 8, height: 6, borderRadius: 2, background: '#fff' }} />
           </span>
           <b style={{ fontSize: 13.5 }}>{number}</b>
         </div>

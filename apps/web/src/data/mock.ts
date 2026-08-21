@@ -198,11 +198,3 @@ export const riskAlerts = [
 
 // 규정 문서 목록의 mock은 제거했다 — 화면이 실 API(`/api/policy-docs/`)를 보고, 적재 상태는
 // 백엔드가 실제로 진행시키는 값이라 흉내낸 데이터가 오히려 오해를 만든다.
-
-// ── S-05 거버넌스 대시보드 갱신 수치 (main) ─────────────
-export const governanceKpi = {
-  totalSpend: '8.4억원',
-  budgetBurnRate: 68,
-  autoProcessRate: 82,
-  policyViolationCount: 3,
-}

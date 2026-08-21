@@ -105,9 +105,9 @@ export const ONBOARDING_STEPS: Record<RoleSlug, OnboardingStepContent[]> = {
     {
       kind: 'complete',
       title: '모든 준비가 끝났습니다',
-      description: '{name}님 ({position}·{dept}) 계정이 준비되었습니다.\n이제 거버넌스 대시보드를 확인해보세요.',
-      ctaLabel: '거버넌스 대시보드로 이동',
-      ctaTo: '/governance',
+      description: '{name}님 ({position}·{dept}) 계정이 준비되었습니다.\n이제 예산 관리 화면을 확인해보세요.',
+      ctaLabel: '예산 관리로 이동',
+      ctaTo: '/budget',
     },
   ],
 }

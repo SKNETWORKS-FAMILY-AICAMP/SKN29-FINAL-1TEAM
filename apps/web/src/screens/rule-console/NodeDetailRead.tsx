@@ -61,7 +61,7 @@ export function NodeDetailRead({ graph, node }: { graph: RuleGraph; node: GraphN
         <label>생성 이유 · 근거</label>
         <div className="note">
           <div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>
-          {node.sourceClause && <a href="/governance" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}
+          {node.sourceClause && <a href="/policy-docs" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}
         </div>
       </div>
     </div>

@@ -617,84 +617,30 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--text-body); }
 .notif-row .title-row .unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 
-/* ── S-05 거버넌스 대시보드 ───────────────────────────────
+/* ── S-08 예산 관리 — 계정과목 추세·예산 산정 지표 (구 거버넌스 대시보드에서 이관) ──
    차트 규칙: 얇은 마크 · 실선 헤어라인 그리드 · 상태는 색+기호+라벨을 함께.
    계열색은 검증 통과 3색만 사용(파랑 #2b5ce0 / 빨강 #c0392b / 초록 #17a06f). */
 
-/* ① KPI 타일 — 값 + 증감 + 스파크라인 */
-.gov-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
-.gov-kpi {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: 2px;
-}
-.gov-kpi-label { color: var(--muted); font-size: var(--text-caption); font-weight: 600; letter-spacing: 0.02em; }
-/* 큰 단독 숫자는 비례 숫자(tabular 아님) — 자간이 벌어져 보이지 않게 */
-.gov-kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; }
-.gov-kpi-value small { font-size: var(--text-body); font-weight: 600; color: var(--muted); margin-left: 3px; }
-.gov-kpi-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 2px; }
-.gov-kpi-hint { font-size: 10.5px; color: var(--muted); line-height: 1.35; margin-top: 4px; }
-@media (max-width: 1500px) { .gov-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 900px) { .gov-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-
-/* ② 추세 표 */
+/* 계정과목 추세 표 */
 .gov-trend-table td, .gov-trend-table th { vertical-align: middle; }
 .gov-trend-table .num { font-variant-numeric: tabular-nums; }
 .gov-total-row td { border-top: 2px solid var(--border-strong); background: var(--surface-2); }
 
-/* ③ 예산 산정 지표 */
-.gov-budget-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: var(--space-5); align-items: start; }
-@media (max-width: 1200px) { .gov-budget-grid { grid-template-columns: 1fr; } }
+/* 예산 산정 지표 — 팀별 소진율 막대 | 자주 남는/부족한 항목 */
+.budget-pattern-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: var(--space-5); align-items: start; }
+@media (max-width: 1100px) { .budget-pattern-grid { grid-template-columns: 1fr; } }
 .gov-sub-title { font-size: var(--text-meta); font-weight: 700; color: var(--text); margin-bottom: var(--space-2); }
 .gov-pattern-table { font-size: var(--text-meta); }
 .gov-pattern-table th { font-size: var(--text-caption); }
 .gov-pattern-table .num { font-variant-numeric: tabular-nums; }
-.gov-realloc { border: 1px solid var(--border); border-radius: var(--radius-control); padding: var(--space-3); }
-
-/* 소진율 미터 — 클릭하면 아래 동행 지표 패널의 팀이 바뀐다 */
-.gov-meter {
-  display: block; width: 100%; text-align: left; cursor: pointer;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control);
-  padding: var(--space-2) var(--space-3); font: inherit;
-  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), border-color 150ms cubic-bezier(0.23,1,0.32,1);
-}
-.gov-meter:hover { background: var(--surface-2); }
-.gov-meter.selected { border-color: var(--primary); background: var(--primary-soft); }
-.gov-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
-.gov-meter-label { font-size: var(--text-body); font-weight: 700; }
-.gov-meter-rate { font-size: var(--text-body); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gov-meter-rate small { font-size: 10px; margin-left: 1px; }
-.gov-meter-track { height: 6px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; margin: 5px 0 3px; }
-.gov-meter-fill { height: 100%; border-radius: var(--radius-pill); }
-.gov-meter-sub { font-size: 10.5px; }
-
-/* ④ 소형 다중 패널 — 스케일이 다른 지표를 이중축 없이 나란히 놓는다 */
-.gov-panel-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
-@media (max-width: 1100px) { .gov-panel-grid { grid-template-columns: 1fr; } }
-.gov-panel { border: 1px solid var(--border); border-radius: var(--radius-control); padding: var(--space-3); min-width: 0; }
-.gov-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
-.gov-panel-title { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-meta); font-weight: 700; }
-.gov-panel-value { font-size: var(--text-h4); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gov-panel-value small { font-size: 11px; margin-left: 1px; }
 .gov-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
 
-.gov-corr-row { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
-.gov-corr {
-  display: flex; align-items: center; gap: 6px; flex: 1; min-width: 260px;
-  border: 1px solid var(--border); border-radius: var(--radius-control);
-  padding: var(--space-2) var(--space-3); font-size: var(--text-meta);
-}
-.gov-corr b { font-variant-numeric: tabular-nums; margin-left: auto; }
-.gov-data-table { font-size: var(--text-caption); white-space: nowrap; }
-.gov-data-table .num { font-variant-numeric: tabular-nums; }
-
-/* ⑤ 인사이트 · 리스크 */
-.gov-insight { border: 1px solid var(--border); border-radius: var(--radius-control); padding: var(--space-3); }
-.gov-insight-line { font-size: var(--text-meta); color: var(--muted); line-height: 1.6; display: flex; gap: 8px; }
-.gov-insight-key {
-  flex-shrink: 0; width: 58px; font-weight: 700; color: var(--text); font-size: var(--text-caption);
-  padding-top: 1px;
-}
-.gov-risk { border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: var(--radius-control); padding: var(--space-3); }
+/* 팀별 소진율 세로 막대 */
+.team-burn-bars { display: flex; align-items: flex-end; gap: var(--space-4); height: 200px; padding: var(--space-2) 0; }
+.team-burn-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; height: 100%; justify-content: flex-end; }
+.team-burn-bar-value { font-size: 12.5px; font-weight: 700; }
+.team-burn-bar { width: 28px; border-radius: 6px 6px 0 0; min-height: 4px; transition: height 300ms ease; }
+.team-burn-bar-label { font-size: var(--text-caption); color: var(--muted); text-align: center; }
 
 /* ── AI-LAB (관리자 실험 화면) ─────────────────────────────
    원본(프롬프트·JSON·청크 본문)을 잘라내지 않고 보여주는 게 목적이라, 폭을 넓게 쓰고

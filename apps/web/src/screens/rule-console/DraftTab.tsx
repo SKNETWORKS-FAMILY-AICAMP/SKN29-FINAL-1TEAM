@@ -537,7 +537,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
         </div>
       </div>
 
-      <div className="field"><label>생성 이유 · 근거</label><div className="note"><div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>{node.sourceClause && <a href="/governance" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}</div></div>
+      <div className="field"><label>생성 이유 · 근거</label><div className="note"><div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>{node.sourceClause && <a href="/policy-docs" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}</div></div>
     </div>
     <div className="modal-foot">
       <span className="text-meta">{!editable ? '읽기 전용' : saveState === 'saving' ? '저장 중…' : saveState === 'error' ? '저장 실패 또는 DSL 오류' : '변경사항 자동 저장됨'}</span>

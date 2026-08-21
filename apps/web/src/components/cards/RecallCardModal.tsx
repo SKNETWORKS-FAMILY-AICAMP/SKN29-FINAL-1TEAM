@@ -1,6 +1,6 @@
 // S-09 (모달) 카드 회수 확인 — 카드를 즉시 회수·사용정지 처리한다(되돌릴 수 없음).
 import { useState } from 'react'
-import { AlertTriangle, CreditCard } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 
 const REASONS = ['퇴사 처리', '반복 이상사용 감지', '한도 초과', '부정사용 의심', '기타']
@@ -34,11 +34,8 @@ export function RecallCardModal({
     <Modal title="카드 회수 처리" onClose={onClose} footer={footer} maxWidth={480}>
       <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '12px 14px', marginBottom: 16 }}>
         <div className="row" style={{ gap: 8, marginBottom: 10 }}>
-          <span style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 18,
-            borderRadius: 4, background: 'var(--sidebar-bg)', flexShrink: 0,
-          }}>
-            <CreditCard size={11} color="#fff" />
+          <span style={{ position: 'relative', width: 24, height: 18, borderRadius: 4, background: 'var(--sidebar-bg)', flexShrink: 0 }}>
+            <span style={{ position: 'absolute', left: 3, top: 4, width: 8, height: 6, borderRadius: 2, background: 'var(--accent-amber)' }} />
           </span>
           <b style={{ fontSize: 13.5 }}>{number}</b>
         </div>

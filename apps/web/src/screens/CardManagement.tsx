@@ -5,7 +5,7 @@
 // 서버가 계산해 내려준 값을 그대로 쓴다. 여기서 다시 계산하면 임계값 사본이 두 벌 생기고
 // 곧 서로 다른 말을 한다(이전 목데이터 시절엔 그 판정이 아예 화면 상수였다).
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, CreditCard, RefreshCw, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, RefreshCw, Search } from 'lucide-react'
 import { won } from '../lib/format'
 import { AssignCardModal } from '../components/cards/AssignCardModal'
 import { RecallCardModal } from '../components/cards/RecallCardModal'
@@ -173,7 +173,7 @@ export function CardManagement() {
           <table className="table">
             <thead>
               <tr>
-                <th>카드</th><th>카드 종류</th><th>배정 대상</th>
+                <th>카드번호</th><th>카드 종류</th><th>배정 대상</th>
                 <th className="num">이번달 사용액</th><th className="num">한도</th><th>상태</th><th></th>
               </tr>
             </thead>
@@ -183,10 +183,13 @@ export function CardManagement() {
                   <td>
                     <span className="row" style={{ gap: 8 }}>
                       <span style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 18,
-                        borderRadius: 4, background: c.type === 'PERSONAL' ? 'var(--sidebar-bg)' : 'var(--primary)', flexShrink: 0,
+                        position: 'relative', width: 24, height: 18, borderRadius: 4,
+                        background: 'var(--sidebar-bg)', flexShrink: 0,
                       }}>
-                        <CreditCard size={11} color="#fff" />
+                        <span style={{
+                          position: 'absolute', left: 3, top: 4, width: 8, height: 6,
+                          borderRadius: 2, background: 'var(--accent-amber)',
+                        }} />
                       </span>
                       <span>
                         {c.number || c.name}
