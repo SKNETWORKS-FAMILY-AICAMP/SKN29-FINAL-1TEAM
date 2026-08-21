@@ -160,6 +160,8 @@ RULE_FLAGS: list[tuple[str, str, str, str, str, str]] = [
      "금지는 아니나 업무관련성 소명이 필요한 업종이다."),
     ("MERCHANT_UNRESOLVED", "업종 미확정", _C.MERCHANT, _S.LOW, _O.SYSTEM,
      "가맹점 업종을 확정하지 못했다(카카오 조회·LLM 재분류 모두 실패)."),
+    ("CATEGORY_MISSING", "비용분류 미기재", _C.EVIDENCE, _S.MEDIUM, _O.SPENDER,
+     "비용분류가 선택되지 않았다. 어느 과목 룰을 적용할지 정할 수 없어 사람이 확인해야 한다."),
     ("LOW_CATEGORY_CONFIDENCE", "분류 저신뢰", _C.MERCHANT, _S.LOW, _O.SPENDER,
      "AI 비용분류 신뢰도가 낮아 사용자 확인이 필요하다."),
 

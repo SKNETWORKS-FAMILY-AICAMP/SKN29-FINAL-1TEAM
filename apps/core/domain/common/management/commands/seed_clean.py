@@ -13,21 +13,27 @@
 과목별 세부 룰은 **고객이 자기 규정 문서를 올리면 Rule Agent가 생성**한다. 그래서 여기에
 접대·회식·출장 룰을 심어 두면 제품이 하지 않기로 한 일을 하는 셈이 된다.
 
-## 기본 게이트가 검사하는 것 = "판정 가능한 기록인가"
+## 기본 게이트가 하는 일 = "막지 않고, 사람에게 넘긴다"
 
 회사 규정이 아직 없는 상태에서도 참인 것만 넣었다. 한도·기한 같은 **정책 판단은 넣을 수
 없다** - 그건 회사 별표(`policy_tables`)에서 오는데 신규 설치엔 그게 없다. 없는 `policy.*`를
 참조하면 미해소 가드가 **전건을 REVIEW로 강등**시켜 게이트가 무용지물이 된다.
 
-그래서 이 게이트는 정책을 판단하지 않고 **기록의 완결성**만 본다:
+**초기 도입은 유연해야 한다.** 걸 이유가 분명한 것만 걸고, 걸린 건은 전부
+`REVIEW`(검토 필요)로 보낸다 - `RETURN`(지출자에게 되돌려보냄)은 회사가 무엇을 요구하는지
+정해지기도 전에 내릴 결정이 아니다. 회계 담당자가 큐에서 보고 필요하면 그때 보완요청한다.
 
-  · 증빙이 있는가        - 없으면 어느 회사에서도 정산이 안 된다
-  · 지출 목적이 있는가    - 없으면 소명 자체가 불가능하다
-  · 가맹점 업종이 확인됐나 - 모르면 비용분류의 근거가 없다
-  · 분류를 믿을 수 있나   - AI 저신뢰 추천이면 사람이 본다
+거는 것은 넷뿐이고 나머지는 전부 `PASS`다:
 
-심야·주말·고액 같은 **이상 신호는 일부러 넣지 않았다.** 그건 Risk Review Agent(이상탐지)의
+  · 법령·세법 위험 업종   - 사행성·유흥·노래연습장. 어느 회사에나 해당하는 축
+  · 고액 증빙 누락        - 100만원 이상인데 증빙이 없을 때(소액 누락은 통과)
+  · 비용분류 미기재        - 어느 과목 룰을 적용할지 정할 수 없다
+  · 지출 목적 미기재       - 업무관련성 소명이 불가능하다
+
+심야·주말·반복결제 같은 **이상 신호는 일부러 넣지 않았다.** 그건 Risk Review Agent(이상탐지)의
 일이고, 회사마다 정상 범위가 달라 "범용 기본 룰"이 될 수 없다.
+**PG사 결제 여부**도 넣지 않았다 - 판정에 쓸 사실이 없다(조립기의 `tx.payment_method`는
+`"법인카드"` 고정이고 원장에도 PG 식별자가 없다). 지어내면 그대로 오판이 된다.
 
 ## 참조 필드를 고른 기준 (중요)
 
@@ -48,70 +54,146 @@ from domain.policies.models import (
 )
 from domain.risk.models import RiskReview
 from domain.settlements.models import Settlement
+from domain.transactions.industry import IndustryCode
 from domain.transactions.models import MerchantCategory, Receipt, Transaction
 
 from .ensure_service_account import SERVICE_USERNAME, ensure_service_account
 from .seed_rules import branch, node
 
 DEFAULT_GATE_NAME = "기본 정산 게이트"
-# 분류 신뢰도 하한. 회사 규정이 아니라 **우리 AI 추천의 신뢰도** 임계값이라 기본값으로 둔다
-# (조립기가 ai_suggested=True면 0.5, 아니면 0.95를 넣는다 — 그 사이 어디든 같은 결과다).
-CATEGORY_CONFIDENCE_MIN = 0.7
+
+# ── 기본 게이트 임계값 ────────────────────────────────────────────────────
+#  회사 별표(`policy_tables`)가 없는 신규 설치에서 쓰는 **제품 기본값**이다. 정상이라면
+#  이런 숫자는 `policy.*`(별표 선해소)에서 와야 하지만, 갓 설치한 회사엔 그 표가 없다 —
+#  없는 `policy.*`를 참조하면 미해소 가드가 **전건을 REVIEW로 강등**해 게이트가 무용지물이 된다.
+#  고객이 규정 문서를 올리면 Rule Agent가 만드는 과목별 룰이 이 자리를 대체한다.
+
+#: 증빙 없이 넘어가지 않는 금액선. 소액 누락까지 잡으면 초기 도입에서 전건이 검토로 몰린다.
+HIGH_AMOUNT_EVIDENCE_MIN = 1_000_000
+
+#: 법령·세법상 위험이 큰 업종 — 회사 규정이 아니라 **어느 회사에나 해당**하는 축이라 기본값에 둔다.
+#  (유흥주점=과세유흥장소, 사행성=도박, 노래연습장=유흥 유사) 손금 부인·사적사용 소명 대상이다.
+#  라벨을 문자열로 박지 않고 정본 어휘(`transactions.industry`)에서 가져온다 — 표기가 바뀌면
+#  룰의 `in [...]`이 **에러 없이 조용히 안 걸린다**(어휘 통일 때 실제로 겪은 실패 양상).
+LEGAL_RISK_MERCHANT_TYPES = [
+    IndustryCode.GAMBLING.label,
+    IndustryCode.BAR_ENTERTAINMENT.label,
+    IndustryCode.KARAOKE.label,
+]
 
 
 def default_gate_spec() -> dict:
-    """DEFAULT GATE 그래프 — 선형 체인(하나라도 걸리면 그 노드가 종결).
+    """DEFAULT GATE 그래프 — **막지 않고, 사람에게 넘긴다.**
 
-    순서는 "보완하면 끝나는 것 → 사람이 봐야 하는 것"이다. 증빙·목적은 담당자가 채우면
-    해결되므로 먼저 걸러 RETURN하고, 업종·분류는 사람의 확인이 필요해 REVIEW로 남긴다.
+    ## 설계 원칙: 초기 도입은 유연하게
+
+    갓 설치한 회사에는 판정에 쓸 사실도, 회사 규정도 거의 없다. 이 상태에서 게이트를
+    빡빡하게 걸면 두 가지가 동시에 일어난다 — 전건이 걸려서 게이트가 신호를 잃고,
+    지출자에게 **보완요청(RETURN)이 쏟아져** 되돌아온 건이 쌓인다.
+
+    그래서 기본 게이트는 이렇게 동작한다:
+
+      · 걸린 건은 **전부 `REVIEW`(검토 필요)** 로 보낸다. `RETURN`을 쓰지 않는다 —
+        RETURN은 지출자에게 일을 되돌려보내는 결정이고, 회사가 무엇을 요구하는지
+        아직 정해지지 않은 상태에서 내릴 결정이 아니다. 회계 담당자가 큐에서 보고
+        필요하면 그때 보완요청하면 된다.
+      · **나머지는 전부 `PASS`.** 확인 안 된 것을 일단 걸어두는 대신, 걸 이유가 분명한
+        것만 건다.
+
+    ## 무엇을 거는가 (4가지)
+
+    ①  **법령·세법 위험 업종** — 사행성·유흥·노래연습장. 회사 규정이 아니라 어느
+        회사에나 해당하는 축이다.
+    ②  **고액 증빙 누락** — 1,000,000원 이상인데 증빙이 없는 건. 소액 누락은 통과시킨다.
+    ③  **비용분류 미기재** — 어느 과목 룰을 적용할지 정할 수 없다.
+    ④  **지출 목적 미기재** — 업무관련성 소명이 불가능하다.
+
+    ## 업종을 모르는 건은 왜 그냥 통과시키나
+
+    엔진의 미해소 가드는 **노드가 참조한 경로가 `None`이면 판정을 REVIEW로 강등**한다.
+    금지업종 노드가 `merchant.merchant_type`을 참조하는데 업종 미확정 건이 그 노드에
+    도달하면, 실제로 금지업종이 아니어도 전부 검토로 떨어진다(신규 설치엔 가맹점 캐시가
+    비어 있어 그게 대다수다).
+
+    그래서 **분기로 우회한다** — `n_industry_known`이 업종 확인 여부만 보고(이 필드는
+    조립기가 항상 채운다) 확인된 건만 금지업종 노드로 보낸다. 모르는 건은 그 노드를
+    아예 지나지 않으므로 강등되지 않는다. 「모르는 걸 안전하다고 단정」하는 것과는 다르다
+    — 업종 미확정은 Risk Review와 과목별 룰이 다시 볼 축이고, 기본 게이트가 전건을
+    붙잡을 이유가 아니다.
+
+    ## 넣지 않은 것
+
+    · **PG사 결제 여부** — 판정에 쓸 사실이 없다. `tx.payment_method`는 조립기가
+      `"법인카드"` 하나로 고정해 넣고 있고, 원장(`Transaction`)에도 PG 식별자가 없다.
+      지어내면 그대로 오판이 되므로 룰을 만들지 않았다.
+    · **한도·기한** — 회사 별표에서 와야 하는 값이라 신규 설치엔 근거가 없다.
+    · **심야·주말·반복 결제** — Risk Review(이상탐지)의 일이고, 회사마다 정상 범위가
+      달라 범용 기본값이 될 수 없다.
     """
     nodes = [
         node(
-            "n_receipt", "증빙 누락",
-            {"==": [{"var": "evidence.has_valid_receipt"}, False]},
-            "RETURN", "영수증 등 증빙이 확인되지 않은 건", 0,
+            "n_industry_known", "업종 확인 여부",
+            {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
+            # 판정을 내리지 않는 분기 노드 — 업종을 아는 건만 금지업종 검사로 보낸다.
+            "PASS_THROUGH", "업종을 확인한 건만 금지업종 검사로 보내는 분기", 0,
+            severity="INFO", flag="",
+            when="가맹점 업종을 확인했는지 보는 갈림길입니다",
+            then="확인했으면 금지업종인지 보고, 확인하지 못했으면 이 검사를 건너뜁니다",
+        ),
+        node(
+            "n_forbidden", "법령·세법 위험 업종",
+            {"in": [{"var": "merchant.merchant_type"}, LEGAL_RISK_MERCHANT_TYPES]},
+            "REVIEW", "사행성·유흥·노래연습장 등 법령·세법상 위험이 큰 업종 결제", 1,
+            severity="CRITICAL", flag="PROHIBITED_MERCHANT",
+            when="결제한 가게의 업종이 사행성업종·주점/유흥·노래연습장일 때",
+            then="법인카드로 쓰기 어려운 업종이라 회계 담당자가 직접 확인하도록 검토로 넘깁니다",
+        ),
+        node(
+            "n_evidence_high", "고액 증빙 누락",
+            {"and": [
+                {">=": [{"var": "tx.amount"}, HIGH_AMOUNT_EVIDENCE_MIN]},
+                {"==": [{"var": "evidence.has_valid_receipt"}, False]},
+            ]},
+            "REVIEW", f"{HIGH_AMOUNT_EVIDENCE_MIN:,}원 이상인데 증빙이 확인되지 않은 건", 2,
             severity="HIGH", flag="EVIDENCE_MISSING",
-            when="영수증 등 증빙이 등록되지 않았을 때",
-            then="증빙을 첨부해 다시 제출하도록 보완요청합니다",
+            when=f"결제 금액이 {HIGH_AMOUNT_EVIDENCE_MIN:,}원 이상인데 영수증 등 증빙이 없을 때",
+            then="금액이 큰 건이라 증빙 없이 넘기지 않고 회계 담당자 검토로 넘깁니다",
+        ),
+        node(
+            "n_category", "비용분류 미기재",
+            {"==": [{"var": "category.value"}, None]},
+            "REVIEW", "비용분류가 선택되지 않아 적용할 과목 룰을 정할 수 없는 건", 3,
+            severity="MEDIUM", flag="CATEGORY_MISSING",
+            when="비용분류(식대·출장·접대 등)를 고르지 않았을 때",
+            then="어느 과목 규칙을 적용할지 정할 수 없어 담당자가 확인하도록 검토로 넘깁니다",
         ),
         node(
             "n_purpose", "지출 목적 미기재",
             {"==": [{"var": "evidence.expense_purpose_missing"}, True]},
-            "RETURN", "지출 목적·사유가 비어 있는 건", 1,
-            severity="HIGH", flag="PURPOSE_UNCLEAR",
+            "REVIEW", "지출 목적·사유가 비어 있어 업무관련성을 소명할 수 없는 건", 4,
+            severity="MEDIUM", flag="PURPOSE_UNCLEAR",
             when="지출 목적·사유를 적지 않았을 때",
-            then="목적을 기재해 다시 제출하도록 보완요청합니다",
-        ),
-        node(
-            "n_merchant", "가맹점 업종 미확인",
-            {"==": [{"var": "merchant.merchant_info_resolved"}, False]},
-            "REVIEW", "업종을 판별하지 못해 비용분류 근거가 없는 건", 2,
-            severity="MEDIUM", flag="MERCHANT_UNRESOLVED",
-            when="가맹점 업종을 확인하지 못했을 때",
-            then="비용분류가 맞는지 담당자가 확인하도록 검토로 넘깁니다",
-        ),
-        node(
-            "n_category", "비용분류 저신뢰",
-            {"<": [{"var": "category.confidence"}, CATEGORY_CONFIDENCE_MIN]},
-            "REVIEW", "AI 분류 신뢰도가 낮아 사람 확인이 필요한 건", 3,
-            severity="MEDIUM", flag="LOW_CATEGORY_CONFIDENCE",
-            when="AI가 추천한 비용분류의 신뢰도가 낮을 때",
-            then="분류가 맞는지 담당자가 확인하도록 검토로 넘깁니다",
+            then="업무와 어떤 관련이 있는지 확인할 수 없어 담당자가 보도록 검토로 넘깁니다",
         ),
         node(
             "_GATE_PASS", "기본 게이트 통과",
-            True, "PASS", "기본 확인 항목에 걸리지 않은 건", 4,
+            True, "PASS", "기본 확인 항목에 걸리지 않은 건", 5,
             severity="INFO", flag="",
             when="위 확인 항목에 하나도 해당하지 않을 때",
             then="기본 검사를 통과한 것으로 보고 비용분류별 룰로 넘어갑니다",
         ),
     ]
-    chain = ["n_receipt", "n_purpose", "n_merchant", "n_category", "_GATE_PASS"]
-    routings = []
-    for index, key in enumerate(chain):
-        # MATCH → 단말(그 노드의 decision으로 종결) / NO_MATCH → 다음 확인 항목
-        routings += branch(key, match_to="", no_match_to=chain[index + 1] if index + 1 < len(chain) else "")
-    return {"nodes": nodes, "routings": routings, "entry_node_key": chain[0]}
+    # 선형 체인이되 첫 노드만 분기다 — 업종을 모르면 금지업종 노드를 **지나지 않는다**
+    # (지나면 미해소 가드가 강등한다, 위 docstring 참조).
+    routings = [
+        *branch("n_industry_known", match_to="n_forbidden", no_match_to="n_evidence_high"),
+        *branch("n_forbidden", match_to="", no_match_to="n_evidence_high"),
+        *branch("n_evidence_high", match_to="", no_match_to="n_category"),
+        *branch("n_category", match_to="", no_match_to="n_purpose"),
+        *branch("n_purpose", match_to="", no_match_to="_GATE_PASS"),
+        *branch("_GATE_PASS", match_to="", no_match_to=""),
+    ]
+    return {"nodes": nodes, "routings": routings, "entry_node_key": "n_industry_known"}
 
 
 # 지우는 대상. 순서가 있다 — RuleHit이 정산·거래를 SET_NULL로 참조해서 먼저 비워야

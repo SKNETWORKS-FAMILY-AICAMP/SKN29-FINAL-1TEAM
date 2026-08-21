@@ -6,6 +6,10 @@
      정상 건은 강등 없이 `PASS`가 나온다. 이게 깨지면 전건이 IN_REVIEW로 고인다.
   ③ **정책값을 참조하지 않는다** — `policy.*`를 쓰면 별표 없는 신규 설치에서
      미해소 가드가 전건을 REVIEW로 떨어뜨린다.
+  ④ **막지 않고 사람에게 넘긴다** — 걸린 건은 전부 `REVIEW`다. `RETURN`(지출자에게
+     되돌려보냄)은 회사가 무엇을 요구하는지 정해지기 전에 내릴 결정이 아니다.
+  ⑤ **초기 도입은 유연하게** — 소액 증빙 누락·업종 미확정처럼 걸 이유가 분명하지 않은
+     건은 통과시킨다. 전건이 걸리면 게이트가 신호를 잃는다.
 """
 from decimal import Decimal
 
@@ -23,16 +27,17 @@ from domain.transactions.models import Receipt, Transaction
 from domain.accounts.models import User
 
 
-def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", ai_suggested=False):
-    """게이트가 보는 네 가지 사실을 조합해 정산 1건을 만든다."""
+def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", ai_suggested=False,
+                amount="120000", category="접대"):
+    """게이트가 보는 사실을 조합해 정산 1건을 만든다."""
     card = Card.objects.filter(card_type="PERSONAL").first()
     tx = Transaction.objects.create(
-        card=card, merchant="강남한식당", amount=Decimal("120000"), ts=timezone.now(),
+        card=card, merchant="강남한식당", amount=Decimal(amount), ts=timezone.now(),
     )
     if receipt:
         Receipt.objects.create(matched_tx=tx, status="MATCHED", file_ref="r.jpg")
     return Settlement.objects.create(
-        transaction=tx, category="접대", status=S.SUBMITTED,
+        transaction=tx, category=category, status=S.SUBMITTED,
         purpose=purpose, merchant_industry=industry, ai_suggested=ai_suggested,
     )
 
@@ -82,27 +87,72 @@ class DefaultGateJudgementTests(TestCase):
         # 미해소 강등이 없어야 한다(참조 필드가 전부 채워졌다는 뜻).
         self.assertFalse([f for f in result.flags if f.startswith("UNRESOLVED")], result.flags)
 
-    def test_missing_receipt_returns(self):
-        result = orchestrator.judge(_settlement(receipt=False), record=False)
-        self.assertEqual(result.decision, "RETURN")
-        # 어휘 통일: `MISSING_RECEIPT` → `EVIDENCE_MISSING`(레지스트리 기준).
-        #  같은 개념에 seed_rules/seed_clean이 다른 이름을 쓰고 있었다.
+    # ── 거는 것 4가지 (전부 REVIEW) ────────────────────────────────────
+
+    def test_legal_risk_merchant_goes_to_review(self):
+        """법령·세법 위험 업종은 어느 회사에나 해당하는 축이라 기본값에 둔다."""
+        result = orchestrator.judge(_settlement(industry="사행성업종"), record=False)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertIn("PROHIBITED_MERCHANT", result.flags)
+
+    def test_legal_risk_merchant_accepts_regulation_wording(self):
+        """규정 원문 표기(`유흥주점`)도 정본 어휘로 접혀 같은 룰에 걸린다."""
+        result = orchestrator.judge(_settlement(industry="유흥주점"), record=False)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertIn("PROHIBITED_MERCHANT", result.flags)
+
+    def test_high_amount_without_receipt_goes_to_review(self):
+        result = orchestrator.judge(
+            _settlement(receipt=False, amount="1000000"), record=False)
+        self.assertEqual(result.decision, "REVIEW")
         self.assertIn("EVIDENCE_MISSING", result.flags)
 
-    def test_missing_purpose_returns(self):
+    def test_missing_category_goes_to_review(self):
+        result = orchestrator.judge(_settlement(category=""), record=False)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertIn("CATEGORY_MISSING", result.flags)
+
+    def test_missing_purpose_goes_to_review(self):
         result = orchestrator.judge(_settlement(purpose=""), record=False)
-        self.assertEqual(result.decision, "RETURN")
+        self.assertEqual(result.decision, "REVIEW")
         self.assertIn("PURPOSE_UNCLEAR", result.flags)
 
-    def test_unresolved_merchant_goes_to_review(self):
-        result = orchestrator.judge(_settlement(industry=""), record=False)
-        self.assertEqual(result.decision, "REVIEW")
-        self.assertIn("MERCHANT_UNRESOLVED", result.flags)
+    # ── 통과시키는 것 (초기 도입 유연성) ───────────────────────────────
 
-    def test_low_confidence_category_goes_to_review(self):
+    def test_small_amount_without_receipt_passes(self):
+        """소액 증빙 누락까지 잡으면 초기 도입에서 전건이 검토로 몰린다."""
+        result = orchestrator.judge(_settlement(receipt=False, amount="9000"), record=False)
+        self.assertEqual(result.decision, "PASS")
+        self.assertNotIn("EVIDENCE_MISSING", result.flags)
+
+    def test_unresolved_merchant_passes_without_demotion(self):
+        """**핵심 회귀** — 업종 미확정 건이 금지업종 노드를 지나면 미해소 가드가 강등한다.
+
+        신규 설치엔 가맹점 캐시가 비어 있어 그게 대다수다. 분기(`n_industry_known`)로
+        우회하지 않으면 게이트가 전건을 붙잡는다.
+        """
+        result = orchestrator.judge(_settlement(industry=""), record=False)
+        self.assertEqual(result.decision, "PASS")
+        self.assertFalse([f for f in result.flags if f.startswith("UNRESOLVED")], result.flags)
+
+    def test_ai_suggested_category_passes(self):
+        """AI 추천 분류는 그 자체로 걸 이유가 아니다 — 분류가 비어 있을 때만 건다."""
         result = orchestrator.judge(_settlement(ai_suggested=True), record=False)
-        self.assertEqual(result.decision, "REVIEW")
-        self.assertIn("LOW_CATEGORY_CONFIDENCE", result.flags)
+        self.assertEqual(result.decision, "PASS")
+
+    # ── 결정 규약 ─────────────────────────────────────────────────────
+
+    def test_gate_never_returns_to_the_spender(self):
+        """`RETURN`은 지출자에게 일을 되돌려보내는 결정이다 — 기본 게이트는 쓰지 않는다."""
+        cases = [
+            _settlement(industry="사행성업종"),
+            _settlement(receipt=False, amount="2000000"),
+            _settlement(category=""),
+            _settlement(purpose=""),
+        ]
+        for settlement in cases:
+            result = orchestrator.judge(settlement, record=False)
+            self.assertNotIn(result.decision, {"RETURN", "REJECT"}, result.flags)
 
     def test_gate_does_not_reference_company_policy(self):
         """`policy.*`를 참조하면 별표가 없는 신규 설치에서 전건이 REVIEW로 강등된다."""
