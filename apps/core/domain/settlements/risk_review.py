@@ -67,6 +67,9 @@ def run(settlement) -> RiskReview | None:
     review = RiskReview.objects.create(
         settlement=settlement,
         anomaly_score=stage1.get("anomaly_score", 0.0),
+        # 1차 등급(HIGH/MEDIUM/LOW). AI가 판정 시점 임계값으로 매긴 값을 그대로 보존한다 —
+        # 예전엔 이 값을 여기서 읽지 않아, AI가 계산해 응답에 실어 보내도 조용히 버려졌다.
+        risk_tier=stage1.get("risk_tier", ""),
         # `reasons`는 1차 feature 기여도(프론트 기존 계약), `anomaly_reasons`는 2차 검토 사유.
         reasons=stage1.get("contribs", []),
         anomaly_reasons=stage2.get("review_reasons", []),

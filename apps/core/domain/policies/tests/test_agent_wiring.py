@@ -9,6 +9,7 @@
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -17,13 +18,19 @@ from domain.accounts.models import Capability, Role, User
 from domain.cards.models import Card
 from domain.policies.models import RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from domain.risk.models import RiskReview
-from domain.settlements.models import Settlement
+from domain.settlements import services
+from domain.settlements.models import Attachment, Settlement
 from domain.settlements.models import SettlementStatus as S
 from domain.transactions.models import Transaction
 
 # FastAPI `/agent/risk-review` 응답 모양(1차 이상탐지 + 2차 RAG 검증).
 AI_RESPONSE = {
-    "stage1_anomaly": {"anomaly_score": 0.87, "contribs": [{"feature": "amount", "weight": 0.4}]},
+    "stage1_anomaly": {
+        "anomaly_score": 0.87,
+        "contribs": [{"feature": "amount", "weight": 0.4}],
+        # 1차 점수의 3단계 등급. AI가 판정 시점 임계값으로 매겨 보내는 값이다.
+        "risk_tier": "HIGH",
+    },
     "stage2_rag_review": {
         "violation_verdict": "VIOLATION",
         "review_reasons": ["1인당 한도 초과"],
@@ -78,6 +85,9 @@ class RiskReviewTriggerTests(TestCase):
 
         review = RiskReview.objects.get(settlement=self.settlement)
         self.assertEqual(review.anomaly_score, 0.87)
+        # 1차 등급이 실제로 저장된다 — 예전엔 AI가 보내도 여기서 조용히 버려져서,
+        # 3단계 분류 기능이 DB·화면 어디에도 닿지 않았다(2026-08-19 전수 검토에서 발견).
+        self.assertEqual(review.risk_tier, "HIGH")
         # SUPPLEMENT는 우리 도메인에서 '보완요청'이다.
         self.assertEqual(review.ai_recommendation, "RETURN")
         self.assertEqual(review.stage2_verdict["violation_verdict"], "VIOLATION")
@@ -122,6 +132,73 @@ class RiskReviewTriggerTests(TestCase):
         self.assertEqual(RiskReview.objects.filter(settlement=self.settlement).count(), 1)
 
 
+class ReviewStatsTests(TestCase):
+    """S-03 헤더 요약 지표(`/api/settlements/review-stats/`) — 예전엔 82%/6.2분이 하드코딩이었다.
+
+    자동처리율은 **룰 엔진 자체 판정**(`rule_decision`) 기준이다 — REVIEW만 사람에게 넘어가고
+    PASS/RETURN/REJECT는 룰이 그 자리에서 끝냈다는 뜻이라 "사람 손 없이 처리된 비율"의 정확한
+    정의다. 평균 검토시간은 `SettlementEvent`의 IN_REVIEW 진입→이탈 시각차 평균이다.
+    """
+
+    def setUp(self):
+        self.acc = User.objects.create_user("acc2", password="pw", role=Role.ACCOUNTANT)
+        self.client = APIClient()
+        self.client.login(username="acc2", password="pw")
+
+    def _submit(self, scope, decision):
+        _graph(scope, decision)
+        card = Card.objects.create(name="법인카드", card_type="SHARED")
+        tx = Transaction.objects.create(
+            card=card, merchant="가맹점", amount=Decimal("10000"), ts=timezone.now(),
+        )
+        s = Settlement.objects.create(
+            transaction=tx, category=scope, status=S.TEAM_COLLECTING, purpose=scope,
+        )
+        with patch("domain.settlements.risk_review.httpx.post") as post:
+            post.return_value.json.return_value = AI_RESPONSE
+            post.return_value.raise_for_status.return_value = None
+            with self.captureOnCommitCallbacks(execute=True):
+                self.client.post("/api/settlements/submit/", {"ids": [s.pk]}, format="json")
+        s.refresh_from_db()
+        return s
+
+    def test_pass_decision_counts_as_auto_processed(self):
+        """REVIEW로 안 떨어진 건은 사람 손이 필요 없었다는 뜻 — 자동처리율에 반영된다."""
+        self._submit("회의", "PASS")
+        resp = self.client.get("/api/settlements/review-stats/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["totalJudged"], 1)
+        self.assertEqual(resp.data["autoProcessedRate"], 1.0)
+        self.assertEqual(resp.data["reviewedCount"], 0)
+        self.assertIsNone(resp.data["avgReviewMinutes"])
+
+    def test_review_decision_lowers_auto_processed_rate_and_measures_duration(self):
+        """REVIEW로 떨어져 사람이 결정을 내리면 자동처리율이 낮아지고 소요시간이 잡힌다."""
+        s = self._submit("접대", "REVIEW")
+        self.assertEqual(s.status, S.IN_REVIEW)
+        services.review(s, "APPROVE", self.acc)
+
+        resp = self.client.get("/api/settlements/review-stats/")
+        self.assertEqual(resp.data["totalJudged"], 1)
+        self.assertEqual(resp.data["autoProcessedRate"], 0.0)
+        self.assertEqual(resp.data["reviewedCount"], 1)
+        self.assertIsNotNone(resp.data["avgReviewMinutes"])
+        self.assertGreaterEqual(resp.data["avgReviewMinutes"], 0.0)
+
+    def test_no_data_this_month_returns_null_rate_not_zero(self):
+        """판정 자체가 없으면 0%가 아니라 '집계 불가'(null)다 — 0%는 실제로 다 실패했다는 뜻."""
+        resp = self.client.get("/api/settlements/review-stats/")
+        self.assertEqual(resp.data["totalJudged"], 0)
+        self.assertIsNone(resp.data["autoProcessedRate"])
+
+    def test_requires_accounting_review_capability(self):
+        User.objects.create_user("emp2", password="pw", role=Role.EMPLOYEE)
+        client = APIClient()
+        client.login(username="emp2", password="pw")
+        resp = client.get("/api/settlements/review-stats/")
+        self.assertEqual(resp.status_code, 403)
+
+
 class ReviewWorkspaceContractTests(TestCase):
     """검토 워크스페이스(S-03)가 Risk Review 결과를 실제로 받는가.
 
@@ -150,11 +227,14 @@ class ReviewWorkspaceContractTests(TestCase):
             anomaly_reasons=["1인당 한도 초과"],
             rag_refs=[{"title": "1인당 5만원", "source": "회식_운영규정 제5조", "kind": "policy"}],
             ai_recommendation="RETURN",
+            risk_tier="HIGH",
             stage2_verdict={"violation_verdict": "VIOLATION", "recommendation": "SUPPLEMENT"},
         )
         resp = self.client.get(f"/api/settlements/{self.settlement.pk}/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["anomalyScore"], 0.91)
+        # 원시 점수는 사람이 크기를 가늠할 수 없어(실측 −0.03~+0.06) 화면은 등급으로 읽는다.
+        self.assertEqual(resp.data["riskTier"], "HIGH")
         self.assertEqual(resp.data["aiRecommendation"], "RETURN")
         self.assertEqual(resp.data["violationVerdict"], "VIOLATION")
         self.assertEqual(len(resp.data["ragRefs"]), 1)
@@ -174,6 +254,31 @@ class ReviewWorkspaceContractTests(TestCase):
         """Agent가 아직 안 돈 건을 '위반 없음'으로 채우면 안 된다."""
         resp = self.client.get(f"/api/settlements/{self.settlement.pk}/")
         self.assertEqual(resp.data["violationVerdict"], "")
+        # 등급도 같은 계약 — 안 돈 건은 ''(등급 없음)이지 'LOW'(안전함)가 아니다.
+        self.assertEqual(resp.data["riskTier"], "")
+
+    def test_rejudged_settlement_shows_the_latest_review_not_the_highest_scored(self):
+        """재판정은 행을 새로 쌓는다(갱신이 아니다) — 화면은 **최신** 판정을 봐야 한다.
+
+        실측 재현: 정렬이 `-anomaly_score`였을 때, 점수가 같은 옛 행이 새 행을 가려서
+        재판정 후에도 검토 화면에 이전 결과(등급 없음·옛 권고)가 떴다.
+        """
+        RiskReview.objects.create(
+            settlement=self.settlement, anomaly_score=0.9, risk_tier="",
+            ai_recommendation="APPROVE",
+            stage2_verdict={"violation_verdict": "NO_VIOLATION"},
+        )
+        latest = RiskReview.objects.create(
+            settlement=self.settlement, anomaly_score=0.9, risk_tier="HIGH",
+            ai_recommendation="RETURN",
+            stage2_verdict={"violation_verdict": "VIOLATION"},
+        )
+
+        resp = self.client.get(f"/api/settlements/{self.settlement.pk}/")
+        self.assertEqual(resp.data["riskTier"], "HIGH")
+        self.assertEqual(resp.data["violationVerdict"], "VIOLATION")
+        self.assertEqual(resp.data["aiRecommendation"], "RETURN")
+        self.assertEqual(self.settlement.risk_reviews.first().pk, latest.pk)
 
     def test_review_decision_goes_through_the_single_path(self):
         """검토 결정 경로는 `/settlements/{id}/review/` 하나다(구 v0 경로는 제거됨)."""
@@ -187,6 +292,86 @@ class ReviewWorkspaceContractTests(TestCase):
 
     def test_removed_v0_endpoint_is_gone(self):
         self.assertEqual(self.client.get("/api/risk-review-v0/reviews/").status_code, 404)
+
+
+class DraftDecisionReasonTests(TestCase):
+    """보완요청/반려 사유 초안(`/settlements/{id}/draft-decision-reason/`, 2026-08-21).
+
+    지키는 것:
+      ① 이미 있는 판정 근거(룰 플래그·2차 RAG 검증 사유·1차 이상탐지 사유)를 AI 서비스로
+         그대로 넘긴다 — 프론트가 다시 조립하지 않는다.
+      ② AI 실패는 조용히 일반 문구로 채우지 않고 503 + 안내 메시지로 올린다("AI가
+         판단했다"는 오해를 막는다).
+      ③ `accounting_review` capability로 보호된다(review/confirm과 동일).
+    """
+
+    def setUp(self):
+        from domain.policies.flags import seed_rule_flags
+
+        seed_rule_flags()  # 라벨 사전이 없으면 코드 원문으로 폴백한다(2026-08-21 실측 버그와 동일 조건)
+        card = Card.objects.create(name="법인카드", card_type="SHARED")
+        tx = Transaction.objects.create(
+            card=card, merchant="이자카야 노을", amount=Decimal("520000"), ts=timezone.now(),
+        )
+        self.settlement = Settlement.objects.create(
+            transaction=tx, category="회식", status=S.IN_REVIEW, purpose="회식",
+            rule_judgement={"decision": "REVIEW", "flags": ["PER_PERSON_LIMIT_OVER"]},
+        )
+        RiskReview.objects.create(
+            settlement=self.settlement, anomaly_score=0.06, risk_tier="HIGH",
+            anomaly_reasons=["1인당 한도 초과"],
+            stage2_verdict={
+                "violation_verdict": "VIOLATION",
+                "review_reasons": ["1인당 한도(5만원)를 초과했고 2차 결제입니다."],
+            },
+        )
+        User.objects.create_user("acc", password="pw", role=Role.ACCOUNTANT)
+        self.client = APIClient()
+        self.client.login(username="acc", password="pw")
+
+    def test_forwards_existing_evidence_and_returns_draft(self):
+        with patch("domain.settlements.views.httpx.post") as post:
+            post.return_value.json.return_value = {"detail": "1인당 한도를 초과해 보완이 필요합니다."}
+            post.return_value.raise_for_status.return_value = None
+            resp = self.client.post(
+                f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
+                {"decision": "RETURN", "reasonCategory": "건당 한도 초과"}, format="json",
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["detail"], "1인당 한도를 초과해 보완이 필요합니다.")
+        sent_payload = post.call_args.kwargs["json"]
+        self.assertEqual(sent_payload["violationVerdict"], "VIOLATION")
+        self.assertIn("1인당 한도(5만원)를 초과했고 2차 결제입니다.", sent_payload["reviewReasons"])
+        self.assertEqual(sent_payload["anomalyReasons"], ["1인당 한도 초과"])
+        self.assertTrue(any(f["label"] == "1인당 한도 초과" for f in sent_payload["ruleFlags"]))
+
+    def test_ai_failure_reports_503_not_a_generic_fallback(self):
+        """실패를 감추면 담당자가 "AI가 판단했다"고 오해한다 — 조용한 폴백 문구 금지."""
+        with patch("domain.settlements.views.httpx.post", side_effect=OSError("연결 실패")):
+            resp = self.client.post(
+                f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
+                {"decision": "REJECT", "reasonCategory": "명백한 규정 위반"}, format="json",
+            )
+        self.assertEqual(resp.status_code, 503)
+        self.assertIn("직접 입력", resp.data["detail"])
+
+    def test_rejects_unknown_decision(self):
+        resp = self.client.post(
+            f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
+            {"decision": "APPROVE"}, format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_requires_accounting_review_capability(self):
+        User.objects.create_user("emp3", password="pw", role=Role.EMPLOYEE)
+        client = APIClient()
+        client.login(username="emp3", password="pw")
+        resp = client.post(
+            f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
+            {"decision": "RETURN"}, format="json",
+        )
+        self.assertEqual(resp.status_code, 403)
 
 
 class RuleConverseProxyTests(TestCase):
@@ -260,3 +445,124 @@ class RuleConverseProxyTests(TestCase):
             post.return_value.json.return_value = {"answer": "ok", "applied_changes": [], "graph": {}}
             resp = self.client.post(self._url(), {"message": "x"}, format="json")
         self.assertEqual(resp.status_code, 200)
+
+
+class AttachmentUploadTests(TestCase):
+    """증빙자료 추출 Agent 진입점(`/settlements/{id}/attachments/`, 2026-08-21) — 여태껏
+
+    ``app/vision/read_receipt``·``read_evidence_document``(2026-08-18)는 MCP 서버에
+    등록만 돼 있을 뿐 아무도 부르지 않았다. 여기서 지키는 것:
+      ① 업로드 응답이 곧 판독 결과다(동기) — Django가 FastAPI `/agent/extract`를 부르고
+         결과를 `Attachment`에 그대로 저장한다.
+      ② 판독 실패(AI 미기동 등)는 업로드 자체를 실패시키지 않는다 — `FAILED` + 사유만 남긴다.
+      ③ 삭제하면 목록에서 빠진다.
+    """
+
+    def setUp(self):
+        card = Card.objects.create(name="법인카드", card_type="PERSONAL")
+        tx = Transaction.objects.create(card=card, merchant="강남 한식당", amount=Decimal("120000"), ts=timezone.now())
+        self.settlement = Settlement.objects.create(transaction=tx, category="접대", status=S.DRAFT)
+        self.client = APIClient()
+
+    def _upload(self, kind="PRE_APPROVAL"):
+        f = SimpleUploadedFile("approval.png", b"fake-image-bytes", content_type="image/png")
+        return self.client.post(
+            f"/api/settlements/{self.settlement.pk}/attachments/", {"kind": kind, "file": f}, format="multipart",
+        )
+
+    def test_upload_calls_extraction_and_saves_result(self):
+        with patch("domain.settlements.views.httpx.post") as post:
+            post.return_value.raise_for_status.return_value = None
+            post.return_value.json.return_value = {
+                "extractionStatus": "DONE",
+                "extracted": {"approval.pre_approval_obtained": True},
+                "fieldConfidence": {"approval.pre_approval_obtained": 0.95},
+                "evidenceSpans": [{"path": "approval.pre_approval_obtained", "quote": "승인", "source": "document"}],
+                "extractorVersion": "vision-doc-1",
+                "warnings": [],
+            }
+            resp = self._upload()
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["extractionStatus"], "DONE")
+        self.assertEqual(resp.data["extracted"], {"approval.pre_approval_obtained": True})
+
+        attachment = Attachment.objects.get(settlement=self.settlement)
+        self.assertEqual(attachment.extraction_status, "DONE")
+        self.assertEqual(attachment.extractor_version, "vision-doc-1")
+        # `file_ref`가 `/agent/extract`로 넘어간 값과 같아야 한다 — media 볼륨 기준 상대경로 계약.
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["file_ref"], attachment.file.name)
+        self.assertEqual(sent["kind"], "PRE_APPROVAL")
+
+    def test_extraction_failure_does_not_fail_the_upload(self):
+        """업로드는 성공했는데 판독이 실패하면 — 조용히 감추지 않고 FAILED + 사유를 남긴다."""
+        with patch("domain.settlements.views.httpx.post", side_effect=OSError("연결 실패")):
+            resp = self._upload()
+
+        self.assertEqual(resp.status_code, 201)  # 업로드 자체는 성공
+        self.assertEqual(resp.data["extractionStatus"], "FAILED")
+        self.assertIn("연결 실패", resp.data["error"])
+
+    def test_list_and_delete(self):
+        with patch("domain.settlements.views.httpx.post") as post:
+            post.return_value.raise_for_status.return_value = None
+            post.return_value.json.return_value = {
+                "extractionStatus": "DONE", "extracted": {}, "fieldConfidence": {},
+                "evidenceSpans": [], "extractorVersion": "vision-doc-1", "warnings": [],
+            }
+            self._upload()
+
+        listed = self.client.get(f"/api/settlements/{self.settlement.pk}/attachments/")
+        self.assertEqual(len(listed.data), 1)
+
+        attachment_id = listed.data[0]["id"]
+        deleted = self.client.delete(f"/api/settlements/{self.settlement.pk}/attachments/{attachment_id}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertFalse(Attachment.objects.filter(pk=attachment_id).exists())
+
+    def test_rejects_unknown_kind(self):
+        f = SimpleUploadedFile("x.png", b"bytes", content_type="image/png")
+        resp = self.client.post(
+            f"/api/settlements/{self.settlement.pk}/attachments/", {"kind": "NOT_A_KIND", "file": f}, format="multipart",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+
+class AttachmentConfidenceGateTests(TestCase):
+    """저신뢰 추출값은 판정에 반영되지 않는다(`_context/evidence-extraction-agent.md` §6 결정 2).
+
+    "적용하되 표시"가 아니라 **미해소로 남긴다** — 값 자체는 `Attachment.extracted`에
+    그대로 남아 화면 표시(E-6)에는 쓸 수 있지만, EvalContext에는 올라가지 않는다.
+    """
+
+    def setUp(self):
+        card = Card.objects.create(name="법인카드", card_type="PERSONAL")
+        tx = Transaction.objects.create(card=card, merchant="강남 한식당", amount=Decimal("120000"), ts=timezone.now())
+        self.settlement = Settlement.objects.create(transaction=tx, category="접대", status=S.DRAFT)
+
+    def test_low_confidence_extraction_is_not_offered_to_eval_context(self):
+        from domain.policies.context_builder import FactMerger, collect_from_attachments
+
+        Attachment.objects.create(
+            settlement=self.settlement, kind="PRE_APPROVAL", extraction_status="DONE",
+            extracted={"approval.pre_approval_obtained": True},
+            field_confidence={"approval.pre_approval_obtained": 0.4},  # 임계값(0.6) 미만
+            extracted_at=timezone.now(),
+        )
+        merger = FactMerger()
+        collect_from_attachments(merger, self.settlement)
+        self.assertIsNone(merger.resolved("approval.pre_approval_obtained"))
+
+    def test_high_confidence_extraction_is_offered(self):
+        from domain.policies.context_builder import FactMerger, collect_from_attachments
+
+        Attachment.objects.create(
+            settlement=self.settlement, kind="PRE_APPROVAL", extraction_status="DONE",
+            extracted={"approval.pre_approval_obtained": True},
+            field_confidence={"approval.pre_approval_obtained": 0.9},
+            extracted_at=timezone.now(),
+        )
+        merger = FactMerger()
+        collect_from_attachments(merger, self.settlement)
+        self.assertTrue(merger.resolved("approval.pre_approval_obtained"))

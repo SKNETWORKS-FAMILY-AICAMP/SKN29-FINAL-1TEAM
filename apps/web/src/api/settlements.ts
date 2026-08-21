@@ -40,6 +40,8 @@ function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
   return {
     ...row,
     anomalyScore: row.anomalyScore ?? 0,
+    // aiRecommendation과 같은 계약 — 안 돈 건은 ''(등급 없음)이지 'LOW'가 아니다.
+    riskTier: row.riskTier ?? '',
     featureContribs: row.featureContribs ?? [],
     ragRefs: row.ragRefs ?? [],
     // **기본값을 'APPROVE'로 채우지 않는다.** Risk Review가 안 돈 건이 "AI 권장: 승인"으로

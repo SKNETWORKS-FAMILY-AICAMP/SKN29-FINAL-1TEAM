@@ -3,25 +3,28 @@
 //  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
 //  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock, Paperclip,
-  Receipt, Sparkles, Trash2, Upload, X,
+  Receipt, RotateCcw, Sparkles, Trash2, Upload, X,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORIES,
-  type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
+  CARD_TYPE_LABEL, CATEGORIES, STATUS_META,
+  type Attachment, type AttachmentKind, type CardType, type Category, type ReviewItem, type Settlement,
+  type SettlementStatus,
 } from '../../types/domain'
 import { needsAttention } from '../../lib/judgement'
+import { formatDateTime } from '../../lib/format'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
 import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
-  createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
-  reviseDraft, submitSettlements, suggestDraft, type DraftSuggestion, type PolicyHint,
+  createSettlement, decideTeamSettlement, deleteAttachment, deleteSettlement,
+  fetchSettlementDetail, raiseSettlements, reExtractAttachment, reviewSettlement, reviseDraft,
+  submitSettlements, suggestDraft, uploadAttachment, type DraftSuggestion, type PolicyHint,
 } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 
@@ -29,7 +32,14 @@ import { ReturnReasonModal } from './ReturnReasonModal'
 const MOCK_OCR = { merchant: '강남 한식당', amount: '452,000', category: '접대' as Category }
 
 interface AiComment { icon: 'ocr' | 'doc' | 'ai'; text: string }
-interface ExtraFile { id: string; name: string }
+
+const ATTACHMENT_KIND_LABEL: Record<AttachmentKind, string> = {
+  RECEIPT: '영수증·카드전표', PRE_APPROVAL: '사전승인 문서', MEETING_MINUTES: '회의록',
+  PARTICIPANT_LIST: '참석자 명단', TRIP_PLAN: '출장계획서', CONTRACT: '계약서·견적서', OTHER: '기타',
+}
+// 판정에 실제로 반영되는 신뢰도 하한(Django `context_builder.ATTACHMENT_CONFIDENCE_THRESHOLD`와 동일 값을
+// 화면 표시용으로 미러링 — 미만이면 서버가 미해소로 두므로 "판정 반영 안 됨"으로 안내한다).
+const CONFIDENCE_APPLY_THRESHOLD = 0.6
 
 const numOnly = (s: string) => Number(s.replace(/[^0-9]/g, '') || '0')
 // 상태 변경 이력 타임라인 점 색 — 상태값을 매핑하지 않고 진행 단계를 순환색으로 표현(시안 실측: 회색→파랑→amber→빨강)
@@ -90,7 +100,12 @@ export function SettlementDetailModal({
 
   // ── 좌측 업로드 상태 ──
   const [receiptUp, setReceiptUp] = useState(item?.evidence === 'OK')
-  const [extraFiles, setExtraFiles] = useState<ExtraFile[]>([])
+  // 추가 증빙 — 증빙자료 추출 Agent(`_context/evidence-extraction-agent.md`)가 실제로 판독한다.
+  // 신규 등록(isCreate) 중엔 정산 id가 없어 업로드할 곳이 없으므로 저장 후에만 가능.
+  const [attachments, setAttachments] = useState<Attachment[]>(item?.attachments ?? [])
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+  const [uploadKind, setUploadKind] = useState<AttachmentKind>('PRE_APPROVAL')
+  const [uploading, setUploading] = useState(false)
 
   // ── AI 코멘트 로그 / 규정 힌트 / 지시 입력 / fact.json 접힘 ──
   const [comments, setComments] = useState<AiComment[]>([])
@@ -102,7 +117,29 @@ export function SettlementDetailModal({
   const [pending, setPending] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
 
-  const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
+  // 상태 변경 이력 — `item`(목록 셰이프)엔 `events`가 없다(N+1 방지로 상세 조회에만 실림).
+  // 예전엔 `item.auditTrail`을 읽었는데, 그 필드는 타입에만 있고 실제로 채워주는 코드가
+  // 어디에도 없어서 **항상 undefined**였다 — 그래서 늘 아래 하드코딩 3줄만 보였다
+  // (2026-08-21 전수 점검에서 발견, ReviewWorkspace.tsx와 같은 결함).
+  const [history, setHistory] = useState<ReviewItem['events']>(undefined)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  useEffect(() => {
+    if (isCreate || !item) return
+    let cancelled = false
+    setHistoryLoading(true)
+    setAttachmentsLoading(true)
+    fetchSettlementDetail(item)
+      .then((detail) => {
+        if (cancelled) return
+        setHistory((detail as ReviewItem).events ?? [])
+        setAttachments(detail.attachments ?? [])
+      })
+      .catch(() => { if (!cancelled) { setHistory([]); setAttachments([]) } })
+      .finally(() => { if (!cancelled) { setHistoryLoading(false); setAttachmentsLoading(false) } })
+    return () => { cancelled = true }
+  }, [isCreate, item?.id])
+
+  const evidence: 'OK' | 'MISSING' = receiptUp || attachments.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
   const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
   // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
@@ -119,11 +156,11 @@ export function SettlementDetailModal({
     category,
     merchantIndustry: industry || null,
     evidence: evidence === 'OK' ? 'attached' : 'missing',
-    extraDocs: extraFiles.length,
+    extraDocs: attachments.length,
     purpose: purpose || null,
     source: receiptUp ? 'vision_ocr' : 'manual',
     aiSuggested,
-  }), [merchant, amountText, dateStr, cardType, category, industry, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
+  }), [merchant, amountText, dateStr, cardType, category, industry, evidence, attachments.length, purpose, receiptUp, aiSuggested])
 
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
@@ -175,14 +212,46 @@ export function SettlementDetailModal({
     setInstruction('')
   }
 
-  // 추가 증빙 업로드(미리보기 없음) → 파일 칩 추가 + 코멘트
-  const uploadExtra = () => {
-    const n = extraFiles.length + 1
-    const name = `추가증빙_${n}.pdf`
-    setExtraFiles((prev) => [...prev, { id: `x${prev.length}-${name}`, name }])
-    pushComment({ icon: 'doc', text: `증빙 문서 "${name}" 인식 — ${category} 목적 보강 근거로 첨부했습니다.` })
+  // 추가 증빙 업로드 — 증빙자료 추출 Agent가 실제로 판독한다(응답이 곧 결과, 동기).
+  const uploadExtra = async (file: File) => {
+    if (!item) return
+    setUploading(true)
+    const result = await uploadAttachment(item.id, uploadKind, file)
+    setUploading(false)
+    if (!result) {
+      pushComment({ icon: 'doc', text: `"${file.name}" 업로드에 실패했습니다 — 네트워크·서버 상태를 확인해주세요.` })
+      return
+    }
+    setAttachments((prev) => [...prev, result])
+    if (result.extractionStatus === 'DONE') {
+      const n = Object.keys(result.extracted).length
+      pushComment({
+        icon: 'doc',
+        text: n > 0
+          ? `"${file.name}"(${ATTACHMENT_KIND_LABEL[result.kind]}) 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
+          : `"${file.name}"(${ATTACHMENT_KIND_LABEL[result.kind]})에서 확인된 사실이 없습니다.`,
+      })
+    } else if (result.extractionStatus === 'FAILED') {
+      pushComment({ icon: 'doc', text: `"${file.name}" 판독 실패 — ${result.error || '사유 미상'}` })
+    }
   }
-  const removeExtra = (id: string) => setExtraFiles((prev) => prev.filter((f) => f.id !== id))
+  const onExtraFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) void uploadExtra(file)
+  }
+  const removeExtra = async (attachmentId: number) => {
+    if (!item) return
+    const ok = await deleteAttachment(item.id, attachmentId)
+    if (ok) setAttachments((prev) => prev.filter((a) => a.id !== attachmentId))
+  }
+  const retryExtra = async (attachmentId: number) => {
+    if (!item) return
+    setUploading(true)
+    const result = await reExtractAttachment(item.id, attachmentId)
+    setUploading(false)
+    if (result) setAttachments((prev) => prev.map((a) => (a.id === attachmentId ? result : a)))
+  }
 
 
   const draft = (): Omit<Settlement, 'id' | 'status'> => ({
@@ -352,7 +421,6 @@ export function SettlementDetailModal({
     </>
   )
 
-  const auditTrail = item ? (item as ReviewItem).auditTrail : undefined
   const title = isCreate
     ? '신규 지출 등록'
     : `정산 상세${readOnly ? '' : ' · 수정'} · ${item!.id}`
@@ -400,55 +468,113 @@ export function SettlementDetailModal({
             </div>
           </div>
 
-          {/* 추가 증빙 (미리보기 없음) */}
+          {/* 추가 증빙 — 증빙자료 추출 Agent가 사전승인·회의록·출장계획서 등에서 판정 사실을 뽑는다 */}
           <div className="card">
-            <div className="card-head"><h3>추가 증빙 자료</h3><span className="text-meta">미리보기 없음</span></div>
+            <div className="card-head">
+              <h3>추가 증빙 자료</h3>
+              <span className="tag ai"><Sparkles size={11} /> 추출 Agent</span>
+            </div>
             <div className="card-body">
-              {!readOnly && (
-                <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={uploadExtra} disabled={pending}>
-                  <Paperclip size={14} /> 계약서·이체확인증 등 첨부
-                </button>
+              {isCreate ? (
+                <div className="text-meta">저장 후 첨부할 수 있습니다.</div>
+              ) : !readOnly && (
+                <>
+                  <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+                    <select
+                      value={uploadKind}
+                      onChange={(e) => setUploadKind(e.target.value as AttachmentKind)}
+                      style={{ flex: 1 }}
+                      disabled={uploading}
+                    >
+                      {(Object.keys(ATTACHMENT_KIND_LABEL) as AttachmentKind[])
+                        .filter((k) => k !== 'RECEIPT')
+                        .map((k) => <option key={k} value={k}>{ATTACHMENT_KIND_LABEL[k]}</option>)}
+                    </select>
+                    <label className="btn" style={{ cursor: uploading ? 'default' : 'pointer' }}>
+                      <Paperclip size={14} /> {uploading ? '판독 중…' : '파일 선택'}
+                      <input type="file" onChange={onExtraFileChange} disabled={uploading} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+                  <div className="text-meta">선택한 종류에 맞춰 판정에 쓸 사실만 뽑습니다(예: 사전승인 여부, 참석 인원).</div>
+                </>
               )}
-              {extraFiles.length > 0 ? (
-                <div className="stack" style={{ marginTop: readOnly ? 0 : 10 }}>
-                  {extraFiles.map((f) => (
-                    <div key={f.id} className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '8px 10px' }}>
-                      <div className="row" style={{ gap: 8 }}>
-                        <FileText size={16} color="var(--tone-red)" />
-                        <span style={{ fontSize: 12.5 }}>{f.name}</span>
+              {attachmentsLoading ? (
+                <div className="text-meta" style={{ marginTop: 10 }}>불러오는 중…</div>
+              ) : attachments.length > 0 ? (
+                <div className="stack" style={{ marginTop: 10 }}>
+                  {attachments.map((a) => {
+                    const entries = Object.entries(a.extracted)
+                    return (
+                      <div key={a.id} style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '8px 10px' }}>
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                          <div className="row" style={{ gap: 8 }}>
+                            <FileText size={16} color="var(--tone-red)" />
+                            <span style={{ fontSize: 12.5 }}>{a.originalName || ATTACHMENT_KIND_LABEL[a.kind]}</span>
+                            <span className="tag">{ATTACHMENT_KIND_LABEL[a.kind]}</span>
+                            {a.extractionStatus === 'FAILED' && <span className="tag warn">판독 실패</span>}
+                            {a.extractionStatus === 'RUNNING' && <span className="tag">판독 중</span>}
+                          </div>
+                          <div className="row" style={{ gap: 4 }}>
+                            {a.extractionStatus === 'FAILED' && !readOnly && (
+                              <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="재시도" onClick={() => retryExtra(a.id)} disabled={uploading}>
+                                <RotateCcw size={12} />
+                              </button>
+                            )}
+                            {!readOnly && (
+                              <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(a.id)}>
+                                <X size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {a.extractionStatus === 'FAILED' && a.error && (
+                          <div className="text-meta" style={{ marginTop: 4, color: 'var(--tone-red)' }}>{a.error}</div>
+                        )}
+                        {entries.length > 0 && (
+                          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 11.5 }}>
+                            {entries.map(([path, value]) => {
+                              const conf = a.fieldConfidence[path]
+                              const low = conf != null && conf < CONFIDENCE_APPLY_THRESHOLD
+                              return (
+                                <li key={path} style={{ color: low ? 'var(--tone-amber)' : undefined }}>
+                                  {path} = {JSON.stringify(value)}
+                                  {conf != null && ` (확신도 ${Math.round(conf * 100)}%)`}
+                                  {low && ' — 저신뢰라 판정에는 반영되지 않았습니다'}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
                       </div>
-                      {!readOnly && (
-                        <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(f.id)}>
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
-              ) : readOnly && <div className="text-meta">첨부된 추가 증빙이 없습니다.</div>}
+              ) : !isCreate && <div className="text-meta" style={{ marginTop: 10 }}>첨부된 추가 증빙이 없습니다.</div>}
             </div>
           </div>
 
-          {/* 상태 변경 이력 (Audit Trail) */}
+          {/* 상태 변경 이력 (Audit Trail) — 실제 SettlementEvent 조회(위 useEffect) */}
           <div className="card">
             <div className="card-head"><h3>상태 변경 이력</h3></div>
             <div className="card-body">
               {isCreate ? (
                 <div className="text-meta">저장 후 이력이 기록됩니다.</div>
+              ) : historyLoading ? (
+                <div className="text-meta">불러오는 중…</div>
+              ) : !history?.length ? (
+                <div className="text-meta">상태 변경 이력이 없습니다.</div>
               ) : (
                 <ul className="timeline">
-                  {auditTrail?.map((ev, i) => (
-                    <li key={i} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
-                      <div style={{ fontSize: 13 }}>{ev.status}{ev.note ? ` — ${ev.note}` : ''}</div>
-                      <div className="t-meta">{ev.actor} · {ev.timestamp}</div>
+                  {history.map((ev, i) => (
+                    <li key={ev.id} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
+                      <div style={{ fontSize: 13 }}>
+                        {ev.fromState ? `${STATUS_META[ev.fromState as SettlementStatus]?.label ?? ev.fromState} → ` : ''}
+                        {STATUS_META[ev.toState as SettlementStatus]?.label ?? ev.toState}
+                        {ev.reason ? ` — ${ev.reason}` : ''}
+                      </div>
+                      <div className="t-meta">{ev.actor ?? '시스템'} · {formatDateTime(ev.createdAt)}</div>
                     </li>
-                  )) ?? (
-                    <>
-                      <li className="gray"><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item!.date} 09:12</div></li>
-                      <li className="blue"><div>SUBMITTED — 제출</div><div className="t-meta">{item!.user} · 09:40</div></li>
-                      <li className="amber"><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
-                    </>
-                  )}
+                  ))}
                 </ul>
               )}
             </div>

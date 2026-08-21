@@ -25,8 +25,29 @@ export const endpoints = {
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정
   review: (id: string, decision: 'APPROVE' | 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/review/`, { decision, reason }),
+  // S-03 헤더 요약(자동처리율·평균 검토시간) — 이번 달 집계, 서버가 계산한다.
+  reviewStats: () => api.get('/settlements/review-stats/'),
+  // 보완요청/반려 사유 초안 — 이미 있는 판정 근거를 LLM이 문장으로 정리. 담당자가
+  // 편집 가능한 초안일 뿐 확정 사유가 아니다. LLM 호출이라 넉넉히 잡는다.
+  draftDecisionReason: (id: string, decision: 'RETURN' | 'REJECT', reasonCategory: string) =>
+    api.post(`/settlements/${id}/draft-decision-reason/`, { decision, reasonCategory }, { timeout: 30_000 }),
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
+  // 증빙자료 추출 Agent — 첨부 업로드가 곧 추출 요청이다(동기, 응답이 곧 판독 결과).
+  attachments: (settlementId: string) => api.get(`/settlements/${settlementId}/attachments/`),
+  uploadAttachment: (settlementId: string, kind: string, file: File) => {
+    const form = new FormData()
+    form.append('kind', kind)
+    form.append('file', file)
+    return api.post(`/settlements/${settlementId}/attachments/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120_000, // 비전 판독(페이지 렌더+LLM) 포함 — 업로드 응답이 곧 추출 결과다.
+    })
+  },
+  deleteAttachment: (settlementId: string, attachmentId: number) =>
+    api.delete(`/settlements/${settlementId}/attachments/${attachmentId}/`),
+  reExtractAttachment: (settlementId: string, attachmentId: number) =>
+    api.post(`/settlements/${settlementId}/attachments/${attachmentId}/re-extract/`, {}, { timeout: 120_000 }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
   // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
   //  시스템 플래그는 기본 제외한다(룰이 `NO_ACTIVE_RULE_GRAPH`를 붙이면 의미가 뒤집힌다).

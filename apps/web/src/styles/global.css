@@ -347,9 +347,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .review-item.selected { background: var(--primary-soft); }
 .review-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .review-item-check { margin-top: 3px; flex-shrink: 0; }
+/* 위험 등급 배지. 예전엔 2자리 숫자(anomaly_score×100)를 담아 width:28px/16px였는데,
+   그 숫자가 실제로는 의미가 없어서(원시 점수는 확률이 아님 — ReviewWorkspace riskTierOf 주석)
+   '고위험/주의/정상' 라벨로 바꿨다. 3글자가 줄바꿈 없이 들어가도록 폭·크기를 맞춘다. */
 .risk-score {
-  flex-shrink: 0; width: 28px; margin-top: 1px; text-align: center;
-  font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  flex-shrink: 0; width: 44px; margin-top: 2px; text-align: center;
+  font-size: 12px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap;
 }
 .review-item-body { flex: 1; min-width: 0; }
 .review-item-top { display: flex; align-items: center; gap: var(--space-2); }

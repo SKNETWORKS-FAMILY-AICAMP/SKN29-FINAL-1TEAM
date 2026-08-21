@@ -43,7 +43,8 @@ import json
 import re
 from typing import Any
 
-from . import django_client, mcp_client
+from .. import mcp_client
+from . import django_client
 from .settings import settings
 
 _client = None

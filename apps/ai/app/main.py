@@ -13,7 +13,7 @@ from app import logging_setup
 # 라우터 import보다 **먼저** 로깅을 켠다 — 그래야 import 시점 경고(모델 로드 실패 등)도 파일에 남는다.
 _log_file = logging_setup.setup()
 
-from app.api import draft, embeddings, health, ml, risk, rule, lab  # noqa: E402
+from app.api import decision_reason, draft, embeddings, extract, health, ml, risk, lab  # noqa: E402
 from app.agents.rule_agent_v0 import router as rule_agent_v0_router  # noqa: E402
 
 logging.getLogger(__name__).info(
@@ -25,8 +25,9 @@ app = FastAPI(title="Settlement AI Orchestrator", version="0.1.0")
 # 라우터
 app.include_router(health.router)
 app.include_router(draft.router, prefix="/agent", tags=["agent"])
-app.include_router(rule.router, prefix="/agent", tags=["agent"])
 app.include_router(risk.router, prefix="/agent", tags=["agent"])
+app.include_router(decision_reason.router, prefix="/agent", tags=["agent"])
+app.include_router(extract.router, prefix="/agent", tags=["agent"])
 app.include_router(ml.router, prefix="/ml", tags=["ml"])
 app.include_router(embeddings.router, prefix="/embeddings", tags=["rag"])
 

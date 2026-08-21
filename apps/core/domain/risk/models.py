@@ -12,6 +12,11 @@ class RiskReview(models.Model):
         "settlements.Settlement", on_delete=models.CASCADE, related_name="risk_reviews"
     )
     anomaly_score = models.FloatField(default=0.0)          # 1차 비지도 이상탐지
+    # 1차 점수의 3단계 등급(HIGH/MEDIUM/LOW). anomaly_score에서 파생되지만 **판정 시점 스냅샷**
+    # 으로 저장한다 — 임계값은 코드 상수(`risk_review_agent.RISK_TIER_*`)라 사람이 튜닝할 수
+    # 있고, 그때 과거 판정의 등급까지 소급해 바뀌면 감사 기록이 흔들린다(`rule_hits.eval_context`
+    # 스냅샷과 같은 이유). 재판정(`/judge/`)하면 새 임계값으로 다시 매겨진다.
+    risk_tier = models.CharField(max_length=10, blank=True)
     reasons = models.JSONField(default=list, blank=True)    # 피처 기여도 [{feature, weight}]
     anomaly_reasons = models.JSONField(default=list, blank=True)  # 요약 사유 문구(리스트)
     rag_refs = models.JSONField(default=list, blank=True)   # 2차 RAG 근거(출처·조문·발췌 포함)
@@ -25,7 +30,14 @@ class RiskReview(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-anomaly_score"]
+        # **최신순이다(점수순이 아니다).** 재판정(`/judge/`)·재제출은 이 테이블에 행을 새로
+        # 쌓는다 — 갱신이 아니라 이력이다. 그런데 예전 정렬은 `-anomaly_score`라서, 소비처가
+        # 전부 "이 정산의 현재 검토 결과"를 뜻하는 `.first()`/`rrs[0]`로 읽는데도 **점수가
+        # 같거나 더 높은 옛 행이 최신 행을 가렸다**(실측: settlement 383에서 03:08 행이
+        # 04:45 행을 가려 화면에 옛 판정이 떴다). 검토 큐의 위험도 정렬은 프론트가
+        # `anomalyScore`로 따로 하므로 여기서 점수순을 유지할 이유가 없다.
+        # 같은 종류의 결함을 EvalContext 스냅샷에서 이미 한 번 고쳤다(CLAUDE.md 룰 엔진 ⑧).
+        ordering = ["-created_at", "-id"]
 
 
 class DecisionLabel(models.Model):

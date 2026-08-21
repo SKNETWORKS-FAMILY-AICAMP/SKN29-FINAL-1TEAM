@@ -6,11 +6,40 @@ from rest_framework import serializers
 
 from domain.risk.models import RiskReview
 
-from .models import Settlement, SettlementEvent
+from .models import Attachment, Settlement, SettlementEvent
+
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    """추가 증빙 첨부 + 추출 결과 — `_context/evidence-extraction-agent.md`."""
+    kindLabel = serializers.CharField(source="get_kind_display", read_only=True)
+    fileUrl = serializers.SerializerMethodField()
+    fieldConfidence = serializers.JSONField(source="field_confidence", read_only=True)
+    evidenceSpans = serializers.JSONField(source="evidence_spans", read_only=True)
+    extractionStatus = serializers.CharField(source="extraction_status", read_only=True)
+    extractorVersion = serializers.CharField(source="extractor_version", read_only=True)
+    uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
+    extractedAt = serializers.DateTimeField(source="extracted_at", read_only=True)
+    originalName = serializers.CharField(source="original_name", read_only=True)
+
+    class Meta:
+        model = Attachment
+        fields = [
+            "id", "kind", "kindLabel", "fileUrl", "originalName",
+            "extractionStatus", "extracted", "fieldConfidence", "evidenceSpans",
+            "extractorVersion", "uploadedAt", "extractedAt", "error",
+        ]
+
+    def get_fileUrl(self, obj):
+        if not obj.file:
+            return None
+        request = self.context.get("request")
+        url = obj.file.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class RiskReviewSerializer(serializers.ModelSerializer):
     anomalyScore = serializers.FloatField(source="anomaly_score", read_only=True)
+    riskTier = serializers.CharField(source="risk_tier", read_only=True)
     featureContribs = serializers.JSONField(source="reasons", read_only=True)
     ragRefs = serializers.JSONField(source="rag_refs", read_only=True)
     ragReport = serializers.CharField(source="rag_report", read_only=True)
@@ -19,7 +48,8 @@ class RiskReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RiskReview
-        fields = ["anomalyScore", "featureContribs", "ragRefs", "ragReport", "aiRecommendation", "aiConfidence"]
+        fields = ["anomalyScore", "riskTier", "featureContribs", "ragRefs", "ragReport",
+                  "aiRecommendation", "aiConfidence"]
 
 
 class SettlementEventSerializer(serializers.ModelSerializer):
@@ -60,6 +90,9 @@ class SettlementSerializer(serializers.ModelSerializer):
     claimPending = serializers.SerializerMethodField()
     # ── Risk 평탄화 (ReviewItem 셰이프) ──
     anomalyScore = serializers.SerializerMethodField()
+    # 1차 이상탐지 점수의 3단계 등급 — 원시 점수(−0.0127 같은 값)는 검토자가 크기를 가늠할 수
+    # 없어서, 같은 판정을 사람이 읽는 축으로 함께 내려준다.
+    riskTier = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
@@ -86,7 +119,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "id", "date", "time", "merchant", "amount", "cardType",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
-            "anomalyScore", "aiRecommendation", "aiConfidence",
+            "anomalyScore", "riskTier", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
         ]
@@ -120,6 +153,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_anomalyScore(self, obj):
         r = self._risk(obj)
         return r.anomaly_score if r else None
+
+    def get_riskTier(self, obj):
+        r = self._risk(obj)
+        return r.risk_tier if r else ""
 
     def get_aiRecommendation(self, obj):
         r = self._risk(obj)
@@ -191,15 +228,21 @@ class SettlementDetailSerializer(SettlementSerializer):
     additionalEvidence = serializers.SerializerMethodField()
     facts = serializers.SerializerMethodField()
     ruleHits = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
 
     class Meta(SettlementSerializer.Meta):
         fields = SettlementSerializer.Meta.fields + [
-            "events", "risk", "additionalEvidence", "facts", "ruleHits",
+            "events", "risk", "additionalEvidence", "facts", "ruleHits", "attachments",
         ]
 
     def get_risk(self, obj):
         rr = obj.risk_reviews.first()
         return RiskReviewSerializer(rr).data if rr else None
+
+    def get_attachments(self, obj):
+        return AttachmentSerializer(
+            obj.attachments.all(), many=True, context=self.context,
+        ).data
 
     def get_additionalEvidence(self, obj):
         if not obj.transaction_id:

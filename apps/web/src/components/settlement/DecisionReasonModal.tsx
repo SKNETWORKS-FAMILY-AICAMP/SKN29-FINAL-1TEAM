@@ -1,9 +1,10 @@
 // F-2 처리 사유 입력 모달 — 보완요청(RETURNED) / 반려(REJECT) 공용.
 // 반려는 최종 처리이므로 2단계(사유 입력 → 확인 팝업)로 재확인한다.
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Sparkles } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { won } from '../../lib/format'
+import { draftDecisionReason } from '../../api/settlementService'
 import type { Settlement } from '../../types/domain'
 
 const REASONS: Record<'RETURN' | 'REJECT', string[]> = {
@@ -26,6 +27,20 @@ export function DecisionReasonModal({
   const [reason, setReason] = useState(REASONS[decision][0])
   const [detail, setDetail] = useState('')
   const [confirming, setConfirming] = useState(false) // 반려 2단계 확인
+  const [drafting, setDrafting] = useState(false)
+  const [draftError, setDraftError] = useState('')
+
+  // AI 초안 작성 — 이미 화면에 떠 있는 판정 근거(룰 플래그·RAG 검증 사유·이상탐지 사유)를
+  // 서버가 문장으로 정리해 준다. **초안일 뿐이다** — 채워진 뒤에도 텍스트칸은 그대로
+  // 편집 가능하고, 그대로 제출을 막지 않는다(강제 수정 아님, 2026-08-21 결정).
+  const requestDraft = async () => {
+    setDrafting(true)
+    setDraftError('')
+    const draft = await draftDecisionReason(item.id, decision, reason)
+    setDrafting(false)
+    if (draft) setDetail(draft)
+    else setDraftError('AI 초안 생성에 실패했습니다 — 직접 입력해주세요.')
+  }
 
   const subhead = `${item.id} · ${item.user} · ${won(item.amount)}`
 
@@ -88,7 +103,21 @@ export function DecisionReasonModal({
       </div>
 
       <div className="field" style={{ marginBottom: 0 }}>
-        <label>상세 사유 (선택)</label>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <label style={{ marginBottom: 0 }}>상세 사유 (선택)</label>
+          {/* 이미 판정 근거가 있는 건만 의미가 있다 — 없어도 눌러볼 수는 있게 두되(서버가
+              "없음"으로 받아 담백한 문장을 만든다), 결과가 부실할 수 있음을 굳이 막지 않는다. */}
+          <button
+            type="button"
+            className="btn sm"
+            disabled={drafting}
+            onClick={() => void requestDraft()}
+            title="이미 있는 판정 근거(룰 플래그·내규검증 사유)를 문장으로 정리합니다 — 초안일 뿐이니 확인 후 고쳐 쓰세요"
+          >
+            <Sparkles size={12} /> {drafting ? 'AI 초안 작성 중…' : 'AI 초안 작성'}
+          </button>
+        </div>
+        {draftError && <div className="text-meta" style={{ color: 'var(--tone-red)', marginBottom: 4 }}>{draftError}</div>}
         <textarea
           rows={3}
           placeholder={

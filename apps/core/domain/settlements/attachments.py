@@ -47,6 +47,9 @@ class Attachment(models.Model):
         "settlements.Settlement", on_delete=models.CASCADE, related_name="attachments",
     )
     kind = models.CharField(max_length=20, choices=AttachmentKind.choices, default=AttachmentKind.OTHER)
+    #  원본 파일 — `PolicyDoc.file`과 같은 패턴(같은 media 볼륨, ai 컨테이너가 :ro로 읽는다).
+    #  `file_ref`는 그 `.name`(볼륨 기준 상대경로)을 그대로 담아 추출 Agent 호출부와 계약을 맞춘다.
+    file = models.FileField("원본 파일", upload_to="attachments/%Y%m/", blank=True)
     file_ref = models.CharField("파일 경로/키", max_length=300, blank=True)
     original_name = models.CharField(max_length=200, blank=True)
     mime_type = models.CharField(max_length=100, blank=True)
