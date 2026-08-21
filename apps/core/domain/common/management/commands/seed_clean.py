@@ -44,6 +44,7 @@ None이라, 그걸 참조하면 공용카드 건이 전부 REVIEW로 떨어진�
 """
 from django.core.management.base import BaseCommand
 from django.db import transaction as db_tx
+from django.utils import timezone
 
 from domain.accounts.models import Capability, JobTitle, Position, Role, Team, User
 from domain.cards.models import Card, CardType
@@ -53,7 +54,7 @@ from domain.policies.models import (
     RuleHit, RuleNode, RuleRouting,
 )
 from domain.risk.models import RiskReview
-from domain.settlements.models import Settlement
+from domain.settlements.models import Category, Settlement, TeamBudget
 from domain.transactions.industry import IndustryCode
 from domain.transactions.models import MerchantCategory, Receipt, Transaction
 
@@ -232,13 +233,14 @@ class Command(BaseCommand):
 
             teams = self._teams()
             self._users(teams)
+            self._budgets(teams)
             graph = self._default_gate()
 
         deleted = sum(counts.values())
         self.stdout.write(self.style.SUCCESS(
             f"초기화 완료 - 기존 {deleted}건 삭제\n"
             f"  사용자 {User.objects.filter(is_superuser=False).count()}명 / 팀 {Team.objects.count()}개 / "
-            f"카드 {Card.objects.count()}장\n"
+            f"카드 {Card.objects.count()}장 / 예산 {TeamBudget.objects.count()}행\n"
             f"  ACTIVE 룰 그래프 1개: {graph.name} (GLOBAL, 노드 {graph.nodes.count()}개)"
         ))
         self.stdout.write(
@@ -253,6 +255,42 @@ class Command(BaseCommand):
             "devai": Team.objects.create(name="AI·개발팀", bu="AI·개발본부"),
             "fin": Team.objects.create(name="재무회계팀", bu="경영지원본부"),
         }
+
+    def _budgets(self, teams: dict[str, Team]) -> None:
+        """이번 달 팀 예산 — **한도만** 넣는다(사용액은 저장하지 않는다).
+
+        사용액은 그 팀·월 `Settlement` 집계로 산출되므로(`TeamBudgetView`), 정산이 0건인
+        갓 설치 상태에서는 자연히 0이 된다. 여기서 사용액을 흉내내면 화면이 실제 내역과
+        어긋난 숫자를 보여주게 된다.
+
+        **불변식 2개를 지킨다**(예산 화면 둘이 기대하는 형태):
+          ① 팀 총한도(`category=""` 행) = 과목 한도의 **합**
+          ② **6개 과목 전부** 행을 만든다 — 하나라도 빠지면 그 과목 지출이 총액에는
+             잡히는데 항목 카드엔 안 보여서 "항목 합 != 총액"이 된다(과거 실제 결함).
+
+        금액은 **제품 기본값**이다. 회사가 정한 예산이 아니므로 사람이 조정해야 하지만
+        아직 예산 쓰기 API가 없다 — 그때까지는 여기가 유일한 출처다.
+        """
+        this_month = timezone.localdate().strftime("%Y-%m")
+        #  과목별 기본 한도. 팀마다 쓰는 과목이 다르지만 갓 설치한 회사에 대해 우리가 아는
+        #  건 없다 — 전 팀에 같은 값을 주고 사람이 조정하게 둔다.
+        default_limits = {
+            Category.MEAL: 1_500_000,
+            Category.GATHERING: 2_000_000,
+            Category.MEETING: 1_000_000,
+            Category.TRIP: 3_000_000,
+            Category.ENTERTAIN: 3_000_000,
+            Category.SUPPLIES: 1_000_000,
+        }
+        missing = set(Category.values) - {c.value for c in default_limits}
+        assert not missing, f"예산 행이 없는 과목: {missing} (불변식 2)"
+
+        for team in teams.values():
+            for category, limit in default_limits.items():
+                TeamBudget.objects.create(team=team, year_month=this_month,
+                                          category=category, limit_amount=limit)
+            TeamBudget.objects.create(team=team, year_month=this_month, category="",
+                                      limit_amount=sum(default_limits.values()))
 
     def _users(self, teams: dict[str, Team]) -> None:
         """로그인 계정 — `seed`와 **같은 아이디·비밀번호**를 쓴다.

@@ -11,8 +11,23 @@
 // 그게 없을 때만 코드 원문으로 폴백한다(감추면 판정 근거가 사라진다).
 import type { RuleDecision, RuleFlagInfo, Settlement } from '../types/domain'
 
-/** 룰이 그냥 통과시키지 않은 판정 — 팀장이 봐야 하는 건. */
+/** 룰이 그냥 통과시키지 않은 판정 — 팀장이 **봐야** 하는 건. */
 const NEEDS_ATTENTION: RuleDecision[] = ['RETURN', 'REJECT', 'REVIEW']
+
+/**
+ * 팀 단계에서 **막아야** 하는 판정. `REVIEW`가 빠져 있는 게 핵심이다.
+ *
+ * 「봐야 한다」와 「막아야 한다」는 다른 축이다:
+ *   · `RETURN`/`REJECT` — 룰이 "보완이 필요하다/규정 위반이다"라고 **판단한** 것.
+ *     팀 단계에서 잡으면 회계까지 갔다 돌아오지 않는다.
+ *   · `REVIEW`          — 룰이 판단하지 못해 **회계 담당자에게 넘긴** 것.
+ *     팀이 여기서 막으면 정작 봐야 할 사람에게 영영 도달하지 못한다.
+ *
+ * 기본 게이트가 걸린 건을 전부 REVIEW로 보내도록 바뀌면서(2026-08-21) 이 구분이 없으면
+ * **모든 플래그 건이 팀에서 제출 불가**가 되고, 「이상 건 일괄 보완요청」이 회계가 볼 건을
+ * 지출자에게 되돌려보낸다.
+ */
+const BLOCKS_TEAM_SUBMIT: RuleDecision[] = ['RETURN', 'REJECT']
 
 const DECISION_LABEL: Record<RuleDecision, string> = {
   PASS: '통과', RETURN: '보완 필요', REJECT: '규정 위반', REVIEW: '검토 필요',
@@ -29,9 +44,16 @@ export const decisionLabel = (d: RuleDecision | '' | undefined) =>
 /** 아직 판정이 돌지 않은 건 — "정상"으로 접으면 안 된다(검사 안 한 것과 통과는 다르다). */
 export const notJudged = (s: Settlement) => !s.ruleDecision
 
-/** 룰이 걸어세운 건인가. 판정 전이면 false(모름) — 여기서 true로 접으면 전건이 이상건이 된다. */
+/** 룰이 걸어세운 건인가(표시·필터·카운트용). 판정 전이면 false(모름) — 여기서 true로 접으면 전건이 이상건이 된다. */
 export const needsAttention = (s: Settlement) =>
   !!s.ruleDecision && NEEDS_ATTENTION.includes(s.ruleDecision as RuleDecision)
+
+/** 팀 제출을 막아야 하는 건인가. **`REVIEW`는 막지 않는다** — 위 상수 주석 참조. */
+export const blocksTeamSubmit = (s: Settlement) =>
+  !!s.ruleDecision && BLOCKS_TEAM_SUBMIT.includes(s.ruleDecision as RuleDecision)
+
+/** 회계 검토로 넘어갈 건인가 — 팀은 그대로 올려보낸다(막지 않는다). */
+export const goesToReview = (s: Settlement) => s.ruleDecision === 'REVIEW'
 
 /** 판정 사유 — 서버가 라벨을 붙여 보낸 것을 그대로 쓴다. */
 export function judgementFlags(s: Settlement): RuleFlagInfo[] {

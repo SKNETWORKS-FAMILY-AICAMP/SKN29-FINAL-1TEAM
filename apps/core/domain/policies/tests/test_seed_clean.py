@@ -21,7 +21,7 @@ from domain.cards.models import Card
 from domain.policies import orchestrator
 from domain.policies.dsl import extract_vars
 from domain.policies.models import PolicyDoc, RuleGraph, RuleGraphStatus
-from domain.settlements.models import Settlement
+from domain.settlements.models import Category, Settlement, TeamBudget
 from domain.settlements.models import SettlementStatus as S
 from domain.transactions.models import Receipt, Transaction
 from domain.accounts.models import User
@@ -63,6 +63,32 @@ class SeedCleanStateTests(TestCase):
         for username in ("kim", "lead", "acc", "acclead", "exec"):
             self.assertTrue(User.objects.filter(username=username).exists(), username)
         self.assertTrue(self.client.login(username="acc", password="pass1234"))
+
+    def test_team_budgets_exist_for_this_month(self):
+        """예산 화면이 빈 껍데기가 아니려면 한도 행이 있어야 한다(사용액은 집계라 0이 정상)."""
+        month = timezone.localdate().strftime("%Y-%m")
+        rows = TeamBudget.objects.filter(year_month=month)
+        self.assertTrue(rows.exists())
+        # 팀마다 6개 과목 + 총액 1행.
+        for team_id in rows.values_list("team_id", flat=True).distinct():
+            per_team = rows.filter(team_id=team_id)
+            self.assertEqual(per_team.count(), len(Category.values) + 1)
+
+    def test_team_total_equals_sum_of_categories(self):
+        """불변식 ① — 총한도 != 과목 한도 합이면 대시보드가 원인 없이 어긋난다."""
+        month = timezone.localdate().strftime("%Y-%m")
+        for team_id in TeamBudget.objects.values_list("team_id", flat=True).distinct():
+            rows = TeamBudget.objects.filter(team_id=team_id, year_month=month)
+            total = rows.get(category="").limit_amount
+            self.assertEqual(total, sum(r.limit_amount for r in rows.exclude(category="")))
+
+    def test_every_category_has_a_budget_row(self):
+        """불변식 ② — 빠진 과목의 지출은 총액엔 잡히는데 항목 카드엔 안 보인다."""
+        month = timezone.localdate().strftime("%Y-%m")
+        for team_id in TeamBudget.objects.values_list("team_id", flat=True).distinct():
+            have = set(TeamBudget.objects.filter(team_id=team_id, year_month=month)
+                       .exclude(category="").values_list("category", flat=True))
+            self.assertEqual(have, set(Category.values))
 
     def test_cards_exist_so_registration_is_possible(self):
         """카드가 없으면 신규 지출 등록에서 카드를 못 골라 시연이 막힌다."""
