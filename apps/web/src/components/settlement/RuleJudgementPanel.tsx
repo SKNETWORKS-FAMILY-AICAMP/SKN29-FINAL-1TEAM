@@ -11,11 +11,10 @@
 //  ③ **라벨 사전을 여기 두지 않는다.** 심각도·해소주체·분류의 한글 표기는 서버가 실어
 //     보낸 값(`ruleFlagInfo`)을 그대로 쓴다. 프론트가 사전을 복사하면 반드시 어긋난다
 //     (실제로 백엔드 27개 vs 프론트 9개로 어긋나 있었다).
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react'
 import type { RuleDecision, RuleFlagInfo, Settlement } from '../../types/domain'
 import { decisionLabel } from '../../lib/judgement'
-import { fetchSettlementDetail } from '../../api/settlementService'
 
 /** 판정 배지 색 — 통과/보완/위반/검토를 한눈에 가른다. */
 const DECISION_TONE: Record<RuleDecision, { color: string; bg: string }> = {
@@ -45,29 +44,14 @@ interface RuleHit {
 
 export function RuleJudgementPanel({ item }: { item: Settlement }) {
   const [open, setOpen] = useState(false)
-  const [hits, setHits] = useState<RuleHit[] | null>(null)
-  const [loadingHits, setLoadingHits] = useState(false)
 
   const judged = Boolean(item.ruleDecision)
   const decision = item.ruleDecision as RuleDecision | undefined
   const flags = item.ruleFlagInfo ?? []
-
-  // 실행 경로(`ruleHits`)는 상세 응답에만 있다 — **펼쳤을 때 한 번만** 가져온다.
-  // 접혀 있는데 미리 불러오면 목록을 여는 것만으로 매번 상세 요청이 나간다.
-  useEffect(() => {
-    if (!open || !judged || hits !== null || loadingHits) return
-    setLoadingHits(true)
-    void (async () => {
-      try {
-        const detail = await fetchSettlementDetail(item)
-        setHits((detail as Settlement).ruleHits ?? [])
-      } catch {
-        setHits([])   // 실행 경로를 못 불러와도 플래그는 이미 보인다 — 패널을 죽이지 않는다.
-      } finally {
-        setLoadingHits(false)
-      }
-    })()
-  }, [open, judged, hits, loadingHits, item])
+  //  실행 경로는 이제 목록 응답에도 실린다(`SettlementSerializer.ruleHits`) — viewset이
+  //  `rule_hits__graph`를 이미 prefetch하므로 추가 쿼리가 없다. 예전엔 펼칠 때마다 상세를
+  //  다시 조회했다.
+  const hits = item.ruleHits ?? []
 
   const tone = decision ? DECISION_TONE[decision] : null
 
@@ -120,7 +104,7 @@ export function RuleJudgementPanel({ item }: { item: Settlement }) {
                 </div>
               )}
 
-              <ExecutionPath hits={hits} loading={loadingHits} />
+              <ExecutionPath hits={hits} />
 
               <div className="text-meta" style={{ marginTop: 12 }}>
                 사유 코드는 <b>왜 걸렸는지</b>에 대한 설명입니다 — 처리 상태를 정하는 건 판정
@@ -175,9 +159,8 @@ function FlagRow({ flag }: { flag: RuleFlagInfo }) {
 }
 
 /** 어느 그래프의 어느 노드를 지나 판정이 났는가 — 게이트와 과목 그래프가 각각 한 행이다. */
-function ExecutionPath({ hits, loading }: { hits: RuleHit[] | null; loading: boolean }) {
-  if (loading) return <div className="text-meta" style={{ marginTop: 12 }}>실행 경로를 불러오는 중…</div>
-  if (!hits || hits.length === 0) return null
+function ExecutionPath({ hits }: { hits: RuleHit[] }) {
+  if (hits.length === 0) return null
   return (
     <div style={{ marginTop: 14 }}>
       <div className="text-meta" style={{ marginBottom: 6 }}>실행 경로</div>

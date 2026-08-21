@@ -13,25 +13,29 @@
 과목별 세부 룰은 **고객이 자기 규정 문서를 올리면 Rule Agent가 생성**한다. 그래서 여기에
 접대·회식·출장 룰을 심어 두면 제품이 하지 않기로 한 일을 하는 셈이 된다.
 
-## 기본 게이트가 하는 일 = "막지 않고, 사람에게 넘긴다"
+## 기본 게이트가 하는 일 = "기본은 검토, 자동 통과는 예외"
 
 회사 규정이 아직 없는 상태에서도 참인 것만 넣었다. 한도·기한 같은 **정책 판단은 넣을 수
 없다** - 그건 회사 별표(`policy_tables`)에서 오는데 신규 설치엔 그게 없다. 없는 `policy.*`를
-참조하면 미해소 가드가 **전건을 REVIEW로 강등**시켜 게이트가 무용지물이 된다.
+참조하면 미해소 가드가 **전건을 REVIEW로 강등**시켜 신호가 사라진다.
 
-**초기 도입은 유연해야 한다.** 걸 이유가 분명한 것만 걸고, 걸린 건은 전부
-`REVIEW`(검토 필요)로 보낸다 - `RETURN`(지출자에게 되돌려보냄)은 회사가 무엇을 요구하는지
-정해지기도 전에 내릴 결정이 아니다. 회계 담당자가 큐에서 보고 필요하면 그때 보완요청한다.
+**통과를 기본값으로 두지 않는다.** 갓 설치한 회사에서 우리가 아는 건 거의 없는데, 모르는
+것을 통과로 접으면 게이트가 못 보는 축(심야 결제·이상 패턴·회사 규정)이 전부 조용히
+승인 대기로 흐른다. 그래서:
 
-거는 것은 넷뿐이고 나머지는 전부 `PASS`다:
+  · **기본은 `REVIEW`** - 사람이 본다. 다만 **왜 봐야 하는지 사유(플래그)를 달아서** 넘긴다.
+  · **`PASS`는 화이트리스트** - 증빙·목적·분류가 모두 채워져 있고, 업종을 확인했고
+    법령·세법 위험 업종이 아니며, 금액이 상한 미만일 때만. 자동 통과는 되돌리기 어려운
+    방향이라(틀리면 그냥 새는 돈) 확신이 있을 때만 낸다.
+  · **`RETURN`·`REJECT`는 내지 않는다** - 지출자에게 되돌려보내거나 반려하는 건 회사가
+    무엇을 요구하는지 정해진 뒤의 결정이다. 회계가 큐에서 보고 판단한다.
 
-  · 법령·세법 위험 업종   - 사행성·유흥·노래연습장. 어느 회사에나 해당하는 축
-  · 고액 증빙 누락        - 100만원 이상인데 증빙이 없을 때(소액 누락은 통과)
-  · 비용분류 미기재        - 어느 과목 룰을 적용할지 정할 수 없다
-  · 지출 목적 미기재       - 업무관련성 소명이 불가능하다
+사유 플래그는 **해당하는 것이 전부** 붙는다(금지업종·업종미확정·증빙누락·목적누락·
+분류미기재·실사용자미등록·고액). 사유마다 단말로 끊으면 첫 번째 하나만 남는다.
 
 심야·주말·반복결제 같은 **이상 신호는 일부러 넣지 않았다.** 그건 Risk Review Agent(이상탐지)의
-일이고, 회사마다 정상 범위가 달라 "범용 기본 룰"이 될 수 없다.
+일이고, 회사마다 정상 범위가 달라 "범용 기본 룰"이 될 수 없다 - 이제 기본이 REVIEW라
+그런 건도 어차피 사람을 거친다.
 **PG사 결제 여부**도 넣지 않았다 - 판정에 쓸 사실이 없다(조립기의 `tx.payment_method`는
 `"법인카드"` 고정이고 원장에도 PG 식별자가 없다). 지어내면 그대로 오판이 된다.
 
@@ -66,11 +70,12 @@ DEFAULT_GATE_NAME = "기본 정산 게이트"
 # ── 기본 게이트 임계값 ────────────────────────────────────────────────────
 #  회사 별표(`policy_tables`)가 없는 신규 설치에서 쓰는 **제품 기본값**이다. 정상이라면
 #  이런 숫자는 `policy.*`(별표 선해소)에서 와야 하지만, 갓 설치한 회사엔 그 표가 없다 —
-#  없는 `policy.*`를 참조하면 미해소 가드가 **전건을 REVIEW로 강등**해 게이트가 무용지물이 된다.
+#  없는 `policy.*`를 참조하면 미해소 가드가 **전건을 REVIEW로 강등**해 신호가 사라진다.
 #  고객이 규정 문서를 올리면 Rule Agent가 만드는 과목별 룰이 이 자리를 대체한다.
 
-#: 증빙 없이 넘어가지 않는 금액선. 소액 누락까지 잡으면 초기 도입에서 전건이 검토로 몰린다.
-HIGH_AMOUNT_EVIDENCE_MIN = 1_000_000
+#: 사람 확인 없이 승인 대기로 보낼 수 있는 금액 상한. 이 위는 무조건 사람이 본다.
+#  자동 통과는 **되돌리기 어려운 방향**이라 보수적으로 잡는다(틀리면 그냥 새는 돈이 된다).
+AUTO_PASS_MAX_AMOUNT = 300_000
 
 #: 법령·세법상 위험이 큰 업종 — 회사 규정이 아니라 **어느 회사에나 해당**하는 축이라 기본값에 둔다.
 #  (유흥주점=과세유흥장소, 사행성=도박, 노래연습장=유흥 유사) 손금 부인·사적사용 소명 대상이다.
@@ -83,116 +88,190 @@ LEGAL_RISK_MERCHANT_TYPES = [
 ]
 
 
+def _flag_node(key, title, condition, flag, priority, *, severity, when, then, description):
+    """사유만 붙이고 **판정하지 않는** 노드.
+
+    `PASS_THROUGH`라 순회가 멈추지 않는다 — 그래서 해당하는 사유가 **전부** 쌓인 채로
+    마지막 판정 노드까지 간다. 사유마다 단말로 끊으면 첫 번째 하나만 남아서, 검토자가
+    "이 건에 뭐가 걸렸나"를 한 번에 볼 수 없다.
+    """
+    return node(
+        key, title, condition, "PASS_THROUGH", description, priority,
+        severity=severity, flag=flag, when=when, then=then,
+    )
+
+
 def default_gate_spec() -> dict:
-    """DEFAULT GATE 그래프 — **막지 않고, 사람에게 넘긴다.**
+    """DEFAULT GATE 그래프 — **기본값은 검토다. 자동 통과는 예외다.**
 
-    ## 설계 원칙: 초기 도입은 유연하게
+    ## 왜 방향을 뒤집었나
 
-    갓 설치한 회사에는 판정에 쓸 사실도, 회사 규정도 거의 없다. 이 상태에서 게이트를
-    빡빡하게 걸면 두 가지가 동시에 일어난다 — 전건이 걸려서 게이트가 신호를 잃고,
-    지출자에게 **보완요청(RETURN)이 쏟아져** 되돌아온 건이 쌓인다.
+    이전 버전은 "걸리는 것만 걸고 나머지는 통과"였다. 그건 **통과를 기본값으로 두는 설계**라,
+    게이트가 못 보는 축(심야 결제·이상 패턴·회사 규정)이 전부 조용히 승인 대기로 흘렀다.
+    갓 설치한 회사에서 우리가 아는 건 거의 없는데, 모르는 것을 통과로 접은 셈이다.
 
-    그래서 기본 게이트는 이렇게 동작한다:
+    지금은 반대다:
 
-      · 걸린 건은 **전부 `REVIEW`(검토 필요)** 로 보낸다. `RETURN`을 쓰지 않는다 —
-        RETURN은 지출자에게 일을 되돌려보내는 결정이고, 회사가 무엇을 요구하는지
-        아직 정해지지 않은 상태에서 내릴 결정이 아니다. 회계 담당자가 큐에서 보고
-        필요하면 그때 보완요청하면 된다.
-      · **나머지는 전부 `PASS`.** 확인 안 된 것을 일단 걸어두는 대신, 걸 이유가 분명한
-        것만 건다.
+      · **기본은 `REVIEW`** — 사람이 본다. 다만 **왜 봐야 하는지 사유(플래그)를 달아서** 넘긴다.
+        검토자가 빈손으로 받지 않는다.
+      · **`PASS`는 화이트리스트** — 아래 조건을 **전부** 만족하는 건만. 자동 통과는
+        되돌리기 어려운 방향이라(틀리면 그냥 새는 돈) 확신이 있을 때만 낸다.
+      · **`RETURN`·`REJECT`는 내지 않는다** — 지출자에게 일을 되돌려보내거나 반려하는 건
+        회사가 무엇을 요구하는지 정해진 뒤의 결정이다. 회계가 큐에서 보고 판단한다.
 
-    ## 무엇을 거는가 (4가지)
+    ## 자동 통과(PASS) 조건 — 전부 만족해야 한다
 
-    ①  **법령·세법 위험 업종** — 사행성·유흥·노래연습장. 회사 규정이 아니라 어느
-        회사에나 해당하는 축이다.
-    ②  **고액 증빙 누락** — 1,000,000원 이상인데 증빙이 없는 건. 소액 누락은 통과시킨다.
-    ③  **비용분류 미기재** — 어느 과목 룰을 적용할지 정할 수 없다.
-    ④  **지출 목적 미기재** — 업무관련성 소명이 불가능하다.
+      ① 적격증빙이 있다
+      ② 지출 목적이 적혀 있다
+      ③ 비용분류가 **사람이 확정한 값**으로 채워져 있다
+      ④ 가맹점 업종을 확인했고, 법령·세법 위험 업종이 아니다
+      ⑤ 금액이 상한(`AUTO_PASS_MAX_AMOUNT`) 미만이다
+      ⑥ (엔진 가드) 참조한 사실 중 **모르는 값이 하나도 없다** — 공용카드 실사용자
+         미등록처럼 `None`인 사실이 있으면 자동 통과되지 않는다
 
-    ## 업종을 모르는 건은 왜 그냥 통과시키나
+    ⑥은 룰로 적지 않았다. 엔진의 미해소 가드가 이미 그 일을 한다(`engine._finalize`):
+    순회 중 참조한 경로에 `None`이 있으면 판정을 REVIEW로 낮춘다. 같은 규칙을 두 곳에
+    적으면 한쪽이 곧 뒤처진다.
 
-    엔진의 미해소 가드는 **노드가 참조한 경로가 `None`이면 판정을 REVIEW로 강등**한다.
+    ## 사유 플래그 (판정하지 않고 표시만)
+
+    `PASS_THROUGH` 노드들이 해당하는 사유를 **전부 쌓아서** 마지막 판정 노드까지 보낸다 —
+    금지업종·업종미확정·증빙누락·목적누락·분류미기재·실사용자미등록·고액. 사유마다 단말로
+    끊으면 첫 번째 하나만 남는다.
+
+    ## 업종을 모르는 건은 왜 분기로 우회하나
+
+    미해소 가드는 **노드가 참조한** 경로의 `None`을 본다(조건이 매치되는지와 무관하다).
     금지업종 노드가 `merchant.merchant_type`을 참조하는데 업종 미확정 건이 그 노드에
-    도달하면, 실제로 금지업종이 아니어도 전부 검토로 떨어진다(신규 설치엔 가맹점 캐시가
-    비어 있어 그게 대다수다).
-
-    그래서 **분기로 우회한다** — `n_industry_known`이 업종 확인 여부만 보고(이 필드는
-    조립기가 항상 채운다) 확인된 건만 금지업종 노드로 보낸다. 모르는 건은 그 노드를
-    아예 지나지 않으므로 강등되지 않는다. 「모르는 걸 안전하다고 단정」하는 것과는 다르다
-    — 업종 미확정은 Risk Review와 과목별 룰이 다시 볼 축이고, 기본 게이트가 전건을
-    붙잡을 이유가 아니다.
+    도달하면 `UNRESOLVED_FACT`가 붙는다 — 사유로는 `MERCHANT_UNRESOLVED`가 더 정확하다.
+    그래서 `n_industry_known`이 갈라서, 모르는 건은 전용 사유 노드로 보낸다.
 
     ## 넣지 않은 것
 
     · **PG사 결제 여부** — 판정에 쓸 사실이 없다. `tx.payment_method`는 조립기가
-      `"법인카드"` 하나로 고정해 넣고 있고, 원장(`Transaction`)에도 PG 식별자가 없다.
-      지어내면 그대로 오판이 되므로 룰을 만들지 않았다.
+      `"법인카드"` 하나로 고정해 넣고 있고 원장(`Transaction`)에도 PG 식별자가 없다.
     · **한도·기한** — 회사 별표에서 와야 하는 값이라 신규 설치엔 근거가 없다.
     · **심야·주말·반복 결제** — Risk Review(이상탐지)의 일이고, 회사마다 정상 범위가
-      달라 범용 기본값이 될 수 없다.
+      달라 범용 기본값이 될 수 없다. 다만 이제 기본이 REVIEW라 그런 건도 사람을 거친다.
     """
     nodes = [
         node(
             "n_industry_known", "업종 확인 여부",
             {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
-            # 판정을 내리지 않는 분기 노드 — 업종을 아는 건만 금지업종 검사로 보낸다.
-            "PASS_THROUGH", "업종을 확인한 건만 금지업종 검사로 보내는 분기", 0,
+            "PASS_THROUGH", "업종을 확인한 건과 못 한 건을 가르는 분기", 0,
             severity="INFO", flag="",
             when="가맹점 업종을 확인했는지 보는 갈림길입니다",
-            then="확인했으면 금지업종인지 보고, 확인하지 못했으면 이 검사를 건너뜁니다",
+            then="확인했으면 금지업종인지 보고, 못 했으면 '업종 미확정' 사유를 답니다",
         ),
-        node(
+        _flag_node(
             "n_forbidden", "법령·세법 위험 업종",
             {"in": [{"var": "merchant.merchant_type"}, LEGAL_RISK_MERCHANT_TYPES]},
-            "REVIEW", "사행성·유흥·노래연습장 등 법령·세법상 위험이 큰 업종 결제", 1,
-            severity="CRITICAL", flag="PROHIBITED_MERCHANT",
+            "PROHIBITED_MERCHANT", 1, severity="CRITICAL",
+            description="사행성·유흥·노래연습장 등 법령·세법상 위험이 큰 업종 결제",
             when="결제한 가게의 업종이 사행성업종·주점/유흥·노래연습장일 때",
-            then="법인카드로 쓰기 어려운 업종이라 회계 담당자가 직접 확인하도록 검토로 넘깁니다",
+            then="법인카드로 쓰기 어려운 업종이라는 사유를 달아 검토로 넘깁니다",
         ),
-        node(
-            "n_evidence_high", "고액 증빙 누락",
-            {"and": [
-                {">=": [{"var": "tx.amount"}, HIGH_AMOUNT_EVIDENCE_MIN]},
-                {"==": [{"var": "evidence.has_valid_receipt"}, False]},
-            ]},
-            "REVIEW", f"{HIGH_AMOUNT_EVIDENCE_MIN:,}원 이상인데 증빙이 확인되지 않은 건", 2,
-            severity="HIGH", flag="EVIDENCE_MISSING",
-            when=f"결제 금액이 {HIGH_AMOUNT_EVIDENCE_MIN:,}원 이상인데 영수증 등 증빙이 없을 때",
-            then="금액이 큰 건이라 증빙 없이 넘기지 않고 회계 담당자 검토로 넘깁니다",
+        _flag_node(
+            "n_industry_unresolved", "가맹점 업종 미확정",
+            True,   # 이 노드에 도달했다는 것 자체가 "업종을 모른다"는 뜻이다(위 분기의 NO_MATCH).
+            "MERCHANT_UNRESOLVED", 2, severity="LOW",
+            description="업종을 판별하지 못해 비용분류·금지업종 판단 근거가 없는 건",
+            when="가맹점 업종을 확인하지 못했을 때",
+            then="업종을 모른다는 사유를 달아 검토로 넘깁니다",
         ),
-        node(
-            "n_category", "비용분류 미기재",
-            {"==": [{"var": "category.value"}, None]},
-            "REVIEW", "비용분류가 선택되지 않아 적용할 과목 룰을 정할 수 없는 건", 3,
-            severity="MEDIUM", flag="CATEGORY_MISSING",
-            when="비용분류(식대·출장·접대 등)를 고르지 않았을 때",
-            then="어느 과목 규칙을 적용할지 정할 수 없어 담당자가 확인하도록 검토로 넘깁니다",
+        _flag_node(
+            "n_evidence", "증빙 누락",
+            {"==": [{"var": "evidence.has_valid_receipt"}, False]},
+            "EVIDENCE_MISSING", 3, severity="HIGH",
+            description="영수증 등 적격증빙이 확인되지 않은 건",
+            when="영수증 등 증빙이 등록되지 않았을 때",
+            then="증빙이 없다는 사유를 달아 검토로 넘깁니다",
         ),
-        node(
+        _flag_node(
             "n_purpose", "지출 목적 미기재",
             {"==": [{"var": "evidence.expense_purpose_missing"}, True]},
-            "REVIEW", "지출 목적·사유가 비어 있어 업무관련성을 소명할 수 없는 건", 4,
-            severity="MEDIUM", flag="PURPOSE_UNCLEAR",
+            "PURPOSE_UNCLEAR", 4, severity="MEDIUM",
+            description="지출 목적·사유가 비어 있어 업무관련성을 소명할 수 없는 건",
             when="지출 목적·사유를 적지 않았을 때",
-            then="업무와 어떤 관련이 있는지 확인할 수 없어 담당자가 보도록 검토로 넘깁니다",
+            then="목적이 없다는 사유를 달아 검토로 넘깁니다",
+        ),
+        _flag_node(
+            "n_category", "비용분류 미기재",
+            {"==": [{"var": "category.value"}, None]},
+            "CATEGORY_MISSING", 5, severity="MEDIUM",
+            description="비용분류가 확정되지 않아 적용할 과목 룰을 정할 수 없는 건",
+            when="비용분류(식대·출장·접대 등)가 확정되지 않았을 때",
+            then="분류가 비었다는 사유를 달아 검토로 넘깁니다",
+        ),
+        _flag_node(
+            "n_actual_user", "실사용자 미등록",
+            {"==": [{"var": "card.actual_user_recorded"}, False]},
+            "ACTUAL_USER_REQUIRED", 6, severity="MEDIUM",
+            description="팀·공용 카드 결제인데 실제로 쓴 사람이 기록되지 않은 건",
+            when="팀·공용 카드 결제의 실사용자가 등록되지 않았을 때",
+            then="누가 썼는지 모른다는 사유를 달아 검토로 넘깁니다",
+        ),
+        _flag_node(
+            "n_high_amount", "고액 지출",
+            {">=": [{"var": "tx.amount"}, AUTO_PASS_MAX_AMOUNT]},
+            "HIGH_AMOUNT", 7, severity="LOW",
+            description="자동 통과 상한을 넘어 사람이 확인해야 하는 금액대",
+            when="결제 금액이 자동 통과 상한 이상일 때",
+            then="금액이 커서 사람이 봐야 한다는 사유를 달아 검토로 넘깁니다",
         ),
         node(
-            "_GATE_PASS", "기본 게이트 통과",
-            True, "PASS", "기본 확인 항목에 걸리지 않은 건", 5,
+            "n_autopass_gate", "자동 통과 검사 가능 여부",
+            # 업종을 모르는 건은 자동 통과 자체가 불가능하다(요건 ④). 그런데 `n_auto_pass`가
+            # `merchant.merchant_type`을 참조하므로, 업종 미확정 건이 그 노드에 **도달만 해도**
+            # 미해소 가드가 `UNRESOLVED_FACT`를 붙인다 — 이미 `MERCHANT_UNRESOLVED`로 더
+            # 정확히 표시한 사유라 중복이다. 그래서 도달하기 전에 갈라 보낸다.
+            {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
+            "PASS_THROUGH", "업종을 확인한 건만 자동 통과 요건 검사로 보내는 분기", 8,
             severity="INFO", flag="",
-            when="위 확인 항목에 하나도 해당하지 않을 때",
-            then="기본 검사를 통과한 것으로 보고 비용분류별 룰로 넘어갑니다",
+            when="자동 통과 요건을 따져볼 수 있는 건인지 보는 갈림길입니다",
+            then="업종을 확인한 건만 요건 검사로 보내고, 나머지는 바로 검토로 넘깁니다",
+        ),
+        node(
+            "n_auto_pass", "자동 통과 요건",
+            # **화이트리스트다.** 하나라도 어긋나면 검토로 간다. 위 사유 노드들과 조건이
+            # 겹치지만 합칠 수 없다 — 플래그는 상태머신을 움직이지 않는다는 불변식 때문에
+            # 엔진이 "지금까지 붙은 플래그"를 조건으로 읽을 수 없다(그게 설계 의도다).
+            {"and": [
+                {"==": [{"var": "evidence.has_valid_receipt"}, True]},
+                {"==": [{"var": "evidence.expense_purpose_missing"}, False]},
+                {"!=": [{"var": "category.value"}, None]},
+                {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
+                {"not": {"in": [{"var": "merchant.merchant_type"}, LEGAL_RISK_MERCHANT_TYPES]}},
+                {"<": [{"var": "tx.amount"}, AUTO_PASS_MAX_AMOUNT]},
+            ]},
+            "PASS", "기록이 완결됐고 위험 신호가 없어 승인 대기로 바로 보내는 건", 9,
+            severity="INFO", flag="",
+            when="증빙·목적·분류가 모두 채워져 있고, 업종을 확인했으며 위험 업종이 아니고, "
+                 "금액이 자동 통과 상한 미만일 때",
+            then="사람이 따로 볼 것이 없다고 보고 승인 대기로 바로 넘깁니다",
+        ),
+        node(
+            "_GATE_REVIEW", "회계 검토 필요",
+            True, "REVIEW", "자동 통과 요건을 다 채우지 못해 사람이 확인해야 하는 건", 10,
+            severity="INFO", flag="",
+            when="자동 통과 요건을 하나라도 채우지 못했을 때",
+            then="위에 붙은 사유와 함께 회계 담당자 검토로 넘깁니다",
         ),
     ]
-    # 선형 체인이되 첫 노드만 분기다 — 업종을 모르면 금지업종 노드를 **지나지 않는다**
-    # (지나면 미해소 가드가 강등한다, 위 docstring 참조).
+    #  사유 노드는 **매치되든 아니든 다음으로 흐른다**(PASS_THROUGH) — 사유가 전부 쌓인다.
+    #  판정은 마지막 두 노드가 한다: 요건 충족이면 PASS, 아니면 REVIEW.
     routings = [
-        *branch("n_industry_known", match_to="n_forbidden", no_match_to="n_evidence_high"),
-        *branch("n_forbidden", match_to="", no_match_to="n_evidence_high"),
-        *branch("n_evidence_high", match_to="", no_match_to="n_category"),
-        *branch("n_category", match_to="", no_match_to="n_purpose"),
-        *branch("n_purpose", match_to="", no_match_to="_GATE_PASS"),
-        *branch("_GATE_PASS", match_to="", no_match_to=""),
+        *branch("n_industry_known", match_to="n_forbidden", no_match_to="n_industry_unresolved"),
+        *branch("n_forbidden", match_to="n_evidence", no_match_to="n_evidence"),
+        *branch("n_industry_unresolved", match_to="n_evidence", no_match_to="n_evidence"),
+        *branch("n_evidence", match_to="n_purpose", no_match_to="n_purpose"),
+        *branch("n_purpose", match_to="n_category", no_match_to="n_category"),
+        *branch("n_category", match_to="n_actual_user", no_match_to="n_actual_user"),
+        *branch("n_actual_user", match_to="n_high_amount", no_match_to="n_high_amount"),
+        *branch("n_high_amount", match_to="n_autopass_gate", no_match_to="n_autopass_gate"),
+        *branch("n_autopass_gate", match_to="n_auto_pass", no_match_to="_GATE_REVIEW"),
+        *branch("n_auto_pass", match_to="", no_match_to="_GATE_REVIEW"),
+        *branch("_GATE_REVIEW", match_to="", no_match_to=""),
     ]
     return {"nodes": nodes, "routings": routings, "entry_node_key": "n_industry_known"}
 

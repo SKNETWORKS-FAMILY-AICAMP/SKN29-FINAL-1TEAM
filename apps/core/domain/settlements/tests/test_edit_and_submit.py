@@ -15,6 +15,7 @@
   ⑤ 빈 분류로 확정값을 지우지 않는다 — 화면 실수로 확정 분류가 날아가면 안 된다.
 """
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TestCase
@@ -25,7 +26,9 @@ from domain.accounts.models import Role, Team, User
 from domain.cards.models import Card, CardType
 from domain.policies import orchestrator
 from domain.policies.context_builder import build_rule_context
+from domain.settlements import services
 from domain.settlements.models import Category, Settlement, SettlementStatus as S
+from domain.settlements.serializers import SettlementSerializer
 from domain.transactions.models import Receipt, Transaction
 
 
@@ -172,3 +175,63 @@ class EditThenJudgeTests(TestCase):
         self.assertEqual(result.decision, "PASS")
         self.assertNotIn("CATEGORY_MISSING", result.flags)
         self.assertNotIn("PURPOSE_UNCLEAR", result.flags)
+
+
+class RiskReviewScopeTests(TestCase):
+    """**룰 판정으로 통과한 건은 Risk Review를 거치지 않는다.**
+
+    이상탐지·RAG 검증은 `IN_REVIEW`로 넘어간 건에 붙는 것이라(`risk_review.schedule`),
+    `PASS → PENDING_CONFIRM`으로 직행한 건에는 `anomaly_score`가 **아예 없다**.
+    그 자리를 0으로 그리면 "이상 없음 0점"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다
+    — 그래서 서버가 `riskReviewed`로 「거쳤는지」를 따로 알려준다.
+    """
+
+    def setUp(self):
+        call_command("seed_clean", verbosity=0)
+        self.user = User.objects.get(username="kim")
+        self.card = Card.objects.filter(card_type=CardType.PERSONAL).first()
+
+    def _settlement(self, **kwargs):
+        tx = Transaction.objects.create(card=self.card, merchant="카페",
+                                        amount=Decimal(kwargs.pop("amount", "8000")),
+                                        ts=timezone.now())
+        if kwargs.pop("receipt", True):
+            Receipt.objects.create(matched_tx=tx, status="MATCHED", file_ref="r.jpg")
+        defaults = dict(
+            transaction=tx, submitted_by=self.user, team=self.user.team, status=S.DRAFT,
+            category=Category.MEAL, ai_category=Category.MEAL, ai_suggested=False,
+            merchant_industry="카페", merchant_industry_code="CAFE", purpose="팀 회의 음료",
+        )
+        defaults.update(kwargs)
+        return Settlement.objects.create(**defaults)
+
+    def test_자동_통과_건은_risk_review를_돌리지_않는다(self):
+        settlement = self._settlement()
+        with patch("domain.settlements.risk_review.run") as run:
+            with self.captureOnCommitCallbacks(execute=True):
+                services.raise_to_team(settlement, self.user)
+                services.submit(settlement, self.user)
+                services.judge(settlement, self.user)
+            run.assert_not_called()
+
+        settlement.refresh_from_db()
+        self.assertEqual(settlement.status, S.PENDING_CONFIRM)
+        self.assertFalse(settlement.risk_reviews.exists())
+        # 화면이 「점수 0」과 「점수 없음」을 구분할 수 있어야 한다.
+        data = SettlementSerializer(settlement).data
+        self.assertFalse(data["riskReviewed"])
+        self.assertIsNone(data["anomalyScore"])
+        # 대신 판정 경로가 근거로 남는다(확정 버튼을 근거 없이 누르지 않게).
+        self.assertTrue(data["ruleHits"])
+        self.assertEqual(data["ruleHits"][0]["decision"], "PASS")
+
+    def test_검토로_간_건은_risk_review를_돌린다(self):
+        settlement = self._settlement(receipt=False)   # 증빙 없음 → 자동 통과 요건 미달
+        with patch("domain.settlements.risk_review.run") as run:
+            with self.captureOnCommitCallbacks(execute=True):
+                services.raise_to_team(settlement, self.user)
+                services.submit(settlement, self.user)
+                services.judge(settlement, self.user)
+            run.assert_called_once()
+        settlement.refresh_from_db()
+        self.assertEqual(settlement.status, S.IN_REVIEW)

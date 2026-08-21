@@ -140,6 +140,14 @@ export interface Settlement {
    */
   ruleFlagInfo?: RuleFlagInfo[]
   ruleJudgedAt?: string | null
+  /**
+   * Risk Review(이상탐지 + RAG 내규검증)를 **거쳤는가**.
+   *
+   * 룰 판정 `PASS`로 승인 대기에 바로 온 건은 거치지 않는다(`risk_review.schedule`이
+   * `IN_REVIEW`만 예약한다). 이 값이 없으면 화면이 「점수가 없는 것」과 「0점인 것」을
+   * 구분하지 못해 아무도 안 본 건을 "이상 없음 0점"으로 그린다.
+   */
+  riskReviewed?: boolean
 }
 
 /** 룰 엔진 판정. 사람의 결정(APPROVE/RETURN/REJECT)이나 AI 권고와는 다른 축이다. */

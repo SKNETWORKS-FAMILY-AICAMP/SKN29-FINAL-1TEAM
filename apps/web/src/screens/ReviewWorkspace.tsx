@@ -7,6 +7,7 @@ import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
+import { RulePassedNotice } from '../components/settlement/RulePassedNotice'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -277,7 +278,9 @@ export function ReviewWorkspace() {
             )}
             <ul className="review-list">
               {listed.map((i) => {
-                const score = Math.round(i.anomalyScore * 100)
+                // Risk Review를 거치지 않은 건(룰 PASS로 승인 대기 직행)은 **점수가 없다**.
+                // 0으로 그리면 "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
+                const score = i.riskReviewed ? Math.round(i.anomalyScore * 100) : null
                 const reco = recoLabel(i.aiRecommendation)
                 return (
                   <li
@@ -297,7 +300,13 @@ export function ReviewWorkspace() {
                       aria-label={`${i.user} 선택`}
                     />
                     {/* 위험도: 색 + 숫자만 (~30 정상 / 30~60 주의 / 60~ 고위험) */}
-                    <span className="risk-score" style={{ color: riskColor(score) }}>{score}</span>
+                    <span
+                      className="risk-score"
+                      style={{ color: score === null ? 'var(--muted)' : riskColor(score) }}
+                      title={score === null ? '이상탐지를 거치지 않은 건입니다(룰 판정 통과)' : undefined}
+                    >
+                      {score ?? '-'}
+                    </span>
                     <div className="review-item-body">
                       <div className="review-item-top">
                         <div className="target">
@@ -437,19 +446,29 @@ export function ReviewWorkspace() {
 
               {/* ───────── 우: ①이상탐지 + ②RAG검증 + 액션 ───────── */}
               <div className="stack">
-                {/* ① 이상탐지 결과 */}
+                {/* ① 이상탐지 결과 — Risk Review를 거친 건에만 값이 있다. */}
                 <div className="card">
                   <div className="card-head">
                     <h3>① 이상탐지 결과</h3>
-                    <span className="tag" style={{ color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }}>anomaly {sel.anomalyScore.toFixed(2)}</span>
+                    <span className="tag" style={sel.riskReviewed
+                      ? { color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }
+                      : { color: 'var(--muted)' }}>
+                      anomaly {sel.riskReviewed ? sel.anomalyScore.toFixed(2) : '-'}
+                    </span>
                   </div>
                   <div className="card-body">
-                    <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
-                    <div className="stack">
-                      {sel.featureContribs.map((f) => (
-                        <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
-                      ))}
-                    </div>
+                    {sel.riskReviewed ? (
+                      <>
+                        <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
+                        <div className="stack">
+                          {sel.featureContribs.map((f) => (
+                            <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <RulePassedNotice item={sel} />
+                    )}
                   </div>
                 </div>
 

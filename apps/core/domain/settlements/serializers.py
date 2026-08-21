@@ -79,6 +79,13 @@ class SettlementSerializer(serializers.ModelSerializer):
     #  프론트에 같은 사전을 복사해 두면 곧 어긋난다(실제로 27 vs 9로 어긋나 있었다).
     ruleFlagInfo = serializers.SerializerMethodField()
     ruleJudgedAt = serializers.DateTimeField(source="rule_judged_at", read_only=True)
+    # 판정 경로(그래프·노드) — viewset이 이미 `rule_hits__graph`를 prefetch하므로 목록에
+    #  실어도 추가 쿼리가 없다. 검토 화면이 "왜 이 결론인가"를 상세 조회 없이 보여준다.
+    ruleHits = serializers.SerializerMethodField()
+    # **Risk Review(이상탐지+RAG)를 거쳤는가.** 룰 판정 PASS로 승인 대기에 바로 온 건은
+    #  거치지 않는다(`risk_review.schedule`은 IN_REVIEW만 예약한다). 이 값이 없으면 화면이
+    #  `anomaly_score`가 없는 것과 **0점인 것**을 구분하지 못해 "정상 0점"으로 그린다.
+    riskReviewed = serializers.SerializerMethodField()
 
     class Meta:
         model = Settlement
@@ -89,6 +96,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "anomalyScore", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
+            "ruleHits", "riskReviewed",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -174,6 +182,24 @@ class SettlementSerializer(serializers.ModelSerializer):
         labels = self._flag_labels()
         return [describe(flag, labels) for flag in (obj.rule_flags or [])]
 
+    def get_ruleHits(self, obj):
+        return [
+            {
+                "graph": hit.graph.name if hit.graph_id else None,
+                "graphVersion": hit.graph_version,
+                "path": hit.path,
+                "decision": hit.decision,
+                # 사유 코드. 빠져 있어서 화면이 "무슨 판정인지"는 알아도 "왜"를 몰랐다.
+                "flags": hit.flags,
+                "confidence": hit.confidence,
+            }
+            for hit in obj.rule_hits.select_related("graph").all()
+        ]
+
+
+    def get_riskReviewed(self, obj):
+        return self._risk(obj) is not None
+
     def get_evalContext(self, obj):
         """검토 화면이 보는 "판정 시점 사실" — **가장 최근 판정**의 스냅샷이다.
 
@@ -184,17 +210,45 @@ class SettlementSerializer(serializers.ModelSerializer):
         return latest.eval_context if latest and latest.eval_context else None
 
 
+class AttachmentSerializer(serializers.ModelSerializer):
+    """증빙 첨부 1건 + 판독 결과.
+
+    `extracted`(dot-path→값)를 화면이 그대로 읽을 수 있게 **경로를 감추지 않는다** —
+    "이 문서에서 무엇을 읽어냈는가"가 판정 근거라, 요약해 버리면 사람이 대조할 수 없다.
+    """
+    kindLabel = serializers.CharField(source="get_kind_display", read_only=True)
+    originalName = serializers.CharField(source="original_name", read_only=True)
+    mimeType = serializers.CharField(source="mime_type", read_only=True)
+    uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
+    extractionStatus = serializers.CharField(source="extraction_status", read_only=True)
+    extractionStatusLabel = serializers.CharField(source="get_extraction_status_display", read_only=True)
+    fieldConfidence = serializers.JSONField(source="field_confidence", read_only=True)
+    evidenceSpans = serializers.JSONField(source="evidence_spans", read_only=True)
+    extractorVersion = serializers.CharField(source="extractor_version", read_only=True)
+    extractedAt = serializers.DateTimeField(source="extracted_at", read_only=True)
+
+    class Meta:
+        from .attachments import Attachment
+
+        model = Attachment
+        fields = [
+            "id", "kind", "kindLabel", "originalName", "mimeType", "uploadedAt",
+            "extractionStatus", "extractionStatusLabel",
+            "extracted", "fieldConfidence", "evidenceSpans",
+            "extractorVersion", "extractedAt", "error",
+        ]
+
 class SettlementDetailSerializer(SettlementSerializer):
     """상세: Audit Trail(상태 이력) + Risk(이상탐지+RAG) 포함."""
     events = SettlementEventSerializer(many=True, read_only=True)
     risk = serializers.SerializerMethodField()
     additionalEvidence = serializers.SerializerMethodField()
     facts = serializers.SerializerMethodField()
-    ruleHits = serializers.SerializerMethodField()
 
     class Meta(SettlementSerializer.Meta):
+        # `ruleHits`는 베이스로 올렸다 — 검토 화면이 목록에서 바로 판정 경로를 본다.
         fields = SettlementSerializer.Meta.fields + [
-            "events", "risk", "additionalEvidence", "facts", "ruleHits",
+            "events", "risk", "additionalEvidence", "facts",
         ]
 
     def get_risk(self, obj):
@@ -233,46 +287,3 @@ class SettlementDetailSerializer(SettlementSerializer):
                 "status": obj.status,
             },
         }
-
-    def get_ruleHits(self, obj):
-        return [
-            {
-                "graph": hit.graph.name if hit.graph_id else None,
-                "graphVersion": hit.graph_version,
-                "path": hit.path,
-                "decision": hit.decision,
-                # 사유 코드. 빠져 있어서 화면이 "무슨 판정인지"는 알아도 "왜"를 몰랐다.
-                "flags": hit.flags,
-                "confidence": hit.confidence,
-            }
-            for hit in obj.rule_hits.select_related("graph").all()
-        ]
-
-
-class AttachmentSerializer(serializers.ModelSerializer):
-    """증빙 첨부 1건 + 판독 결과.
-
-    `extracted`(dot-path→값)를 화면이 그대로 읽을 수 있게 **경로를 감추지 않는다** —
-    "이 문서에서 무엇을 읽어냈는가"가 판정 근거라, 요약해 버리면 사람이 대조할 수 없다.
-    """
-    kindLabel = serializers.CharField(source="get_kind_display", read_only=True)
-    originalName = serializers.CharField(source="original_name", read_only=True)
-    mimeType = serializers.CharField(source="mime_type", read_only=True)
-    uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
-    extractionStatus = serializers.CharField(source="extraction_status", read_only=True)
-    extractionStatusLabel = serializers.CharField(source="get_extraction_status_display", read_only=True)
-    fieldConfidence = serializers.JSONField(source="field_confidence", read_only=True)
-    evidenceSpans = serializers.JSONField(source="evidence_spans", read_only=True)
-    extractorVersion = serializers.CharField(source="extractor_version", read_only=True)
-    extractedAt = serializers.DateTimeField(source="extracted_at", read_only=True)
-
-    class Meta:
-        from .attachments import Attachment
-
-        model = Attachment
-        fields = [
-            "id", "kind", "kindLabel", "originalName", "mimeType", "uploadedAt",
-            "extractionStatus", "extractionStatusLabel",
-            "extracted", "fieldConfidence", "evidenceSpans",
-            "extractorVersion", "extractedAt", "error",
-        ]
