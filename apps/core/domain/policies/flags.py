@@ -250,12 +250,21 @@ def label_map() -> dict[str, dict]:
 
     프론트에 같은 목록을 복사해 두면 곧 어긋난다 — 실제로 어긋나 있었다(백엔드 27개 vs
     프론트 9개). 호출부는 요청당 한 번만 부르고 결과를 재사용한다.
+
+    **분류·심각도·해소주체의 한글 표기까지 함께 싣는다.** 코드(`HIGH`·`SPENDER`)만 보내면
+    화면이 그 사전을 또 복사하게 되고, 그게 정확히 이 파일이 막으려던 상황이다.
     """
     from .models import RuleFlag
 
+    cat, sev, own = dict(FlagCategory.choices), dict(FlagSeverity.choices), dict(FlagOwner.choices)
     return {
-        r.code: {"code": r.code, "label": r.label, "severity": r.severity, "owner": r.owner,
-                 "category": r.category}
+        r.code: {
+            "code": r.code, "label": r.label, "description": r.description,
+            "severity": r.severity, "severityLabel": sev.get(r.severity, r.severity),
+            "owner": r.owner, "ownerLabel": own.get(r.owner, r.owner),
+            "category": r.category, "categoryLabel": cat.get(r.category, r.category),
+            "isSystem": r.is_system,
+        }
         for r in RuleFlag.objects.filter(is_active=True)
     }
 
@@ -274,8 +283,13 @@ def describe(flag: str, labels: dict[str, dict] | None = None) -> dict:
         label = f"{label}({arg})"
     return {
         "code": code, "arg": arg, "flag": flag, "label": label,
+        "description": (row or {}).get("description", ""),
         "severity": (row or {}).get("severity", ""),
+        "severityLabel": (row or {}).get("severityLabel", ""),
         "owner": (row or {}).get("owner", ""),
+        "ownerLabel": (row or {}).get("ownerLabel", ""),
         "category": (row or {}).get("category", ""),
+        "categoryLabel": (row or {}).get("categoryLabel", ""),
+        "isSystem": (row or {}).get("isSystem", False),
         "known": row is not None,
     }

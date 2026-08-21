@@ -156,10 +156,18 @@ export interface RuleFlagInfo {
   /** 원본 문자열(`code` 또는 `code:arg`) — 그대로 서버에 되돌릴 때 쓴다. */
   flag: string
   label: string
+  /** 레지스트리 설명문(`policies/flags.py`). 미등록 코드는 빈 문자열. */
+  description?: string
   severity: string
+  /** 한글 표기. **서버가 준다** — 프론트가 코드→라벨 사전을 또 복사하면 곧 어긋난다. */
+  severityLabel?: string
   /** 해소 주체: SPENDER / TEAM_LEAD / APPROVER / ACCOUNTING / SYSTEM */
   owner: string
+  ownerLabel?: string
   category: string
+  categoryLabel?: string
+  /** 엔진이 스스로 붙인 플래그인가(룰이 만든 게 아니다). */
+  isSystem?: boolean
   known: boolean
 }
 

@@ -25,6 +25,7 @@ import {
 } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
+import { RuleJudgementPanel } from './RuleJudgementPanel'
 import type { Attachment } from '../../api/attachmentService'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
@@ -535,6 +536,10 @@ export function SettlementDetailModal({
               </div>
             )}
           </div>
+
+          {/* 룰 엔진 판정 — fact.json이 "무엇을 입력했나"라면 여기는 "그래서 어떻게 판정됐나"다.
+              신규 등록 중에는 판정 대상 자체가 없으므로 저장 후부터 보인다. */}
+          {!isCreate && item && <RuleJudgementPanel item={item} />}
 
           {/* AI 코멘트 로그 */}
           <div className="card">
