@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { teamBudget } from '../data/mock'
-import { blocksTeamSubmit, judgementTags, needsAttention, notJudged } from '../lib/judgement'
+import { judgementTags, needsAttention, notJudged } from '../lib/judgement'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
@@ -97,12 +97,10 @@ export function TeamAggregation() {
   }, [teamMonthly])
 
   // ② 취합 처리 버튼용 — 지금 취합 대기(TEAM_COLLECTING) 중인 건만.
-  //  **막는 것과 보는 것을 가른다**: `blocked`(RETURN/REJECT)만 제출을 멈추고, 회계에
-  //  넘길 `REVIEW` 건은 그대로 제출한다 — 팀이 막으면 검토자에게 도달하지 못한다.
+  //  이상 건 = 보완요청·반려 판정. 검토(REVIEW)로 갈 건은 정상 건과 함께 그대로 제출된다.
   const collectingStats = useMemo(() => {
-    const blocked = collecting.filter((i) => blocksTeamSubmit(i)).length
-    const flagged = collecting.filter((i) => needsAttention(i)).length
-    return { blocked, flagged, submittable: collecting.length - blocked }
+    const anomalous = collecting.filter((i) => needsAttention(i)).length
+    return { anomalous, normal: collecting.length - anomalous }
   }, [collecting])
 
   const toggleMember = (name: string) => {
@@ -128,14 +126,11 @@ export function TeamAggregation() {
     setBusy(false)
   }
 
-  //  회계 검토로 갈 건(`REVIEW`)도 함께 제출한다 — 그게 그 건의 다음 단계다.
-  const submitSubmittable = () => submitIds(
-    visibleAll.filter((i) => !blocksTeamSubmit(i) && i.status === 'TEAM_COLLECTING').map((i) => i.id),
+  const submitNormalOnly = () => submitIds(
+    visibleAll.filter((i) => !needsAttention(i) && i.status === 'TEAM_COLLECTING').map((i) => i.id),
   )
-  const requestCorrections = async () => {
-    // 보완요청은 **룰이 보완·위반으로 판단한 건**에만. `REVIEW`를 여기 섞으면 회계가 볼
-    // 건을 지출자에게 되돌려보내게 된다.
-    const targets = visibleAll.filter((i) => blocksTeamSubmit(i) && i.status === 'TEAM_COLLECTING')
+  const requestAnomalyCorrections = async () => {
+    const targets = visibleAll.filter((i) => needsAttention(i) && i.status === 'TEAM_COLLECTING')
     if (targets.length === 0) return
     setBusy(true)
     const results = await Promise.all(targets.map(async (item) => ({ id: item.id, status: await decideTeamSettlement(item.id, 'RETURN', `자동 보완요청: ${judgementTags(item).join(', ')}`) })))
@@ -161,7 +156,7 @@ export function TeamAggregation() {
         <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1>팀 취합·제출 · {teamName}</h1>
-            <div className="sub">룰이 걸어세운 건만 강조됩니다. <b>보완·위반</b>으로 판단한 건만 제출이 막히고, <b>검토 필요</b>는 회계 담당자가 볼 수 있게 그대로 제출됩니다.</div>
+            <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건(보완요청·반려)은 개별 처리하고 나머지는 일괄 제출합니다.</div>
           </div>
           <span className="badge" style={{ color: 'var(--tone-red)', background: 'var(--tone-red-bg)', padding: '6px 14px', fontSize: 13 }}>마감 D-2</span>
         </div>
@@ -175,7 +170,7 @@ export function TeamAggregation() {
         <div className="kpi-grid">
           <KpiCard flat={false} accent="var(--accent-purple)" label="지출 증빙 인원" value={stats.members} unit="명" />
           <KpiCard accent="var(--accent-amber)" label="총 사용액" value={won(stats.total)} />
-          <KpiCard accent="var(--accent-red)" warn label="확인 필요" value={stats.anomalous} unit="건" />
+          <KpiCard accent="var(--accent-red)" warn label="이상 건" value={stats.anomalous} unit="건" />
           <KpiCard accent="var(--accent-green)" label="정상 건" value={stats.normal} unit="건" />
         </div>
         <div className="text-meta" style={{ margin: '10px 0 0', color: 'var(--sidebar-text-muted)' }}>
@@ -267,14 +262,14 @@ export function TeamAggregation() {
         </details>
         <label className="row" style={{ gap: 6 }}>
           <input type="checkbox" checked={onlyAnomaly} onChange={(e) => setOnlyAnomaly(e.target.checked)} />
-          확인 필요만 보기
+          이상건만 보기
         </label>
         <div className="spacer" />
-        <button className="btn return" disabled={busy || collectingStats.blocked === 0} onClick={requestCorrections}>
-          보완요청 ({collectingStats.blocked}건)
+        <button className="btn return" disabled={busy || collectingStats.anomalous === 0} onClick={requestAnomalyCorrections}>
+          이상건 자동 보완요청 ({collectingStats.anomalous}건)
         </button>
-        <button className="btn primary" disabled={busy || collectingStats.submittable === 0} onClick={submitSubmittable}>
-          일괄제출 ({collectingStats.submittable}건)
+        <button className="btn primary" disabled={busy || collectingStats.normal === 0} onClick={submitNormalOnly}>
+          이상건 제외 일괄제출 ({collectingStats.normal}건)
         </button>
       </div>
 
@@ -283,7 +278,7 @@ export function TeamAggregation() {
           <div className="card-body text-meta">
             {listedAll.length === 0
               ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
-              : '확인이 필요한 건이 없습니다.'}
+              : '이상 건이 없습니다.'}
           </div>
         </div>
       )}

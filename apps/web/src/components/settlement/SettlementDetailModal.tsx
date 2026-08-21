@@ -13,7 +13,7 @@ import {
   CARD_TYPE_LABEL, CATEGORIES,
   type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
-import { blocksTeamSubmit } from '../../lib/judgement'
+import { needsAttention } from '../../lib/judgement'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
@@ -113,10 +113,9 @@ export function SettlementDetailModal({
   const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
   // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
   const canDelete = !isCreate && ['DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED'].includes(item?.status ?? '')
-  // 팀 취합 뷰에서 제출을 막는 건 — 룰이 **보완/위반이라고 판단한** 것(RETURN/REJECT)뿐이다.
-  //  `REVIEW`는 룰이 판단하지 못해 회계에 넘긴 것이라 팀이 막으면 정작 봐야 할 사람에게
-  //  도달하지 못한다(`lib/judgement.ts`의 두 상수 주석 참조).
-  const isBlocked = !isCreate && item ? blocksTeamSubmit(item) : false
+  // 이상 건(보완요청·반려 판정)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리한다.
+  //  검토(REVIEW)로 갈 건은 이상 건이 아니다(회계가 볼 일이라 팀은 그대로 올려보낸다).
+  const isAnomaly = !isCreate && item ? needsAttention(item) : false
 
   // fact.json — 현재 입력값으로 자동 생성(자동생성/자동갱신)
   const fact = useMemo(() => ({
@@ -354,10 +353,10 @@ export function SettlementDetailModal({
           <button
             className="btn primary"
             onClick={submit}
-            disabled={pending || isBlocked}
-            title={isBlocked ? '룰이 보완·위반으로 판단한 건입니다. 팀 보완요청·팀 반려로 처리하세요.' : undefined}
+            disabled={pending || isAnomaly}
+            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 팀 보완요청·팀 반려로 처리하세요.' : undefined}
           >
-            {isBlocked ? '제출 불가 (보완·위반)' : '제출(SUBMITTED)'}
+            {isAnomaly ? '제출 불가 (이상 건)' : '제출(SUBMITTED)'}
           </button>
         </>
       ) : canReview ? (
@@ -387,10 +386,10 @@ export function SettlementDetailModal({
             <button
               className="btn primary"
               onClick={submit}
-              disabled={pending || (isTeamView && isBlocked)}
-              title={isTeamView && isBlocked ? '룰이 보완·위반으로 판단한 건입니다.' : undefined}
+              disabled={pending || (isTeamView && isAnomaly)}
+              title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
             >
-              {isTeamView && isBlocked ? '제출 불가 (보완·위반)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
+              {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
             </button>
           </>
         )

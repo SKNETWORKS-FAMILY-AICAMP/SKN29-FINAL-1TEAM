@@ -8,6 +8,7 @@ import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
 import { RulePassedNotice } from '../components/settlement/RulePassedNotice'
+import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -194,6 +195,14 @@ export function ReviewWorkspace() {
 
   const modalItem = modal ? source.find((i) => i.id === modal.ids[0]) : undefined
 
+  //  빈 상태 문구는 한 곳에서 만든다 — 목록·상세·액션이 서로 다른 말을 하면 사용자가
+  //  "목록이 빈 건가, 선택을 안 한 건가"를 화면마다 다시 판단해야 한다.
+  const emptyMessage = source.length === 0
+    ? (isHistory ? `${monthLabel(month)}에 확정·보완요청·반려된 내역이 없습니다.`
+      : isConfirm ? '확정 대기 중인 건이 없습니다.' : '검토 대기 중인 건이 없습니다.')
+    : listed.length === 0 ? '이 필터에 해당하는 건이 없습니다.'
+      : '왼쪽 목록에서 건을 선택하세요.'
+
   return (
     <div className="review-ws">
       <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -211,23 +220,7 @@ export function ReviewWorkspace() {
         </div>
       </div>
 
-      {source.length === 0 ? (
-        <div className="card review-empty">
-          <div className="card-head">
-            <h3>Review List</h3>
-            <div className="seg-toggle">
-              <button type="button" className={view === 'PENDING' ? 'active' : ''} onClick={() => switchView('PENDING')}>검토 대기 {pending.length}</button>
-              <button type="button" className={view === 'CONFIRM' ? 'active' : ''} onClick={() => switchView('CONFIRM')}>확정 대기 {awaiting.length}</button>
-              <button type="button" className={view === 'HISTORY' ? 'active' : ''} onClick={() => switchView('HISTORY')}>이전 처리</button>
-            </div>
-          </div>
-          <div className="card-body text-meta">
-            {isHistory ? `${monthLabel(month)}에 확정·보완요청·반려된 내역이 없습니다.`
-              : isConfirm ? '확정 대기 중인 건이 없습니다.' : '검토 대기 중인 건이 없습니다.'}
-          </div>
-        </div>
-      ) : (
-        <div className="split">
+      <div className="split">
           {/* Review List */}
           <div className="card">
             <div className="card-head">
@@ -239,6 +232,8 @@ export function ReviewWorkspace() {
                 <button type="button" className={view === 'HISTORY' ? 'active' : ''} onClick={() => switchView('HISTORY')}>이전 처리</button>
               </div>
             </div>
+            {/* 요약 줄 — 비었을 땐 아래 빈 상태 문구가 같은 말을 하므로 겹쳐 쓰지 않는다. */}
+            {source.length > 0 && (
             <div className="text-meta" style={{ padding: '8px 16px 0' }}>
               {isHistory
                 ? `${monthLabel(month)} 처리 완료 ${source.length}건 · 조회 전용`
@@ -246,6 +241,7 @@ export function ReviewWorkspace() {
                   ? `사람 확정을 기다리는 ${source.length}건 · 룰 자동통과분 포함`
                   : `고위험 ${source.filter((i) => i.anomalyScore >= 0.7).length}건 · anomaly_score 순`}
             </div>
+            )}
             {/* AI 권장 기준 필터 칩 — 확정 대기함에선 의미가 없다(권장이 아니라 확정만 남았다). */}
             {!isConfirm && (
             <div className="row" style={{ gap: 6, padding: '10px 16px 0', flexWrap: 'wrap' }}>
@@ -275,6 +271,9 @@ export function ReviewWorkspace() {
                   선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
                 </button>
               </div>
+            )}
+            {listed.length === 0 && (
+              <div className="card-body text-meta">{emptyMessage}</div>
             )}
             <ul className="review-list">
               {listed.map((i) => {
@@ -346,6 +345,9 @@ export function ReviewWorkspace() {
           </div>
 
           {/* 상세 패널 — 정산 상세 모달 레이아웃 참고(좌: 영수증·기본내역·이력/facts, 우: 이상탐지·RAG·액션) */}
+          {/* 선택이 없어도 **같은 골격**을 유지한다 — 오른쪽 절반이 사라졌다 나타나면
+              레이아웃이 두 벌이 되어, 건이 생길 때마다 눌러야 할 자리가 바뀐다. */}
+          {!(sel && fact) && <ReviewDetailEmpty message={emptyMessage} />}
           {sel && fact && (
             <div className="review-detail grid-2">
               {/* ───────── 좌: 영수증 + 기본내역 + facts/이력 접이식 ───────── */}
@@ -572,8 +574,7 @@ export function ReviewWorkspace() {
               </div>
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {modal && modalItem && (
         <DecisionReasonModal
