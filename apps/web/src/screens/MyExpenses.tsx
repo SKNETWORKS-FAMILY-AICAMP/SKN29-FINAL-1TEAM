@@ -201,10 +201,6 @@ export function MyExpenses() {
             <Search size={13} />
             <input type="text" placeholder="검색" value={search} onChange={(e) => setSearch(e.target.value)} />
           </label>
-          <div className="spacer" />
-          <button className="btn primary" disabled={checked.size === 0 || submitting} onClick={raiseChecked}>
-            {submitting ? '올리는 중…' : `선택 ${checked.size}건 팀에 제출`}
-          </button>
         </div>
 
         <div className="card">
@@ -288,8 +284,13 @@ export function MyExpenses() {
           </table>
         </div>
 
-        <div className="text-meta" style={{ marginTop: 12 }}>
-          표시 {list.length}건 · 선택 {checked.size}건 (제출 가능한 건만 선택할 수 있어요)
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+          <div className="text-meta">
+            표시 {list.length}건 · 선택 {checked.size}건 (제출 가능한 건만 선택할 수 있어요)
+          </div>
+          <button className="btn primary" disabled={checked.size === 0 || submitting} onClick={raiseChecked}>
+            {submitting ? '올리는 중…' : `선택 ${checked.size}건 팀에 제출`}
+          </button>
         </div>
       </div>
 

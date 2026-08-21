@@ -1,6 +1,6 @@
 // S-02 팀 취합·제출 — 팀장. FR-UI-02, FR-DA-07~08, FR-DB-03
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { teamBudget } from '../data/mock'
 import { judgementTags, needsAttention, notJudged } from '../lib/judgement'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
@@ -42,7 +42,8 @@ export function TeamAggregation() {
   const canManage = useCan()('team_aggregate') // 팀 취합 권한 보유자만 개별 건 조회·처리
   const month = currentMonth()
   const [onlyAnomaly, setOnlyAnomaly] = useState(false)
-  const [memberFilter, setMemberFilter] = useState<Set<string>>(new Set())
+  const [selectedMember, setSelectedMember] = useState<string | null>(null) // null = 전체
+  const [memberSearch, setMemberSearch] = useState('')
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
@@ -58,7 +59,7 @@ export function TeamAggregation() {
     [teamMembers, teamName, month],
   )
   const listedAll = members.flatMap((m) => m.items)
-  const filteredMembers = memberFilter.size === 0 ? members : members.filter((m) => memberFilter.has(m.name))
+  const filteredMembers = selectedMember === null ? members : members.filter((m) => m.name === selectedMember)
   const visibleAll = filteredMembers.flatMap((m) => m.items)
   const collecting = listedAll.filter((i) => i.status === 'TEAM_COLLECTING')
 
@@ -268,13 +269,6 @@ export function TeamAggregation() {
         취합 대상 · {monthLabel(month)} — 팀원이 팀에 올린 건({listedAll.length}건)만 표시합니다. 회계로 제출하면 목록에서 사라집니다.
       </div>
       <div className="filter-bar">
-        <details className="multi-select">
-          <summary>사람별 보기 {memberFilter.size > 0 ? `(${memberFilter.size}명)` : '(전체)'}</summary>
-          <div className="multi-select-menu">
-            {members.map((member) => <label key={member.name}><input type="checkbox" checked={memberFilter.has(member.name)} onChange={() => setMemberFilter((current) => { const next = new Set(current); next.has(member.name) ? next.delete(member.name) : next.add(member.name); return next })} />{member.name}</label>)}
-            {memberFilter.size > 0 && <button className="btn sm" onClick={() => setMemberFilter(new Set())}>전체 보기</button>}
-          </div>
-        </details>
         <label className="row" style={{ gap: 6 }}>
           <input type="checkbox" checked={onlyAnomaly} onChange={(e) => setOnlyAnomaly(e.target.checked)} />
           이상건만 보기
@@ -286,6 +280,33 @@ export function TeamAggregation() {
         <button className="btn primary" disabled={busy || collectingStats.normal === 0} onClick={submitNormalOnly}>
           이상건 제외 일괄제출 ({collectingStats.normal}건)
         </button>
+      </div>
+
+      <div className="card" style={{ padding: 16 }}>
+        <div className="row" style={{ gap: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flexShrink: 0 }}>팀원 필터</span>
+          <label className="search-box" style={{ flex: 1 }}>
+            <Search size={13} />
+            <input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="팀원 이름으로 검색" />
+          </label>
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <button
+            className={'member-pill' + (selectedMember === null ? ' active' : '')}
+            onClick={() => setSelectedMember(null)}
+          >
+            전체 {members.length}명
+          </button>
+          {members.filter((m) => m.name.includes(memberSearch)).map((m) => (
+            <button
+              key={m.name}
+              className={'member-pill' + (selectedMember === m.name ? ' active' : '')}
+              onClick={() => setSelectedMember(m.name)}
+            >
+              {m.name} {m.items.length}건
+            </button>
+          ))}
+        </div>
       </div>
 
       {!hasVisibleMember && (

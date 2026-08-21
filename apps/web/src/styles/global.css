@@ -392,11 +392,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .team-budget-item.caution { background: #fff8df; border-color: #ead798; }
 .team-budget-item.danger { background: var(--tone-red-bg); border-color: #f3c9c5; }
 .team-budget-item.safe { background: var(--tone-green-bg); border-color: #bfe6d1; }
-.multi-select { position: relative; }
-.multi-select summary { list-style: none; cursor: pointer; min-width: 132px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); font-size: var(--text-body); font-weight: 600; }
-.multi-select summary::-webkit-details-marker { display: none; }
-.multi-select-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 180px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12); }
-.multi-select-menu label { display: flex; gap: var(--space-2); align-items: center; padding: 6px; white-space: nowrap; }
+.member-pill {
+  padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid var(--border-strong);
+  background: var(--surface-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.member-pill.active { background: var(--surface); border-color: var(--primary); color: var(--primary); }
 
 @media (max-width: 1000px) { .team-budget-item { flex-basis: calc(33.333% - var(--space-3)); } }
 
