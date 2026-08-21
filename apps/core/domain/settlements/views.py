@@ -26,7 +26,7 @@ from domain.transactions.models import Receipt, Transaction
 
 from . import decision_reasons, draft_agent, erp_import, evidence_extract, risk_review, services
 from .attachments import Attachment, AttachmentKind
-from .models import Settlement, SettlementStatus, TeamBudget
+from .models import Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
 
 #  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
@@ -91,7 +91,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # 기능 단위 인가(Capability RBAC)
-        if self.action in ("review", "confirm"):
+        if self.action in ("review", "confirm", "review_stats"):
             return [CanAccountingReview()]
         if self.action == "team_decision":  # 팀 취합(보완요청/반려/제출) — 기존 미보호 구멍 방어
             return [CanTeamAggregate()]
@@ -413,6 +413,55 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return Response({
             "submitted": submitted, "skipped": skipped,
             "judged": judged, "judgeFailed": judge_failed,
+        })
+
+    # GET /api/settlements/review-stats/  — S-03 헤더 요약 지표(자동처리율·평균 검토시간)
+    @action(detail=False, methods=["get"], url_path="review-stats")
+    def review_stats(self, request):
+        """이번 달 자동처리율·평균 검토 소요시간. 예전엔 화면에 82%/6.2분이 하드코딩돼 있었다.
+
+        **자동처리율**은 룰 엔진 자체 판정(`rule_decision`)이 REVIEW가 아닌 비율이다 — REVIEW만
+        사람(Risk Review)에게 넘어가고 PASS/RETURN/REJECT는 룰이 그 자리에서 결론냈다는 뜻이라,
+        이게 "사람 손 없이 처리된 비율"의 정확한 정의다(현재 상태가 아니라 **룰의 최초 판정**
+        기준 — CONFIRMED건도 원래 REVIEW를 거쳤을 수 있어 현재 상태만 봐선 구분이 안 된다).
+
+        **평균 검토시간**은 `SettlementEvent`에서 `IN_REVIEW` 진입 시각 → 그 IN_REVIEW를 벗어난
+        결정 시각(이번 달)까지의 차를 건별로 구해 평균한다. 이 정보는 목록 API에 없다 —
+        `events`는 상세 조회에서만 내려가므로, 집계는 여기서 서버가 직접 한다.
+        """
+        now = timezone.now()
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = (start.replace(year=start.year + 1, month=1) if start.month == 12
+               else start.replace(month=start.month + 1))
+
+        judged_this_month = Settlement.objects.filter(rule_judged_at__gte=start, rule_judged_at__lt=end)
+        total_judged = judged_this_month.count()
+        needed_review = judged_this_month.filter(events__to_state="IN_REVIEW").distinct().count()
+        auto_processed_rate = round(1 - needed_review / total_judged, 4) if total_judged else None
+
+        decisions = (
+            SettlementEvent.objects
+            .filter(from_state="IN_REVIEW", created_at__gte=start, created_at__lt=end)
+            .order_by("settlement_id", "created_at")
+        )
+        durations_sec = []
+        for ev in decisions:
+            entered = (
+                SettlementEvent.objects
+                .filter(settlement_id=ev.settlement_id, to_state="IN_REVIEW", created_at__lte=ev.created_at)
+                .order_by("-created_at")
+                .first()
+            )
+            if entered:
+                durations_sec.append((ev.created_at - entered.created_at).total_seconds())
+        avg_review_minutes = round(sum(durations_sec) / len(durations_sec) / 60, 1) if durations_sec else None
+
+        return Response({
+            "month": start.strftime("%Y-%m"),
+            "totalJudged": total_judged,
+            "autoProcessedRate": auto_processed_rate,
+            "reviewedCount": len(durations_sec),
+            "avgReviewMinutes": avg_review_minutes,
         })
 
     # POST /api/settlements/{id}/confirm/  (사람 최종 확정, FR-ST-03)

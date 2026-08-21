@@ -12,7 +12,10 @@ import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { confirmSettlement, reviewSettlement, rerunRiskReview } from '../api/settlementService'
+import {
+  confirmSettlement, fetchReviewStats, rerunRiskReview, reviewSettlement,
+  type ReviewStats,
+} from '../api/settlementService'
 import { AWAITING_CONFIRM_STATUSES, REVIEW_HISTORY_STATUSES } from '../api/settlements'
 import { useSettlements } from '../context/SettlementsContext'
 import { useCan } from '../lib/capabilities'
@@ -97,6 +100,13 @@ export function ReviewWorkspace() {
   const [modal, setModal] = useState<{ decision: Reco; ids: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>('PENDING')
+  const [stats, setStats] = useState<ReviewStats | null>(null)
+
+  // 헤더 요약(자동처리율·평균 검토시간) — 이 화면과 무관하게 실패해도 나머지 기능은 그대로
+  // 동작해야 하므로 별도 useEffect로 분리한다(목록 로딩과 실패 경로를 안 섞는다).
+  useEffect(() => {
+    fetchReviewStats().then(setStats)
+  }, [])
   const isHistory = view === 'HISTORY'
   const isConfirm = view === 'CONFIRM'
   const month = currentMonth()
@@ -256,10 +266,18 @@ export function ReviewWorkspace() {
         </div>
         {/* 요약 지표 — 제목 우측 상단에 작게 */}
         <div className="head-stats">
-          <div className="head-stat"><span className="v">82%</span><span className="l">자동처리율</span></div>
+          {/* 이번 달 룰 판정·검토 이력 기반 서버 집계(`/settlements/review-stats/`). 이번 달
+              판정 자체가 없으면 null — "0%"는 실제로 전부 검토가 필요했다는 뜻이라 다르다. */}
+          <div className="head-stat">
+            <span className="v">{stats?.autoProcessedRate != null ? pct(stats.autoProcessedRate) : '—'}</span>
+            <span className="l">자동처리율</span>
+          </div>
           <div className="head-stat"><span className="v">{pending.length}건</span><span className="l">검토 대기</span></div>
           <div className="head-stat"><span className="v">{awaiting.length}건</span><span className="l">확정 대기</span></div>
-          <div className="head-stat"><span className="v">6.2분</span><span className="l">평균 검토 시간</span></div>
+          <div className="head-stat">
+            <span className="v">{stats?.avgReviewMinutes != null ? `${stats.avgReviewMinutes}분` : '—'}</span>
+            <span className="l">평균 검토 시간</span>
+          </div>
         </div>
       </div>
 

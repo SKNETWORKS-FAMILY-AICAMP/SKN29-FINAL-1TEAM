@@ -19,7 +19,7 @@ from typing import Any, Literal, Optional
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
-from app.agents import draft_agent
+from app.agents import draft_agent, risk_review_agent
 from app.clients import core_client
 from app.config import settings
 from app.ml.registry import get_active_model
@@ -27,6 +27,7 @@ from app.rag import chroma_client
 from app.rag.embedding import config as emb_config
 from app.rag.embedding import store
 from app.rag.embedding.encoder import OpenAIEncoder
+from app.vision.client import VisionError
 
 router = APIRouter()
 
@@ -268,3 +269,116 @@ def rag_sample(name: str, limit: int = 10, docName: Optional[str] = None) -> dic
         for cid, doc, meta in zip(got.get("ids", []), got.get("documents", []), got.get("metadatas", []))
     ]
     return {"collection": name, "count": len(items), "items": items}
+
+
+# ── ② Rule Agent ─────────────────────────────────────────────────────────
+
+class RuleGenerateLabRequest(BaseModel):
+    scope: str
+    query: Optional[str] = None
+    topK: int = Field(default=6, ge=1, le=20)
+    name: Optional[str] = None
+    includeLaw: bool = False
+
+
+@router.post("/rule/generate")
+def rule_generate(req: RuleGenerateLabRequest) -> dict:
+    """Rule Agent 단독 실행 — 운영과 같은 `rule_agent_v0.agent.generate()`를 그대로 부른다.
+
+    **다른 탭과 달리 부작용이 있다.** Rule Agent의 산출물 자체가 "Django에 저장된
+    RuleGraph(DRAFT)"라 별도 dry-run 경로를 두지 않는다(두면 실험이 운영과 달라진다 —
+    AI-LAB 원칙 ①). 실행하면 실제로 룰 콘솔에 DRAFT 계열 하나가 새로 생긴다 — 화면이
+    이 사실을 실행 전에 알린다.
+    """
+    from app.agents.rule_agent_v0 import agent as rule_agent
+    from app.agents.rule_agent_v0.api import RuleGenerateRequest
+    from app.agents.rule_agent_v0.django_client import ServiceAuthError
+    import httpx as httpx_mod
+
+    try:
+        inner = RuleGenerateRequest(
+            scope=req.scope, query=req.query, top_k=req.topK, name=req.name, include_law=req.includeLaw,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    started = time.perf_counter()
+    try:
+        result = rule_agent.generate(inner)
+    except ServiceAuthError as exc:
+        raise _fail(401, "서비스 계정 인증 실패", exc) from exc
+    except httpx_mod.HTTPStatusError as exc:
+        raise _fail(exc.response.status_code, f"Django 저장 실패({exc.request.url.path}): {exc.response.text[:500]}")
+    except httpx_mod.HTTPError as exc:
+        raise _fail(503, "내부 서비스 연결 실패", exc) from exc
+    except Exception as exc:  # noqa: BLE001  # Chroma·OpenAI 등
+        raise _fail(502, "rule generate 실패", exc) from exc
+
+    return {
+        "request": req.model_dump(),
+        "result": result,
+        "latencyMs": _elapsed_ms(started),
+        "sideEffectNote": "Django에 실제 RuleGraph(DRAFT)가 생성되었습니다 — 룰 콘솔(S-04)에서 확인·삭제할 수 있습니다.",
+    }
+
+
+# ── ③ Risk Review Agent ──────────────────────────────────────────────────
+
+class RiskRunLabRequest(BaseModel):
+    settlementId: int
+
+
+@router.post("/risk/run")
+def risk_run(req: RiskRunLabRequest) -> dict:
+    """Risk Review Agent 단독 실행 — 운영과 같은 `risk_review_agent.run()`을 그대로 부른다
+    (1차 이상탐지 `get_tx_features`+`ml_infer` → 2차 RAG 내규 검증).
+
+    **부작용 없음.** FastAPI는 Postgres에 쓰지 않는다(CLAUDE.md §1) — `RiskReview` 저장은
+    Django `services.judge`의 커밋-후 콜백이 한다. 여기서 몇 번을 돌려도 검토 큐·판정
+    결과는 그대로다. 운영에서는 판정이 `IN_REVIEW`로 보낸 건에만 자동 호출되지만, 이
+    탭은 어떤 정산 id든 재현·비교용으로 돌려볼 수 있다.
+    """
+    started = time.perf_counter()
+    try:
+        result = risk_review_agent.run(req.settlementId)
+    except Exception as exc:  # noqa: BLE001
+        raise _fail(502, "Risk Review 실행 실패 — 정산 id·Core 연결 상태를 확인하세요", exc) from exc
+
+    return {"request": req.model_dump(), "result": result, "latencyMs": _elapsed_ms(started)}
+
+
+# ── 증빙자료 추출 Agent ──────────────────────────────────────────────────
+
+class ExtractRunLabRequest(BaseModel):
+    fileRef: str
+    kind: str
+
+
+@router.post("/extract/run")
+def extract_run(req: ExtractRunLabRequest) -> dict:
+    """증빙자료 추출 Agent 단독 실행 — 운영과 같은 `app.vision` 판독(`read_receipt`·
+    `read_evidence_document`)을 그대로 부른다.
+
+    **파일을 여기서 직접 올릴 수 없다.** ai 컨테이너는 media 볼륨을 읽기전용으로
+    마운트한다(compose) — Django가 저장한 파일만 열 수 있고 새로 쓸 수는 없다. 그래서
+    `fileRef`는 **이미 어딘가에 업로드된 파일의 상대경로**여야 한다(예: 정산 상세에서
+    올린 첨부의 저장 경로, `attachments/202608/xxx.png`). RAG 검색 탭이 "Chroma 적재가
+    선행돼야 한다"는 것과 같은 종류의 제약이다.
+    """
+    kind = (req.kind or "").upper()
+    started = time.perf_counter()
+    try:
+        if kind == "RECEIPT":
+            from app.vision import read_receipt
+
+            raw = read_receipt(req.fileRef)
+        else:
+            from app.vision import read_evidence_document
+
+            raw = read_evidence_document(req.fileRef, kind)
+    except VisionError as exc:
+        raise _fail(502, "판독 실패", exc) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise _fail(502, "판독 실패", exc) from exc
+
+    return {"fileRef": req.fileRef, "kind": kind, "latencyMs": _elapsed_ms(started), "result": raw}

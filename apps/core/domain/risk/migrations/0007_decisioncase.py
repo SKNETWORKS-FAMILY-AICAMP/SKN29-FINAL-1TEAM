@@ -8,7 +8,10 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('risk', '0004_riskreview_stage2_verdict'),
+        #  병합으로 `0005_riskreview_risk_tier`·`0006_alter_riskreview_options`가
+        #  같은 부모(0004)에 붙어 리프가 둘이 됐다. 번호를 뒤로 밀어 한 줄로 세운다
+        #  — merge 마이그레이션을 만드는 것보다 이력이 읽기 쉽다.
+        ('risk', '0006_alter_riskreview_options'),
         ('settlements', '0012_settlement_risk_review_error_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

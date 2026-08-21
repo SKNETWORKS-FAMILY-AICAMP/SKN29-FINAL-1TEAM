@@ -11,6 +11,8 @@ from .models import Settlement, SettlementEvent
 
 class RiskReviewSerializer(serializers.ModelSerializer):
     anomalyScore = serializers.FloatField(source="anomaly_score", read_only=True)
+    # 1차 등급(HIGH/MEDIUM/LOW) — 원시 점수는 사람이 크기를 가늠할 수 없어 같이 내려준다.
+    riskTier = serializers.CharField(source="risk_tier", read_only=True)
     featureContribs = serializers.JSONField(source="reasons", read_only=True)
     ragRefs = serializers.JSONField(source="rag_refs", read_only=True)
     ragReport = serializers.CharField(source="rag_report", read_only=True)
@@ -19,7 +21,8 @@ class RiskReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RiskReview
-        fields = ["anomalyScore", "featureContribs", "ragRefs", "ragReport", "aiRecommendation", "aiConfidence"]
+        fields = ["anomalyScore", "riskTier", "featureContribs", "ragRefs", "ragReport",
+                  "aiRecommendation", "aiConfidence"]
 
 
 class SettlementEventSerializer(serializers.ModelSerializer):
@@ -64,6 +67,8 @@ class SettlementSerializer(serializers.ModelSerializer):
     claimPending = serializers.SerializerMethodField()
     # ── Risk 평탄화 (ReviewItem 셰이프) ──
     anomalyScore = serializers.SerializerMethodField()
+    # 1차 이상탐지 점수의 3단계 등급. Agent가 아직 안 돈 건은 `''`(없는 판단을 지어내지 않는다).
+    riskTier = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
@@ -105,7 +110,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "id", "date", "time", "merchant", "amount", "cardType", "cardId", "cardName",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
-            "anomalyScore", "aiRecommendation", "aiConfidence",
+            "anomalyScore", "riskTier", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
             "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError", "events",
@@ -156,6 +161,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_anomalyScore(self, obj):
         r = self._risk(obj)
         return r.anomaly_score if r else None
+
+    def get_riskTier(self, obj):
+        r = self._risk(obj)
+        return r.risk_tier if r else ""
 
     def get_aiRecommendation(self, obj):
         r = self._risk(obj)

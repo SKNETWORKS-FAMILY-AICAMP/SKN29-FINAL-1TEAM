@@ -248,6 +248,26 @@ export async function reviseDraft(
   } catch { return null }
 }
 
+export interface ReviewStats {
+  autoProcessedRate: number | null // 0~1. 이번 달 판정 자체가 없으면 null(집계 불가 ≠ 0%)
+  avgReviewMinutes: number | null  // 사람이 실제로 내린 결정이 없으면 null
+}
+
+/** S-03 헤더 요약(자동처리율·평균 검토시간) — 룰 판정·검토 이력 기반 서버 집계.
+ *  실패해도 화면이 죽으면 안 된다(부가 지표라 숫자 대신 자리표시자로 대체). */
+export async function fetchReviewStats(): Promise<ReviewStats | null> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return { autoProcessedRate: 0.82, avgReviewMinutes: 6.2 }
+  }
+  try {
+    const res = await endpoints.reviewStats()
+    return { autoProcessedRate: res.data.autoProcessedRate, avgReviewMinutes: res.data.avgReviewMinutes }
+  } catch {
+    return null
+  }
+}
+
 /** '내 지출': 아직 올리지 않은 건 삭제. 성공 여부를 돌려준다. */
 export async function deleteSettlement(id: string): Promise<boolean> {
   if (USE_MOCK) { await mockDelay(); return true }

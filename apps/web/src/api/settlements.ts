@@ -41,6 +41,7 @@ function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
     ...row,
     // 정렬용 기본값이다. **화면 표시는 `riskReviewed`를 봐야 한다** — 0점과 미실시는 다르다.
     anomalyScore: row.anomalyScore ?? 0,
+    riskTier: row.riskTier ?? '',
     riskReviewed: row.riskReviewed ?? false,
     //  결과가 있으면 상태가 뭐라 하든 DONE이다(옛 데이터 방어).
     riskReviewState: row.riskReviewed ? 'DONE' : (row.riskReviewState ?? 'NOT_STARTED'),

@@ -12,6 +12,8 @@ export const endpoints = {
   health: () => api.get('/health/'),
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
   settlement: (id: string) => api.get(`/settlements/${id}/`),
+  // S-03 헤더 요약(자동처리율·평균 검토시간) — 이번 달 집계, 서버가 계산한다.
+  reviewStats: () => api.get('/settlements/review-stats/'),
   // F-1 신규 지출 등록 — **영수증 파일 필수**라 multipart로 보낸다(서버가 Receipt +
   //  Attachment(RECEIPT)를 만들고 비전 판독을 예약한다).
   createSettlement: (data: FormData) => api.post('/settlements/', data, {

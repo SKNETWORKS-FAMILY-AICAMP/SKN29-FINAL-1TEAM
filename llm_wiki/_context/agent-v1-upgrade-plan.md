@@ -2,7 +2,7 @@
 
 > 이 문서는 **결정 사항 요약**이다. "왜 그렇게 정했는지"의 근거·코드 위치·실동작 검증 결과는 전부 `_context/rule-agent-v1-implementation.md`에 있다 — 여기서는 중복 서술하지 않고 해당 섹션을 가리키기만 한다. 원칙: **미구현 항목을 켜는 작업이 이미 동작 중인 v0 경로를 절대 깨지 않는다.**
 
-> **진행 상태(2026-08-16, main 병합 완료)**: Rule Agent §1 6개 항목 **전부 구현+실동작 검증 완료** — `feature/rule-agent-v1` → `feature/doc-manage` 경유 → `main` 병합됨. Risk Review Agent §2는 전부 미착수.
+> **진행 상태(2026-08-19)**: Rule Agent §1 6개 항목 **전부 구현+실동작 검증 완료** — `feature/rule-agent-v1` → `feature/doc-manage` 경유 → `main` 병합됨. Risk Review Agent §2도 **항목 1~3 구현+실동작 검증 완료**(항목 4·5는 팀 결정에 따라 이번에 함께 처리 — §2.2 참조).
 
 ---
 
@@ -29,28 +29,30 @@ Rule Agent는 v1에서 이 마운트를 고치고, `fastmcp.Client`로 실제 MC
 
 ---
 
-## 2. Risk Review Agent — 전부 미착수
+## 2. Risk Review Agent — 항목 1~3 구현 완료(2026-08-19), 항목 4는 여전히 별도 트랙
+
+> 아래 표·항목의 근거·코드 위치·실동작 검증 결과는 전부 `_context/risk-review-agent-v1-implementation.md`에 있다 — 여기서는 중복 서술하지 않는다.
 
 ### 2.1 구현 상태
 
 | 항목 | 상태 | 근거 |
 |---|---|---|
-| anomaly score → RAG → 보고서 2단계 파이프라인 | ✅ 구현 | `agents/risk_review_agent.py`: Stage1(`_stage1`, `get_tx_features`→`ml_infer`) → Stage2(`_stage2`, `search_policy`+`search_cases`→LLM 1회→`RiskVerdict`) |
-| anomaly score 높을 때 3범주 분류 | ❌ 미구현 | `RiskVerdict` 스키마에 해당 필드 없음. 유일한 버킷 개념은 무관한 것 — 원시 점수의 10분위 보정 밴드(`ml/calibration.py`, `percentile_band`)뿐 |
-| 분류(판단)와 액션(실행) 분리 | 🚧 부분 | Stage1/Stage2는 분리돼 있으나, Stage2 내부에서 `violation_verdict`(분류)와 `recommendation`(액션)이 한 LLM 호출·한 스키마로 동시 산출 |
-| Rule Agent와 공유하는 MCP 툴 사용 | ✅ 일부 | `from app.mcp import tools`로 공용 함수 재사용(단 직접 호출, 툴콜링 아님 — §0) |
+| anomaly score → RAG → 보고서 2단계 파이프라인 | ✅ 구현 | `agents/risk_review_agent.py`: Stage1(`_stage1`, `get_tx_features`→`ml_infer`→`risk_tier`) → Stage2(`_stage2`, `_classify`(MCP 툴콜링)→`_decide_action`) |
+| anomaly score 높을 때 3범주 분류 | ✅ 구현 | `stage1_anomaly.risk_tier`(HIGH/MEDIUM/LOW) — 고정 anomaly_score 임계값, §2.2-2 참조 |
+| 분류(판단)와 액션(실행) 분리 | ✅ 구현 | `_classify()`(위반 여부만, MCP 툴콜링 루프) → `_decide_action()`(분류 결과만 입력받아 recommendation만 결정, 별도 LLM 호출) |
+| Rule Agent와 공유하는 MCP 툴 사용 | ✅ 구현 | `mcp_client.py`를 `agents/rule_agent_v0/`에서 `agents/`(공용)로 승격, Rule Agent·Risk Review Agent 둘 다 같은 in-process 클라이언트로 `search_policy`/`search_cases`를 진짜 MCP 툴콜링으로 호출 |
 
-### 2.2 v1에 필요한 것 (전부 미착수)
+### 2.2 v1에 필요한 것 — 처리 현황
 
-1. **[기반] MCP 툴콜링 루프 전환** — Rule Agent의 `mcp_client.py`/전환 패턴을 그대로 이식 가능(신규 설계 불필요).
-2. **3범주 분류 스키마 신설** — anomaly score가 높은 건에 한정해 도는 서브스텝. `RiskVerdict` 기존 필드는 유지, 신규 필드는 추가만.
-3. **분류 단계와 액션(recommendation) 단계 분리** — Stage2를 "① 분류" → "② 액션 결정" 2단으로 쪼갬.
-4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — `anomaly.pkl` 재학습 필요(ML 파이프라인 작업, Agent 코드와 무관).
-5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — 현재 10건 수동 시드뿐.
+1. **[기반] MCP 툴콜링 루프 전환** — ✅ 완료. `apps/ai/app/agents/mcp_client.py`(구 `rule_agent_v0/mcp_client.py`, 내용 변경 없이 이동)를 Rule Agent(`agent.py`/`chat.py`)와 Risk Review Agent(`_classify`)가 공유. Rule Agent와 달리 **초기 검색 1회분(policy+cases)을 파이썬이 먼저 실행**해 대화 맥락에 심어둔다 — 안 그러면 `search_policy`/`search_cases` 두 툴을 오가며 재검색만 반복하다 `MAX_TOOL_TURNS`(=6)를 다 쓰고도 한 번도 `submit_classification`을 못 부르는 사례가 실측됐다(정상 케이스에서도 발생). 프리시드 후 재검증 4건 전부 1턴 내 정상 종료 확인.
+2. **3범주 분류 스키마 신설** — ✅ 완료(팀 결정: 고정 anomaly_score 임계값). `risk_tier`는 `violation_verdict`와 별개 필드로 Stage1에 추가(기존 필드는 그대로 유지, 확장만). 경계값은 배포된 `anomaly.pkl`의 실측 calibration_table에서 "80~90% 밴드(관측 이상비율 1.7%) → 90~100% 밴드(28.19%, lift 8.08배)"로 급등하는 지점을 HIGH 경계(`RISK_TIER_HIGH_THRESHOLD=0.0134`)로, 기존 운영 `is_outlier` 컷오프(모델 `threshold`)를 MEDIUM 경계(`RISK_TIER_MEDIUM_THRESHOLD=0.0037`)로 삼았다. 재학습해도 이 상수는 자동 갱신되지 않는다(고정값을 고른 이유이자 트레이드오프) — 분포가 크게 바뀌면 재학습 시 사람이 다시 실측해 갱신해야 한다.
+3. **분류 단계와 액션(recommendation) 단계 분리** — ✅ 완료. `_classify()`(MCP 툴콜링, `Classification` 스키마: violation_verdict/review_reasons/citations/similar_cases) → `_decide_action()`(단일 호출, `ActionDecision` 스키마: recommendation/rationale, 분류 결과가 이미 확정된 전제로만 판단하고 위반 여부를 재판단하지 않음). **반환 계약은 그대로**(`stage2_rag_review`의 5개 필드 동일) — `_stage2()`가 두 결과를 기존 shape으로 재조립.
+4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — ❌ 여전히 미착수. `anomaly.pkl` 재학습 필요(ML 파이프라인 작업, Agent 코드와 무관) — 이번 세션 범위 밖.
+5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — ✅ 완료(팀 결정: 이번에 같이 확충). `app/rag/golden_cases.py` 10건→18건 — "업무활성"→"회식"(GATHERING) 리네임 후 회식 사례가 0건이던 공백을 메우고(3건 추가), 나머지 카테고리도 사례 다양성 보강. `python -m app.rag.case_store --upsert`로 `case_history` 재적재 완료(18건, 기존 id는 upsert라 멱등 갱신).
 
-**남은 미결정:**
-1. 3범주 분류의 정의 자체(anomaly score 구간? 위반 확신도? 아직 미정의)
-2. `case_history` 실 이력 적재 파이프라인을 v1에 포함할지, post-MVP로 유지할지
+**해소된 미결정(2026-08-19, 팀 확인):**
+1. 3범주 분류 정의 → 고정 anomaly_score 임계값(위 §2.2-2)
+2. `case_history` 실 이력 적재 파이프라인 → v1에서 골든데이터만 확충(수동 셋), **실 결정이력 자동 적재 파이프라인 자체는 여전히 post-MVP**(항목 5의 범위는 "골든데이터 보강"이지 "적재 자동화"가 아님 — 착오 주의).
 
 ---
 
