@@ -47,9 +47,11 @@ class Attachment(models.Model):
         "settlements.Settlement", on_delete=models.CASCADE, related_name="attachments",
     )
     kind = models.CharField(max_length=20, choices=AttachmentKind.choices, default=AttachmentKind.OTHER)
-    #  원본 파일 — `PolicyDoc.file`과 같은 패턴(같은 media 볼륨, ai 컨테이너가 :ro로 읽는다).
-    #  `file_ref`는 그 `.name`(볼륨 기준 상대경로)을 그대로 담아 추출 Agent 호출부와 계약을 맞춘다.
+    #  실물 파일. `PolicyDoc.file`과 같은 방식으로 media 볼륨에 저장하고, ai는 그 볼륨을
+    #  읽기 전용으로 마운트해 판독한다(파일의 SoR은 Django, 판독은 AI).
     file = models.FileField("원본 파일", upload_to="attachments/%Y%m/", blank=True)
+    #  ai에 넘기는 **볼륨 기준 상대경로**. `file.name`과 같은 값이지만 별도 컬럼으로 둔다 —
+    #  외부 스토리지 키(업로드 없이 참조만 하는 경우)도 같은 자리에 담기 위해서다.
     file_ref = models.CharField("파일 경로/키", max_length=300, blank=True)
     original_name = models.CharField(max_length=200, blank=True)
     mime_type = models.CharField(max_length=100, blank=True)

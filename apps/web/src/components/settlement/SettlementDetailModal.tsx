@@ -3,43 +3,37 @@
 //  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
 //  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock, Paperclip,
-  Receipt, RotateCcw, Sparkles, Trash2, Upload, X,
+  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock,
+  Receipt, Sparkles, Trash2, Upload,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORIES, STATUS_META,
-  type Attachment, type AttachmentKind, type CardType, type Category, type ReviewItem, type Settlement,
-  type SettlementStatus,
+  CARD_TYPE_LABEL, CATEGORIES,
+  type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
 import { needsAttention } from '../../lib/judgement'
-import { formatDateTime } from '../../lib/format'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCan } from '../../lib/capabilities'
 import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
-  createSettlement, decideTeamSettlement, deleteAttachment, deleteSettlement,
-  fetchSettlementDetail, raiseSettlements, reExtractAttachment, reviewSettlement, reviseDraft,
-  submitSettlements, suggestDraft, uploadAttachment, type DraftSuggestion, type PolicyHint,
+  createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
+  reviseDraft, submitSettlements, suggestDraft, updateSettlement,
+  type DraftSuggestion, type PolicyHint,
 } from '../../api/settlementService'
-import { ReturnReasonModal } from './ReturnReasonModal'
+import { DecisionReasonModal } from './DecisionReasonModal'
+import { EvidenceAttachments } from './EvidenceAttachments'
+import { RuleJudgementPanel } from './RuleJudgementPanel'
+import type { Attachment } from '../../api/attachmentService'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
 const MOCK_OCR = { merchant: '강남 한식당', amount: '452,000', category: '접대' as Category }
 
 interface AiComment { icon: 'ocr' | 'doc' | 'ai'; text: string }
-
-const ATTACHMENT_KIND_LABEL: Record<AttachmentKind, string> = {
-  RECEIPT: '영수증·카드전표', PRE_APPROVAL: '사전승인 문서', MEETING_MINUTES: '회의록',
-  PARTICIPANT_LIST: '참석자 명단', TRIP_PLAN: '출장계획서', CONTRACT: '계약서·견적서', OTHER: '기타',
-}
-// 판정에 실제로 반영되는 신뢰도 하한(Django `context_builder.ATTACHMENT_CONFIDENCE_THRESHOLD`와 동일 값을
-// 화면 표시용으로 미러링 — 미만이면 서버가 미해소로 두므로 "판정 반영 안 됨"으로 안내한다).
-const CONFIDENCE_APPLY_THRESHOLD = 0.6
+interface ExtraFile { id: string; name: string }
 
 const numOnly = (s: string) => Number(s.replace(/[^0-9]/g, '') || '0')
 // 상태 변경 이력 타임라인 점 색 — 상태값을 매핑하지 않고 진행 단계를 순환색으로 표현(시안 실측: 회색→파랑→amber→빨강)
@@ -90,7 +84,9 @@ export function SettlementDetailModal({
   const [dateStr, setDateStr] = useState(item?.date ?? todayISO())
   const [amountText, setAmountText] = useState(item ? String(item.amount) : '')
   const [cardType, setCardType] = useState<CardType>(item?.cardType ?? 'PERSONAL')
-  const [category, setCategory] = useState<Category>(item?.aiCategory ?? '접대')
+  // 사람이 확정한 분류(`category`)가 있으면 그게 먼저다. 없으면 AI 제안을 미리 채워
+  //  두고, 사용자가 그대로 제출하면 그 순간 확정값이 된다(`persistEdits`).
+  const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? '접대')
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   const [aiSuggested, setAiSuggested] = useState(item?.aiSuggested ?? false)
   // 가맹점 업종 — 사람이 고르는 값이 아니라 **서버가 조회해 준 사실**이라 입력칸이 없다.
@@ -100,12 +96,7 @@ export function SettlementDetailModal({
 
   // ── 좌측 업로드 상태 ──
   const [receiptUp, setReceiptUp] = useState(item?.evidence === 'OK')
-  // 추가 증빙 — 증빙자료 추출 Agent(`_context/evidence-extraction-agent.md`)가 실제로 판독한다.
-  // 신규 등록(isCreate) 중엔 정산 id가 없어 업로드할 곳이 없으므로 저장 후에만 가능.
-  const [attachments, setAttachments] = useState<Attachment[]>(item?.attachments ?? [])
-  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
-  const [uploadKind, setUploadKind] = useState<AttachmentKind>('PRE_APPROVAL')
-  const [uploading, setUploading] = useState(false)
+  const [extraFiles, setExtraFiles] = useState<ExtraFile[]>([])
 
   // ── AI 코멘트 로그 / 규정 힌트 / 지시 입력 / fact.json 접힘 ──
   const [comments, setComments] = useState<AiComment[]>([])
@@ -115,36 +106,16 @@ export function SettlementDetailModal({
   const [factOpen, setFactOpen] = useState(isCreate)
 
   const [pending, setPending] = useState(false)
-  const [showReturnModal, setShowReturnModal] = useState(false)
+  //  결정은 **항상 사유 모달을 거친다** — 팀 반려가 확인 없이 바로 나가던 것도 여기로 합쳤다.
+  const [decisionTarget, setDecisionTarget] = useState<'RETURN' | 'REJECT' | null>(null)
 
-  // 상태 변경 이력 — `item`(목록 셰이프)엔 `events`가 없다(N+1 방지로 상세 조회에만 실림).
-  // 예전엔 `item.auditTrail`을 읽었는데, 그 필드는 타입에만 있고 실제로 채워주는 코드가
-  // 어디에도 없어서 **항상 undefined**였다 — 그래서 늘 아래 하드코딩 3줄만 보였다
-  // (2026-08-21 전수 점검에서 발견, ReviewWorkspace.tsx와 같은 결함).
-  const [history, setHistory] = useState<ReviewItem['events']>(undefined)
-  const [historyLoading, setHistoryLoading] = useState(false)
-  useEffect(() => {
-    if (isCreate || !item) return
-    let cancelled = false
-    setHistoryLoading(true)
-    setAttachmentsLoading(true)
-    fetchSettlementDetail(item)
-      .then((detail) => {
-        if (cancelled) return
-        setHistory((detail as ReviewItem).events ?? [])
-        setAttachments(detail.attachments ?? [])
-      })
-      .catch(() => { if (!cancelled) { setHistory([]); setAttachments([]) } })
-      .finally(() => { if (!cancelled) { setHistoryLoading(false); setAttachmentsLoading(false) } })
-    return () => { cancelled = true }
-  }, [isCreate, item?.id])
-
-  const evidence: 'OK' | 'MISSING' = receiptUp || attachments.length > 0 ? 'OK' : 'MISSING'
+  const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
   const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
   // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
   const canDelete = !isCreate && ['DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED'].includes(item?.status ?? '')
-  // 이상 건(건당한도초과·실사용자미지정 등)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리
+  // 이상 건(보완요청·반려 판정)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리한다.
+  //  검토(REVIEW)로 갈 건은 이상 건이 아니다(회계가 볼 일이라 팀은 그대로 올려보낸다).
   const isAnomaly = !isCreate && item ? needsAttention(item) : false
 
   // fact.json — 현재 입력값으로 자동 생성(자동생성/자동갱신)
@@ -156,11 +127,11 @@ export function SettlementDetailModal({
     category,
     merchantIndustry: industry || null,
     evidence: evidence === 'OK' ? 'attached' : 'missing',
-    extraDocs: attachments.length,
+    extraDocs: extraFiles.length,
     purpose: purpose || null,
     source: receiptUp ? 'vision_ocr' : 'manual',
     aiSuggested,
-  }), [merchant, amountText, dateStr, cardType, category, industry, evidence, attachments.length, purpose, receiptUp, aiSuggested])
+  }), [merchant, amountText, dateStr, cardType, category, industry, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
 
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
@@ -212,46 +183,19 @@ export function SettlementDetailModal({
     setInstruction('')
   }
 
-  // 추가 증빙 업로드 — 증빙자료 추출 Agent가 실제로 판독한다(응답이 곧 결과, 동기).
-  const uploadExtra = async (file: File) => {
-    if (!item) return
-    setUploading(true)
-    const result = await uploadAttachment(item.id, uploadKind, file)
-    setUploading(false)
-    if (!result) {
-      pushComment({ icon: 'doc', text: `"${file.name}" 업로드에 실패했습니다 — 네트워크·서버 상태를 확인해주세요.` })
-      return
-    }
-    setAttachments((prev) => [...prev, result])
-    if (result.extractionStatus === 'DONE') {
-      const n = Object.keys(result.extracted).length
-      pushComment({
-        icon: 'doc',
-        text: n > 0
-          ? `"${file.name}"(${ATTACHMENT_KIND_LABEL[result.kind]}) 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
-          : `"${file.name}"(${ATTACHMENT_KIND_LABEL[result.kind]})에서 확인된 사실이 없습니다.`,
-      })
-    } else if (result.extractionStatus === 'FAILED') {
-      pushComment({ icon: 'doc', text: `"${file.name}" 판독 실패 — ${result.error || '사유 미상'}` })
-    }
-  }
-  const onExtraFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (file) void uploadExtra(file)
-  }
-  const removeExtra = async (attachmentId: number) => {
-    if (!item) return
-    const ok = await deleteAttachment(item.id, attachmentId)
-    if (ok) setAttachments((prev) => prev.filter((a) => a.id !== attachmentId))
-  }
-  const retryExtra = async (attachmentId: number) => {
-    if (!item) return
-    setUploading(true)
-    const result = await reExtractAttachment(item.id, attachmentId)
-    setUploading(false)
-    if (result) setAttachments((prev) => prev.map((a) => (a.id === attachmentId ? result : a)))
-  }
+  // 첨부 판독이 끝나면 AI 코멘트로 알린다. **문구를 지어내지 않는다** — 서버가 실제로
+  // 읽어낸 사실 개수만 말한다(예전엔 업로드하는 순간 "인식했습니다"를 찍어 놓고
+  // 아무것도 읽지 않았다).
+  const onFactsExtracted = useCallback((a: Attachment) => {
+    const n = Object.keys(a.extracted ?? {}).length
+    setExtraFiles((prev) => (prev.some((f) => f.id === String(a.id)) ? prev : [...prev, { id: String(a.id), name: a.originalName }]))
+    setComments((prev) => [...prev, {
+      icon: 'doc',
+      text: n > 0
+        ? `증빙 문서 "${a.originalName}" 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
+        : `증빙 문서 "${a.originalName}"을 판독했지만 확인된 판정 사실이 없습니다.`,
+    }])
+  }, [])
 
 
   const draft = (): Omit<Settlement, 'id' | 'status'> => ({
@@ -259,7 +203,10 @@ export function SettlementDetailModal({
     merchant: merchant || '미상 가맹점',
     amount: numOnly(amountText),
     cardType,
-    aiCategory: category,
+    // 화면 드롭다운 값은 **사람이 확정한 분류**다. `aiCategory`는 AI가 원래 뭐라고 했는지를
+    // 남기는 자리라 여기서 덮어쓰지 않는다 — 서버가 확정값이 없으면 제안을 받아 채운다.
+    category,
+    aiCategory: item?.aiCategory ?? category,
     aiSuggested,
     evidence,
     user: user?.name ?? '나',
@@ -267,6 +214,36 @@ export function SettlementDetailModal({
     merchantIndustry: industry || undefined,
     merchantIndustryCode: industryCode || undefined,
   })
+
+  /**
+   * 상태 전이 **전에** 화면 값을 저장한다.
+   *
+   * 이게 없던 동안 "수정하고 제출"이 통째로 유실됐다 — 모달 제목은 '수정'인데 저장 경로가
+   * 없어서, 분류를 고르고 목적을 적어 제출해도 서버는 옛 값 그대로였고 판정이
+   * 「분류 미기재」로 걸었다. 사람이 확인하고 올린 값이 판정에 닿지 않으면 확인이 무의미하다.
+   *
+   * 조회 전용(남의 건)일 땐 건너뛴다 — 팀장이 팀원 건을 제출할 때 남의 입력을 덮어쓰면 안 된다.
+   */
+  const persistEdits = async (): Promise<boolean> => {
+    if (!item || readOnly) return true
+    try {
+      await updateSettlement(item.id, {
+        category,
+        purpose: purpose || '',
+        merchantIndustry: industry || '',
+        merchantIndustryCode: industryCode || '',
+        merchant: merchant || undefined,
+        amount: numOnly(amountText) || undefined,
+        date: dateStr,
+      })
+      return true
+    } catch (e: unknown) {
+      // 저장 실패를 삼키면 "제출했는데 옛 값으로 판정된" 상황이 조용히 재현된다.
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      pushComment({ icon: 'ai', text: `수정 사항을 저장하지 못해 제출을 멈췄습니다 — ${detail ?? '서버 오류'}` })
+      return false
+    }
+  }
 
   // 신규 저장 → createSettlement → 목록에 추가
   const save = async () => {
@@ -293,6 +270,7 @@ export function SettlementDetailModal({
   const raise = async () => {
     if (!item) return
     setPending(true)
+    if (!await persistEdits()) { setPending(false); return }
     const status = await raiseSettlements([item.id])
     onStatusChange?.(item.id, status)
     setPending(false)
@@ -304,6 +282,7 @@ export function SettlementDetailModal({
   const submit = async () => {
     if (!item) return
     setPending(true)
+    if (!await persistEdits()) { setPending(false); return }
     const outcome = await submitSettlements([item.id])
     onStatusChange?.(item.id, outcome.status[item.id] ?? 'SUBMITTED')
     setPending(false)
@@ -319,40 +298,44 @@ export function SettlementDetailModal({
     nav(`/erp/${item.id}`)
   }
 
-  const reject = async () => {
-    if (!item) return
+  /**
+   * 보완요청·반려 사유 확정. **팀 취합 뷰면 팀 결정**(TEAM_RETURNED/TEAM_REJECTED),
+   * 그 외(회계 검토)면 회계 결정(RETURNED/REJECT)이다.
+   *
+   * 예전엔 실패가 통째로 삼켜져 **버튼이 죽은 것처럼** 보였다 — 팀 뷰에서 본인 건을 열면
+   * `canTeamDecide`가 false가 되어 회계 API(`reviewSettlement`)로 나갔고, 권한이 없어
+   * 403이 나도 화면엔 아무 일도 일어나지 않았다. 이제 사유를 그대로 보여준다.
+   */
+  const decideWithReason = async (reason: string, detail: string) => {
+    if (!item || !decisionTarget) return
+    const msg = [reason, detail].filter(Boolean).join(' — ')
     setPending(true)
-    const status = await reviewSettlement(item.id, 'REJECT')
-    onStatusChange?.(item.id, status)
-    setPending(false)
-    onClose()
+    try {
+      const status = isTeamView
+        ? await decideTeamSettlement(item.id, decisionTarget, msg)
+        : await reviewSettlement(item.id, decisionTarget, msg)
+      onStatusChange?.(item.id, status)
+      setDecisionTarget(null)
+      onClose()
+    } catch (e: unknown) {
+      const detailMsg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      window.alert(detailMsg ?? '처리에 실패했습니다.')
+    } finally {
+      setPending(false)
+    }
   }
 
-  // 팀 반려 — 팀 취합 단계 반려(회계 반려와 별개 상태)
-  const teamReject = async () => {
-    if (!item) return
-    setPending(true)
-    const status = await decideTeamSettlement(item.id, 'REJECT')
-    onStatusChange?.(item.id, status)
-    setPending(false)
-    onClose()
-  }
-
-  // 보완요청 사유 확정 — 팀 뷰면 팀 보완요청(TEAM_RETURNED), 아니면 회계 보완요청(RETURNED)
-  const returnWithReason = async (reason: string, detail: string) => {
-    if (!item) return
-    const msg = detail ? `${reason} — ${detail}` : reason
-    const status = canTeamDecide
-      ? await decideTeamSettlement(item.id, 'RETURN', msg)
-      : await reviewSettlement(item.id, 'RETURN', msg)
-    onStatusChange?.(item.id, status)
-    setShowReturnModal(false)
-    onClose()
-  }
-
-  // F-2: 보완요청 사유는 별도 모달에서 (상세 모달은 잠시 숨김)
-  if (showReturnModal && item) {
-    return <ReturnReasonModal item={item} onClose={() => setShowReturnModal(false)} onSubmit={returnWithReason} />
+  // F-2: 사유는 별도 모달에서 (상세 모달은 잠시 숨김)
+  if (decisionTarget && item) {
+    return (
+      <DecisionReasonModal
+        item={item}
+        decision={decisionTarget}
+        busy={pending}
+        onClose={() => setDecisionTarget(null)}
+        onConfirm={decideWithReason}
+      />
+    )
   }
 
   const canSave = merchant.trim() !== '' && numOnly(amountText) > 0
@@ -368,23 +351,26 @@ export function SettlementDetailModal({
           {pending ? '저장 중…' : '저장(등록)'}
         </button>
       ) : canTeamDecide ? (
+        /* 팀 취합 — 목록 행과 **같은 버튼 세트**다(화면마다 눌러야 할 자리가 다르면 안 된다).
+           제출은 사유 없이 바로 회계로 올리고, 보완·반려는 사유 모달을 거친다. */
         <>
-          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>팀 보완요청</button>
-          <button className="btn reject" onClick={teamReject} disabled={pending}>팀 반려</button>
-          {/* 이상 건은 제출 불가 — 보완요청·반려로 처리 유도 */}
+          <button className="btn return" onClick={() => setDecisionTarget('RETURN')} disabled={pending}>보완요청</button>
+          <button className="btn reject" onClick={() => setDecisionTarget('REJECT')} disabled={pending}>반려</button>
           <button
             className="btn primary"
             onClick={submit}
             disabled={pending || isAnomaly}
-            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 팀 보완요청·팀 반려로 처리하세요.' : undefined}
+            title={isAnomaly ? '이상 건은 제출할 수 없습니다. 보완요청·반려로 처리하세요.' : undefined}
           >
-            {isAnomaly ? '제출 불가 (이상 건)' : '제출(SUBMITTED)'}
+            {isAnomaly ? '제출 불가 (이상 건)' : '제출'}
           </button>
         </>
-      ) : canReview ? (
+      ) : canReview && !isTeamView ? (
+        /* 회계 검토 — 여기의 「승인」은 회계 담당자 본인의 결정(→ 승인대기)이다.
+           팀 취합 뷰에서는 이 세트를 절대 띄우지 않는다(팀장이 회계 결정을 내리게 된다). */
         <>
-          <button className="btn return" onClick={() => setShowReturnModal(true)} disabled={pending}>보완요청(RETURNED)</button>
-          <button className="btn reject" onClick={reject} disabled={pending}>반려(REJECT)</button>
+          <button className="btn return" onClick={() => setDecisionTarget('RETURN')} disabled={pending}>보완요청(RETURNED)</button>
+          <button className="btn reject" onClick={() => setDecisionTarget('REJECT')} disabled={pending}>반려(REJECT)</button>
           {/* FR-ST-03: 확신 통과 건이라도 사람 확정 필수 */}
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
@@ -421,6 +407,7 @@ export function SettlementDetailModal({
     </>
   )
 
+  const auditTrail = item ? (item as ReviewItem).auditTrail : undefined
   const title = isCreate
     ? '신규 지출 등록'
     : `정산 상세${readOnly ? '' : ' · 수정'} · ${item!.id}`
@@ -468,113 +455,33 @@ export function SettlementDetailModal({
             </div>
           </div>
 
-          {/* 추가 증빙 — 증빙자료 추출 Agent가 사전승인·회의록·출장계획서 등에서 판정 사실을 뽑는다 */}
-          <div className="card">
-            <div className="card-head">
-              <h3>추가 증빙 자료</h3>
-              <span className="tag ai"><Sparkles size={11} /> 추출 Agent</span>
-            </div>
-            <div className="card-body">
-              {isCreate ? (
-                <div className="text-meta">저장 후 첨부할 수 있습니다.</div>
-              ) : !readOnly && (
-                <>
-                  <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-                    <select
-                      value={uploadKind}
-                      onChange={(e) => setUploadKind(e.target.value as AttachmentKind)}
-                      style={{ flex: 1 }}
-                      disabled={uploading}
-                    >
-                      {(Object.keys(ATTACHMENT_KIND_LABEL) as AttachmentKind[])
-                        .filter((k) => k !== 'RECEIPT')
-                        .map((k) => <option key={k} value={k}>{ATTACHMENT_KIND_LABEL[k]}</option>)}
-                    </select>
-                    <label className="btn" style={{ cursor: uploading ? 'default' : 'pointer' }}>
-                      <Paperclip size={14} /> {uploading ? '판독 중…' : '파일 선택'}
-                      <input type="file" onChange={onExtraFileChange} disabled={uploading} style={{ display: 'none' }} />
-                    </label>
-                  </div>
-                  <div className="text-meta">선택한 종류에 맞춰 판정에 쓸 사실만 뽑습니다(예: 사전승인 여부, 참석 인원).</div>
-                </>
-              )}
-              {attachmentsLoading ? (
-                <div className="text-meta" style={{ marginTop: 10 }}>불러오는 중…</div>
-              ) : attachments.length > 0 ? (
-                <div className="stack" style={{ marginTop: 10 }}>
-                  {attachments.map((a) => {
-                    const entries = Object.entries(a.extracted)
-                    return (
-                      <div key={a.id} style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '8px 10px' }}>
-                        <div className="row" style={{ justifyContent: 'space-between' }}>
-                          <div className="row" style={{ gap: 8 }}>
-                            <FileText size={16} color="var(--tone-red)" />
-                            <span style={{ fontSize: 12.5 }}>{a.originalName || ATTACHMENT_KIND_LABEL[a.kind]}</span>
-                            <span className="tag">{ATTACHMENT_KIND_LABEL[a.kind]}</span>
-                            {a.extractionStatus === 'FAILED' && <span className="tag warn">판독 실패</span>}
-                            {a.extractionStatus === 'RUNNING' && <span className="tag">판독 중</span>}
-                          </div>
-                          <div className="row" style={{ gap: 4 }}>
-                            {a.extractionStatus === 'FAILED' && !readOnly && (
-                              <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="재시도" onClick={() => retryExtra(a.id)} disabled={uploading}>
-                                <RotateCcw size={12} />
-                              </button>
-                            )}
-                            {!readOnly && (
-                              <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(a.id)}>
-                                <X size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        {a.extractionStatus === 'FAILED' && a.error && (
-                          <div className="text-meta" style={{ marginTop: 4, color: 'var(--tone-red)' }}>{a.error}</div>
-                        )}
-                        {entries.length > 0 && (
-                          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 11.5 }}>
-                            {entries.map(([path, value]) => {
-                              const conf = a.fieldConfidence[path]
-                              const low = conf != null && conf < CONFIDENCE_APPLY_THRESHOLD
-                              return (
-                                <li key={path} style={{ color: low ? 'var(--tone-amber)' : undefined }}>
-                                  {path} = {JSON.stringify(value)}
-                                  {conf != null && ` (확신도 ${Math.round(conf * 100)}%)`}
-                                  {low && ' — 저신뢰라 판정에는 반영되지 않았습니다'}
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : !isCreate && <div className="text-meta" style={{ marginTop: 10 }}>첨부된 추가 증빙이 없습니다.</div>}
-            </div>
-          </div>
+          {/* 증빙 첨부 + 판독 — 업로드가 곧 판독 트리거다(서버가 비전 판독을 돌린다). */}
+          <EvidenceAttachments
+            settlementId={item?.id ?? null}
+            readOnly={readOnly}
+            onFactsExtracted={onFactsExtracted}
+          />
 
-          {/* 상태 변경 이력 (Audit Trail) — 실제 SettlementEvent 조회(위 useEffect) */}
+          {/* 상태 변경 이력 (Audit Trail) */}
           <div className="card">
             <div className="card-head"><h3>상태 변경 이력</h3></div>
             <div className="card-body">
               {isCreate ? (
                 <div className="text-meta">저장 후 이력이 기록됩니다.</div>
-              ) : historyLoading ? (
-                <div className="text-meta">불러오는 중…</div>
-              ) : !history?.length ? (
-                <div className="text-meta">상태 변경 이력이 없습니다.</div>
               ) : (
                 <ul className="timeline">
-                  {history.map((ev, i) => (
-                    <li key={ev.id} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
-                      <div style={{ fontSize: 13 }}>
-                        {ev.fromState ? `${STATUS_META[ev.fromState as SettlementStatus]?.label ?? ev.fromState} → ` : ''}
-                        {STATUS_META[ev.toState as SettlementStatus]?.label ?? ev.toState}
-                        {ev.reason ? ` — ${ev.reason}` : ''}
-                      </div>
-                      <div className="t-meta">{ev.actor ?? '시스템'} · {formatDateTime(ev.createdAt)}</div>
+                  {auditTrail?.map((ev, i) => (
+                    <li key={i} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
+                      <div style={{ fontSize: 13 }}>{ev.status}{ev.note ? ` — ${ev.note}` : ''}</div>
+                      <div className="t-meta">{ev.actor} · {ev.timestamp}</div>
                     </li>
-                  ))}
+                  )) ?? (
+                    <>
+                      <li className="gray"><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item!.date} 09:12</div></li>
+                      <li className="blue"><div>SUBMITTED — 제출</div><div className="t-meta">{item!.user} · 09:40</div></li>
+                      <li className="amber"><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
+                    </>
+                  )}
                 </ul>
               )}
             </div>
@@ -676,6 +583,10 @@ export function SettlementDetailModal({
               </div>
             )}
           </div>
+
+          {/* 룰 엔진 판정 — fact.json이 "무엇을 입력했나"라면 여기는 "그래서 어떻게 판정됐나"다.
+              신규 등록 중에는 판정 대상 자체가 없으므로 저장 후부터 보인다. */}
+          {!isCreate && item && <RuleJudgementPanel item={item} />}
 
           {/* AI 코멘트 로그 */}
           <div className="card">

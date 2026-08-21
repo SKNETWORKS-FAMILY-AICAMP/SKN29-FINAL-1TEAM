@@ -12,8 +12,14 @@ export const endpoints = {
   health: () => api.get('/health/'),
   settlements: (params?: Record<string, unknown>) => api.get('/settlements/', { params }),
   settlement: (id: string) => api.get(`/settlements/${id}/`),
+  // S-03 헤더 요약(자동처리율·평균 검토시간) — 이번 달 집계, 서버가 계산한다.
+  reviewStats: () => api.get('/settlements/review-stats/'),
   createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
   deleteSettlement: (id: string) => api.delete(`/settlements/${id}/`), // '내 지출' 미제출 건 삭제
+  // 상세 화면 수정 저장. **제출·올림 버튼이 전이 전에 먼저 부른다** — 이게 없던 동안
+  //  모달은 제목만 '수정'이었고 고친 값이 서버에 닿지 않았다(판정이 옛 값으로 돌았다).
+  updateSettlement: (id: string, patch: Record<string, unknown>) =>
+    api.patch(`/settlements/${id}/`, patch),
   // F-1 초안 작성 Agent — instruction이 있으면 수정, 없으면 생성(플레이스홀더)
   suggestDraft: (data: Record<string, unknown>) => api.post('/settlements/draft-suggest/', data),
   // ERP/카드사 결제기록 수집("내역 불러오기") — 다음 회차 표본을 가져온다(멱등).
@@ -25,29 +31,12 @@ export const endpoints = {
   confirm: (id: string) => api.post(`/settlements/${id}/confirm/`), // FR-ST-03 사람 확정
   review: (id: string, decision: 'APPROVE' | 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/review/`, { decision, reason }),
-  // S-03 헤더 요약(자동처리율·평균 검토시간) — 이번 달 집계, 서버가 계산한다.
-  reviewStats: () => api.get('/settlements/review-stats/'),
-  // 보완요청/반려 사유 초안 — 이미 있는 판정 근거를 LLM이 문장으로 정리. 담당자가
-  // 편집 가능한 초안일 뿐 확정 사유가 아니다. LLM 호출이라 넉넉히 잡는다.
-  draftDecisionReason: (id: string, decision: 'RETURN' | 'REJECT', reasonCategory: string) =>
-    api.post(`/settlements/${id}/draft-decision-reason/`, { decision, reasonCategory }, { timeout: 30_000 }),
   teamDecision: (id: string, decision: 'RETURN' | 'REJECT', reason?: string) =>
     api.post(`/settlements/${id}/team-decision/`, { decision, reason }),
-  // 증빙자료 추출 Agent — 첨부 업로드가 곧 추출 요청이다(동기, 응답이 곧 판독 결과).
-  attachments: (settlementId: string) => api.get(`/settlements/${settlementId}/attachments/`),
-  uploadAttachment: (settlementId: string, kind: string, file: File) => {
-    const form = new FormData()
-    form.append('kind', kind)
-    form.append('file', file)
-    return api.post(`/settlements/${settlementId}/attachments/`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120_000, // 비전 판독(페이지 렌더+LLM) 포함 — 업로드 응답이 곧 추출 결과다.
-    })
-  },
-  deleteAttachment: (settlementId: string, attachmentId: number) =>
-    api.delete(`/settlements/${settlementId}/attachments/${attachmentId}/`),
-  reExtractAttachment: (settlementId: string, attachmentId: number) =>
-    api.post(`/settlements/${settlementId}/attachments/${attachmentId}/re-extract/`, {}, { timeout: 120_000 }),
+  // 보완요청·반려 **사유 초안** — Draft Agent가 판정 사유와 내역을 보고 문장을 채운다.
+  //  결정 모달이 열릴 때 부른다. ai가 없어도 서버가 판정 플래그로 폴백하므로 항상 응답한다.
+  decisionReason: (id: string, decision: 'RETURN' | 'REJECT') =>
+    api.post(`/settlements/${id}/decision-reason/`, { decision }, { timeout: 40_000 }),
   rules: (status?: string) => api.get('/rules/', { params: status ? { status } : undefined }),
   // 네임드 플래그 레지스트리 — 라벨·선택지의 단일 원천(policies/flags.py).
   //  시스템 플래그는 기본 제외한다(룰이 `NO_ACTIVE_RULE_GRAPH`를 붙이면 의미가 뒤집힌다).
@@ -136,4 +125,32 @@ export const endpoints = {
     api.post(`/policy-docs/${docId}/clauses/${clauseId}/decision/`, { decision, reason }),
   // Rule 버전 관리
   ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
+
+  // ── S-08 예산 관리 — 전 팀 한도·사용액. 팀 하나짜리 teamBudget과 응답 셰이프가 다르다.
+  budgetOverview: (month?: string) => api.get('/team-budget/overview/', { params: month ? { month } : undefined }),
+
+  // ── S-09 법인카드 관리 — 조회는 사용액·조치필요 여부(계산값)를 함께 받는다.
+  cards: (params?: Record<string, unknown>) => api.get('/cards/', { params }),
+  cardsAttention: () => api.get('/cards/attention/'),
+  assignCard: (id: number, data: { mode: 'TEAM' | 'PERSONAL'; teamId?: number; userId?: number; reason?: string }) =>
+    api.post(`/cards/${id}/assign/`, data),
+  stopCard: (id: number, reason: string) => api.post(`/cards/${id}/stop/`, { reason }),
+  reactivateCard: (id: number) => api.post(`/cards/${id}/reactivate/`),
+
+  // ── ERP 전표(안) — 화면은 정산 id만 들고 있으므로 전표 id 없이 조회한다.
+  //  전표가 없으면 404다(빈 껍데기를 받아 "있는데 비었다"로 그리지 않게).
+  erpVoucherBySettlement: (settlementId: string) => api.get(`/erp/vouchers/by-settlement/${settlementId}/`),
+
+  // ── 증빙 첨부 — **업로드가 곧 판독 트리거**다(서버가 커밋 후 비전 판독을 돌린다).
+  //  판독은 비동기라 업로드 응답의 extractionStatus는 대개 PENDING/RUNNING이다 → 목록을 폴링한다.
+  settlementAttachments: (id: string) => api.get(`/settlements/${id}/attachments/`),
+  uploadAttachment: (id: string, form: FormData) =>
+    api.post(`/settlements/${id}/attachments/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120_000,
+    }),
+  deleteAttachment: (id: string, attachmentId: number) =>
+    api.delete(`/settlements/${id}/attachments/${attachmentId}/`),
+  reextractAttachment: (id: string, attachmentId: number) =>
+    api.post(`/settlements/${id}/attachments/${attachmentId}/reextract/`),
 }

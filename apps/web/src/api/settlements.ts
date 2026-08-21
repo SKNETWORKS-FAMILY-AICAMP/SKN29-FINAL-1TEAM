@@ -39,9 +39,10 @@ export const TEAM_STAGE_PREFIX = 'TEAM_'
 function toReviewItem(row: Settlement & Partial<ReviewItem>): ReviewItem {
   return {
     ...row,
+    // 정렬용 기본값이다. **화면 표시는 `riskReviewed`를 봐야 한다** — 0점과 미실시는 다르다.
     anomalyScore: row.anomalyScore ?? 0,
-    // aiRecommendation과 같은 계약 — 안 돈 건은 ''(등급 없음)이지 'LOW'가 아니다.
     riskTier: row.riskTier ?? '',
+    riskReviewed: row.riskReviewed ?? false,
     featureContribs: row.featureContribs ?? [],
     ragRefs: row.ragRefs ?? [],
     // **기본값을 'APPROVE'로 채우지 않는다.** Risk Review가 안 돈 건이 "AI 권장: 승인"으로

@@ -6,6 +6,10 @@
      정상 건은 강등 없이 `PASS`가 나온다. 이게 깨지면 전건이 IN_REVIEW로 고인다.
   ③ **정책값을 참조하지 않는다** — `policy.*`를 쓰면 별표 없는 신규 설치에서
      미해소 가드가 전건을 REVIEW로 떨어뜨린다.
+  ④ **막지 않고 사람에게 넘긴다** — 걸린 건은 전부 `REVIEW`다. `RETURN`(지출자에게
+     되돌려보냄)은 회사가 무엇을 요구하는지 정해지기 전에 내릴 결정이 아니다.
+  ⑤ **초기 도입은 유연하게** — 소액 증빙 누락·업종 미확정처럼 걸 이유가 분명하지 않은
+     건은 통과시킨다. 전건이 걸리면 게이트가 신호를 잃는다.
 """
 from decimal import Decimal
 
@@ -17,22 +21,23 @@ from domain.cards.models import Card
 from domain.policies import orchestrator
 from domain.policies.dsl import extract_vars
 from domain.policies.models import PolicyDoc, RuleGraph, RuleGraphStatus
-from domain.settlements.models import Settlement
+from domain.settlements.models import Category, Settlement, TeamBudget
 from domain.settlements.models import SettlementStatus as S
 from domain.transactions.models import Receipt, Transaction
 from domain.accounts.models import User
 
 
-def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", ai_suggested=False):
-    """게이트가 보는 네 가지 사실을 조합해 정산 1건을 만든다."""
+def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", ai_suggested=False,
+                amount="120000", category="접대"):
+    """게이트가 보는 사실을 조합해 정산 1건을 만든다."""
     card = Card.objects.filter(card_type="PERSONAL").first()
     tx = Transaction.objects.create(
-        card=card, merchant="강남한식당", amount=Decimal("120000"), ts=timezone.now(),
+        card=card, merchant="강남한식당", amount=Decimal(amount), ts=timezone.now(),
     )
     if receipt:
         Receipt.objects.create(matched_tx=tx, status="MATCHED", file_ref="r.jpg")
     return Settlement.objects.create(
-        transaction=tx, category="접대", status=S.SUBMITTED,
+        transaction=tx, category=category, status=S.SUBMITTED,
         purpose=purpose, merchant_industry=industry, ai_suggested=ai_suggested,
     )
 
@@ -59,6 +64,32 @@ class SeedCleanStateTests(TestCase):
             self.assertTrue(User.objects.filter(username=username).exists(), username)
         self.assertTrue(self.client.login(username="acc", password="pass1234"))
 
+    def test_team_budgets_exist_for_this_month(self):
+        """예산 화면이 빈 껍데기가 아니려면 한도 행이 있어야 한다(사용액은 집계라 0이 정상)."""
+        month = timezone.localdate().strftime("%Y-%m")
+        rows = TeamBudget.objects.filter(year_month=month)
+        self.assertTrue(rows.exists())
+        # 팀마다 6개 과목 + 총액 1행.
+        for team_id in rows.values_list("team_id", flat=True).distinct():
+            per_team = rows.filter(team_id=team_id)
+            self.assertEqual(per_team.count(), len(Category.values) + 1)
+
+    def test_team_total_equals_sum_of_categories(self):
+        """불변식 ① — 총한도 != 과목 한도 합이면 대시보드가 원인 없이 어긋난다."""
+        month = timezone.localdate().strftime("%Y-%m")
+        for team_id in TeamBudget.objects.values_list("team_id", flat=True).distinct():
+            rows = TeamBudget.objects.filter(team_id=team_id, year_month=month)
+            total = rows.get(category="").limit_amount
+            self.assertEqual(total, sum(r.limit_amount for r in rows.exclude(category="")))
+
+    def test_every_category_has_a_budget_row(self):
+        """불변식 ② — 빠진 과목의 지출은 총액엔 잡히는데 항목 카드엔 안 보인다."""
+        month = timezone.localdate().strftime("%Y-%m")
+        for team_id in TeamBudget.objects.values_list("team_id", flat=True).distinct():
+            have = set(TeamBudget.objects.filter(team_id=team_id, year_month=month)
+                       .exclude(category="").values_list("category", flat=True))
+            self.assertEqual(have, set(Category.values))
+
     def test_cards_exist_so_registration_is_possible(self):
         """카드가 없으면 신규 지출 등록에서 카드를 못 골라 시연이 막힌다."""
         self.assertTrue(Card.objects.exists())
@@ -82,27 +113,82 @@ class DefaultGateJudgementTests(TestCase):
         # 미해소 강등이 없어야 한다(참조 필드가 전부 채워졌다는 뜻).
         self.assertFalse([f for f in result.flags if f.startswith("UNRESOLVED")], result.flags)
 
-    def test_missing_receipt_returns(self):
-        result = orchestrator.judge(_settlement(receipt=False), record=False)
-        self.assertEqual(result.decision, "RETURN")
-        # 어휘 통일: `MISSING_RECEIPT` → `EVIDENCE_MISSING`(레지스트리 기준).
-        #  같은 개념에 seed_rules/seed_clean이 다른 이름을 쓰고 있었다.
-        self.assertIn("EVIDENCE_MISSING", result.flags)
+    # ── 자동 통과(PASS)는 화이트리스트 ─────────────────────────────────
 
-    def test_missing_purpose_returns(self):
-        result = orchestrator.judge(_settlement(purpose=""), record=False)
-        self.assertEqual(result.decision, "RETURN")
-        self.assertIn("PURPOSE_UNCLEAR", result.flags)
+    def test_완결된_소액_건만_자동_통과한다(self):
+        """증빙·목적·분류가 있고 업종을 확인했으며 소액일 때만 승인 대기로 직행한다."""
+        result = orchestrator.judge(_settlement(), record=False)
+        self.assertEqual(result.decision, "PASS")
+        self.assertFalse([f for f in result.flags if f.startswith("UNRESOLVED")], result.flags)
 
-    def test_unresolved_merchant_goes_to_review(self):
+    def test_요건이_하나라도_빠지면_검토로_간다(self):
+        """**기본값은 검토다.** 자동 통과는 전부 만족했을 때만 나온다."""
+        cases = {
+            "증빙 없음": _settlement(receipt=False),
+            "목적 없음": _settlement(purpose=""),
+            "분류 없음": _settlement(category=""),
+            "업종 미확정": _settlement(industry=""),
+            "위험 업종": _settlement(industry="사행성업종"),
+            "고액": _settlement(amount="300000"),
+        }
+        for label, settlement in cases.items():
+            with self.subTest(label):
+                self.assertEqual(orchestrator.judge(settlement, record=False).decision, "REVIEW")
+
+    # ── 검토로 갈 때 **사유가 붙어서** 간다 ────────────────────────────
+
+    def test_해당하는_사유가_전부_붙는다(self):
+        """사유마다 단말로 끊으면 첫 번째 하나만 남아 검토자가 전체를 못 본다."""
+        result = orchestrator.judge(
+            _settlement(receipt=False, purpose="", category="", industry="사행성업종",
+                        amount="5000000"),
+            record=False,
+        )
+        self.assertEqual(result.decision, "REVIEW")
+        for flag in ("PROHIBITED_MERCHANT", "EVIDENCE_MISSING", "PURPOSE_UNCLEAR",
+                     "CATEGORY_MISSING", "HIGH_AMOUNT"):
+            self.assertIn(flag, result.flags)
+
+    def test_위험업종_사유(self):
+        result = orchestrator.judge(_settlement(industry="사행성업종"), record=False)
+        self.assertIn("PROHIBITED_MERCHANT", result.flags)
+
+    def test_규정_원문_표기도_같은_사유로_접힌다(self):
+        """`유흥주점` 같은 원문 표기도 정본 어휘로 접혀 같은 룰에 걸린다."""
+        result = orchestrator.judge(_settlement(industry="유흥주점"), record=False)
+        self.assertIn("PROHIBITED_MERCHANT", result.flags)
+
+    def test_업종_미확정은_전용_사유로_표시된다(self):
+        """`UNRESOLVED_FACT`가 아니라 `MERCHANT_UNRESOLVED`여야 한다 — 분기로 우회한 이유."""
         result = orchestrator.judge(_settlement(industry=""), record=False)
-        self.assertEqual(result.decision, "REVIEW")
         self.assertIn("MERCHANT_UNRESOLVED", result.flags)
+        self.assertNotIn("UNRESOLVED_FACT:merchant.merchant_type", result.flags)
 
-    def test_low_confidence_category_goes_to_review(self):
-        result = orchestrator.judge(_settlement(ai_suggested=True), record=False)
-        self.assertEqual(result.decision, "REVIEW")
-        self.assertIn("LOW_CATEGORY_CONFIDENCE", result.flags)
+    def test_고액_사유(self):
+        result = orchestrator.judge(_settlement(amount="1000000"), record=False)
+        self.assertIn("HIGH_AMOUNT", result.flags)
+
+    # ── 결정 규약 ─────────────────────────────────────────────────────
+
+    def test_게이트는_반려나_보완요청을_내지_않는다(self):
+        """`RETURN`·`REJECT`는 회사가 무엇을 요구하는지 정해진 뒤의 결정이다."""
+        cases = [
+            _settlement(industry="사행성업종"),
+            _settlement(receipt=False),
+            _settlement(category=""),
+            _settlement(purpose=""),
+            _settlement(amount="9000000"),
+            _settlement(),
+        ]
+        for settlement in cases:
+            result = orchestrator.judge(settlement, record=False)
+            self.assertIn(result.decision, {"PASS", "REVIEW"}, result.flags)
+
+    def test_통과한_건에는_사유가_붙지_않는다(self):
+        """사유 없이 통과해야 검토자가 「왜 통과했지」를 되묻지 않는다."""
+        result = orchestrator.judge(_settlement(), record=False)
+        rule_flags = [f for f in result.flags if not f.startswith("NO_SCOPE")]
+        self.assertEqual(rule_flags, [], result.flags)
 
     def test_gate_does_not_reference_company_policy(self):
         """`policy.*`를 참조하면 별표가 없는 신규 설치에서 전건이 REVIEW로 강등된다."""

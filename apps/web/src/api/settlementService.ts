@@ -3,7 +3,7 @@
 // 백엔드(Django)가 준비되면 이 파일 안쪽만 endpoints.* 실제 호출로 바꾸면 되고, 화면 컴포넌트는 그대로 둔다.
 import { endpoints } from './client'
 import { USE_MOCK } from './config'
-import type { Attachment, ImportResult, Settlement, SettlementStatus } from '../types/domain'
+import type { ImportResult, Settlement, SettlementStatus } from '../types/domain'
 
 export async function fetchSettlementDetail(item: Settlement): Promise<Settlement> {
   if (USE_MOCK) return item
@@ -22,6 +22,21 @@ export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>)
   }
   const res = await endpoints.createSettlement(draft)
   return res.data
+}
+
+/**
+ * 상세 화면에서 고친 값을 저장한다. **상태 전이(올림·제출) 직전에 먼저 부른다.**
+ *
+ * 여기서 보내는 `category`는 **사람이 확정한 분류**다 — 드롭다운에 AI 제안이 미리 채워져
+ * 있어도, 저장하는 순간 「사람이 그 값으로 확정했다」는 기록이 된다. 서버의 `ai_category`
+ * (AI가 원래 뭐라고 했는지)는 건드리지 않는다 — 제안↔확정을 대조해야 정확도를 잴 수 있다.
+ */
+export async function updateSettlement(
+  id: string, patch: Record<string, unknown>,
+): Promise<Settlement | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  const { data } = await endpoints.updateSettlement(id, patch)
+  return data
 }
 
 /**
@@ -115,31 +130,6 @@ export async function reviewSettlement(
 }
 
 /**
- * 보완요청/반려 사유 **초안** — 담당자가 사유칸에 편집해서 쓸 문장을 LLM이 만든다(2026-08-21).
- * 이미 화면에 떠 있는 판정 근거(룰 플래그·2차 RAG 검증·1차 이상탐지)를 서버가 다시 모아
- * 문장으로 정리할 뿐, 새 판단을 하지 않는다. **실패하면 `null`** — 일반 문구로 채우지
- * 않는다(그러면 "AI가 판단했다"고 오해한다). 호출부는 이때 안내만 하고 빈칸을 그대로 둔다.
- */
-export async function draftDecisionReason(
-  id: string,
-  decision: 'RETURN' | 'REJECT',
-  reasonCategory: string,
-): Promise<string | null> {
-  if (USE_MOCK) {
-    await mockDelay()
-    return decision === 'REJECT'
-      ? `${reasonCategory} 사유로 반려합니다. 재제출은 불가하니 사유를 확인해주세요. (mock 초안)`
-      : `${reasonCategory} 확인이 필요합니다. 보완 후 다시 제출해주세요. (mock 초안)`
-  }
-  try {
-    const res = await endpoints.draftDecisionReason(id, decision, reasonCategory)
-    return res.data.detail || null
-  } catch {
-    return null
-  }
-}
-
-/**
  * FR-ST-03 사람 최종 확정 — PENDING_CONFIRM → CONFIRMED(→ ERP 전표(안) 자동 생성).
  *
  * 룰이 통과시킨 건도 **사람 확정 없이는 CONFIRMED가 될 수 없다**("사람 확정 원칙").
@@ -154,21 +144,28 @@ export async function confirmSettlement(id: string): Promise<SettlementStatus | 
   } catch { return null }
 }
 
-export interface ReviewStats {
-  autoProcessedRate: number | null // 0~1. 이번 달 판정 자체가 없으면 null(집계 불가 ≠ 0%)
-  avgReviewMinutes: number | null  // 사람이 실제로 내린 결정이 없으면 null
+/** 보완요청·반려 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
+export interface DecisionReasonDraft {
+  reason: string
+  detail: string
+  source: 'ai' | 'fallback'
+  /** 사유 선택지 — **서버가 준다**. 화면과 LLM이 같은 목록을 봐야 어긋나지 않는다. */
+  options: string[]
 }
 
-/** S-03 헤더 요약(자동처리율·평균 검토시간) — 룰 판정·검토 이력 기반 서버 집계.
- *  실패해도 화면이 죽으면 안 된다(부가 지표라 숫자 대신 자리표시자로 대체). */
-export async function fetchReviewStats(): Promise<ReviewStats | null> {
-  if (USE_MOCK) {
-    await mockDelay()
-    return { autoProcessedRate: 0.82, avgReviewMinutes: 6.2 }
-  }
+/**
+ * 결정 모달이 열릴 때 사유 초안을 받아온다.
+ *
+ * 실패해도 모달을 막지 않는다 — 초안이 없으면 사람이 직접 쓰면 되고, 결정 자체가
+ * 초안 생성에 묶이면 ai가 죽었을 때 정산이 멈춘다.
+ */
+export async function fetchDecisionReason(
+  id: string, decision: 'RETURN' | 'REJECT',
+): Promise<DecisionReasonDraft | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
   try {
-    const res = await endpoints.reviewStats()
-    return { autoProcessedRate: res.data.autoProcessedRate, avgReviewMinutes: res.data.avgReviewMinutes }
+    const { data } = await endpoints.decisionReason(id, decision)
+    return data
   } catch {
     return null
   }
@@ -220,64 +217,24 @@ export async function reviseDraft(
   } catch { return null }
 }
 
-// ── 증빙자료 추출 Agent — 첨부 업로드/조회/삭제/재추출 ──────────────────
-/** mock 모드에서 업로드 즉시 그럴싸한 판독 결과를 만든다(실제 LLM 호출 없이 UI 흐름만 확인). */
-function mockAttachment(kind: string, name: string): Attachment {
-  const now = new Date().toISOString()
-  const byKind: Record<string, { extracted: Record<string, unknown>; confidence: Record<string, number> }> = {
-    PRE_APPROVAL: { extracted: { 'approval.pre_approval_obtained': true }, confidence: { 'approval.pre_approval_obtained': 0.92 } },
-    MEETING_MINUTES: {
-      extracted: { 'participants.participant_count': 4, 'participants.external_participant_count': 1 },
-      confidence: { 'participants.participant_count': 0.9, 'participants.external_participant_count': 0.8 },
-    },
-    TRIP_PLAN: {
-      extracted: { 'trip.trip_type': '국내', 'trip.region_grade': '가' },
-      confidence: { 'trip.trip_type': 0.88, 'trip.region_grade': 0.7 },
-    },
+export interface ReviewStats {
+  autoProcessedRate: number | null // 0~1. 이번 달 판정 자체가 없으면 null(집계 불가 ≠ 0%)
+  avgReviewMinutes: number | null  // 사람이 실제로 내린 결정이 없으면 null
+}
+
+/** S-03 헤더 요약(자동처리율·평균 검토시간) — 룰 판정·검토 이력 기반 서버 집계.
+ *  실패해도 화면이 죽으면 안 된다(부가 지표라 숫자 대신 자리표시자로 대체). */
+export async function fetchReviewStats(): Promise<ReviewStats | null> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return { autoProcessedRate: 0.82, avgReviewMinutes: 6.2 }
   }
-  const picked = byKind[kind] ?? { extracted: {}, confidence: {} }
-  return {
-    id: Date.now(), kind: kind as Attachment['kind'], kindLabel: kind, fileUrl: null, originalName: name,
-    extractionStatus: 'DONE', extracted: picked.extracted, fieldConfidence: picked.confidence,
-    evidenceSpans: [], extractorVersion: 'mock', uploadedAt: now, extractedAt: now, error: '',
+  try {
+    const res = await endpoints.reviewStats()
+    return { autoProcessedRate: res.data.autoProcessedRate, avgReviewMinutes: res.data.avgReviewMinutes }
+  } catch {
+    return null
   }
-}
-
-export async function fetchAttachments(settlementId: string): Promise<Attachment[]> {
-  if (USE_MOCK) return []
-  try {
-    const res = await endpoints.attachments(settlementId)
-    return res.data
-  } catch { return [] }
-}
-
-/**
- * 첨부 업로드 — 응답이 곧 판독 결과다(동기, `_context/evidence-extraction-agent.md`).
- * 실패해도 업로드 자체가 실패했는지 판독만 실패했는지 화면에서 구분해야 하므로 `null`을 던지지
- * 않고 서버가 돌려준 `FAILED` 상태·사유를 그대로 보여준다. 네트워크 자체가 실패하면 `null`.
- */
-export async function uploadAttachment(settlementId: string, kind: string, file: File): Promise<Attachment | null> {
-  if (USE_MOCK) { await mockDelay(); return mockAttachment(kind, file.name) }
-  try {
-    const res = await endpoints.uploadAttachment(settlementId, kind, file)
-    return res.data
-  } catch { return null }
-}
-
-export async function deleteAttachment(settlementId: string, attachmentId: number): Promise<boolean> {
-  if (USE_MOCK) { await mockDelay(); return true }
-  try {
-    await endpoints.deleteAttachment(settlementId, attachmentId)
-    return true
-  } catch { return false }
-}
-
-export async function reExtractAttachment(settlementId: string, attachmentId: number): Promise<Attachment | null> {
-  if (USE_MOCK) { await mockDelay(); return null }
-  try {
-    const res = await endpoints.reExtractAttachment(settlementId, attachmentId)
-    return res.data
-  } catch { return null }
 }
 
 /** '내 지출': 아직 올리지 않은 건 삭제. 성공 여부를 돌려준다. */

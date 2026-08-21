@@ -1,18 +1,18 @@
 // S-03 검토 워크스페이스 — 회계 담당자.
 // FR-UI-03, FR-RR-01~08, FR-RL-01~02, FR-DB-04
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ReviewItem } from '../types/domain'
-import { CARD_TYPE_LABEL, CATEGORIES, STATUS_META, type Category, type SettlementStatus } from '../types/domain'
-import { won, pct, formatDateTime } from '../lib/format'
+import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
+import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
+import { RulePassedNotice } from '../components/settlement/RulePassedNotice'
+import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import {
-  confirmSettlement, fetchReviewStats, fetchSettlementDetail, reviewSettlement, type ReviewStats,
-} from '../api/settlementService'
+import { confirmSettlement, fetchReviewStats, reviewSettlement, type ReviewStats } from '../api/settlementService'
 import { AWAITING_CONFIRM_STATUSES, REVIEW_HISTORY_STATUSES } from '../api/settlements'
 import { useSettlements } from '../context/SettlementsContext'
 import { useCan } from '../lib/capabilities'
@@ -52,30 +52,8 @@ type Filter = 'ALL' | Reco
 /** 검토 워크스페이스의 세 작업함. 확정 대기를 이력에 묻어 두면 아무도 확정하지 않는다. */
 type View = 'PENDING' | 'CONFIRM' | 'HISTORY'
 
-/**
- * 위험 등급 — **`anomalyScore`를 0~1 확률로 읽지 않는다.**
- *
- * 이 화면은 원래 `Math.round(anomalyScore * 100)`을 점수로 찍고 `>= 60`이면 빨강으로 칠했다.
- * 그런데 실제 `anomaly_score`는 확률이 아니라 IsolationForest의 부호 반전 결정함수값이라
- * 실측 범위가 **−0.03 ~ +0.06**이다(0~1이 아니다). 그래서 실 데이터에선 ×100을 해도 −3·6 같은
- * 값이 나와 **전 건이 "정상(초록)"으로 칠해졌고**, "고위험 N건"은 항상 0이었다 — 관측 이상비율
- * 28%(기준 대비 8배)인 HIGH 건조차 초록으로 보였다. 목업(0.92 등)은 0~1이라 이 결함이 안 보였다.
- *
- * 등급은 백엔드가 판정 시점 임계값으로 매긴 `riskTier`를 쓴다(단일 원천 — 프론트가 임계값을
- * 다시 정의하지 않는다). `riskTier`가 없는 건은 ① 목업 데이터이거나 ② Risk Review가 아직 안 돈
- * 건인데, 후자는 등급 자체가 없는 게 맞으므로 `null`로 두고 호출부가 표시를 생략한다.
- */
-type RiskTier = 'HIGH' | 'MEDIUM' | 'LOW'
-
-/** 빈 문자열(=Risk Review 미실행)을 `null`로 좁힌다. 등급 판정 자체는 백엔드가 한다. */
-const riskTierOf = (i: Pick<ReviewItem, 'riskTier'>): RiskTier | null => i.riskTier || null
-
-const RISK_TIER_LABEL: Record<RiskTier, string> = { HIGH: '고위험', MEDIUM: '주의', LOW: '정상' }
-const RISK_TIER_COLOR: Record<RiskTier, string> = {
-  HIGH: 'var(--tone-red)',
-  MEDIUM: 'var(--tone-amber)',
-  LOW: 'var(--tone-green)',
-}
+// 위험도(anomaly_score×100) 색 구간: ~30 정상(초록) / 30~60 주의(주황) / 60~ 고위험(빨강)
+const riskColor = (score: number) => (score >= 60 ? 'var(--tone-red)' : score >= 30 ? 'var(--tone-amber)' : 'var(--tone-green)')
 
 // 비용분류 2글자 약어(표시용). Category는 고정 enum이라 프론트 매핑으로 충분 — 미지값은 앞 2글자 폴백.
 // (2026-08-14: '업무활성'→'회식' 카테고리 교체로 특수 약어가 필요 없어짐 — '회식'은 이미 2글자라
@@ -99,49 +77,31 @@ export function ReviewWorkspace() {
   const [filter, setFilter] = useState<Filter>('ALL')
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [showHistory, setShowHistory] = useState(false)
-  // 상태 변경 이력 — 목록 API엔 없다(N+1 방지로 상세 조회에만 실림). 접이식이 열릴 때만
-  // 지연 조회한다. 예전엔 이 자리가 하드코딩 3줄이었다 — 실제로는 `SettlementEvent`가
-  // 이미 있는데 화면이 그걸 가져다 쓴 적이 없었다(2026-08-21 전수 점검에서 발견).
-  const [history, setHistory] = useState<ReviewItem['events']>(undefined)
-  const [historyLoading, setHistoryLoading] = useState(false)
   const [showFact, setShowFact] = useState(false)
   const [modal, setModal] = useState<{ decision: 'RETURN' | 'REJECT'; ids: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>('PENDING')
   const [stats, setStats] = useState<ReviewStats | null>(null)
-  const isHistory = view === 'HISTORY'
-  const isConfirm = view === 'CONFIRM'
-  const month = currentMonth()
 
   // 헤더 요약(자동처리율·평균 검토시간) — 이 화면과 무관하게 실패해도 나머지 기능은 그대로
   // 동작해야 하므로 별도 useEffect로 분리한다(목록 로딩과 실패 경로를 안 섞는다).
   useEffect(() => {
     fetchReviewStats().then(setStats)
   }, [])
-
-  // 팀 필터 — 기본값 '전체'(기존 동작 그대로). 데모/검증용 팀만 따로 확인하고 싶을 때 골라
-  // 쓰는 용도라 회계 담당자의 기본 업무 흐름은 바뀌지 않는다. teamId 기준으로 거르고,
-  // 라벨은 같은 팀의 dept 표기를 그대로 쓴다(팀 이름을 프론트가 새로 짓지 않는다).
-  const [teamFilter, setTeamFilter] = useState<string>('ALL')
-  const teamOptions = useMemo(() => {
-    const byId = new Map<string, string>()
-    for (const i of items) {
-      if (i.teamId != null && i.dept) byId.set(String(i.teamId), i.dept)
-    }
-    return [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1]))
-  }, [items])
-  const teamScoped = teamFilter === 'ALL' ? items : items.filter((i) => String(i.teamId) === teamFilter)
+  const isHistory = view === 'HISTORY'
+  const isConfirm = view === 'CONFIRM'
+  const month = currentMonth()
 
   // 검토 대기 = 아직 사람이 결정하지 않은 IN_REVIEW 건. anomaly_score 내림차순 (FR-RL-01, FR-RR-04)
-  const pending = [...teamScoped].filter((i) => i.status === 'IN_REVIEW').sort((a, b) => b.anomalyScore - a.anomalyScore)
+  const pending = [...items].filter((i) => i.status === 'IN_REVIEW').sort((a, b) => b.anomalyScore - a.anomalyScore)
   // 확정 대기 = PENDING_CONFIRM. **처리가 끝난 게 아니라 남은 일이다** — 룰 판정 PASS로
   //  자동 도착한 건(아무도 안 봤다)과 담당자가 승인한 건이 함께 모이고, 둘 다 사람이
   //  확정해야 CONFIRMED가 된다(FR-ST-03). 달로 자르지 않는다: 밀린 확정은 지난달 것도 해야 한다.
-  const awaiting = [...teamScoped]
+  const awaiting = [...items]
     .filter((i) => AWAITING_CONFIRM_STATUSES.includes(i.status))
     .sort((a, b) => b.date.localeCompare(a.date))
   // 이전 처리 = 이번 달에 확정·보완요청·반려로 **끝난** 건. 최근 거래일순.
-  const processed = [...teamScoped]
+  const processed = [...items]
     .filter((i) => REVIEW_HISTORY_STATUSES.includes(i.status) && isInMonth(i.date, month))
     .sort((a, b) => (a.date === b.date ? b.anomalyScore - a.anomalyScore : b.date.localeCompare(a.date)))
   const source = isHistory ? processed : isConfirm ? awaiting : pending
@@ -155,19 +115,6 @@ export function ReviewWorkspace() {
   }
   const listed = filter === 'ALL' ? source : source.filter((i) => bucketOf(i) === filter)
   const sel = source.find((i) => i.id === selId) ?? listed[0] ?? source[0]
-
-  useEffect(() => {
-    if (!showHistory || !sel) return
-    let cancelled = false
-    setHistory(undefined) // 이전 선택 건의 이력이 잠깐이라도 비치지 않게 먼저 비운다
-    setHistoryLoading(true)
-    fetchSettlementDetail(sel)
-      .then((detail) => { if (!cancelled) setHistory((detail as ReviewItem).events ?? []) })
-      .catch(() => { if (!cancelled) setHistory([]) })
-      .finally(() => { if (!cancelled) setHistoryLoading(false) })
-    return () => { cancelled = true }
-  }, [showHistory, sel?.id])
-
   // fact.json — 정산 상세 모달과 동일한 "규정 판정 입력값" 스냅샷(읽기 전용 요약)
   const fact = sel && {
     merchant: sel.merchant,
@@ -255,6 +202,14 @@ export function ReviewWorkspace() {
 
   const modalItem = modal ? source.find((i) => i.id === modal.ids[0]) : undefined
 
+  //  빈 상태 문구는 한 곳에서 만든다 — 목록·상세·액션이 서로 다른 말을 하면 사용자가
+  //  "목록이 빈 건가, 선택을 안 한 건가"를 화면마다 다시 판단해야 한다.
+  const emptyMessage = source.length === 0
+    ? (isHistory ? `${monthLabel(month)}에 확정·보완요청·반려된 내역이 없습니다.`
+      : isConfirm ? '확정 대기 중인 건이 없습니다.' : '검토 대기 중인 건이 없습니다.')
+    : listed.length === 0 ? '이 필터에 해당하는 건이 없습니다.'
+      : '왼쪽 목록에서 건을 선택하세요.'
+
   return (
     <div className="review-ws">
       <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -262,23 +217,6 @@ export function ReviewWorkspace() {
           <span className="screen-id">S-03</span>
           <h1>검토 워크스페이스</h1>
           <div className="sub">Rule 미매칭·불확실 건만 위험도순으로 정렬합니다. 최종 결정은 사람이 수행합니다.</div>
-          {/* 팀 필터 — 기본값 '전체 팀'(기존 화면 그대로). 검증용 팀처럼 특정 팀만 골라
-              보고 싶을 때 쓴다. 목록에 뜬 팀만 옵션으로 나온다(빈 팀은 안 나옴). */}
-          {teamOptions.length > 0 && (
-            <div className="row" style={{ gap: 6, marginTop: 8, alignItems: 'center' }}>
-              <span className="text-meta">팀</span>
-              <select
-                value={teamFilter}
-                onChange={(e) => { setTeamFilter(e.target.value); setSelId(undefined); setChecked(new Set()) }}
-                style={{ fontSize: 12, padding: '2px 6px' }}
-              >
-                <option value="ALL">전체 팀</option>
-                {teamOptions.map(([id, label]) => (
-                  <option key={id} value={id}>{label}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         {/* 요약 지표 — 제목 우측 상단에 작게 */}
         <div className="head-stats">
@@ -297,23 +235,7 @@ export function ReviewWorkspace() {
         </div>
       </div>
 
-      {source.length === 0 ? (
-        <div className="card review-empty">
-          <div className="card-head">
-            <h3>Review List</h3>
-            <div className="seg-toggle">
-              <button type="button" className={view === 'PENDING' ? 'active' : ''} onClick={() => switchView('PENDING')}>검토 대기 {pending.length}</button>
-              <button type="button" className={view === 'CONFIRM' ? 'active' : ''} onClick={() => switchView('CONFIRM')}>확정 대기 {awaiting.length}</button>
-              <button type="button" className={view === 'HISTORY' ? 'active' : ''} onClick={() => switchView('HISTORY')}>이전 처리</button>
-            </div>
-          </div>
-          <div className="card-body text-meta">
-            {isHistory ? `${monthLabel(month)}에 확정·보완요청·반려된 내역이 없습니다.`
-              : isConfirm ? '확정 대기 중인 건이 없습니다.' : '검토 대기 중인 건이 없습니다.'}
-          </div>
-        </div>
-      ) : (
-        <div className="split">
+      <div className="split">
           {/* Review List */}
           <div className="card">
             <div className="card-head">
@@ -325,13 +247,16 @@ export function ReviewWorkspace() {
                 <button type="button" className={view === 'HISTORY' ? 'active' : ''} onClick={() => switchView('HISTORY')}>이전 처리</button>
               </div>
             </div>
+            {/* 요약 줄 — 비었을 땐 아래 빈 상태 문구가 같은 말을 하므로 겹쳐 쓰지 않는다. */}
+            {source.length > 0 && (
             <div className="text-meta" style={{ padding: '8px 16px 0' }}>
               {isHistory
                 ? `${monthLabel(month)} 처리 완료 ${source.length}건 · 조회 전용`
                 : isConfirm
                   ? `사람 확정을 기다리는 ${source.length}건 · 룰 자동통과분 포함`
-                  : `고위험 ${source.filter((i) => riskTierOf(i) === 'HIGH').length}건 · anomaly_score 순`}
+                  : `고위험 ${source.filter((i) => i.anomalyScore >= 0.7).length}건 · anomaly_score 순`}
             </div>
+            )}
             {/* AI 권장 기준 필터 칩 — 확정 대기함에선 의미가 없다(권장이 아니라 확정만 남았다). */}
             {!isConfirm && (
             <div className="row" style={{ gap: 6, padding: '10px 16px 0', flexWrap: 'wrap' }}>
@@ -362,9 +287,14 @@ export function ReviewWorkspace() {
                 </button>
               </div>
             )}
+            {listed.length === 0 && (
+              <div className="card-body text-meta">{emptyMessage}</div>
+            )}
             <ul className="review-list">
               {listed.map((i) => {
-                const tier = riskTierOf(i)
+                // Risk Review를 거치지 않은 건(룰 PASS로 승인 대기 직행)은 **점수가 없다**.
+                // 0으로 그리면 "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
+                const score = i.riskReviewed ? Math.round(i.anomalyScore * 100) : null
                 const reco = recoLabel(i.aiRecommendation)
                 return (
                   <li
@@ -383,15 +313,13 @@ export function ReviewWorkspace() {
                       disabled={isHistory}
                       aria-label={`${i.user} 선택`}
                     />
-                    {/* 위험 등급(고위험/주의/정상). 원시 anomaly_score는 확률이 아니라 사람이
-                        크기를 가늠할 수 없어 숫자 대신 등급으로 보여준다 — riskTierOf 주석 참조.
-                        Risk Review가 안 돈 건은 등급이 없으므로 '—'(판단 없음)로 비워 둔다. */}
+                    {/* 위험도: 색 + 숫자만 (~30 정상 / 30~60 주의 / 60~ 고위험) */}
                     <span
                       className="risk-score"
-                      style={{ color: tier ? RISK_TIER_COLOR[tier] : 'var(--text-meta)' }}
-                      title={tier ? `anomaly_score ${i.anomalyScore.toFixed(4)}` : '이상탐지 미실행'}
+                      style={{ color: score === null ? 'var(--muted)' : riskColor(score) }}
+                      title={score === null ? '이상탐지를 거치지 않은 건입니다(룰 판정 통과)' : undefined}
                     >
-                      {tier ? RISK_TIER_LABEL[tier] : '—'}
+                      {score ?? '-'}
                     </span>
                     <div className="review-item-body">
                       <div className="review-item-top">
@@ -432,6 +360,9 @@ export function ReviewWorkspace() {
           </div>
 
           {/* 상세 패널 — 정산 상세 모달 레이아웃 참고(좌: 영수증·기본내역·이력/facts, 우: 이상탐지·RAG·액션) */}
+          {/* 선택이 없어도 **같은 골격**을 유지한다 — 오른쪽 절반이 사라졌다 나타나면
+              레이아웃이 두 벌이 되어, 건이 생길 때마다 눌러야 할 자리가 바뀐다. */}
+          {!(sel && fact) && <ReviewDetailEmpty message={emptyMessage} />}
           {sel && fact && (
             <div className="review-detail grid-2">
               {/* ───────── 좌: 영수증 + 기본내역 + facts/이력 접이식 ───────── */}
@@ -520,24 +451,11 @@ export function ReviewWorkspace() {
                   </button>
                   {showHistory && (
                     <div className="card-body">
-                      {historyLoading && <div className="text-meta">불러오는 중…</div>}
-                      {!historyLoading && history?.length === 0 && (
-                        <div className="text-meta">상태 변경 이력이 없습니다.</div>
-                      )}
-                      {!historyLoading && history && history.length > 0 && (
-                        <ul className="timeline">
-                          {history.map((ev) => (
-                            <li key={ev.id}>
-                              <div>
-                                {ev.fromState ? `${STATUS_META[ev.fromState as SettlementStatus]?.label ?? ev.fromState} → ` : ''}
-                                {STATUS_META[ev.toState as SettlementStatus]?.label ?? ev.toState}
-                                {ev.reason ? ` — ${ev.reason}` : ''}
-                              </div>
-                              <div className="t-meta">{ev.actor ?? '시스템'} · {formatDateTime(ev.createdAt)}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <ul className="timeline">
+                        <li><div>DRAFT → SUBMITTED</div><div className="t-meta">{sel.user} · {sel.date}</div></li>
+                        <li><div>SUBMITTED → RPA_JUDGED (Rule 미매칭)</div><div className="t-meta">Rule Agent</div></li>
+                        <li><div>RPA_JUDGED → IN_REVIEW (Risk Review 이관)</div><div className="t-meta">①이상탐지 → ②RAG검증</div></li>
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -545,19 +463,29 @@ export function ReviewWorkspace() {
 
               {/* ───────── 우: ①이상탐지 + ②RAG검증 + 액션 ───────── */}
               <div className="stack">
-                {/* ① 이상탐지 결과 */}
+                {/* ① 이상탐지 결과 — Risk Review를 거친 건에만 값이 있다. */}
                 <div className="card">
                   <div className="card-head">
                     <h3>① 이상탐지 결과</h3>
-                    <span className="tag" style={{ color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }}>anomaly {sel.anomalyScore.toFixed(2)}</span>
+                    <span className="tag" style={sel.riskReviewed
+                      ? { color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }
+                      : { color: 'var(--muted)' }}>
+                      anomaly {sel.riskReviewed ? sel.anomalyScore.toFixed(2) : '-'}
+                    </span>
                   </div>
                   <div className="card-body">
-                    <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
-                    <div className="stack">
-                      {sel.featureContribs.map((f) => (
-                        <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
-                      ))}
-                    </div>
+                    {sel.riskReviewed ? (
+                      <>
+                        <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
+                        <div className="stack">
+                          {sel.featureContribs.map((f) => (
+                            <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <RulePassedNotice item={sel} />
+                    )}
                   </div>
                 </div>
 
@@ -661,8 +589,7 @@ export function ReviewWorkspace() {
               </div>
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {modal && modalItem && (
         <DecisionReasonModal

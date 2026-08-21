@@ -7,6 +7,7 @@ import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
+import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { decideTeamSettlement, submitSettlements } from '../api/settlementService'
 import { endpoints } from '../api/client'
 import { USE_MOCK } from '../api/config'
@@ -97,6 +98,7 @@ export function TeamAggregation() {
   }, [teamMonthly])
 
   // ② 취합 처리 버튼용 — 지금 취합 대기(TEAM_COLLECTING) 중인 건만.
+  //  이상 건 = 보완요청·반려 판정. 검토(REVIEW)로 갈 건은 정상 건과 함께 그대로 제출된다.
   const collectingStats = useMemo(() => {
     const anomalous = collecting.filter((i) => needsAttention(i)).length
     return { anomalous, normal: collecting.length - anomalous }
@@ -108,11 +110,25 @@ export function TeamAggregation() {
     setExpanded(next)
   }
 
-  const handleRowDecision = async (id: string, decision: 'RETURN' | 'REJECT') => {
+  //  결정은 **항상 사유 모달을 거친다.** 목록에서 바로 처리되면 지출자는 사유 없이
+  //  되돌아온 건을 받고 무엇을 해야 할지 모른다(예전 동작).
+  const [decisionTarget, setDecisionTarget] = useState<{ item: Settlement; decision: 'RETURN' | 'REJECT' } | null>(null)
+
+  const applyDecision = async (reason: string, detail: string) => {
+    if (!decisionTarget) return
+    const { item, decision } = decisionTarget
     setBusy(true)
-    const status = await decideTeamSettlement(id, decision)
-    updateStatus(id, status)
-    setBusy(false)
+    try {
+      const status = await decideTeamSettlement(item.id, decision, [reason, detail].filter(Boolean).join(' — '))
+      updateStatus(item.id, status)
+      setDecisionTarget(null)
+    } catch (e: unknown) {
+      // 실패를 삼키면 버튼이 죽은 것처럼 보인다(예전엔 예외가 그대로 사라졌다).
+      const detailMsg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      window.alert(detailMsg ?? '처리에 실패했습니다.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   // 제출 직후 룰 엔진 1차판정이 이어 돌아 건마다 도착 상태가 다르다
@@ -125,7 +141,9 @@ export function TeamAggregation() {
     setBusy(false)
   }
 
-  const submitNormalOnly = () => submitIds(visibleAll.filter((i) => !needsAttention(i) && i.status === 'TEAM_COLLECTING').map((i) => i.id))
+  const submitNormalOnly = () => submitIds(
+    visibleAll.filter((i) => !needsAttention(i) && i.status === 'TEAM_COLLECTING').map((i) => i.id),
+  )
   const requestAnomalyCorrections = async () => {
     const targets = visibleAll.filter((i) => needsAttention(i) && i.status === 'TEAM_COLLECTING')
     if (targets.length === 0) return
@@ -153,7 +171,7 @@ export function TeamAggregation() {
         <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1>팀 취합·제출 · {teamName}</h1>
-            <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건은 개별 처리하고 나머지는 일괄 제출합니다.</div>
+            <div className="sub">정상 건은 접히고 이상 건만 강조됩니다. 이상 건(보완요청·반려)은 개별 처리하고 나머지는 일괄 제출합니다.</div>
           </div>
           <span className="badge" style={{ color: 'var(--tone-red)', background: 'var(--tone-red-bg)', padding: '6px 14px', fontSize: 13 }}>마감 D-2</span>
         </div>
@@ -262,7 +280,9 @@ export function TeamAggregation() {
           이상건만 보기
         </label>
         <div className="spacer" />
-        <button className="btn return" disabled={busy || collectingStats.anomalous === 0} onClick={requestAnomalyCorrections}>이상건 자동 보완요청</button>
+        <button className="btn return" disabled={busy || collectingStats.anomalous === 0} onClick={requestAnomalyCorrections}>
+          이상건 자동 보완요청 ({collectingStats.anomalous}건)
+        </button>
         <button className="btn primary" disabled={busy || collectingStats.normal === 0} onClick={submitNormalOnly}>
           이상건 제외 일괄제출 ({collectingStats.normal}건)
         </button>
@@ -343,14 +363,20 @@ export function TeamAggregation() {
                                 : tags.map((t) => <span key={t} className="tag warn" style={{ marginRight: 4 }}>{t}</span>)}
                           </td>
                           <td className="team-actions" onClick={(ev) => ev.stopPropagation()}>
-                            {tags.length === 0 ? (
-                              <span className="text-meta">일괄 대상</span>
+                            {i.status === 'TEAM_COLLECTING' && tags.length === 0 ? (
+                              // 이상 건이 아니어도 같은 버튼 세트를 준다 — 「제출」은 사유 없이
+                              // 바로 회계로 올리고, 보완·반려는 사유 모달을 거친다.
+                              <div className="row">
+                                <button className="btn sm primary" disabled={busy} onClick={() => submitIds([i.id])}>제출</button>
+                                <button className="btn sm return" disabled={busy} onClick={() => setDecisionTarget({ item: i, decision: 'RETURN' })}>보완요청</button>
+                                <button className="btn sm reject" disabled={busy} onClick={() => setDecisionTarget({ item: i, decision: 'REJECT' })}>반려</button>
+                              </div>
                             ) : i.status !== 'TEAM_COLLECTING' ? (
                               <span className="text-meta">처리됨 · {i.status}</span>
                             ) : (
                               <div className="row">
-                                <button className="btn sm return" disabled={busy} onClick={() => handleRowDecision(i.id, 'RETURN')}>보완요청</button>
-                                <button className="btn sm reject" disabled={busy} onClick={() => handleRowDecision(i.id, 'REJECT')}>반려</button>
+                                <button className="btn sm return" disabled={busy} onClick={() => setDecisionTarget({ item: i, decision: 'RETURN' })}>보완요청</button>
+                                <button className="btn sm reject" disabled={busy} onClick={() => setDecisionTarget({ item: i, decision: 'REJECT' })}>반려</button>
                               </div>
                             )}
                           </td>
@@ -366,6 +392,16 @@ export function TeamAggregation() {
       </div>
       </>)}
       </div>
+
+      {decisionTarget && (
+        <DecisionReasonModal
+          item={decisionTarget.item}
+          decision={decisionTarget.decision}
+          busy={busy}
+          onClose={() => setDecisionTarget(null)}
+          onConfirm={applyDecision}
+        />
+      )}
 
       {selected && (
         <SettlementDetailModal

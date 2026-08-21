@@ -107,6 +107,31 @@ class LabelResolutionTests(TestCase):
         self.assertEqual(info["label"], "EVIDENCE_MISSNG")
         self.assertFalse(info["known"])
 
+    def test_display_labels_come_from_the_server(self):
+        """심각도·해소주체·분류의 **한글 표기까지** 서버가 싣는다.
+
+        코드(`HIGH`·`APPROVER`)만 보내면 화면이 그 사전을 또 복사하게 되고, 그게 정확히
+        이 모듈이 막으려던 상황이다(백엔드 27개 vs 프론트 9개로 실제 어긋났던 이력).
+        """
+        info = describe("PRE_APPROVAL_MISSING", label_map())
+        self.assertEqual(info["severityLabel"], "높음")
+        self.assertEqual(info["ownerLabel"], "결재권자")
+        self.assertEqual(info["categoryLabel"], "결재·승인")
+        self.assertTrue(info["description"])          # 화면이 "왜 걸렸는지"를 설명할 수 있어야 한다
+        self.assertFalse(info["isSystem"])
+
+    def test_system_flag_is_marked_as_such(self):
+        """엔진이 붙인 플래그는 룰이 만든 게 아니다 — 화면이 구분해 표시할 수 있어야 한다."""
+        info = describe("UNRESOLVED_FACT:approval.pre_approval_obtained", label_map())
+        self.assertTrue(info["isSystem"])
+        self.assertEqual(info["arg"], "approval.pre_approval_obtained")
+
+    def test_unknown_flag_display_fields_are_blank_not_missing(self):
+        """미등록 코드도 같은 키를 갖는다 — 화면이 키 존재 여부로 분기하지 않게."""
+        info = describe("NOPE", label_map())
+        for key in ("description", "severityLabel", "ownerLabel", "categoryLabel"):
+            self.assertEqual(info[key], "")
+
     def test_parameterized_system_flag_keeps_its_argument(self):
         info = describe("UNRESOLVED_FACT:approval.pre_approval_obtained", label_map())
         self.assertEqual(info["code"], "UNRESOLVED_FACT")

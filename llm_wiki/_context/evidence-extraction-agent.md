@@ -11,7 +11,15 @@
 > `read_receipt`·`read_evidence_document`로 등록돼 있었다 — 이 문서가 그 사실을 반영하지
 > 못한 채 "미착수"로 남아 있었다(2026-08-21 전수 점검에서 발견). 그러나 **아무도 그 도구를
 > 부르지 않았다** — 업로드 API(E-4)도, 판정 반영 시 신뢰도 게이트(§6 결정 2)도 없어서
-> 사실상 죽은 코드였다. 이번 세션에서 E-4~E-6과 문서 전체를 실제 사용 가능한 상태로 이었다.
+> 사실상 죽은 코드였다.
+>
+> **2차 갱신(같은 날, main 병합)**: 이 문서 초판 작성 직후 팀원이 `main`에 **독립적으로
+> 같은 기능(E-4~E-6)을 이미 구현**해 둔 것이 확인됐다(`evidence_extract.py`·`decision.py`·
+> `EvidenceAttachments.tsx` 등). 두 구현을 비교해 **팀원 버전을 채택**했다 — 커밋 후
+> 비동기(`on_commit`) 실행이 프로젝트의 다른 후속 처리(Risk Review 호출 등)와 패턴이 일관되고,
+> 사유 선택지 공유 어휘(`RETURN_REASONS`/`FLAG_TO_REASON` 폴백) 등 더 성숙했다. 이 문서에 남는
+> 것은 팀원 구현 위에 **이 세션에서 추가로 얹은 것**(§6 결정 2의 신뢰도 게이트 — 팀원 쪽에는
+> 없었다·AI-LAB 단독 실행 탭)과, 채택 안 된 원안(동기 실행 등)을 "왜 안 썼는지" 기록이다.
 
 ---
 
@@ -134,8 +142,8 @@ class Attachment:                      # domain/settlements/attachments.py
 | E-1 | 종류별 추출 스펙 정의 — `kind` → 뽑을 EvalContext 경로 목록 + 프롬프트 | `apps/ai/app/vision/document.py::TARGETS`, `receipt.py::ALLOWED_FACT_PATHS` | ✅ (2026-08-18) |
 | E-2 | 텍스트 추출 파이프라인 연결 | **텍스트가 아니라 이미지로 통일**(`app/vision/client.py::load_images` — PDF는 `pypdfium2`로 페이지 렌더, 이미지는 그대로). 결재 도장·서명은 텍스트 레이어에 없어서 텍스트 추출로는 "승인받았는가"를 판별할 수 없다는 게 근거(§4 원안의 `chunk_pdf` 계획은 이 이유로 폐기) | ✅ (2026-08-18) |
 | E-3 | LLM 구조화 출력 → dot-path dict + 경로별 신뢰도 | `document.py::read_evidence_document`, `receipt.py::read_receipt` — strict JSON Schema, 관측 목록(array) 방식(§3.2) | ✅ (2026-08-18) |
-| E-4 | Django 수신 API | `POST /api/settlements/{id}/attachments/`(업로드=추출 요청, 응답이 곧 결과) · `DELETE .../attachments/{id}/` · `POST .../attachments/{id}/re-extract/` (`settlements/views.py`), FastAPI 쪽 진입점 `POST /agent/extract`(`app/api/extract.py`) | ✅ (2026-08-21) |
-| E-5 | 재추출 트리거 | 전량 자동 재추출은 하지 않음(§6 결정 4) — `re-extract` 액션으로 사람이 수동 실행 | ✅ 최소 구현 (2026-08-21) |
+| E-4 | Django 수신 API | `POST /api/settlements/{id}/attachments/`(업로드=추출 요청) · `DELETE .../attachments/{id}/` · `POST .../attachments/{id}/reextract/` (`settlements/views.py` + `evidence_extract.py`), FastAPI 쪽 진입점 `POST /agent/extract-evidence`(`app/api/evidence.py`) — **팀원 구현 채택**(§ 상단 2차 갱신) | ✅ (2026-08-21) |
+| E-5 | 재추출 트리거 | 전량 자동 재추출은 하지 않음(§6 결정 4) — `reextract` 액션으로 사람이 수동 실행 | ✅ 최소 구현 (2026-08-21) |
 | E-6 | 저신뢰 경로를 검토 화면에 표시 | `SettlementDetailModal.tsx` 첨부 목록 — 경로별 확신도 배지, 임계값(0.6) 미만은 "판정에는 반영되지 않았습니다" 안내 | ✅ (2026-08-21) |
 
 **왜 이전엔 "미착수"였나**: E-1~E-3(판독 로직 자체)은 2026-08-18에 이미 구현돼 `mcp/tools.py`에
@@ -163,7 +171,7 @@ class Attachment:                      # domain/settlements/attachments.py
 
 | # | 쟁점 | 결정 | 근거 |
 |---|---|---|---|
-| 1 | 추출 실행 시점 | **업로드 즉시, 동기** | 첨부 1건 판독은 최대 수십 초(`app/vision/client.py TIMEOUT=90`)라 문서 파싱(수십 초~분, docling)만큼 무겁지 않다. 응답이 곧 결과라 화면이 폴링할 필요가 없고, MVP 동기 REST 원칙(CLAUDE.md §1)과도 맞는다. `PolicyDoc`(비동기 폴링)과는 무게가 다르다 |
+| 1 | 추출 실행 시점 | **업로드 즉시, 비동기(`on_commit`)** — 원안(이 세션 초판)은 동기 실행이었으나 **팀원 구현(채택본)은 비동기** | 비전 호출이 수십 초 걸려, 업로드 트랜잭션 안에서 동기로 부르면 그동안 DB 커넥션을 붙들고 **판독 실패 시 업로드까지 롤백**된다(파일은 받아 놨는데 기록이 사라지는 게 최악). 커밋 후 실행하면 업로드는 항상 성공하고, 판독 실패는 `FAILED`+사유로만 남는다 — `risk_review.py`(Risk Review 호출)와 같은 패턴이라 일관성도 있다. 응답은 즉시 `PENDING`이고 화면이 짧게 폴링(또는 재조회)해 `DONE`을 본다 |
 | 2 | 신뢰도 임계값 | **적용하지 않음**(미해소로 강등) — 임계값 `0.6`, `context_builder.ATTACHMENT_CONFIDENCE_THRESHOLD` | "적용하되 표시"는 저신뢰 오추출이 자동 통과를 만들 수 있다. 이 프로젝트 원칙(사람 확정·조용한 실패 금지)에 비추면 미달은 미해소로 남겨 REVIEW로 보내는 쪽이 일관된다. 값 자체는 `Attachment.extracted`에 그대로 남아 화면(E-6)엔 보인다 |
 | 3 | 추출값의 감사 표기 | **origin 문자열로 남김** — `context_builder.collect_from_attachments`가 `merger.offer(path, value, RANK_EXTRACT, f"attachment:{id}({kind})")`를 호출, `RuleHit.eval_context`(스냅샷)와 `conflicts`에 그대로 보존 | 이미 있던 `FactMerger`의 origin 추적 메커니즘을 그대로 썼다 — 별도 표기 필드를 새로 만들 이유가 없었다 |
 | 4 | 재추출 정책 | **전량 자동 재추출 안 함** — 사람이 `re-extract` 액션으로 수동 실행 | 참조되지 않는 첨부까지 스키마 버전이 바뀔 때마다 비전 호출을 태우면 비용만 나가고 아무도 안 본다. 최소 구현으로 시작하고, 배치가 필요해지면 그때 추가 |

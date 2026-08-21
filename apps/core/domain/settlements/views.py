@@ -8,8 +8,8 @@ from django.db.models import Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import viewsets
-from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,19 +17,28 @@ from rest_framework.views import APIView
 logger = logging.getLogger(__name__)
 
 from domain.cards.models import Card
-from domain.common.permissions import CanAccountingReview, CanTeamAggregate
+from domain.accounts.models import Team
+from domain.common.permissions import (
+    CanAccountingReview, CanAccountingReviewOrGovernance, CanTeamAggregate,
+)
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import draft_agent, erp_import, services
-from .models import Attachment, AttachmentKind, Settlement, SettlementEvent, TeamBudget
+from . import decision_reasons, draft_agent, erp_import, evidence_extract, services
+from .attachments import Attachment, AttachmentKind
+from .models import Settlement, SettlementEvent, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
 
-# 증빙 추출 Agent 호출 — 비전 판독(다쪽 렌더+LLM)이라 넉넉히 잡는다(`app/vision/client.py TIMEOUT=90`과 정합).
-EXTRACT_TIMEOUT = 100.0
+#  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
+#  프록시에서 잘리면 사용자는 원인을 알 수 없는 413만 본다.
+ALLOWED_ATTACHMENT_SUFFIXES = (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic")
+MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
 # 본인이 직접 지울 수 있는 상태 — 아직 팀·회계로 넘어가기 전 단계만.
 DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
+# 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
+#  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
+EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
 
 
 def _actor(request):
@@ -55,7 +64,7 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # 기능 단위 인가(Capability RBAC)
-        if self.action in ("review", "confirm", "review_stats", "draft_decision_reason"):
+        if self.action in ("review", "confirm", "review_stats"):
             return [CanAccountingReview()]
         if self.action == "team_decision":  # 팀 취합(보완요청/반려/제출) — 기존 미보호 구멍 방어
             return [CanTeamAggregate()]
@@ -90,6 +99,89 @@ class SettlementViewSet(viewsets.ModelViewSet):
             team=getattr(actor, "team", None), status="DRAFT",
         )
         return Response(self.get_serializer(s).data, status=201)
+
+    # PATCH /api/settlements/{id}/  — 상세 화면 수정 저장
+    def update(self, request, *args, **kwargs):
+        """화면에서 고친 값을 저장한다. **제출 버튼이 이걸 먼저 부른다.**
+
+        이게 없던 동안 상세 모달은 제목만 "수정"이었고 실제로는 아무것도 저장하지 않았다
+        — 분류를 고르고 목적을 적어 제출해도 서버에는 그대로 남아, 판정이 「분류 미기재」로
+        걸었다. 사람이 확인하고 올린 값이 판정에 닿지 않으면 확인 자체가 의미가 없다.
+
+        **`category`는 사람이 확정한 값이다.** 화면 드롭다운에 AI 제안이 미리 채워져 있어도,
+        저장하는 순간 그건 「사람이 그 값으로 확정했다」는 기록이 된다. `ai_category`는
+        건드리지 않는다 — AI가 원래 뭐라고 했는지를 남겨둬야 나중에 제안↔확정을 대조해
+        정확도를 잴 수 있다(그게 지도학습 피드백의 원천이다).
+
+        DRF 기본 `update`를 쓰지 않는 이유: 금액·가맹점·일자는 `Transaction`에 있고
+        시리얼라이저에서 read-only라 그대로는 저장되지 않는다.
+        """
+        settlement = self.get_object()
+        if settlement.status not in EDITABLE_STATUSES:
+            return Response(
+                {"detail": "회계 검토가 시작된 뒤에는 수정할 수 없습니다. 보완요청을 받은 뒤 고쳐주세요."},
+                status=400,
+            )
+        actor = _actor(request)
+        if actor and settlement.submitted_by_id and settlement.submitted_by_id != actor.id:
+            return Response({"detail": "본인이 등록한 건만 수정할 수 있습니다."}, status=403)
+
+        d = request.data
+        fields = []
+        if "category" in d:
+            # 빈 값이면 지우지 않고 그대로 둔다 — 화면이 실수로 빈 값을 보내 확정 분류를
+            # 날리는 편보다, 안 바뀌는 편이 낫다(지우려면 사용자가 다른 분류를 고른다).
+            if d.get("category"):
+                settlement.category = d["category"]
+                # **사람이 확인한 순간 AI 제안 딱지를 뗀다.** `ai_suggested`는 "이 분류는 AI가
+                # 넣은 값이라 사람 확인이 필요하다"는 뜻인데, 지금 그 확인이 일어났다. 남겨두면
+                # `category.confidence`가 계속 저신뢰(0.5)로 내려가 확인된 건이 다시 걸린다.
+                # (`ai_category`는 그대로 둔다 — AI가 원래 뭐라고 했는지는 대조에 쓴다.)
+                settlement.ai_suggested = False
+                fields += ["category", "ai_suggested"]
+        if "purpose" in d:
+            settlement.purpose = d.get("purpose") or ""
+            fields.append("purpose")
+        if "merchantIndustry" in d or "merchantIndustryCode" in d:
+            code, label = industry_vocab.resolve(
+                d.get("merchantIndustryCode") or d.get("merchantIndustry")
+            )
+            settlement.merchant_industry, settlement.merchant_industry_code = label, code
+            fields += ["merchant_industry", "merchant_industry_code"]
+        # 판정 입력 컬럼 — 전부 null 허용이고 `None`은 「모름」이다. 키가 없으면 건드리지 않는다.
+        for key, column in (
+            ("headcount", "headcount"), ("externalHeadcount", "external_headcount"),
+            ("preApproved", "pre_approved"), ("itemType", "item_type"),
+            ("kickbackTarget", "kickback_target"), ("isSecondaryVenue", "is_secondary_venue"),
+            ("includesAlcohol", "includes_alcohol"),
+        ):
+            if key in d:
+                setattr(settlement, column, d[key])
+                fields.append(column)
+        if fields:
+            settlement.save(update_fields=[*fields, "updated_at"] if hasattr(settlement, "updated_at") else fields)
+
+        tx = settlement.transaction
+        tx_fields = []
+        if d.get("merchant"):
+            tx.merchant = d["merchant"]
+            tx_fields.append("merchant")
+        if d.get("amount") not in (None, ""):
+            tx.amount = int(re.sub(r"[^0-9]", "", str(d["amount"])) or 0)
+            tx_fields.append("amount")
+        if d.get("date"):
+            pd = parse_date(str(d["date"])[:10])
+            if pd:
+                # 시각은 유지한다 — 날짜만 고쳤는데 결제 시각이 정오로 밀리면
+                # 심야 결제 판정(`derived.is_late_night`)이 조용히 뒤집힌다.
+                current = timezone.localtime(tx.ts) if tx.ts else None
+                tx.ts = timezone.make_aware(datetime.combine(pd, current.time() if current else time(12, 0)))
+                tx_fields.append("ts")
+        if tx_fields:
+            tx.save(update_fields=tx_fields)
+
+        settlement.refresh_from_db()
+        return Response(self.get_serializer(settlement).data)
 
     # DELETE /api/settlements/{id}/  — '내 지출'에서 아직 올리지 않은 건만 본인이 삭제
     def destroy(self, request, *args, **kwargs):
@@ -302,55 +394,6 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
 
-    # POST /api/settlements/{id}/draft-decision-reason/  {decision, reasonCategory}
-    @action(detail=True, methods=["post"], url_path="draft-decision-reason")
-    def draft_decision_reason(self, request, pk=None):
-        """보완요청/반려 사유 **초안**(2026-08-21) — 담당자가 사유칸에 매번 손으로 다시
-        타이핑하던 걸 돕는다. 화면엔 이미 판정 근거(룰 플래그·2차 RAG 검증 사유·1차 이상탐지
-        사유)가 떠 있는데, 사유 입력칸은 그걸 다시 사람이 요약해서 써야 했다 — 이미 아는
-        정보를 문장으로 정리하는 단순 작업이라 LLM에게 초안만 맡긴다.
-
-        **초안이지 확정이 아니다.** 프론트가 이 텍스트를 입력칸에 채우되 그대로 제출을
-        막지 않는다(편집 가능) — 새 판단을 만드는 게 아니라 이미 있는 근거를 문장으로
-        다듬을 뿐이므로, 승인 없이 제출 자체는 막을 이유가 없다(강제 편집은 §4.2 결정
-        참조: 여기서는 안 함). 실패하면 빈 문자열 대신 에러를 그대로 올린다 — 조용히
-        일반 문구로 채우면 "AI가 판단했다"고 착각한다.
-        """
-        s = self.get_object()
-        decision = request.data.get("decision")
-        if decision not in ("RETURN", "REJECT"):
-            return Response({"detail": "decision은 RETURN 또는 REJECT여야 합니다."}, status=400)
-
-        from domain.policies.flags import describe, label_map
-
-        labels = label_map()
-        flag_info = [describe(f, labels) for f in (s.rule_flags or [])]
-        review = s.risk_reviews.first()
-        stage2 = (review.stage2_verdict or {}) if review else {}
-
-        payload = {
-            "decision": decision,
-            "reasonCategory": request.data.get("reasonCategory", ""),
-            "merchant": s.transaction.merchant if s.transaction_id else "",
-            "amount": int(s.transaction.amount) if s.transaction_id else 0,
-            "category": s.category or s.ai_category,
-            "purpose": s.purpose,
-            "ruleFlags": [{"label": f["label"], "severity": f["severity"]} for f in flag_info],
-            "violationVerdict": stage2.get("violation_verdict", ""),
-            "reviewReasons": stage2.get("review_reasons", []),
-            "anomalyReasons": review.anomaly_reasons if review else [],
-        }
-        try:
-            resp = httpx.post(f"{settings.AI_BASE_URL}/agent/draft-decision-reason", json=payload, timeout=20)
-            resp.raise_for_status()
-            detail = resp.json().get("detail", "")
-        except Exception as exc:  # noqa: BLE001  # AI 미기동·타임아웃·5xx 전부
-            logger.warning("사유 초안 생성 실패(settlement=%s): %s", pk, exc)
-            return Response({"detail": "AI 초안 생성에 실패했습니다 — 직접 입력해주세요."}, status=503)
-        if not detail:
-            return Response({"detail": "AI가 초안을 만들지 못했습니다 — 직접 입력해주세요."}, status=503)
-        return Response({"detail": detail})
-
     # POST /api/settlements/{id}/review/  {decision, reason}
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):
@@ -373,6 +416,20 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
 
+    # POST /api/settlements/{id}/decision-reason/  — 보완요청·반려 사유 **초안**
+    @action(detail=True, methods=["post"], url_path="decision-reason")
+    def decision_reason(self, request, pk=None):
+        """결정 사유 모달이 열릴 때 부른다. 판정 결과와 내역을 보고 문장을 채워 준다.
+
+        **대신 결정해 주지 않는다** — 초안은 화면에서 편집 가능하고, 저장되는 건 사람이
+        최종적으로 보낸 문구다. ai가 없어도 판정 플래그로 폴백하므로 결정이 막히지 않는다.
+        """
+        settlement = self.get_object()
+        decision = str(request.data.get("decision") or "RETURN").upper()
+        if decision not in {"RETURN", "REJECT"}:
+            return Response({"detail": "decision은 RETURN 또는 REJECT여야 합니다."}, status=400)
+        return Response(decision_reasons.draft(settlement, decision))
+
     # POST /api/settlements/{id}/judge/  (RPA 1차판정 — 재판정·수동 실행용)
     @action(detail=True, methods=["post"])
     def judge(self, request, pk=None):
@@ -387,108 +444,70 @@ class SettlementViewSet(viewsets.ModelViewSet):
         # 제출 경로와 수동 판정 경로 중 한쪽만 도는 상황이 다시 생긴다.
         return Response({**self.get_serializer(s).data, "ruleResult": result.to_dict()})
 
-    # GET/POST /api/settlements/{id}/attachments/  — 목록 조회 · 업로드(+동기 추출)
-    #
-    # 규정 문서 업로드(`PolicyDocViewSet`)와 달리 **동기**로 처리한다: 첨부 1건은
-    # 비전 판독 1회(최대 수십 초, `app/vision/client.py TIMEOUT=90`)면 끝나서 문서
-    # 파싱(수십 초~분, docling)만큼 무겁지 않다. 업로드 응답이 곧 추출 결과라 화면이
-    # 폴링할 필요가 없다 — MVP 동기 REST 원칙(CLAUDE.md §1)과도 맞는다.
-    @action(
-        detail=True, methods=["get", "post"], url_path="attachments",
-        parser_classes=[MultiPartParser, FormParser, JSONParser],
-    )
+
+    # ── 증빙 첨부 + 판독 ──────────────────────────────────────────────
+    #  업로드가 곧 판독 트리거다. 별도 "분석" 버튼을 두면 아무도 누르지 않고, 추출 결과가
+    #  없는 채로 제출되면 판정이 그 사실을 `None`(모름)으로 보고 검토로 강등한다.
+
+    @action(detail=True, methods=["get", "post"], url_path="attachments",
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
     def attachments(self, request, pk=None):
         s = self.get_object()
         if request.method == "GET":
-            return Response(
-                AttachmentSerializer(s.attachments.all(), many=True, context={"request": request}).data
-            )
+            return Response(AttachmentSerializer(s.attachments.all(), many=True).data)
 
         upload = request.FILES.get("file")
         if upload is None:
-            return Response({"detail": "file 필드가 필요합니다."}, status=400)
-        kind = (request.data.get("kind") or AttachmentKind.OTHER).upper()
-        if kind not in AttachmentKind.values:
-            return Response({"detail": f"알 수 없는 종류입니다: {kind}"}, status=400)
+            return Response({"detail": "파일이 필요합니다."}, status=400)
+        if upload.size > MAX_ATTACHMENT_BYTES:
+            return Response(
+                {"detail": f"파일이 너무 큽니다({upload.size // (1024 * 1024)}MB). "
+                           f"{MAX_ATTACHMENT_BYTES // (1024 * 1024)}MB 이하만 올릴 수 있습니다."},
+                status=400,
+            )
+        name = (upload.name or "").lower()
+        if not name.endswith(ALLOWED_ATTACHMENT_SUFFIXES):
+            # 비전 판독기가 이미지·PDF만 연다. 다른 형식을 받아 두면 업로드는 성공했는데
+            # 판독만 조용히 실패해서, 사용자는 "첨부했으니 됐다"고 믿는다.
+            return Response(
+                {"detail": f"지원하지 않는 형식입니다: {upload.name} "
+                           f"({', '.join(ALLOWED_ATTACHMENT_SUFFIXES)}만 가능)"},
+                status=400,
+            )
 
-        attachment = Attachment.objects.create(
-            settlement=s, kind=kind, file=upload, original_name=upload.name,
-            mime_type=getattr(upload, "content_type", "") or "",
+        kind = str(request.data.get("kind") or AttachmentKind.OTHER).upper()
+        if kind not in AttachmentKind.values:
+            return Response({"detail": f"알 수 없는 첨부 종류: {kind}"}, status=400)
+
+        att = Attachment.objects.create(
+            settlement=s, kind=kind, file=upload,
+            original_name=upload.name[:200], mime_type=(upload.content_type or "")[:100],
             uploaded_by=_actor(request),
         )
-        # `file.name`(볼륨 기준 상대경로)이 곧 추출 Agent가 받는 `file_ref` 계약이다
-        # (`Attachment.file_ref`는 표시·감사용으로 같은 값을 들고 있는다).
-        attachment.file_ref = attachment.file.name
-        attachment.save(update_fields=["file_ref"])
+        #  ai에 넘길 경로는 **media 볼륨 기준 상대경로**다(`app/media.py`가 절대경로를 거부한다).
+        att.file_ref = att.file.name
+        att.save(update_fields=["file_ref"])
+        evidence_extract.schedule(att)
+        return Response(AttachmentSerializer(att).data, status=201)
 
-        _run_extraction(attachment)
-        attachment.refresh_from_db()
-        return Response(
-            AttachmentSerializer(attachment, context={"request": request}).data, status=201,
-        )
-
-    # DELETE /api/settlements/{id}/attachments/{attachment_id}/
-    @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<attachment_id>\d+)")
-    def attachment_detail(self, request, pk=None, attachment_id=None):
+    @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<attachment_id>[0-9]+)")
+    def delete_attachment(self, request, pk=None, attachment_id=None):
         s = self.get_object()
-        attachment = s.attachments.filter(pk=attachment_id).first()
-        if attachment is None:
+        att = s.attachments.filter(pk=attachment_id).first()
+        if att is None:
             return Response({"detail": "첨부를 찾을 수 없습니다."}, status=404)
-        attachment.file.delete(save=False)
-        attachment.delete()
+        att.delete()
         return Response(status=204)
 
-    # POST /api/settlements/{id}/attachments/{attachment_id}/re-extract/
-    #
-    # E-5(재추출) 최소 구현: 스키마·추출기 버전이 바뀐 뒤 사람이 눌러 다시 돌린다.
-    # 전량 자동 재추출은 하지 않는다 — 참조되지 않는 첨부까지 매번 비전 호출을 태우면
-    # 비용만 나가고 아무도 안 본다(§6 결정 4, 참조되는 것만이 실익 있다).
-    @action(detail=True, methods=["post"], url_path=r"attachments/(?P<attachment_id>\d+)/re-extract")
-    def attachment_re_extract(self, request, pk=None, attachment_id=None):
+    @action(detail=True, methods=["post"], url_path=r"attachments/(?P<attachment_id>[0-9]+)/reextract")
+    def reextract_attachment(self, request, pk=None, attachment_id=None):
+        """판독 재시도 — ai가 안 떠 있었거나 타임아웃으로 `FAILED`가 된 건을 다시 태운다."""
         s = self.get_object()
-        attachment = s.attachments.filter(pk=attachment_id).first()
-        if attachment is None:
+        att = s.attachments.filter(pk=attachment_id).first()
+        if att is None:
             return Response({"detail": "첨부를 찾을 수 없습니다."}, status=404)
-        _run_extraction(attachment)
-        attachment.refresh_from_db()
-        return Response(AttachmentSerializer(attachment, context={"request": request}).data)
-
-
-def _run_extraction(attachment: Attachment) -> None:
-    """FastAPI 증빙 추출 Agent(`/agent/extract`) 호출 → `Attachment` 갱신.
-
-    업로드 자체는 이미 성공했으므로 추출 실패는 예외로 올리지 않는다 — `FAILED` +
-    사유만 남기고, 담당자가 사람이 직접 값을 볼 수 있게 둔다(조용한 실패 금지, 단
-    업로드 자체를 막지는 않는다).
-    """
-    attachment.extraction_status = "RUNNING"
-    attachment.save(update_fields=["extraction_status"])
-    try:
-        resp = httpx.post(
-            f"{settings.AI_BASE_URL}/agent/extract",
-            json={"file_ref": attachment.file.name, "kind": attachment.kind},
-            timeout=EXTRACT_TIMEOUT,
-        )
-        resp.raise_for_status()
-        result = resp.json()
-    except Exception as exc:  # noqa: BLE001  # AI 미기동·타임아웃·5xx·판독 실패(502) 전부
-        logger.warning("증빙 추출 실패(attachment=%s): %s", attachment.pk, exc)
-        attachment.extraction_status = "FAILED"
-        attachment.error = f"{type(exc).__name__}: {exc}"
-        attachment.save(update_fields=["extraction_status", "error"])
-        return
-
-    attachment.extraction_status = result.get("extractionStatus", "DONE")
-    attachment.extracted = result.get("extracted", {})
-    attachment.field_confidence = result.get("fieldConfidence", {})
-    attachment.evidence_spans = result.get("evidenceSpans", [])
-    attachment.extractor_version = result.get("extractorVersion", "")
-    attachment.extracted_at = timezone.now()
-    attachment.error = "; ".join(result.get("warnings") or [])
-    attachment.save(update_fields=[
-        "extraction_status", "extracted", "field_confidence", "evidence_spans",
-        "extractor_version", "extracted_at", "error",
-    ])
+        evidence_extract.schedule(att)
+        return Response(AttachmentSerializer(att).data)
 
 
 class SettlementSummaryView(APIView):
@@ -577,3 +596,59 @@ class TeamBudgetView(APIView):
             # {계정과목(또는 ''): 금액} — 비어 있으면 항목 합 == 총 사용액이라는 뜻.
             "unbudgeted": unbudgeted, "unbudgetedUsed": sum(unbudgeted.values()),
         })
+
+
+class TeamBudgetOverviewView(APIView):
+    """GET /api/team-budget/overview/?month=YYYY-MM — **전 팀** 예산 현황(S-08 예산 관리).
+
+    `TeamBudgetView`(팀 하나)와 같은 계산을 팀 수만큼 돌린 것이다. 계산을 복제하지 않고
+    같은 규약을 쓴다 — 한도는 `TeamBudget`(DB), 사용액은 그 팀·월 `Settlement` 집계,
+    최종 반려(`REJECT`)만 제외.
+
+    별도 엔드포인트로 둔 이유: 응답 셰이프가 다르다(팀 배열). 기존 뷰에 `all=1` 같은
+    플래그를 얹으면 같은 URL이 두 가지 모양을 돌려주게 되고, 호출부가 그때그때 분기해야 한다.
+
+    인가는 회계 검토 또는 거버넌스 열람 — Sidebar의 `/budget` 메뉴 조건과 같다.
+    """
+    permission_classes = [CanAccountingReviewOrGovernance]
+
+    def get(self, request):
+        month = request.query_params.get("month") or timezone.localdate().strftime("%Y-%m")
+
+        used_qs = Settlement.objects.exclude(status__in=_BUDGET_EXCLUDE)
+        if "-" in month:
+            y, m = month.split("-")[:2]
+            used_qs = used_qs.filter(transaction__ts__year=int(y), transaction__ts__month=int(m))
+        used: dict[tuple[int, str], int] = {
+            (r["team_id"], r["category"]): int(r["s"] or 0)
+            for r in used_qs.values("team_id", "category").annotate(s=Sum("transaction__amount"))
+            if r["team_id"]
+        }
+
+        limits: dict[int, dict[str, int]] = {}
+        for b in TeamBudget.objects.filter(year_month=month):
+            limits.setdefault(b.team_id, {})[b.category] = b.limit_amount
+
+        teams = []
+        for team in Team.objects.order_by("name"):
+            by_cat = limits.get(team.id, {})
+            categories = [
+                {"label": cat, "limit": lim, "used": used.get((team.id, cat), 0)}
+                for cat, lim in sorted(by_cat.items()) if cat != ""
+            ]
+            #  예산 행이 없는 과목의 지출 — 총 사용액엔 들어가지만 항목 카드엔 없다.
+            #  숨기면 "항목 합 ≠ 총액"이 되어 화면이 어긋나 보인다(TeamBudgetView와 같은 처리).
+            budgeted = {c["label"] for c in categories}
+            unbudgeted = {
+                cat: amt for (tid, cat), amt in used.items()
+                if tid == team.id and cat not in budgeted and amt
+            }
+            team_used = sum(v for (tid, _), v in used.items() if tid == team.id)
+            teams.append({
+                "id": team.id, "name": team.name,
+                "total": by_cat.get("", 0), "used": team_used,
+                "categories": categories,
+                "unbudgeted": unbudgeted, "unbudgetedUsed": sum(unbudgeted.values()),
+            })
+
+        return Response({"month": month, "teams": teams})

@@ -13,7 +13,7 @@ from app import logging_setup
 # 라우터 import보다 **먼저** 로깅을 켠다 — 그래야 import 시점 경고(모델 로드 실패 등)도 파일에 남는다.
 _log_file = logging_setup.setup()
 
-from app.api import decision_reason, draft, embeddings, extract, health, ml, risk, lab  # noqa: E402
+from app.api import decision, draft, embeddings, evidence, health, ml, risk, lab  # noqa: E402
 from app.agents.rule_agent_v0 import router as rule_agent_v0_router  # noqa: E402
 
 logging.getLogger(__name__).info(
@@ -26,8 +26,10 @@ app = FastAPI(title="Settlement AI Orchestrator", version="0.1.0")
 app.include_router(health.router)
 app.include_router(draft.router, prefix="/agent", tags=["agent"])
 app.include_router(risk.router, prefix="/agent", tags=["agent"])
-app.include_router(decision_reason.router, prefix="/agent", tags=["agent"])
-app.include_router(extract.router, prefix="/agent", tags=["agent"])
+# 증빙 판독 — Django가 첨부 업로드 직후 부른다(MCP 도구와 구현 공유, 진입점만 별개).
+app.include_router(evidence.router, prefix="/agent", tags=["agent"])
+# 보완요청·반려 사유 초안 — 결정 모달이 열릴 때 Django가 부른다.
+app.include_router(decision.router, prefix="/agent", tags=["agent"])
 app.include_router(ml.router, prefix="/ml", tags=["ml"])
 app.include_router(embeddings.router, prefix="/embeddings", tags=["rag"])
 

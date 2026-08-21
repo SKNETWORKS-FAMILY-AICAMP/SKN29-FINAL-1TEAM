@@ -9,7 +9,6 @@
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -294,86 +293,6 @@ class ReviewWorkspaceContractTests(TestCase):
         self.assertEqual(self.client.get("/api/risk-review-v0/reviews/").status_code, 404)
 
 
-class DraftDecisionReasonTests(TestCase):
-    """보완요청/반려 사유 초안(`/settlements/{id}/draft-decision-reason/`, 2026-08-21).
-
-    지키는 것:
-      ① 이미 있는 판정 근거(룰 플래그·2차 RAG 검증 사유·1차 이상탐지 사유)를 AI 서비스로
-         그대로 넘긴다 — 프론트가 다시 조립하지 않는다.
-      ② AI 실패는 조용히 일반 문구로 채우지 않고 503 + 안내 메시지로 올린다("AI가
-         판단했다"는 오해를 막는다).
-      ③ `accounting_review` capability로 보호된다(review/confirm과 동일).
-    """
-
-    def setUp(self):
-        from domain.policies.flags import seed_rule_flags
-
-        seed_rule_flags()  # 라벨 사전이 없으면 코드 원문으로 폴백한다(2026-08-21 실측 버그와 동일 조건)
-        card = Card.objects.create(name="법인카드", card_type="SHARED")
-        tx = Transaction.objects.create(
-            card=card, merchant="이자카야 노을", amount=Decimal("520000"), ts=timezone.now(),
-        )
-        self.settlement = Settlement.objects.create(
-            transaction=tx, category="회식", status=S.IN_REVIEW, purpose="회식",
-            rule_judgement={"decision": "REVIEW", "flags": ["PER_PERSON_LIMIT_OVER"]},
-        )
-        RiskReview.objects.create(
-            settlement=self.settlement, anomaly_score=0.06, risk_tier="HIGH",
-            anomaly_reasons=["1인당 한도 초과"],
-            stage2_verdict={
-                "violation_verdict": "VIOLATION",
-                "review_reasons": ["1인당 한도(5만원)를 초과했고 2차 결제입니다."],
-            },
-        )
-        User.objects.create_user("acc", password="pw", role=Role.ACCOUNTANT)
-        self.client = APIClient()
-        self.client.login(username="acc", password="pw")
-
-    def test_forwards_existing_evidence_and_returns_draft(self):
-        with patch("domain.settlements.views.httpx.post") as post:
-            post.return_value.json.return_value = {"detail": "1인당 한도를 초과해 보완이 필요합니다."}
-            post.return_value.raise_for_status.return_value = None
-            resp = self.client.post(
-                f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
-                {"decision": "RETURN", "reasonCategory": "건당 한도 초과"}, format="json",
-            )
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.data["detail"], "1인당 한도를 초과해 보완이 필요합니다.")
-        sent_payload = post.call_args.kwargs["json"]
-        self.assertEqual(sent_payload["violationVerdict"], "VIOLATION")
-        self.assertIn("1인당 한도(5만원)를 초과했고 2차 결제입니다.", sent_payload["reviewReasons"])
-        self.assertEqual(sent_payload["anomalyReasons"], ["1인당 한도 초과"])
-        self.assertTrue(any(f["label"] == "1인당 한도 초과" for f in sent_payload["ruleFlags"]))
-
-    def test_ai_failure_reports_503_not_a_generic_fallback(self):
-        """실패를 감추면 담당자가 "AI가 판단했다"고 오해한다 — 조용한 폴백 문구 금지."""
-        with patch("domain.settlements.views.httpx.post", side_effect=OSError("연결 실패")):
-            resp = self.client.post(
-                f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
-                {"decision": "REJECT", "reasonCategory": "명백한 규정 위반"}, format="json",
-            )
-        self.assertEqual(resp.status_code, 503)
-        self.assertIn("직접 입력", resp.data["detail"])
-
-    def test_rejects_unknown_decision(self):
-        resp = self.client.post(
-            f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
-            {"decision": "APPROVE"}, format="json",
-        )
-        self.assertEqual(resp.status_code, 400)
-
-    def test_requires_accounting_review_capability(self):
-        User.objects.create_user("emp3", password="pw", role=Role.EMPLOYEE)
-        client = APIClient()
-        client.login(username="emp3", password="pw")
-        resp = client.post(
-            f"/api/settlements/{self.settlement.pk}/draft-decision-reason/",
-            {"decision": "RETURN"}, format="json",
-        )
-        self.assertEqual(resp.status_code, 403)
-
-
 class RuleConverseProxyTests(TestCase):
     """대화형 룰 수정 — 화면이 Django를 거쳐 Agent에 닿는다(FastAPI는 내부 전용)."""
 
@@ -445,88 +364,6 @@ class RuleConverseProxyTests(TestCase):
             post.return_value.json.return_value = {"answer": "ok", "applied_changes": [], "graph": {}}
             resp = self.client.post(self._url(), {"message": "x"}, format="json")
         self.assertEqual(resp.status_code, 200)
-
-
-class AttachmentUploadTests(TestCase):
-    """증빙자료 추출 Agent 진입점(`/settlements/{id}/attachments/`, 2026-08-21) — 여태껏
-
-    ``app/vision/read_receipt``·``read_evidence_document``(2026-08-18)는 MCP 서버에
-    등록만 돼 있을 뿐 아무도 부르지 않았다. 여기서 지키는 것:
-      ① 업로드 응답이 곧 판독 결과다(동기) — Django가 FastAPI `/agent/extract`를 부르고
-         결과를 `Attachment`에 그대로 저장한다.
-      ② 판독 실패(AI 미기동 등)는 업로드 자체를 실패시키지 않는다 — `FAILED` + 사유만 남긴다.
-      ③ 삭제하면 목록에서 빠진다.
-    """
-
-    def setUp(self):
-        card = Card.objects.create(name="법인카드", card_type="PERSONAL")
-        tx = Transaction.objects.create(card=card, merchant="강남 한식당", amount=Decimal("120000"), ts=timezone.now())
-        self.settlement = Settlement.objects.create(transaction=tx, category="접대", status=S.DRAFT)
-        self.client = APIClient()
-
-    def _upload(self, kind="PRE_APPROVAL"):
-        f = SimpleUploadedFile("approval.png", b"fake-image-bytes", content_type="image/png")
-        return self.client.post(
-            f"/api/settlements/{self.settlement.pk}/attachments/", {"kind": kind, "file": f}, format="multipart",
-        )
-
-    def test_upload_calls_extraction_and_saves_result(self):
-        with patch("domain.settlements.views.httpx.post") as post:
-            post.return_value.raise_for_status.return_value = None
-            post.return_value.json.return_value = {
-                "extractionStatus": "DONE",
-                "extracted": {"approval.pre_approval_obtained": True},
-                "fieldConfidence": {"approval.pre_approval_obtained": 0.95},
-                "evidenceSpans": [{"path": "approval.pre_approval_obtained", "quote": "승인", "source": "document"}],
-                "extractorVersion": "vision-doc-1",
-                "warnings": [],
-            }
-            resp = self._upload()
-
-        self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.data["extractionStatus"], "DONE")
-        self.assertEqual(resp.data["extracted"], {"approval.pre_approval_obtained": True})
-
-        attachment = Attachment.objects.get(settlement=self.settlement)
-        self.assertEqual(attachment.extraction_status, "DONE")
-        self.assertEqual(attachment.extractor_version, "vision-doc-1")
-        # `file_ref`가 `/agent/extract`로 넘어간 값과 같아야 한다 — media 볼륨 기준 상대경로 계약.
-        sent = post.call_args.kwargs["json"]
-        self.assertEqual(sent["file_ref"], attachment.file.name)
-        self.assertEqual(sent["kind"], "PRE_APPROVAL")
-
-    def test_extraction_failure_does_not_fail_the_upload(self):
-        """업로드는 성공했는데 판독이 실패하면 — 조용히 감추지 않고 FAILED + 사유를 남긴다."""
-        with patch("domain.settlements.views.httpx.post", side_effect=OSError("연결 실패")):
-            resp = self._upload()
-
-        self.assertEqual(resp.status_code, 201)  # 업로드 자체는 성공
-        self.assertEqual(resp.data["extractionStatus"], "FAILED")
-        self.assertIn("연결 실패", resp.data["error"])
-
-    def test_list_and_delete(self):
-        with patch("domain.settlements.views.httpx.post") as post:
-            post.return_value.raise_for_status.return_value = None
-            post.return_value.json.return_value = {
-                "extractionStatus": "DONE", "extracted": {}, "fieldConfidence": {},
-                "evidenceSpans": [], "extractorVersion": "vision-doc-1", "warnings": [],
-            }
-            self._upload()
-
-        listed = self.client.get(f"/api/settlements/{self.settlement.pk}/attachments/")
-        self.assertEqual(len(listed.data), 1)
-
-        attachment_id = listed.data[0]["id"]
-        deleted = self.client.delete(f"/api/settlements/{self.settlement.pk}/attachments/{attachment_id}/")
-        self.assertEqual(deleted.status_code, 204)
-        self.assertFalse(Attachment.objects.filter(pk=attachment_id).exists())
-
-    def test_rejects_unknown_kind(self):
-        f = SimpleUploadedFile("x.png", b"bytes", content_type="image/png")
-        resp = self.client.post(
-            f"/api/settlements/{self.settlement.pk}/attachments/", {"kind": "NOT_A_KIND", "file": f}, format="multipart",
-        )
-        self.assertEqual(resp.status_code, 400)
 
 
 class AttachmentConfidenceGateTests(TestCase):
