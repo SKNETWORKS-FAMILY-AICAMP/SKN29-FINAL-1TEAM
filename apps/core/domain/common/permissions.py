@@ -59,3 +59,20 @@ class CanUseAiLab(HasCapability):
 # ── 하위호환 별칭(구 역할기반 이름) — 신규 코드는 위 Capability 클래스를 쓸 것 ──
 IsAccountant = CanAccountingReview
 IsAccountantLead = CanActivateRule
+
+
+class CanAccountingReviewOrGovernance(BasePermission):
+    """회계 검토 **또는** 거버넌스 열람 — 예산 관리 화면처럼 두 역할이 함께 보는 자리.
+
+    `HasCapability`는 단일 capability만 본다. 여기에 억지로 끼우지 않고 별도 클래스를
+    두는 이유: 다중 조건을 베이스에 넣으면 모든 권한이 목록을 갖게 되고, "이 화면은
+    무슨 권한인가"를 한 줄로 읽을 수 없게 된다.
+    """
+    message = "회계 검토 또는 거버넌스 열람 권한이 필요합니다."
+    capabilities = (Capability.ACCOUNTING_REVIEW, Capability.GOVERNANCE_VIEW)
+
+    def has_permission(self, request, view):
+        u = getattr(request, "user", None)
+        if not (u and u.is_authenticated):
+            return False
+        return any(u.has_capability(c) for c in self.capabilities)

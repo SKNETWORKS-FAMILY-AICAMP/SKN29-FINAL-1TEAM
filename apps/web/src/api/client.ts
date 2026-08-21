@@ -115,4 +115,32 @@ export const endpoints = {
     api.post(`/policy-docs/${docId}/clauses/${clauseId}/decision/`, { decision, reason }),
   // Rule 버전 관리
   ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
+
+  // ── S-08 예산 관리 — 전 팀 한도·사용액. 팀 하나짜리 teamBudget과 응답 셰이프가 다르다.
+  budgetOverview: (month?: string) => api.get('/team-budget/overview/', { params: month ? { month } : undefined }),
+
+  // ── S-09 법인카드 관리 — 조회는 사용액·조치필요 여부(계산값)를 함께 받는다.
+  cards: (params?: Record<string, unknown>) => api.get('/cards/', { params }),
+  cardsAttention: () => api.get('/cards/attention/'),
+  assignCard: (id: number, data: { mode: 'TEAM' | 'PERSONAL'; teamId?: number; userId?: number; reason?: string }) =>
+    api.post(`/cards/${id}/assign/`, data),
+  stopCard: (id: number, reason: string) => api.post(`/cards/${id}/stop/`, { reason }),
+  reactivateCard: (id: number) => api.post(`/cards/${id}/reactivate/`),
+
+  // ── ERP 전표(안) — 화면은 정산 id만 들고 있으므로 전표 id 없이 조회한다.
+  //  전표가 없으면 404다(빈 껍데기를 받아 "있는데 비었다"로 그리지 않게).
+  erpVoucherBySettlement: (settlementId: string) => api.get(`/erp/vouchers/by-settlement/${settlementId}/`),
+
+  // ── 증빙 첨부 — **업로드가 곧 판독 트리거**다(서버가 커밋 후 비전 판독을 돌린다).
+  //  판독은 비동기라 업로드 응답의 extractionStatus는 대개 PENDING/RUNNING이다 → 목록을 폴링한다.
+  settlementAttachments: (id: string) => api.get(`/settlements/${id}/attachments/`),
+  uploadAttachment: (id: string, form: FormData) =>
+    api.post(`/settlements/${id}/attachments/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120_000,
+    }),
+  deleteAttachment: (id: string, attachmentId: number) =>
+    api.delete(`/settlements/${id}/attachments/${attachmentId}/`),
+  reextractAttachment: (id: string, attachmentId: number) =>
+    api.post(`/settlements/${id}/attachments/${attachmentId}/reextract/`),
 }

@@ -8,6 +8,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import viewsets
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -16,13 +17,22 @@ from rest_framework.views import APIView
 logger = logging.getLogger(__name__)
 
 from domain.cards.models import Card
-from domain.common.permissions import CanAccountingReview, CanTeamAggregate
+from domain.accounts.models import Team
+from domain.common.permissions import (
+    CanAccountingReview, CanAccountingReviewOrGovernance, CanTeamAggregate,
+)
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import draft_agent, erp_import, services
+from . import draft_agent, erp_import, evidence_extract, services
+from .attachments import Attachment, AttachmentKind
 from .models import Settlement, TeamBudget
-from .serializers import SettlementDetailSerializer, SettlementSerializer
+from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
+
+#  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
+#  프록시에서 잘리면 사용자는 원인을 알 수 없는 413만 본다.
+ALLOWED_ATTACHMENT_SUFFIXES = (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic")
+MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
 # 본인이 직접 지울 수 있는 상태 — 아직 팀·회계로 넘어가기 전 단계만.
 DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
@@ -286,6 +296,71 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return Response({**self.get_serializer(s).data, "ruleResult": result.to_dict()})
 
 
+    # ── 증빙 첨부 + 판독 ──────────────────────────────────────────────
+    #  업로드가 곧 판독 트리거다. 별도 "분석" 버튼을 두면 아무도 누르지 않고, 추출 결과가
+    #  없는 채로 제출되면 판정이 그 사실을 `None`(모름)으로 보고 검토로 강등한다.
+
+    @action(detail=True, methods=["get", "post"], url_path="attachments",
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def attachments(self, request, pk=None):
+        s = self.get_object()
+        if request.method == "GET":
+            return Response(AttachmentSerializer(s.attachments.all(), many=True).data)
+
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"detail": "파일이 필요합니다."}, status=400)
+        if upload.size > MAX_ATTACHMENT_BYTES:
+            return Response(
+                {"detail": f"파일이 너무 큽니다({upload.size // (1024 * 1024)}MB). "
+                           f"{MAX_ATTACHMENT_BYTES // (1024 * 1024)}MB 이하만 올릴 수 있습니다."},
+                status=400,
+            )
+        name = (upload.name or "").lower()
+        if not name.endswith(ALLOWED_ATTACHMENT_SUFFIXES):
+            # 비전 판독기가 이미지·PDF만 연다. 다른 형식을 받아 두면 업로드는 성공했는데
+            # 판독만 조용히 실패해서, 사용자는 "첨부했으니 됐다"고 믿는다.
+            return Response(
+                {"detail": f"지원하지 않는 형식입니다: {upload.name} "
+                           f"({', '.join(ALLOWED_ATTACHMENT_SUFFIXES)}만 가능)"},
+                status=400,
+            )
+
+        kind = str(request.data.get("kind") or AttachmentKind.OTHER).upper()
+        if kind not in AttachmentKind.values:
+            return Response({"detail": f"알 수 없는 첨부 종류: {kind}"}, status=400)
+
+        att = Attachment.objects.create(
+            settlement=s, kind=kind, file=upload,
+            original_name=upload.name[:200], mime_type=(upload.content_type or "")[:100],
+            uploaded_by=_actor(request),
+        )
+        #  ai에 넘길 경로는 **media 볼륨 기준 상대경로**다(`app/media.py`가 절대경로를 거부한다).
+        att.file_ref = att.file.name
+        att.save(update_fields=["file_ref"])
+        evidence_extract.schedule(att)
+        return Response(AttachmentSerializer(att).data, status=201)
+
+    @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<attachment_id>[0-9]+)")
+    def delete_attachment(self, request, pk=None, attachment_id=None):
+        s = self.get_object()
+        att = s.attachments.filter(pk=attachment_id).first()
+        if att is None:
+            return Response({"detail": "첨부를 찾을 수 없습니다."}, status=404)
+        att.delete()
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"], url_path=r"attachments/(?P<attachment_id>[0-9]+)/reextract")
+    def reextract_attachment(self, request, pk=None, attachment_id=None):
+        """판독 재시도 — ai가 안 떠 있었거나 타임아웃으로 `FAILED`가 된 건을 다시 태운다."""
+        s = self.get_object()
+        att = s.attachments.filter(pk=attachment_id).first()
+        if att is None:
+            return Response({"detail": "첨부를 찾을 수 없습니다."}, status=404)
+        evidence_extract.schedule(att)
+        return Response(AttachmentSerializer(att).data)
+
+
 class SettlementSummaryView(APIView):
     """GET /api/internal/settlement-summary/<settlement_id>/ — Risk Review 2차 검증 진입점(Django 내부 read API).
 
@@ -372,3 +447,59 @@ class TeamBudgetView(APIView):
             # {계정과목(또는 ''): 금액} — 비어 있으면 항목 합 == 총 사용액이라는 뜻.
             "unbudgeted": unbudgeted, "unbudgetedUsed": sum(unbudgeted.values()),
         })
+
+
+class TeamBudgetOverviewView(APIView):
+    """GET /api/team-budget/overview/?month=YYYY-MM — **전 팀** 예산 현황(S-08 예산 관리).
+
+    `TeamBudgetView`(팀 하나)와 같은 계산을 팀 수만큼 돌린 것이다. 계산을 복제하지 않고
+    같은 규약을 쓴다 — 한도는 `TeamBudget`(DB), 사용액은 그 팀·월 `Settlement` 집계,
+    최종 반려(`REJECT`)만 제외.
+
+    별도 엔드포인트로 둔 이유: 응답 셰이프가 다르다(팀 배열). 기존 뷰에 `all=1` 같은
+    플래그를 얹으면 같은 URL이 두 가지 모양을 돌려주게 되고, 호출부가 그때그때 분기해야 한다.
+
+    인가는 회계 검토 또는 거버넌스 열람 — Sidebar의 `/budget` 메뉴 조건과 같다.
+    """
+    permission_classes = [CanAccountingReviewOrGovernance]
+
+    def get(self, request):
+        month = request.query_params.get("month") or timezone.localdate().strftime("%Y-%m")
+
+        used_qs = Settlement.objects.exclude(status__in=_BUDGET_EXCLUDE)
+        if "-" in month:
+            y, m = month.split("-")[:2]
+            used_qs = used_qs.filter(transaction__ts__year=int(y), transaction__ts__month=int(m))
+        used: dict[tuple[int, str], int] = {
+            (r["team_id"], r["category"]): int(r["s"] or 0)
+            for r in used_qs.values("team_id", "category").annotate(s=Sum("transaction__amount"))
+            if r["team_id"]
+        }
+
+        limits: dict[int, dict[str, int]] = {}
+        for b in TeamBudget.objects.filter(year_month=month):
+            limits.setdefault(b.team_id, {})[b.category] = b.limit_amount
+
+        teams = []
+        for team in Team.objects.order_by("name"):
+            by_cat = limits.get(team.id, {})
+            categories = [
+                {"label": cat, "limit": lim, "used": used.get((team.id, cat), 0)}
+                for cat, lim in sorted(by_cat.items()) if cat != ""
+            ]
+            #  예산 행이 없는 과목의 지출 — 총 사용액엔 들어가지만 항목 카드엔 없다.
+            #  숨기면 "항목 합 ≠ 총액"이 되어 화면이 어긋나 보인다(TeamBudgetView와 같은 처리).
+            budgeted = {c["label"] for c in categories}
+            unbudgeted = {
+                cat: amt for (tid, cat), amt in used.items()
+                if tid == team.id and cat not in budgeted and amt
+            }
+            team_used = sum(v for (tid, _), v in used.items() if tid == team.id)
+            teams.append({
+                "id": team.id, "name": team.name,
+                "total": by_cat.get("", 0), "used": team_used,
+                "categories": categories,
+                "unbudgeted": unbudgeted, "unbudgetedUsed": sum(unbudgeted.values()),
+            })
+
+        return Response({"month": month, "teams": teams})

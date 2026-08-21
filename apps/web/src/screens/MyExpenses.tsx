@@ -1,6 +1,7 @@
 // S-01 내 지출("지출 증빙") — 사용자(임직원). FR-UI-01, FR-DA-01~09, FR-DB-02
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Download, Loader2, Plus, Search, UserPlus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, Check, Download, FileText, Loader2, Plus, Search, UserPlus } from 'lucide-react'
 import {
   CARD_TYPE_LABEL, CATEGORIES, CATEGORY_TONE,
   type CardType, type Category, type Settlement, type SettlementStatus,
@@ -39,6 +40,7 @@ type ViewFilter = 'ACTIVE' | 'RETURNED' | 'REJECT' | 'DRAFT' | 'PROCESSING' | 'D
 export function MyExpenses() {
   const { myExpenses: expenses, updateStatus, addExpense, removeExpense, refresh } = useSettlements()
   const { user } = useAuth()
+  const nav = useNavigate()
   const [selected, setSelected] = useState<Settlement | null>(null)
   const [creating, setCreating] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -211,7 +213,7 @@ export function MyExpenses() {
               <tr>
                 <th></th>
                 <th>거래일자</th><th>가맹점</th><th className="num">금액</th>
-                <th>카드구분</th><th>비용분류</th><th>증빙</th><th>검토상태</th>
+                <th>카드구분</th><th>비용분류</th><th>증빙</th><th>검토상태</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -264,11 +266,23 @@ export function MyExpenses() {
                         )
                         : <StatusText status={e.status} label={S01_STATUS_LABEL[e.status]} />}
                     </td>
+                    <td>
+                      {/* 확정된 건은 ERP 전표(안)를 다시 볼 수 있어야 한다 — 예전엔 검토 모달의
+                          승인 직후 자동 이동 한 번뿐이라 그 순간을 놓치면 접근할 길이 없었다. */}
+                      {DONE.includes(e.status) && (
+                        <button
+                          className="btn sm"
+                          onClick={(ev) => { ev.stopPropagation(); nav(`/erp/${e.id}`) }}
+                        >
+                          <FileText size={11} /> 전표 보기
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 )
               })}
               {list.length === 0 && (
-                <tr><td colSpan={8} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>해당 조건의 내역이 없습니다.</td></tr>
+                <tr><td colSpan={9} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>해당 조건의 내역이 없습니다.</td></tr>
               )}
             </tbody>
           </table>

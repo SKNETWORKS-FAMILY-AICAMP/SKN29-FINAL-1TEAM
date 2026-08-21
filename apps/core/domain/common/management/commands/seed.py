@@ -88,12 +88,9 @@ class Command(BaseCommand):
         mismatch = check_table_keys()
         if mismatch:
             self.stdout.write(self.style.WARNING(
-                "[경고] 별표 축 값이 직급/직책 코드에 없다 - 해당 키는 와일드카드로 해소된다:
-"
-                + "
-".join(f"  - {key}: {', '.join(names)}" for key, names in mismatch.items())
-                + "
-  규정 원문으로 그 표의 축이 직급인지 직책인지 확정할 것"
+                "[경고] 별표 축 값이 직급/직책 코드에 없다 - 해당 키는 와일드카드로 해소된다:\n"
+                + "\n".join(f"  - {key}: {', '.join(names)}" for key, names in mismatch.items())
+                + "\n  규정 원문으로 그 표의 축이 직급인지 직책인지 확정할 것"
                 " (policies/tiger_tables.py)."
             ))
 
@@ -160,17 +157,17 @@ class Command(BaseCommand):
         ]}
 
         # ── 카드 ─────────────────────────────────
-        kim_card = Card.objects.create(card_type=CardType.PERSONAL, name="김영업 개인카드", number_masked="**** 1001", owner=kim)
-        acc_card = Card.objects.create(card_type=CardType.PERSONAL, name="박회계 개인카드", number_masked="**** 2002", owner=acc)
-        acclead_card = Card.objects.create(card_type=CardType.PERSONAL, name="정회계팀장 개인카드", number_masked="**** 2003", owner=acclead)
-        fin_team_card = Card.objects.create(card_type=CardType.TEAM, name="재무회계팀 팀카드", number_masked="**** 5001", team=fin)
-        fin_shared_card = Card.objects.create(card_type=CardType.SHARED, name="경영지원본부 공용", number_masked="**** 5500", team=fin)
-        sales_team_card = Card.objects.create(card_type=CardType.TEAM, name="영업팀 팀카드", number_masked="**** 7001", team=sales)
-        sales_shared_card = Card.objects.create(card_type=CardType.SHARED, name="영업본부 공용", number_masked="**** 7700", team=sales)
-        shared_card = Card.objects.create(card_type=CardType.SHARED, name="AI·개발팀 공용", number_masked="**** 9999", team=devai)
-        devai_team_card = Card.objects.create(card_type=CardType.TEAM, name="AI·개발팀 팀카드", number_masked="**** 9001", team=devai)
-        postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="후정산 청구", number_masked="후정산")
-        sales_prepaid = Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales)
+        kim_card = Card.objects.create(card_type=CardType.PERSONAL, name="김영업 개인카드", number_masked="**** 1001", owner=kim, limit_amount=1_500_000)
+        acc_card = Card.objects.create(card_type=CardType.PERSONAL, name="박회계 개인카드", number_masked="**** 2002", owner=acc, limit_amount=1_500_000)
+        acclead_card = Card.objects.create(card_type=CardType.PERSONAL, name="정회계팀장 개인카드", number_masked="**** 2003", owner=acclead, limit_amount=3_000_000)
+        fin_team_card = Card.objects.create(card_type=CardType.TEAM, name="재무회계팀 팀카드", number_masked="**** 5001", team=fin, limit_amount=5_000_000)
+        fin_shared_card = Card.objects.create(card_type=CardType.SHARED, name="경영지원본부 공용", number_masked="**** 5500", team=fin, limit_amount=6_000_000)
+        sales_team_card = Card.objects.create(card_type=CardType.TEAM, name="영업팀 팀카드", number_masked="**** 7001", team=sales, limit_amount=5_000_000)
+        sales_shared_card = Card.objects.create(card_type=CardType.SHARED, name="영업본부 공용", number_masked="**** 7700", team=sales, limit_amount=4_000_000)
+        shared_card = Card.objects.create(card_type=CardType.SHARED, name="AI·개발팀 공용", number_masked="**** 9999", team=devai, limit_amount=4_000_000)
+        devai_team_card = Card.objects.create(card_type=CardType.TEAM, name="AI·개발팀 팀카드", number_masked="**** 9001", team=devai, limit_amount=5_000_000)
+        postpaid = Card.objects.create(card_type=CardType.POST_PAID, name="후정산 청구", number_masked="후정산", limit_amount=2_000_000)
+        sales_prepaid = Card.objects.create(card_type=CardType.PREPAID, name="영업팀 선불", number_masked="**** 3300", team=sales, limit_amount=1_000_000)
 
         # 캐시는 **정본 업종 어휘**로만 심는다(§7-1). 예전엔 카카오 group code(CE7·FD6…)와
         #  자유 라벨(한식·주점)을 넣었는데, 그 값이 그대로 판정 사실이 되어 룰의 `in [...]`에

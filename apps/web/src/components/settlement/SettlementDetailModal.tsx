@@ -3,11 +3,11 @@
 //  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
 //  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock, Paperclip,
-  Receipt, Sparkles, Trash2, Upload, X,
+  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock,
+  Receipt, Sparkles, Trash2, Upload,
 } from 'lucide-react'
 import {
   CARD_TYPE_LABEL, CATEGORIES,
@@ -24,6 +24,8 @@ import {
   reviseDraft, submitSettlements, suggestDraft, type DraftSuggestion, type PolicyHint,
 } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
+import { EvidenceAttachments } from './EvidenceAttachments'
+import type { Attachment } from '../../api/attachmentService'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
 const MOCK_OCR = { merchant: '강남 한식당', amount: '452,000', category: '접대' as Category }
@@ -175,14 +177,19 @@ export function SettlementDetailModal({
     setInstruction('')
   }
 
-  // 추가 증빙 업로드(미리보기 없음) → 파일 칩 추가 + 코멘트
-  const uploadExtra = () => {
-    const n = extraFiles.length + 1
-    const name = `추가증빙_${n}.pdf`
-    setExtraFiles((prev) => [...prev, { id: `x${prev.length}-${name}`, name }])
-    pushComment({ icon: 'doc', text: `증빙 문서 "${name}" 인식 — ${category} 목적 보강 근거로 첨부했습니다.` })
-  }
-  const removeExtra = (id: string) => setExtraFiles((prev) => prev.filter((f) => f.id !== id))
+  // 첨부 판독이 끝나면 AI 코멘트로 알린다. **문구를 지어내지 않는다** — 서버가 실제로
+  // 읽어낸 사실 개수만 말한다(예전엔 업로드하는 순간 "인식했습니다"를 찍어 놓고
+  // 아무것도 읽지 않았다).
+  const onFactsExtracted = useCallback((a: Attachment) => {
+    const n = Object.keys(a.extracted ?? {}).length
+    setExtraFiles((prev) => (prev.some((f) => f.id === String(a.id)) ? prev : [...prev, { id: String(a.id), name: a.originalName }]))
+    setComments((prev) => [...prev, {
+      icon: 'doc',
+      text: n > 0
+        ? `증빙 문서 "${a.originalName}" 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
+        : `증빙 문서 "${a.originalName}"을 판독했지만 확인된 판정 사실이 없습니다.`,
+    }])
+  }, [])
 
 
   const draft = (): Omit<Settlement, 'id' | 'status'> => ({
@@ -400,34 +407,12 @@ export function SettlementDetailModal({
             </div>
           </div>
 
-          {/* 추가 증빙 (미리보기 없음) */}
-          <div className="card">
-            <div className="card-head"><h3>추가 증빙 자료</h3><span className="text-meta">미리보기 없음</span></div>
-            <div className="card-body">
-              {!readOnly && (
-                <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={uploadExtra} disabled={pending}>
-                  <Paperclip size={14} /> 계약서·이체확인증 등 첨부
-                </button>
-              )}
-              {extraFiles.length > 0 ? (
-                <div className="stack" style={{ marginTop: readOnly ? 0 : 10 }}>
-                  {extraFiles.map((f) => (
-                    <div key={f.id} className="row" style={{ justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '8px 10px' }}>
-                      <div className="row" style={{ gap: 8 }}>
-                        <FileText size={16} color="var(--tone-red)" />
-                        <span style={{ fontSize: 12.5 }}>{f.name}</span>
-                      </div>
-                      {!readOnly && (
-                        <button className="x-btn" style={{ width: 24, height: 24 }} aria-label="삭제" onClick={() => removeExtra(f.id)}>
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : readOnly && <div className="text-meta">첨부된 추가 증빙이 없습니다.</div>}
-            </div>
-          </div>
+          {/* 증빙 첨부 + 판독 — 업로드가 곧 판독 트리거다(서버가 비전 판독을 돌린다). */}
+          <EvidenceAttachments
+            settlementId={item?.id ?? null}
+            readOnly={readOnly}
+            onFactsExtracted={onFactsExtracted}
+          />
 
           {/* 상태 변경 이력 (Audit Trail) */}
           <div className="card">

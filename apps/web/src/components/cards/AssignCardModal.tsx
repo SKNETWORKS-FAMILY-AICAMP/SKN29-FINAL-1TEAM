@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { CreditCard } from 'lucide-react'
 import { Modal } from '../ui/Modal'
+import type { CardOption } from '../../api/cardService'
 
 export function AssignCardModal({
   number,
@@ -13,17 +14,18 @@ export function AssignCardModal({
 }: {
   number: string
   currentLabel: string
-  teams: string[]
-  people: string[]
+  // 이름이 아니라 **id**로 고른다 — 동명이인이 있으면 이름 매칭은 조용히 엉뚱한 사람에게 붙는다.
+  teams: CardOption[]
+  people: CardOption[]
   onClose: () => void
-  onConfirm: (target: { mode: 'TEAM' | 'PERSONAL'; value: string; reason: string }) => void
+  onConfirm: (target: { mode: 'TEAM' | 'PERSONAL'; teamId?: number; userId?: number; reason: string }) => void
 }) {
   const [mode, setMode] = useState<'TEAM' | 'PERSONAL'>('TEAM')
-  const [team, setTeam] = useState(teams[0] ?? '')
-  const [person, setPerson] = useState(people[0] ?? '')
+  const [teamId, setTeamId] = useState<number | undefined>(teams[0]?.id)
+  const [userId, setUserId] = useState<number | undefined>(people[0]?.id)
   const [reason, setReason] = useState('')
 
-  const canConfirm = reason.trim() !== ''
+  const canConfirm = reason.trim() !== '' && (mode === 'TEAM' ? teamId != null : userId != null)
 
   const footer = (
     <>
@@ -31,7 +33,7 @@ export function AssignCardModal({
       <button
         className="btn primary"
         disabled={!canConfirm}
-        onClick={() => onConfirm({ mode, value: mode === 'TEAM' ? team : person, reason })}
+        onClick={() => onConfirm(mode === 'TEAM' ? { mode, teamId, reason } : { mode, userId, reason })}
       >
         배정 변경 확정
       </button>
@@ -81,15 +83,15 @@ export function AssignCardModal({
 
       <div className="field">
         <label>배정 팀 선택</label>
-        <select value={team} onChange={(e) => setTeam(e.target.value)} disabled={mode !== 'TEAM'}>
-          {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+        <select value={teamId ?? ''} onChange={(e) => setTeamId(Number(e.target.value))} disabled={mode !== 'TEAM'}>
+          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
 
       <div className="field">
         <label>배정 개인 선택 (개인 배정 시)</label>
-        <select value={person} onChange={(e) => setPerson(e.target.value)} disabled={mode !== 'PERSONAL'}>
-          {people.map((p) => <option key={p} value={p}>{p}</option>)}
+        <select value={userId ?? ''} onChange={(e) => setUserId(Number(e.target.value))} disabled={mode !== 'PERSONAL'}>
+          {people.map((p) => <option key={p.id} value={p.id}>{p.team ? `${p.name} (${p.team})` : p.name}</option>)}
         </select>
       </div>
 

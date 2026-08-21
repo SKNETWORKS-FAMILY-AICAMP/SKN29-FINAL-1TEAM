@@ -190,10 +190,12 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
 | Risk Review Agent (① 이상탐지 → ② RAG 내규 검증) | ✅ 실동작 | **①은 학습된 모델 파일이 있어야 실값** — §6 참고 |
 | 규정 문서 업로드 → 인덱싱 → 룰 트리거 | ✅ | §4-① |
 | RAG 파싱·청킹·임베딩 전략 | ✅ 구현+평가 완료 | 채점 노트북은 `docling_eval/` |
-| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | 🔶 **미머지** | `feature/context-build-tool` 브랜치에만 있다 — §6.5 |
+| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | 🔶 **미머지** | `feature/context-build-tool` 브랜치에만 있다 — §6.6 |
 | 검토 워크스페이스(S-03) · 규정 문서 관리(S-05) · 팀 취합(S-02) | ✅ 실 API | |
 | 내 지출(S-01) · 내역 불러오기 | ✅ 실 API | ERP 결제기록 수집 → DRAFT 생성 |
-| 예산 관리 · 카드 관리 · 거버넌스 대시보드 · ERP 전표 확인 | 🚧 목업 | §6 |
+| 예산 관리(S-08) · 카드 관리(S-09) · ERP 전표(안) 확인 | ✅ 실 API | 2026-08-21 연동 |
+| 증빙 첨부 업로드 → 비전 판독 → EvalContext | ✅ 실동작 | 업로드가 곧 판독 트리거. §6.4 |
+| 거버넌스 대시보드 | 🚧 목업 | §6.2 |
 | 증빙자료 추출 Agent | 🔲 미착수 | 저장 구조(`Attachment`)와 조립기 연결만 완료 |
 
 ---
@@ -224,11 +226,9 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
 
 | 화면 | 상태 |
 |---|---|
-| 예산 관리 (`BudgetManagement`) | 전 팀 예산 조회 화면 전체가 목데이터. 수정 기능은 권한 모델 미정으로 제외 |
-| 카드 관리 (`CardManagement`) | 카드 배정·회수 화면 전체 목데이터(`Card` 모델은 있음) |
 | 거버넌스 대시보드 (`GovernanceDashboard`) | 차트·KPI 전부 목데이터. `/api/dashboard/EXECUTIVE/`는 일부 집계만 반환 |
-| ERP 전표 확인 (`ErpVoucherConfirm`) | 화면은 로컬 상태로만 동작. 서버는 CONFIRMED 시 `ErpVoucher` DRAFT를 실제로 만들고 `GET /api/erp/vouchers/`로 읽을 수 있는데 화면이 안 붙어 있다 |
 | 알림 패널 (`NotificationPanel`) | `data/mock`의 고정 목록 |
+| 예산 **수정** (S-08 Frame 22) | 조회는 실 API. 쓰기 API가 없고 "누가 고칠 수 있는가"가 미정이라 버튼은 비활성 |
 
 ### 6.3 연동 gap (`VITE_USE_MOCK=false`로 붙일 때)
 
@@ -242,10 +242,12 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
 
 ### 6.4 도메인 차원의 미완
 
-- **비전 판독(영수증·증빙문서)이 흐름에 안 붙어 있다.** `read_receipt`·`read_evidence_document`는
-  MCP 도구로 구현·노출돼 있지만 Draft Agent나 정산 저장 경로에서 **호출하지 않는다**.
-- **증빙자료 추출 Agent 미착수.** `Attachment.extracted`(EvalContext dot-path → 값) 저장 틀과
-  조립기 연결은 끝났고, 채우는 주체가 없다.
+- **영수증 판독의 「사용내역」은 저장되지 않는다.** 증빙 첨부 판독은 연결됐지만
+  (`업로드 → /agent/extract-evidence → Attachment.extracted → EvalContext`), 영수증에서 읽은
+  **가맹점·금액·품목**은 `Attachment`에 담을 자리가 없어 버려진다 — 판정 사실
+  (`dining.includes_alcohol` 등)만 남는다. 금액·가맹점 자동 채움은 여전히 Draft Agent 경로다.
+- **Draft Agent가 아직 비전을 안 쓴다.** 「영수증 업로드(자동 분석)」 버튼은 파일을 실제로
+  올리지 않고 Draft Agent만 부른다. 판독을 원하면 아래 증빙 첨부에 `영수증·카드전표`로 올린다.
 - **EvalContext 사실 조립이 부분적이다.** 47개 경로 중 조립되는 건 절반가량 —
   참조한 경로가 `null`이면 미해소 가드가 판정을 「검토 필요」로 낮춘다(조용한 통과는 없다).
 - **가맹점 업종 구분이 Draft에만 붙어 있다.** Risk Review 연동은 미착수.
@@ -256,7 +258,18 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
   (재시드로 해소) / `dining_per_person_limit_table`의 축 `category.scope`는 코드에 있는데
   스키마에 없다.
 
-### 6.5 아직 main에 없는 브랜치 작업
+### 6.5 최근 고친 것 / 주의
+
+- **`manage.py seed`가 main에서 문법 오류로 죽어 있었다**(2026-08-21 수정). 커밋
+  `633a061`부터 문자열 안의 `
+` 이스케이프가 실제 개행으로 눌려 있어 모듈 import 자체가
+  실패했다 — 관리 명령은 호출할 때만 import되므로 테스트·부팅에서는 드러나지 않았다.
+  같은 종류의 손상이 더 있는지는 아래로 전수 확인할 수 있다:
+  ```bash
+  for f in $(git ls-files '*.py'); do python -m py_compile "$f" || echo "BROKEN: $f"; done
+  ```
+
+### 6.6 아직 main에 없는 브랜치 작업
 
 | 브랜치 | 내용 |
 |---|---|

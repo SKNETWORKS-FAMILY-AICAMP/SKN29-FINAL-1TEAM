@@ -247,3 +247,32 @@ class SettlementDetailSerializer(SettlementSerializer):
             }
             for hit in obj.rule_hits.select_related("graph").all()
         ]
+
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    """증빙 첨부 1건 + 판독 결과.
+
+    `extracted`(dot-path→값)를 화면이 그대로 읽을 수 있게 **경로를 감추지 않는다** —
+    "이 문서에서 무엇을 읽어냈는가"가 판정 근거라, 요약해 버리면 사람이 대조할 수 없다.
+    """
+    kindLabel = serializers.CharField(source="get_kind_display", read_only=True)
+    originalName = serializers.CharField(source="original_name", read_only=True)
+    mimeType = serializers.CharField(source="mime_type", read_only=True)
+    uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
+    extractionStatus = serializers.CharField(source="extraction_status", read_only=True)
+    extractionStatusLabel = serializers.CharField(source="get_extraction_status_display", read_only=True)
+    fieldConfidence = serializers.JSONField(source="field_confidence", read_only=True)
+    evidenceSpans = serializers.JSONField(source="evidence_spans", read_only=True)
+    extractorVersion = serializers.CharField(source="extractor_version", read_only=True)
+    extractedAt = serializers.DateTimeField(source="extracted_at", read_only=True)
+
+    class Meta:
+        from .attachments import Attachment
+
+        model = Attachment
+        fields = [
+            "id", "kind", "kindLabel", "originalName", "mimeType", "uploadedAt",
+            "extractionStatus", "extractionStatusLabel",
+            "extracted", "fieldConfidence", "evidenceSpans",
+            "extractorVersion", "extractedAt", "error",
+        ]

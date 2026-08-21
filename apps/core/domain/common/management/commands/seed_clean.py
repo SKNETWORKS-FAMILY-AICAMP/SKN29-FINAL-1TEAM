@@ -221,9 +221,9 @@ class Command(BaseCommand):
 
         # 카드가 없으면 신규 지출 등록에서 카드를 고를 수 없어 시연이 막힌다.
         # **거래·정산은 만들지 않는다** — 지출은 시연하는 사람이 직접 등록하는 게 이 시드의 목적이다.
-        Card.objects.create(name="법인카드(개인)", card_type=CardType.PERSONAL)
-        Card.objects.create(name="법인카드(팀)", card_type=CardType.TEAM)
-        Card.objects.create(name="법인카드(공용)", card_type=CardType.SHARED)
+        Card.objects.create(name="법인카드(개인)", card_type=CardType.PERSONAL, limit_amount=1_500_000)
+        Card.objects.create(name="법인카드(팀)", card_type=CardType.TEAM, limit_amount=5_000_000)
+        Card.objects.create(name="법인카드(공용)", card_type=CardType.SHARED, limit_amount=4_000_000)
 
     # ── 기본 게이트 ───────────────────────────────────────────
     def _default_gate(self) -> RuleGraph:
