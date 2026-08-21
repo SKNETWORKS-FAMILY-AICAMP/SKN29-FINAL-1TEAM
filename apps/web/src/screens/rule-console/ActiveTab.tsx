@@ -1,8 +1,9 @@
 // Tab3 — Active 관리. 실제 API(/api/rules/) 연동.
-//  ① 승인대기 목록(스코프당 1건) — 펼치면 KPI·검토보고서, 룰 활성 권한자가 ACTIVE 전환
-//  ② 현재 활성 그래프 — 전체 KPI 대시보드 + 스코프별 목록(클릭 시 버전 이력·롤백)
+//  ① 활성 그래프 전체 KPI 대시보드(시안 실측: 맨 위)
+//  ② 승인대기 목록(스코프당 1건) — 펼치면 개별 KPI·검토보고서, 룰 활성 권한자가 ACTIVE 전환
+//  ③ 현재 활성 그래프 — 스코프별 목록(클릭 시 버전 이력·롤백)
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, History, Lock } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, History, Lock } from 'lucide-react'
 import { endpoints } from '../../api/client'
 import { activateRule } from '../../api/ruleService'
 import { Markdown } from '../../components/ui/Markdown'
@@ -127,14 +128,45 @@ export function ActiveTab() {
       {loading && <div className="card"><div className="card-body text-meta">룰 그래프를 불러오는 중입니다.</div></div>}
       {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 16 }}>{error}</div>}
 
-      {/* ① 승인대기 목록 */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3>승인대기 목록</h3>
-            <div className="text-meta">스코프(비용분류)당 1건만 올라올 수 있습니다. 처리해야 다음 요청이 가능합니다.</div>
+      {/* ① 활성 그래프 전체 현황(시안 실측: 승인대기 목록보다 위) */}
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi">
+          <div className="label">활성 그래프</div><div className="value">{dashboard.graphCount}개</div>
+          <div className="text-meta">{dashboard.scopeCount}개 스코프 커버</div>
+        </div>
+        <div className="kpi">
+          <div className="label">활성 노드 총계</div><div className="value">{dashboard.nodeCount}개</div>
+          <div className="text-meta">활성 그래프의 룰 노드 합계</div>
+        </div>
+        <div className="kpi">
+          <div className="label">평균 자동처리율</div><div className="value">{percent(dashboard.avgAutoRate)}</div>
+          <div className="text-meta">
+            시뮬레이션 이력 {dashboard.ratedCount}개 기준{dashboard.unrated > 0 && ` · 미측정 ${dashboard.unrated}개`}
           </div>
-          <span className="tag ai">{pending.length}건 대기</span>
+        </div>
+        <div className={'kpi ' + (dashboard.riskCount > 0 ? 'warn' : 'ok')}>
+          <div className="label">위험 변경 누계</div><div className="value">{dashboard.riskCount}건</div>
+          <div className="text-meta">최근 시뮬레이션 기준</div>
+        </div>
+      </div>
+
+      {/* ② 승인대기 목록 — 대기 건이 있으면 amber 톤으로 눈에 띄게 한다(시안 실측).
+          없으면 굳이 강조할 게 없으므로 평범한 카드로 둔다. */}
+      <div
+        className="card"
+        style={pending.length > 0
+          ? { marginBottom: 16, background: 'var(--tone-amber-bg)', borderColor: '#e8d5a3' }
+          : { marginBottom: 16 }}
+      >
+        <div className="card-head" style={pending.length > 0 ? { borderBottomColor: 'transparent' } : undefined}>
+          <div className="row" style={{ gap: 8 }}>
+            {pending.length > 0 && <AlertTriangle size={14} color="var(--tone-amber)" />}
+            <div>
+              <h3>승인대기 목록</h3>
+              <div className="text-meta">스코프(비용분류)당 1건만 올라올 수 있습니다. 처리해야 다음 요청이 가능합니다.</div>
+            </div>
+          </div>
+          <span className={'tag' + (pending.length > 0 ? ' caution' : '')}>{pending.length}건 대기</span>
         </div>
         {!loading && pending.length === 0 && <div className="card-body text-meta">승인대기 중인 그래프가 없습니다.</div>}
         <div className="stack" style={{ padding: pending.length ? 8 : 0, gap: 8 }}>
@@ -252,28 +284,7 @@ export function ActiveTab() {
         </div>
       </div>
 
-      {/* ② 현재 활성 그래프 */}
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <div className="kpi">
-          <div className="label">활성 그래프</div><div className="value">{dashboard.graphCount}개</div>
-          <div className="text-meta">{dashboard.scopeCount}개 스코프 커버</div>
-        </div>
-        <div className="kpi">
-          <div className="label">활성 노드 총계</div><div className="value">{dashboard.nodeCount}개</div>
-          <div className="text-meta">활성 그래프의 룰 노드 합계</div>
-        </div>
-        <div className="kpi">
-          <div className="label">평균 자동처리율</div><div className="value">{percent(dashboard.avgAutoRate)}</div>
-          <div className="text-meta">
-            시뮬레이션 이력 {dashboard.ratedCount}개 기준{dashboard.unrated > 0 && ` · 미측정 ${dashboard.unrated}개`}
-          </div>
-        </div>
-        <div className={'kpi ' + (dashboard.riskCount > 0 ? 'warn' : 'ok')}>
-          <div className="label">위험 변경 누계</div><div className="value">{dashboard.riskCount}건</div>
-          <div className="text-meta">최근 시뮬레이션 기준</div>
-        </div>
-      </div>
-
+      {/* ③ 현재 활성 그래프 */}
       <div className="card">
         <div className="card-head">
           <div><h3>현재 활성 그래프</h3><div className="text-meta">그래프를 클릭하면 버전 이력에서 롤백할 수 있습니다.</div></div>
