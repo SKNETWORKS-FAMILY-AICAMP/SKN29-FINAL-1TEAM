@@ -45,6 +45,10 @@ class SettlementSerializer(serializers.ModelSerializer):
         source="transaction.amount", max_digits=12, decimal_places=0, read_only=True
     )
     cardType = serializers.SerializerMethodField()
+    #  구분만으로는 **어느 카드인지** 알 수 없다. 화면이 카드를 직접 고르므로 id를 함께 낸다
+    #  (예전엔 화면이 구분만 보내고 서버가 그 구분의 아무 카드나 붙였다 — 남의 카드가 붙었다).
+    cardId = serializers.SerializerMethodField()
+    cardName = serializers.SerializerMethodField()
     aiCategory = serializers.CharField(source="ai_category", read_only=True)
     aiSuggested = serializers.BooleanField(source="ai_suggested", read_only=True)
     merchantIndustry = serializers.CharField(source="merchant_industry", read_only=True)
@@ -90,7 +94,7 @@ class SettlementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Settlement
         fields = [
-            "id", "date", "time", "merchant", "amount", "cardType",
+            "id", "date", "time", "merchant", "amount", "cardType", "cardId", "cardName",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "aiRecommendation", "aiConfidence",
@@ -109,6 +113,16 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_cardType(self, obj):
         card = getattr(obj.transaction, "card", None)
         return card.card_type if card else None
+
+    def get_cardId(self, obj):
+        card = getattr(obj.transaction, "card", None)
+        return card.id if card else None
+
+    def get_cardName(self, obj):
+        card = getattr(obj.transaction, "card", None)
+        if card is None:
+            return None
+        return f"{card.name or card.get_card_type_display()}" + (f" {card.number_masked}" if card.number_masked else "")
 
     def get_evidence(self, obj):
         # 증빙 '누락'은 하드 플래그로 차단하지 않는다 — 영수증 없이도 자동 유연처리 지원(AI가 별도 판단).

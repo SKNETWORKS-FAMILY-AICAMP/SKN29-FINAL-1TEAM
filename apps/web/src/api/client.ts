@@ -130,6 +130,9 @@ export const endpoints = {
   // ── S-09 법인카드 관리 — 조회는 사용액·조치필요 여부(계산값)를 함께 받는다.
   cards: (params?: Record<string, unknown>) => api.get('/cards/', { params }),
   cardsAttention: () => api.get('/cards/attention/'),
+  // 지출 등록·수정 화면의 카드 선택지 — **본인이 쓸 수 있는 카드만**(개인 배정 + 소속 팀·공용).
+  //  회계 권한 없이도 호출된다(지출 등록은 임직원 누구나 한다).
+  myCards: () => api.get('/cards/mine/'),
   assignCard: (id: number, data: { mode: 'TEAM' | 'PERSONAL'; teamId?: number; userId?: number; reason?: string }) =>
     api.post(`/cards/${id}/assign/`, data),
   stopCard: (id: number, reason: string) => api.post(`/cards/${id}/stop/`, { reason }),

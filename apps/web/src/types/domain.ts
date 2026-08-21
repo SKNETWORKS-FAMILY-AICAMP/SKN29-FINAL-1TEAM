@@ -103,6 +103,9 @@ export interface Settlement {
   merchant: string
   amount: number
   cardType: CardType
+  /** 실제로 붙은 카드. 구분만으로는 어느 카드인지 알 수 없다. */
+  cardId?: number | null
+  cardName?: string | null
   aiCategory: Category
   /** AI 제안 분류가 저신뢰라 사용자 확인이 필요한지 */
   aiSuggested: boolean

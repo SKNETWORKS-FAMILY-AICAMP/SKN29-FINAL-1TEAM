@@ -4,7 +4,7 @@ from datetime import datetime, time
 
 import httpx
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import viewsets
@@ -39,6 +39,33 @@ DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
 # 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
 #  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
 EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
+
+
+def _resolve_card(data, actor):
+    """요청이 지정한 카드 → `Card`. **본인이 쓸 수 없는 카드는 붙이지 않는다.**
+
+    화면 목록(`/api/cards/mine/`)과 같은 범위를 서버에서도 확인한다 — 목록만 좁히고
+    저장을 안 막으면 요청을 손댄 값이 그대로 들어간다.
+    """
+    card_id = data.get("cardId")
+    if card_id:
+        card = Card.objects.filter(pk=card_id).first()
+        if card is None:
+            return None
+        if actor is not None and card.owner_id and card.owner_id != actor.id:
+            return None                      # 남의 개인카드
+        if actor is not None and card.team_id and card.team_id != getattr(actor, "team_id", None):
+            return None                      # 다른 팀 카드
+        return card
+    #  하위호환: 구분만 보내던 옛 호출. 본인 범위 안에서 고른다(아무 카드나 집지 않는다).
+    card_type = data.get("cardType")
+    if not card_type:
+        return None
+    qs = Card.objects.filter(card_type=card_type)
+    if actor is not None:
+        qs = qs.filter(Q(owner=actor) | Q(team_id=getattr(actor, "team_id", None), owner__isnull=True)
+                       | Q(team__isnull=True, owner__isnull=True))
+    return qs.first()
 
 
 def _actor(request):
@@ -77,7 +104,11 @@ class SettlementViewSet(viewsets.ModelViewSet):
         pd = parse_date(raw_date) if raw_date else None
         ts = timezone.make_aware(datetime.combine(pd, time(12, 0))) if pd else timezone.now()
         amount = int(re.sub(r"[^0-9]", "", str(d.get("amount") or "0")) or 0)
-        card = Card.objects.filter(card_type=d.get("cardType")).first() if d.get("cardType") else None
+        # 화면이 **어느 카드인지** 보낸다. 예전엔 구분(개인/팀/공용)만 받아 그 구분의
+        #  `first()`를 붙였다 — 남의 개인카드가 내 지출에 붙을 수 있었고, 카드 귀속이
+        #  판정 사실(`card.actual_user_recorded` 등)이라 그대로 오판이 된다.
+        #  `cardId`가 없는 옛 호출은 종전대로 구분 매칭으로 떨어진다(하위호환).
+        card = _resolve_card(d, _actor(request))
         category = d.get("category") or d.get("aiCategory") or ""
 
         tx = Transaction.objects.create(
@@ -163,6 +194,12 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
         tx = settlement.transaction
         tx_fields = []
+        if d.get("cardId"):
+            card = _resolve_card(d, actor)
+            if card is None:
+                return Response({"detail": "선택한 카드를 사용할 수 없습니다."}, status=400)
+            tx.card = card
+            tx_fields.append("card")
         if d.get("merchant"):
             tx.merchant = d["merchant"]
             tx_fields.append("merchant")

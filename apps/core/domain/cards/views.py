@@ -17,10 +17,11 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from domain.accounts.models import Team, User
@@ -113,6 +114,35 @@ class CardViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Card.objects.select_related("owner", "owner__team", "team")
     serializer_class = CardSerializer
     permission_classes = [CanAccountingReview]
+
+    def get_permissions(self):
+        #  「내 카드」는 **본인이 쓸 수 있는 카드**를 고르는 목록이라 회계 권한을 요구하면
+        #  안 된다(지출 등록은 임직원 누구나 한다). 대신 결과가 본인 것으로 제한된다.
+        if self.action == "mine":
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=["get"], url_path="mine")
+    def mine(self, request):
+        """지출 등록·수정 화면의 카드 선택지 — **이 사람이 실제로 쓸 수 있는 카드만.**
+
+        예전엔 화면이 카드 **구분**(개인/팀/공용)만 골랐고, 서버가 그 구분의 카드 중
+        `first()`를 붙였다 — 남의 개인카드가 내 지출에 붙을 수 있는 상태였다. 카드는
+        `card.card_type`·귀속을 통해 판정 사실(`card.actual_user_recorded` 등)이 되므로
+        엉뚱한 카드가 붙으면 그대로 오판이 된다.
+
+        범위: 본인에게 배정된 개인카드 ∪ 소속 팀의 팀·공용카드 ∪ 팀이 없는 공용카드
+        (후정산·선불처럼 팀이 안 붙는 회사 공용 수단). **정지된 카드는 제외**한다.
+        """
+        user = request.user
+        qs = self.get_queryset().filter(status=CardStatus.ACTIVE)
+        scope = Q(owner=user)
+        if user.team_id:
+            scope |= Q(team_id=user.team_id, owner__isnull=True)
+        # 팀도 주인도 없는 카드는 회사 공용 수단이라 누구나 고를 수 있다.
+        scope |= Q(team__isnull=True, owner__isnull=True)
+        cards = qs.filter(scope).order_by("card_type", "name")
+        return Response(self.get_serializer(cards, many=True).data)
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

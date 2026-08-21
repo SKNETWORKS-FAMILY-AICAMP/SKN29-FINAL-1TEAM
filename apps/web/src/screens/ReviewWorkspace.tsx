@@ -173,24 +173,23 @@ export function ReviewWorkspace() {
     setBusy(false)
   }
 
-  // 상세 패널 단건 처리
+  // 상세 패널 단건 처리 — 승인은 즉시, 보완·반려는 사유 모달.
   const decideOne = (decision: Reco) => {
     if (!sel) return
     if (decision === 'APPROVE') applyDecision('APPROVE', [sel.id])
     else setModal({ decision, ids: [sel.id] })
   }
-  // 리스트의 권장 처리 배지 클릭 → 해당 건에 곧바로 권장 결정 적용(승인은 즉시, 보완/반려는 사유 모달)
+  // 리스트의 권장 처리 배지 클릭 → 해당 건 처리. **승인은 여기서 하지 않는다** —
+  //  목록에서 원클릭 승인하면 화면을 열어보지 않고 통과시키게 된다(승인은 상세에서만).
   const decideItem = (item: ReviewItem, decision: RecoOrNone) => {
-    if (!decision) return   // AI가 안 돈 건 — 권고가 없으니 원클릭 처리도 없다
-    if (decision === 'APPROVE') applyDecision('APPROVE', [item.id])
-    else setModal({ decision, ids: [item.id] })
+    if (!decision || decision === 'APPROVE') return
+    setModal({ decision, ids: [item.id] })
   }
-  // 필터 칩 기준 일괄 처리
+  //  일괄 처리 — **승인은 제외한다.** 승인은 되돌리기 어려운 방향이라 건별로 근거를 보고
+  //  내려야 하는 결정이다(보완요청·반려는 사람에게 돌아가 다시 검토될 여지가 남는다).
   const decideBulk = () => {
-    if (filter === 'ALL' || checked.size === 0) return
-    const ids = [...checked]
-    if (filter === 'APPROVE') applyDecision('APPROVE', ids)
-    else setModal({ decision: filter, ids })
+    if (filter === 'ALL' || filter === 'APPROVE' || checked.size === 0) return
+    setModal({ decision: filter, ids: [...checked] })
   }
 
   const modalItem = modal ? source.find((i) => i.id === modal.ids[0]) : undefined
@@ -254,22 +253,27 @@ export function ReviewWorkspace() {
               ))}
             </div>
             )}
-            {/* 확정 대기 일괄 처리 — FR-ST-03의 '사람 확정'을 여기서 수행한다. */}
+            {/* 확정 대기 일괄 확정은 두지 않는다 — 확정도 승인이고, 승인은 화면을 열어
+                근거를 보고 건별로 내려야 하는 결정이다(FR-ST-03 사람 확정 원칙). */}
             {isConfirm && checked.size > 0 && (
-              <div className="row" style={{ justifyContent: 'space-between', padding: '10px 16px 0' }}>
-                <span className="text-meta">{checked.size}건 선택됨</span>
-                <button className="btn sm approve" disabled={busy || !canReview} onClick={() => confirmIds([...checked])}>
-                  선택 {checked.size}건 확정(CONFIRMED)
-                </button>
+              <div className="row" style={{ padding: '10px 16px 0' }}>
+                <span className="text-meta">
+                  {checked.size}건 선택됨 · 확정은 오른쪽에서 <b>건별로</b> 근거를 보고 처리합니다.
+                </span>
               </div>
             )}
             {/* 일괄 처리 바 (추천 필터 선택 시) — 이전 처리 뷰에선 숨김 */}
             {view === 'PENDING' && filter !== 'ALL' && checked.size > 0 && (
               <div className="row" style={{ justifyContent: 'space-between', padding: '10px 16px 0' }}>
                 <span className="text-meta">추천: {RECO_LABEL[filter].text} {checked.size}건 선택됨</span>
-                <button className={'btn sm ' + (filter === 'APPROVE' ? 'approve' : filter === 'RETURN' ? 'return' : 'reject')} disabled={busy || !canReview} onClick={decideBulk}>
-                  선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
-                </button>
+                {/* **일괄 승인은 없다.** 화면을 열어보지 않고 통과시키게 되므로 승인은 상세에서만. */}
+                {filter === 'APPROVE' ? (
+                  <span className="text-meta">승인은 건별로 열어 확인 후 처리합니다.</span>
+                ) : (
+                  <button className={'btn sm ' + (filter === 'RETURN' ? 'return' : 'reject')} disabled={busy || !canReview} onClick={decideBulk}>
+                    선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
+                  </button>
+                )}
               </div>
             )}
             {listed.length === 0 && (
@@ -551,13 +555,17 @@ export function ReviewWorkspace() {
                         <StatusBadge status={sel.status} />
                       </div>
                     )}
-                    {/* 확정 대기는 '검토 결정'이 아니라 '확정'만 남은 단계다. 여기에 승인·보완·반려를
-                        그대로 두면 이미 내려진 결정을 다시 내리는 것처럼 보인다(전이도 불가). */}
+                    {/* 확정 대기 — 주된 일은 확정이지만, 열어보고 **되돌릴 수도 있어야 한다.**
+                        룰이 통과시킨 건을 담당자가 보고 "이건 아니다"라고 판단하는 일이 실제로
+                        생기는데, 확정만 허용하면 그 판단을 반영할 방법이 없어 잘못된 줄 알면서
+                        확정하거나 그냥 두게 된다. 되돌리면 이력에 「룰 통과 → 회계 재분류」로 남는다. */}
                     {isConfirm ? (
                       <div className="row review-actions">
                         <button className="btn approve" disabled={busy || !canReview} onClick={() => confirmIds([sel.id])}>
                           확정(CONFIRMED)
                         </button>
+                        <button className="btn return" disabled={busy || !canReview} onClick={() => decideOne('RETURN')}>보완요청</button>
+                        <button className="btn reject" disabled={busy || !canReview} onClick={() => decideOne('REJECT')}>반려(최종)</button>
                       </div>
                     ) : (
                       <div className="row review-actions">
@@ -567,7 +575,9 @@ export function ReviewWorkspace() {
                       </div>
                     )}
                     <div className="text-meta" style={{ marginTop: 10, textAlign: 'right' }}>
-                      {isConfirm ? '확정 시 ERP 전표(안)가 생성됩니다 (FR-ST-03)' : '결정 → decision_labels 적재 (MVP 재학습 미적용)'}
+                      {isConfirm
+                        ? '확정 시 ERP 전표(안)가 생성됩니다 (FR-ST-03) · 되돌리면 「룰 통과 → 회계 재분류」로 이력에 남습니다'
+                        : '결정 → decision_labels 적재 (MVP 재학습 미적용)'}
                     </div>
                   </div>
                 </div>

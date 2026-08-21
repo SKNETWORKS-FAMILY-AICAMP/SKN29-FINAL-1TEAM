@@ -24,7 +24,10 @@ ALLOWED = {
     S.SUBMITTED: {S.RPA_JUDGED},
     S.RPA_JUDGED: {S.PENDING_CONFIRM, S.RETURNED, S.IN_REVIEW, S.REJECT},
     S.IN_REVIEW: {S.PENDING_CONFIRM, S.RETURNED, S.REJECT},
-    S.PENDING_CONFIRM: {S.CONFIRMED},
+    #  승인대기에서도 되돌릴 수 있어야 한다 — 룰이 통과시킨 건을 회계 담당자가 열어 보고
+    #  "이건 아니다"라고 판단하는 일이 실제로 생긴다. 확정만 허용하면 그 판단을 반영할
+    #  방법이 없어, 담당자는 잘못된 줄 알면서 확정하거나 그냥 두게 된다.
+    S.PENDING_CONFIRM: {S.CONFIRMED, S.RETURNED, S.REJECT},
     S.CONFIRMED: {S.ERP_VOUCHER_DRAFTED},
     S.RETURNED: {S.SUBMITTED},  # 재제출(FR-ST-04)
     S.REJECT: set(),
@@ -171,6 +174,26 @@ def judge(settlement, actor=None, *, reuse_recorded: bool = False):
     return result
 
 
+#: 룰이 통과시킨 건을 사람이 되돌릴 때 사유 앞에 붙는 표시.
+#  이 문자열이 `SettlementEvent.reason`·`AuditLog`에 그대로 남아, 나중에 "룰은 통과라고
+#  했는데 왜 보완요청이 갔지"를 되짚을 수 있다. **판정 이력과 사람의 결정을 구분해 남기지
+#  않으면 룰 정밀도 집계가 사람 판단을 룰의 성과로 착각한다.**
+RULE_OVERRIDE_MARK = "[룰 통과 → 회계 재분류]"
+
+
+def _override_note(settlement, decision: str) -> str:
+    """룰 판정을 사람이 뒤집는 상황인가 — 맞으면 사유에 붙일 표시를 돌려준다.
+
+    조건은 둘 다 만족할 때다: ① 지금 상태가 **승인대기**(룰이 통과시켜 도착한 자리이거나
+    담당자가 이미 승인한 자리) ② 사람의 결정이 보완요청·반려. 검토중(IN_REVIEW)에서
+    내리는 결정은 뒤집는 게 아니라 **원래 맡겨진 판단**이라 표시하지 않는다.
+    """
+    if settlement.status != S.PENDING_CONFIRM or decision not in ("RETURN", "REJECT"):
+        return ""
+    ruled = settlement.rule_decision or "판정 없음"
+    return f"{RULE_OVERRIDE_MARK} 룰 판정={ruled}"
+
+
 @db_tx.atomic
 def review(settlement, decision: str, actor=None, reason: str = ""):
     """회계 담당자 검토 결정. 결과는 decision_labels로 적재(향후 지도학습용)."""
@@ -178,6 +201,9 @@ def review(settlement, decision: str, actor=None, reason: str = ""):
         raise TransitionError(f"알 수 없는 결정: {decision}")
     if decision in ("RETURN", "REJECT") and not reason:
         raise TransitionError("보완요청·반려는 사유 입력이 필수입니다.")
+    note = _override_note(settlement, decision)
+    if note:
+        reason = f"{note} {reason}".strip()
     transition(settlement, REVIEW_MAP[decision], actor, reason)
     DecisionLabel.objects.create(settlement=settlement, label=decision, actor=actor)
     return settlement

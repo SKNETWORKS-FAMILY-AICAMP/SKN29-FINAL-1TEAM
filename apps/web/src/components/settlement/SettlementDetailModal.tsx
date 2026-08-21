@@ -3,7 +3,7 @@
 //  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
 //  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock,
@@ -28,6 +28,7 @@ import { DecisionReasonModal } from './DecisionReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
 import { RuleJudgementPanel } from './RuleJudgementPanel'
 import type { Attachment } from '../../api/attachmentService'
+import { fetchMyCards, type CorpCard } from '../../api/cardService'
 
 // 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
 const MOCK_OCR = { merchant: '강남 한식당', amount: '452,000', category: '접대' as Category }
@@ -83,7 +84,14 @@ export function SettlementDetailModal({
   // 기본으로 이번 달만 보여주므로 **목록에서 사라진 것처럼 보였다**.
   const [dateStr, setDateStr] = useState(item?.date ?? todayISO())
   const [amountText, setAmountText] = useState(item ? String(item.amount) : '')
-  const [cardType, setCardType] = useState<CardType>(item?.cardType ?? 'PERSONAL')
+  //  카드는 **구분이 아니라 실물**을 고른다. 예전엔 구분(개인/팀/공용)만 골랐고 서버가
+  //  그 구분의 아무 카드나 붙여서, 남의 개인카드가 내 지출에 붙을 수 있었다.
+  const [cardId, setCardId] = useState<number | null>(item?.cardId ?? null)
+  const [myCards, setMyCards] = useState<CorpCard[]>([])
+  const [cardsLoaded, setCardsLoaded] = useState(false)
+  //  카드 구분은 이제 **선택한 카드에서 따라온다**(초안 요청·표시에 쓰인다).
+  const selectedCard = myCards.find((c) => c.id === cardId)
+  const cardType = (selectedCard?.type ?? item?.cardType ?? 'PERSONAL') as CardType
   // 사람이 확정한 분류(`category`)가 있으면 그게 먼저다. 없으면 AI 제안을 미리 채워
   //  두고, 사용자가 그대로 제출하면 그 순간 확정값이 된다(`persistEdits`).
   const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? '접대')
@@ -132,6 +140,24 @@ export function SettlementDetailModal({
     source: receiptUp ? 'vision_ocr' : 'manual',
     aiSuggested,
   }), [merchant, amountText, dateStr, cardType, category, industry, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
+
+  //  카드 목록은 모달이 열릴 때 한 번. 조회 전용(남의 건)이면 고칠 일이 없어 부르지 않는다.
+  useEffect(() => {
+    if (readOnly) { setCardsLoaded(true); return }
+    let alive = true
+    void (async () => {
+      try {
+        const cards = await fetchMyCards()
+        if (!alive) return
+        setMyCards(cards)
+        //  이미 붙은 카드가 목록에 없으면(배정이 바뀌었거나 정지됨) 비워 둔다 —
+        //  임의로 다른 카드를 고르면 판정 사실이 조용히 바뀐다.
+        setCardId((prev) => (prev && cards.some((c) => c.id === prev) ? prev : cards[0]?.id ?? null))
+      } catch { /* 목록을 못 받아도 나머지 입력은 계속 쓸 수 있어야 한다 */ }
+      finally { if (alive) setCardsLoaded(true) }
+    })()
+    return () => { alive = false }
+  }, [readOnly])
 
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
@@ -203,6 +229,7 @@ export function SettlementDetailModal({
     merchant: merchant || '미상 가맹점',
     amount: numOnly(amountText),
     cardType,
+    cardId,
     // 화면 드롭다운 값은 **사람이 확정한 분류**다. `aiCategory`는 AI가 원래 뭐라고 했는지를
     // 남기는 자리라 여기서 덮어쓰지 않는다 — 서버가 확정값이 없으면 제안을 받아 채운다.
     category,
@@ -235,6 +262,7 @@ export function SettlementDetailModal({
         merchant: merchant || undefined,
         amount: numOnly(amountText) || undefined,
         date: dateStr,
+        cardId: cardId ?? undefined,
       })
       return true
     } catch (e: unknown) {
@@ -523,10 +551,28 @@ export function SettlementDetailModal({
                 </div>
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
-                <div className="field"><label>카드 구분</label>
-                  <select value={cardType} onChange={(e) => setCardType(e.target.value as CardType)} disabled={readOnly}>
-                    {Object.entries(CARD_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                <div className="field"><label>사용 카드</label>
+                  {readOnly ? (
+                    <input value={item?.cardName ?? CARD_TYPE_LABEL[cardType]} readOnly disabled />
+                  ) : (
+                    <select
+                      value={cardId ?? ''}
+                      onChange={(e) => setCardId(e.target.value ? Number(e.target.value) : null)}
+                      disabled={!cardsLoaded || myCards.length === 0}
+                    >
+                      {/* 배정된 카드가 없으면 목록을 비워 두고 사유를 말한다 — 빈 드롭다운만
+                          남으면 사용자는 "왜 못 고르지"를 알 수 없다. */}
+                      {myCards.length === 0 && (
+                        <option value="">{cardsLoaded ? '배정된 카드가 없습니다' : '불러오는 중…'}</option>
+                      )}
+                      {myCards.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.typeLabel} · {c.name || c.number || `카드 ${c.id}`}
+                          {c.number && c.name ? ` (${c.number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="field">
                   <label>비용 분류 {aiSuggested && <span className="tag ai">AI 제안</span>}</label>
