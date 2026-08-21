@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  Bell, LogOut, Receipt, Landmark, CreditCard, MapPin, CalendarCheck, ListChecks, PenLine, Briefcase,
+  Bell, LogOut, Printer, Landmark, CreditCard, Shield, ClipboardCheck, ListChecks, Gavel, Bot,
 } from 'lucide-react'
 import type { Capability } from '../../types/domain'
 import { useCan } from '../../lib/capabilities'
@@ -16,7 +16,7 @@ import { USE_MOCK } from '../../api/config'
 interface MenuItem {
   to: string
   label: string
-  icon: typeof Receipt
+  icon: typeof Printer
   /** 필요 기능 권한(들). 없으면 인증만으로 노출(내 지출). 배열이면 하나라도 있으면 노출. */
   capability?: Capability | Capability[]
 }
@@ -32,15 +32,15 @@ interface MenuItem {
 //  · 증빙 검토(검토 워크스페이스): accounting_review  · 규정 문서: rule_view  · RULE 콘솔: rule_view(열람)
 //  · 거버넌스: governance_view  · AI-LAB: ai_lab
 const MENU: MenuItem[] = [
-  { to: '/my-expenses', label: '지출 증빙', icon: Receipt },
+  { to: '/my-expenses', label: '지출 증빙', icon: Printer },
   { to: '/team', label: '팀 예산', icon: Landmark, capability: 'team_aggregate' },
   { to: '/budget', label: '예산 관리', icon: Landmark, capability: ['accounting_review', 'governance_view'] },
   { to: '/cards', label: '카드 관리', icon: CreditCard, capability: 'accounting_review' },
-  { to: '/policy-docs', label: '규정 문서', icon: MapPin, capability: 'rule_view' },
-  { to: '/review', label: '증빙 검토', icon: CalendarCheck, capability: 'accounting_review' },
+  { to: '/policy-docs', label: '규정 문서', icon: Shield, capability: 'rule_view' },
+  { to: '/review', label: '증빙 검토', icon: ClipboardCheck, capability: 'accounting_review' },
   { to: '/rules', label: 'RULE 콘솔', icon: ListChecks, capability: 'rule_view' },
-  { to: '/governance', label: '거버넌스', icon: PenLine, capability: 'governance_view' },
-  { to: '/ai-lab', label: 'AI-LAB', icon: Briefcase, capability: 'ai_lab' },
+  { to: '/governance', label: '거버넌스', icon: Gavel, capability: 'governance_view' },
+  { to: '/ai-lab', label: 'AI-LAB', icon: Bot, capability: 'ai_lab' },
 ]
 
 const ROLES: Role[] = ['EMPLOYEE', 'TEAM_LEAD', 'ACCOUNTANT', 'ACCOUNTANT_LEAD', 'EXECUTIVE']
