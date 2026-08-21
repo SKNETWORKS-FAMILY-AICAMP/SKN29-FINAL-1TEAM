@@ -36,6 +36,9 @@ MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
 # 본인이 직접 지울 수 있는 상태 — 아직 팀·회계로 넘어가기 전 단계만.
 DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
+# 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
+#  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
+EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
 
 
 def _actor(request):
@@ -96,6 +99,89 @@ class SettlementViewSet(viewsets.ModelViewSet):
             team=getattr(actor, "team", None), status="DRAFT",
         )
         return Response(self.get_serializer(s).data, status=201)
+
+    # PATCH /api/settlements/{id}/  — 상세 화면 수정 저장
+    def update(self, request, *args, **kwargs):
+        """화면에서 고친 값을 저장한다. **제출 버튼이 이걸 먼저 부른다.**
+
+        이게 없던 동안 상세 모달은 제목만 "수정"이었고 실제로는 아무것도 저장하지 않았다
+        — 분류를 고르고 목적을 적어 제출해도 서버에는 그대로 남아, 판정이 「분류 미기재」로
+        걸었다. 사람이 확인하고 올린 값이 판정에 닿지 않으면 확인 자체가 의미가 없다.
+
+        **`category`는 사람이 확정한 값이다.** 화면 드롭다운에 AI 제안이 미리 채워져 있어도,
+        저장하는 순간 그건 「사람이 그 값으로 확정했다」는 기록이 된다. `ai_category`는
+        건드리지 않는다 — AI가 원래 뭐라고 했는지를 남겨둬야 나중에 제안↔확정을 대조해
+        정확도를 잴 수 있다(그게 지도학습 피드백의 원천이다).
+
+        DRF 기본 `update`를 쓰지 않는 이유: 금액·가맹점·일자는 `Transaction`에 있고
+        시리얼라이저에서 read-only라 그대로는 저장되지 않는다.
+        """
+        settlement = self.get_object()
+        if settlement.status not in EDITABLE_STATUSES:
+            return Response(
+                {"detail": "회계 검토가 시작된 뒤에는 수정할 수 없습니다. 보완요청을 받은 뒤 고쳐주세요."},
+                status=400,
+            )
+        actor = _actor(request)
+        if actor and settlement.submitted_by_id and settlement.submitted_by_id != actor.id:
+            return Response({"detail": "본인이 등록한 건만 수정할 수 있습니다."}, status=403)
+
+        d = request.data
+        fields = []
+        if "category" in d:
+            # 빈 값이면 지우지 않고 그대로 둔다 — 화면이 실수로 빈 값을 보내 확정 분류를
+            # 날리는 편보다, 안 바뀌는 편이 낫다(지우려면 사용자가 다른 분류를 고른다).
+            if d.get("category"):
+                settlement.category = d["category"]
+                # **사람이 확인한 순간 AI 제안 딱지를 뗀다.** `ai_suggested`는 "이 분류는 AI가
+                # 넣은 값이라 사람 확인이 필요하다"는 뜻인데, 지금 그 확인이 일어났다. 남겨두면
+                # `category.confidence`가 계속 저신뢰(0.5)로 내려가 확인된 건이 다시 걸린다.
+                # (`ai_category`는 그대로 둔다 — AI가 원래 뭐라고 했는지는 대조에 쓴다.)
+                settlement.ai_suggested = False
+                fields += ["category", "ai_suggested"]
+        if "purpose" in d:
+            settlement.purpose = d.get("purpose") or ""
+            fields.append("purpose")
+        if "merchantIndustry" in d or "merchantIndustryCode" in d:
+            code, label = industry_vocab.resolve(
+                d.get("merchantIndustryCode") or d.get("merchantIndustry")
+            )
+            settlement.merchant_industry, settlement.merchant_industry_code = label, code
+            fields += ["merchant_industry", "merchant_industry_code"]
+        # 판정 입력 컬럼 — 전부 null 허용이고 `None`은 「모름」이다. 키가 없으면 건드리지 않는다.
+        for key, column in (
+            ("headcount", "headcount"), ("externalHeadcount", "external_headcount"),
+            ("preApproved", "pre_approved"), ("itemType", "item_type"),
+            ("kickbackTarget", "kickback_target"), ("isSecondaryVenue", "is_secondary_venue"),
+            ("includesAlcohol", "includes_alcohol"),
+        ):
+            if key in d:
+                setattr(settlement, column, d[key])
+                fields.append(column)
+        if fields:
+            settlement.save(update_fields=[*fields, "updated_at"] if hasattr(settlement, "updated_at") else fields)
+
+        tx = settlement.transaction
+        tx_fields = []
+        if d.get("merchant"):
+            tx.merchant = d["merchant"]
+            tx_fields.append("merchant")
+        if d.get("amount") not in (None, ""):
+            tx.amount = int(re.sub(r"[^0-9]", "", str(d["amount"])) or 0)
+            tx_fields.append("amount")
+        if d.get("date"):
+            pd = parse_date(str(d["date"])[:10])
+            if pd:
+                # 시각은 유지한다 — 날짜만 고쳤는데 결제 시각이 정오로 밀리면
+                # 심야 결제 판정(`derived.is_late_night`)이 조용히 뒤집힌다.
+                current = timezone.localtime(tx.ts) if tx.ts else None
+                tx.ts = timezone.make_aware(datetime.combine(pd, current.time() if current else time(12, 0)))
+                tx_fields.append("ts")
+        if tx_fields:
+            tx.save(update_fields=tx_fields)
+
+        settlement.refresh_from_db()
+        return Response(self.get_serializer(settlement).data)
 
     # DELETE /api/settlements/{id}/  — '내 지출'에서 아직 올리지 않은 건만 본인이 삭제
     def destroy(self, request, *args, **kwargs):

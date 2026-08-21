@@ -14,6 +14,10 @@ export const endpoints = {
   settlement: (id: string) => api.get(`/settlements/${id}/`),
   createSettlement: (data: Record<string, unknown>) => api.post('/settlements/', data), // F-1 신규 지출 등록(비전 판독 후 확정 필드)
   deleteSettlement: (id: string) => api.delete(`/settlements/${id}/`), // '내 지출' 미제출 건 삭제
+  // 상세 화면 수정 저장. **제출·올림 버튼이 전이 전에 먼저 부른다** — 이게 없던 동안
+  //  모달은 제목만 '수정'이었고 고친 값이 서버에 닿지 않았다(판정이 옛 값으로 돌았다).
+  updateSettlement: (id: string, patch: Record<string, unknown>) =>
+    api.patch(`/settlements/${id}/`, patch),
   // F-1 초안 작성 Agent — instruction이 있으면 수정, 없으면 생성(플레이스홀더)
   suggestDraft: (data: Record<string, unknown>) => api.post('/settlements/draft-suggest/', data),
   // ERP/카드사 결제기록 수집("내역 불러오기") — 다음 회차 표본을 가져온다(멱등).

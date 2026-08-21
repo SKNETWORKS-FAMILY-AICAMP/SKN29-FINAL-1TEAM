@@ -25,6 +25,21 @@ export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>)
 }
 
 /**
+ * 상세 화면에서 고친 값을 저장한다. **상태 전이(올림·제출) 직전에 먼저 부른다.**
+ *
+ * 여기서 보내는 `category`는 **사람이 확정한 분류**다 — 드롭다운에 AI 제안이 미리 채워져
+ * 있어도, 저장하는 순간 「사람이 그 값으로 확정했다」는 기록이 된다. 서버의 `ai_category`
+ * (AI가 원래 뭐라고 했는지)는 건드리지 않는다 — 제안↔확정을 대조해야 정확도를 잴 수 있다.
+ */
+export async function updateSettlement(
+  id: string, patch: Record<string, unknown>,
+): Promise<Settlement | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  const { data } = await endpoints.updateSettlement(id, patch)
+  return data
+}
+
+/**
  * S-01: ERP/카드사 결제기록 수집("내역 불러오기").
  *
  * 표본 3회분이 준비돼 있고 누를 때마다 다음 회차가 들어온다. 같은 결제는 두 번 들어오지

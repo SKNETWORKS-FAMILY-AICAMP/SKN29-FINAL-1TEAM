@@ -21,7 +21,8 @@ import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
   createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
-  reviseDraft, submitSettlements, suggestDraft, type DraftSuggestion, type PolicyHint,
+  reviseDraft, submitSettlements, suggestDraft, updateSettlement,
+  type DraftSuggestion, type PolicyHint,
 } from '../../api/settlementService'
 import { ReturnReasonModal } from './ReturnReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
@@ -83,7 +84,9 @@ export function SettlementDetailModal({
   const [dateStr, setDateStr] = useState(item?.date ?? todayISO())
   const [amountText, setAmountText] = useState(item ? String(item.amount) : '')
   const [cardType, setCardType] = useState<CardType>(item?.cardType ?? 'PERSONAL')
-  const [category, setCategory] = useState<Category>(item?.aiCategory ?? '접대')
+  // 사람이 확정한 분류(`category`)가 있으면 그게 먼저다. 없으면 AI 제안을 미리 채워
+  //  두고, 사용자가 그대로 제출하면 그 순간 확정값이 된다(`persistEdits`).
+  const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? '접대')
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   const [aiSuggested, setAiSuggested] = useState(item?.aiSuggested ?? false)
   // 가맹점 업종 — 사람이 고르는 값이 아니라 **서버가 조회해 준 사실**이라 입력칸이 없다.
@@ -198,7 +201,10 @@ export function SettlementDetailModal({
     merchant: merchant || '미상 가맹점',
     amount: numOnly(amountText),
     cardType,
-    aiCategory: category,
+    // 화면 드롭다운 값은 **사람이 확정한 분류**다. `aiCategory`는 AI가 원래 뭐라고 했는지를
+    // 남기는 자리라 여기서 덮어쓰지 않는다 — 서버가 확정값이 없으면 제안을 받아 채운다.
+    category,
+    aiCategory: item?.aiCategory ?? category,
     aiSuggested,
     evidence,
     user: user?.name ?? '나',
@@ -206,6 +212,36 @@ export function SettlementDetailModal({
     merchantIndustry: industry || undefined,
     merchantIndustryCode: industryCode || undefined,
   })
+
+  /**
+   * 상태 전이 **전에** 화면 값을 저장한다.
+   *
+   * 이게 없던 동안 "수정하고 제출"이 통째로 유실됐다 — 모달 제목은 '수정'인데 저장 경로가
+   * 없어서, 분류를 고르고 목적을 적어 제출해도 서버는 옛 값 그대로였고 판정이
+   * 「분류 미기재」로 걸었다. 사람이 확인하고 올린 값이 판정에 닿지 않으면 확인이 무의미하다.
+   *
+   * 조회 전용(남의 건)일 땐 건너뛴다 — 팀장이 팀원 건을 제출할 때 남의 입력을 덮어쓰면 안 된다.
+   */
+  const persistEdits = async (): Promise<boolean> => {
+    if (!item || readOnly) return true
+    try {
+      await updateSettlement(item.id, {
+        category,
+        purpose: purpose || '',
+        merchantIndustry: industry || '',
+        merchantIndustryCode: industryCode || '',
+        merchant: merchant || undefined,
+        amount: numOnly(amountText) || undefined,
+        date: dateStr,
+      })
+      return true
+    } catch (e: unknown) {
+      // 저장 실패를 삼키면 "제출했는데 옛 값으로 판정된" 상황이 조용히 재현된다.
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      pushComment({ icon: 'ai', text: `수정 사항을 저장하지 못해 제출을 멈췄습니다 — ${detail ?? '서버 오류'}` })
+      return false
+    }
+  }
 
   // 신규 저장 → createSettlement → 목록에 추가
   const save = async () => {
@@ -232,6 +268,7 @@ export function SettlementDetailModal({
   const raise = async () => {
     if (!item) return
     setPending(true)
+    if (!await persistEdits()) { setPending(false); return }
     const status = await raiseSettlements([item.id])
     onStatusChange?.(item.id, status)
     setPending(false)
@@ -243,6 +280,7 @@ export function SettlementDetailModal({
   const submit = async () => {
     if (!item) return
     setPending(true)
+    if (!await persistEdits()) { setPending(false); return }
     const outcome = await submitSettlements([item.id])
     onStatusChange?.(item.id, outcome.status[item.id] ?? 'SUBMITTED')
     setPending(false)
