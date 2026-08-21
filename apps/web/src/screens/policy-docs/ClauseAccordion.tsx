@@ -88,7 +88,7 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
       : `${clause.articleLabel} ${title.startsWith('(') ? title : `(${title})`}`
 
   return (
-    <div className="pd-clause">
+    <div className={'pd-clause' + (expanded && clause.ruleStatus === 'NEEDS_REVIEW' ? ' pd-clause-attn' : '')}>
       <button type="button" className="pd-clause-head" onClick={onToggle}>
         <span className="pd-clause-title">{heading}</span>
         <StatusBadge status={clause.ruleStatus} />

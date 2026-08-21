@@ -158,31 +158,36 @@ export function PolicyDocuments() {
 
   return (
     <>
-      <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <span className="screen-id">규정문서</span>
-          <h1>규정 문서 관리</h1>
-          <div className="sub">회사 규정을 등록하면 AI가 조항을 정리하고, 자동 판단 규칙과 연결해드려요.</div>
+      <div className="hero-band">
+        <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <span className="screen-id">규정문서</span>
+            <h1>규정 문서 관리</h1>
+            <div className="sub">회사 규정을 등록하면 AI가 조항을 정리하고, 자동 판단 규칙과 연결해드려요.</div>
+          </div>
+          {/* 문서명·유형·폴더·비용분류는 업로드 모달에서 함께 고른다 — 올린 뒤 다시 손볼 일이 없게. */}
+          <button className="btn primary" disabled={busy} onClick={() => setUploadOpen(true)}>
+            <Upload size={14} /> {busy ? '처리 중…' : '+ 문서 업로드'}
+          </button>
         </div>
-        {/* 문서명·유형·폴더·비용분류는 업로드 모달에서 함께 고른다 — 올린 뒤 다시 손볼 일이 없게. */}
-        <button className="btn primary" disabled={busy} onClick={() => setUploadOpen(true)}>
-          <Upload size={14} /> {busy ? '처리 중…' : '+ 문서 업로드'}
-        </button>
+
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <KpiCard flat label="등록한 문서" value={kpi.total} unit="건" />
+          <KpiCard flat label="분석 완료" value={kpi.done} unit="건" />
+          <KpiCard flat warn={kpi.busy > 0} label="분석 중" value={kpi.busy} unit="건" />
+          <KpiCard flat warn={kpi.review > 0} label="확인이 필요한 조항" value={kpi.review} unit="개" />
+        </div>
       </div>
 
       {error && (
-        <div className="note" style={{ marginBottom: 12, color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}>
-          <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />{error}
+        <div className="page-inner">
+          <div className="note" style={{ marginTop: 16, color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}>
+            <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />{error}
+          </div>
         </div>
       )}
 
-      <div className="kpi-grid">
-        <KpiCard label="등록한 문서" value={kpi.total} unit="건" />
-        <KpiCard label="분석 완료" value={kpi.done} unit="건" />
-        <KpiCard label="분석 중" value={kpi.busy} unit="건" warn={kpi.busy > 0} />
-        <KpiCard label="확인이 필요한 조항" value={kpi.review} unit="개" warn={kpi.review > 0} />
-      </div>
-
+      <div className="page-inner">
       <div className="pd-layout">
         <aside className="card pd-tree">
           <div className="pd-search">
@@ -314,6 +319,7 @@ export function PolicyDocuments() {
       <div className="note" style={{ marginTop: 16 }}>
         등록된 문서 {kpi.total}개 · {folders.length}개 폴더로 정리되어 있어요.
         문서는 드래그해서 폴더로 옮길 수 있고, 폴더는 비어 있을 때만 삭제됩니다.
+      </div>
       </div>
 
       {uploadOpen && (

@@ -217,6 +217,9 @@
   overflow: hidden;
 }
 
+/* 확인 필요 조항을 펼쳤을 때 — 결정이 필요한 자리라는 걸 테두리로 드러낸다(시안 실측). */
+.pd-clause-attn { border-color: var(--tone-orange); border-width: 1.5px; }
+
 .pd-clause-head {
   display: flex;
   align-items: center;
