@@ -13,10 +13,10 @@ JSON 직렬화 가능한 dict만 읽는다.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.utils import timezone
 
 from domain.transactions import industry as industry_vocab
@@ -485,10 +485,40 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
     sor("evidence.has_valid_receipt",
         bool(tx is not None and tx.receipts.exclude(status="MISSING").exists()))
     sor("evidence.expense_purpose_missing", not bool(settlement.purpose))
-    sor("evidence.has_supporting_evidence",
-        settlement.attachments.exclude(kind="RECEIPT").exists())
-    sor("derived.is_late_night", bool(ts and (ts.hour >= 22 or ts.hour < 6)))
+    #  심야·근무시간은 **조립기가 판단하지 않는다**(v6). 22시·09시 같은 기준을 코드에 박으면
+    #  회사마다 다른 값을 바꾸려고 재배포해야 한다 — 그래프가 `tx.payment_time`을 직접
+    #  비교한다. 요일만은 남긴다: DSL에 요일 함수가 없어 조합할 수 없다(예외③).
     sor("derived.is_weekend", bool(ts and ts.weekday() >= 5))
+    #  결제일로부터 지난 영업일. 제출 기한(`policy.settlement_deadline_days`) 비교 대상인데
+    #  조립되지 않아 그 룰이 전건 미해소였다. 공휴일 캘린더가 없어 **주말만** 뺀다
+    #  (있는 것보다 나은 근사이고, 없으면 기한 룰 자체를 못 만든다).
+    sor("derived.business_days_since_expense", _business_days_since(ts))
+
+    # ── 조직 축 — 별표 룩업 키로 쓰인다(이름 비교가 아니다).
+    team = getattr(spender, "team", None) if spender is not None else None
+    sor("user.team", team.name if team else None)
+    sor("user.bu", (team.bu or None) if team else None)
+
+    # ── 실사용자 == 지출자인가. 미기록이면 `None`(모름) — `False`로 두면 "다른 사람이
+    #    썼다"로 읽힌다.
+    actual = settlement.actual_user_id
+    sor("card.actual_user_is_spender",
+        (actual == settlement.submitted_by_id) if actual is not None else None)
+
+    # ── 첨부 종류별 유무. 목록이 아니라 종류마다 불린인 이유는 DSL이 목록 포함을
+    #    표현하지 못하기 때문이다(`in`의 좌변은 스칼라).
+    kinds = set(settlement.attachments.values_list("kind", flat=True))
+    sor("evidence.has_meeting_minutes", "MEETING_MINUTES" in kinds)
+    sor("evidence.has_participant_list", "PARTICIPANT_LIST" in kinds)
+    sor("evidence.has_trip_plan", "TRIP_PLAN" in kinds)
+    sor("evidence.has_contract", "CONTRACT" in kinds)
+
+    # ── 업종 판정 신뢰도 — 캐시에 있을 때만. 없으면 `None`(모름)이지 0이 아니다.
+    sor("merchant.industry_confidence", _industry_confidence(tx))
+
+    # ── 이력 집계 (사람 기준, 이 건 포함)
+    for path, value in _history_facts(settlement, tx, ts).items():
+        sor(path, value)
 
     # ── 화면 입력 (비었으면 제안하지 않는다 → 추출값이 살아남는다)
     typed("category.item_type", settlement.item_type or None)
@@ -498,6 +528,79 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
     typed("participants.has_kickback_law_target", settlement.kickback_target)
     typed("dining.is_secondary_venue", settlement.is_secondary_venue)
     typed("dining.includes_alcohol", settlement.includes_alcohol)
+
+
+def _business_days_since(ts) -> int | None:
+    """결제 시각으로부터 오늘까지의 영업일 수. 공휴일 캘린더가 없어 주말만 뺀다."""
+    if ts is None:
+        return None
+    start, end = ts.date(), timezone.localdate()
+    if end <= start:
+        return 0
+    days = 0
+    cursor = start
+    while cursor < end:
+        cursor += timedelta(days=1)
+        if cursor.weekday() < 5:
+            days += 1
+    return days
+
+
+def _industry_confidence(tx) -> float | None:
+    """가맹점 업종 판정 신뢰도 — 캐시(`MerchantCategory`)에 있을 때만."""
+    if tx is None or not tx.merchant:
+        return None
+    from domain.transactions.models import MerchantCategory
+
+    row = MerchantCategory.objects.filter(normalized_name=tx.merchant.strip()).first()
+    return float(row.confidence) if row else None
+
+
+def _history_facts(settlement, tx, ts) -> dict[str, Any]:
+    """같은 사람의 과거 결제 집계 — 일/월 누적액 + 같은 가맹점 횟수.
+
+    **카드가 아니라 사람 기준이다.** 비교 대상인 `policy.position_*_limit`이 직책 축이라
+    사람이어야 뜻이 맞고, 한 사람이 개인·공용 카드를 섞어 쓰면 카드 기준 합계는 한도와
+    무관한 숫자가 된다(ML 피처 `build_tx_features`는 카드 기준인데, 그쪽은 카드 이상탐지가
+    목적이라 기준이 다르다).
+
+    주인을 모르는 건(공용카드 미등록)은 집계하지 않고 `None`으로 남긴다 — 지어내면
+    한도 판정이 그대로 틀린다.
+    """
+    from domain.settlements.models import Settlement
+
+    owner_id = settlement.actual_user_id or settlement.submitted_by_id
+    if owner_id is None or tx is None or ts is None:
+        return {}
+
+    mine = Settlement.objects.filter(
+        Q(actual_user_id=owner_id) | Q(actual_user__isnull=True, submitted_by_id=owner_id),
+    ).exclude(status="REJECT").filter(transaction__isnull=False)
+
+    day, month_start = ts.date(), ts.date().replace(day=1)
+    same_day = mine.filter(transaction__ts__date=day)
+    same_month = mine.filter(transaction__ts__date__gte=month_start,
+                             transaction__ts__date__lte=day)
+
+    window_months = _history_window_months()
+    since = ts - timedelta(days=30 * window_months)
+    same_vendor = mine.filter(transaction__merchant=tx.merchant, transaction__ts__gte=since,
+                              transaction__ts__lte=ts)
+
+    total = lambda qs: int(qs.aggregate(v=Sum("transaction__amount"))["v"] or 0)  # noqa: E731
+    return {
+        "history.daily_cumulative_amount": total(same_day),
+        "history.monthly_cumulative_amount": total(same_month),
+        "history.same_vendor_count": same_vendor.count(),
+    }
+
+
+def _history_window_months(as_of=None) -> int:
+    """집계 윈도우 — 별표(`history_window_table`)가 정한다. 조립기 파라미터라
+    `ctx.policy`에는 올리지 않는다(DSL 비교 대상이 아니다)."""
+    table = load_tables(as_of).get("history_window_table")
+    value = lookup(table, {}) if table is not None else None
+    return int(value) if value else 3
 
 
 def derive_after_merge(merger: FactMerger) -> None:

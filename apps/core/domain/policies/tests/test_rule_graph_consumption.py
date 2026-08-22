@@ -87,7 +87,7 @@ CLEAN = {
     "tx__payment_method": "법인카드",
     "card__card_type": "PERSONAL",
     "card__actual_user_recorded": True,
-    "derived__is_late_night": False,
+    "tx__payment_time": "13:20",
     "derived__is_weekend": False,
 }
 GATE_PATH = ["R-002", "R-003", "R-004", "R-006", "_GLOBAL_PASS"]
@@ -130,20 +130,20 @@ class GlobalGateTests(GraphScenarioMixin, SimpleTestCase):
         # ── R-006: 「사적사용 의심」을 입력받지 않고 사실 3개를 조합해 판단한다(스키마 v3)
         Scenario(
             "심야 + 휴일 → 사적사용 의심으로 검토",
-            facts={**CLEAN, "derived__is_late_night": True, "derived__is_weekend": True},
+            facts={**CLEAN, "tx__payment_time": "23:10", "derived__is_weekend": True},
             decision="REVIEW", flags=["PERSONAL_USE_SUSPECTED"],
             path=["R-002", "R-003", "R-004", "R-006"],
         ),
         Scenario(
             "심야 + 업종 미확인 → 같은 결론(OR 분기)",
-            facts={**CLEAN, "derived__is_late_night": True,
+            facts={**CLEAN, "tx__payment_time": "23:10",
                    "merchant__merchant_info_resolved": False},
             decision="REVIEW", flags=["PERSONAL_USE_SUSPECTED"],
             path=["R-002", "R-003", "R-004", "R-006"],
         ),
         Scenario(
             "심야지만 평일 + 업종 확인됨 → 조합이 성립하지 않아 통과",
-            facts={**CLEAN, "derived__is_late_night": True},
+            facts={**CLEAN, "tx__payment_time": "23:10"},
             decision="PASS", flags=[], path=GATE_PATH,
         ),
         # ── 미해소 가드: 모르는 사실을 참조하면 통과시키지 않는다

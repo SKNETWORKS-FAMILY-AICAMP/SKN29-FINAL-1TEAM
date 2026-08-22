@@ -123,7 +123,11 @@ G_PERSONAL_USE = node(
     "R-006", "심야·휴일 사적사용 의심",
     # 「사적사용 의심」은 결론이지 사실이 아니다. EvalContext는 원자 사실(단어)만 주고,
     # 판단은 여기서 조합한다 — 심야 결제 AND (휴일 OR 가맹점 업종 미확인).
-    {"and": [{"==": [{"var": "derived.is_late_night"}, True]},
+    #  심야 기준(22~06)도 **여기 상수로 둔다**(v6 결정) — 조립기에 박으면 회사마다 다른
+    #  값을 바꾸려고 재배포해야 한다. `payment_time`은 제로패딩 `HH:MM`이라 문자열 비교가
+    #  곧 시각 순서다.
+    {"and": [{"or": [{">=": [{"var": "tx.payment_time"}, "22:00"]},
+                     {"<": [{"var": "tx.payment_time"}, "06:00"]}]},
              {"or": [{"==": [{"var": "derived.is_weekend"}, True]},
                      {"==": [{"var": "merchant.merchant_info_resolved"}, False]}]}]},
     "REVIEW", "심야 결제이면서 휴일이거나 가맹점 업종을 확인할 수 없는 건을 사람 검토로 넘깁니다.", 3,
@@ -435,7 +439,8 @@ TEST_NODES = [
                when="한 번에 결제한 금액이 규정이 정한 사전승인 기준액을 넘을 때",
                then="금액이 큰 지출이라 회계 담당자가 직접 보도록 검토 목록에 올립니다."),
     _test_node("T-11", "심야·주말 결제 감지",
-               {"or": [{"==": [{"var": "derived.is_late_night"}, True]},
+               {"or": [{">=": [{"var": "tx.payment_time"}, "22:00"]},
+                       {"<": [{"var": "tx.payment_time"}, "06:00"]},
                        {"==": [{"var": "derived.is_weekend"}, True]}]}, "REVIEW",
                "심야 또는 주말에 발생한 결제를 잡아냅니다.", 2, severity="MEDIUM", flag="OFF_HOURS",
                when="늦은 밤에 결제했거나, 주말에 결제했을 때 (둘 중 하나만 해당해도 걸립니다)",
