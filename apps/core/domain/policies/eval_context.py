@@ -203,11 +203,19 @@ EVAL_CONTEXT_SCHEMA_PATHS = frozenset(
 )
 
 
-def schema_catalog() -> dict[str, Any]:
+def schema_catalog(policy_extra: dict[str, FieldSpec] | None = None) -> dict[str, Any]:
     """필드 카탈로그를 JSON 직렬화 가능한 형태로 편다 — `domain/context`의 유일한 창구.
 
     이 함수가 있어야 `_SCHEMA_FIELDS`의 사본이 밖에 안 생긴다.
+
+    `policy_extra`: 적재된 별표에서 파생된 **동적** `policy.*` 필드
+    (`context_builder.policy_field_specs`). 프롬프트에 실리는 목록과 `validate_graph_vars`가
+    강제하는 목록은 같아야 하므로, 고정 8칸만 싣지 않는다 — 모델이 쓸 수 있는 임계값을
+    모르면 숫자 리터럴을 박는다.
     """
+    fields_by_section = dict(_SCHEMA_FIELDS)
+    if policy_extra:
+        fields_by_section["policy"] = {**fields_by_section["policy"], **policy_extra}
     return {
         "schema_version": EVAL_CONTEXT_SCHEMA_VERSION,
         "builder_version": BUILDER_VERSION,
@@ -225,7 +233,7 @@ def schema_catalog() -> dict[str, Any]:
                     for name, spec in fields.items()
                 ],
             }
-            for section, fields in _SCHEMA_FIELDS.items()
+            for section, fields in fields_by_section.items()
         ],
     }
 
@@ -254,13 +262,25 @@ def empty_eval_context() -> EvalContext:
     return {section: {field: None for field in fields} for section, fields in _SCHEMA_FIELDS.items()}  # type: ignore[return-value]
 
 
-def validate_graph_vars(graph: Any) -> set[str]:
-    """그래프/스냅샷의 모든 조건 경로 중 스키마에 없는 경로를 반환한다."""
+def validate_graph_vars(graph: Any, allowed_paths: frozenset[str] | None = None) -> set[str]:
+    """그래프/스냅샷의 모든 조건 경로 중 허용 목록에 없는 경로를 반환한다.
+
+    기본값은 이 모듈의 **정적 상수**다 — 조회 없이 도는 순수 함수로 남긴다(엔진과 같은
+    규율: 판정 계열 코드에 숨은 I/O를 두지 않는다).
+
+    적재된 별표가 만드는 `policy.*`까지 허용하려면 호출부가 `context_builder.allowed_var_paths()`를
+    **명시적으로** 넘긴다. ACTIVE 전환 게이트(`services.activate`)가 그렇게 한다 — 고객이 올린
+    규정의 새 별표를 참조하는 룰이 승인될 수 있어야 하기 때문이다. 사실 경로는 어느 쪽이든
+    닫혀 있다(원천 없는 경로를 열면 값이 영원히 null이다).
+    """
     from .dsl import extract_vars
+
+    if allowed_paths is None:
+        allowed_paths = EVAL_CONTEXT_SCHEMA_PATHS
 
     nodes = graph.get("nodes", []) if isinstance(graph, dict) else graph.nodes.all()
     missing: set[str] = set()
     for node in nodes:
         condition = node.get("condition", {}) if isinstance(node, dict) else node.condition
-        missing.update(extract_vars(condition) - EVAL_CONTEXT_SCHEMA_PATHS)
+        missing.update(extract_vars(condition) - allowed_paths)
     return missing

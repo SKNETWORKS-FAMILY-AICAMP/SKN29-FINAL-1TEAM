@@ -52,10 +52,13 @@ def _dsl_grammar(_params: dict) -> dict[str, Any]:
 
 def _eval_context_paths(_params: dict) -> dict[str, Any]:
     """룰 조건이 참조할 수 있는 사실 목록 + 타입 + 한 줄 설명."""
+    from domain.policies.context_builder import policy_field_specs
     from domain.policies.eval_context import schema_catalog
 
+    # 적재된 별표가 만드는 `policy.*`까지 함께 싣는다 — 프롬프트가 아는 목록과
+    # `validate_graph_vars`가 강제하는 목록이 갈리면 이 계층의 존재 이유가 없어진다.
     return {
-        "data": schema_catalog(),
+        "data": schema_catalog(policy_field_specs()),
         "notes": [
             "여기 없는 경로를 쓴 그래프는 ACTIVE로 전환되지 않는다. 표현할 사실이 없으면 "
             "룰을 지어내지 말고 건너뛴 사유를 남겨라.",
@@ -73,8 +76,13 @@ def _eval_context_paths(_params: dict) -> dict[str, Any]:
 # ─────────────────────────────────────────────────────────────── policy.vars
 
 def _policy_vars(_params: dict) -> dict[str, Any]:
-    """`policy.*` 8종이 어느 별표에서, 어떤 축으로 해소되는지 + **지금 적재돼 있는지**."""
-    from domain.policies.context_builder import DERIVED_FROM_TABLE, RESOLVERS, load_tables
+    """`policy.*`가 어느 별표에서, 어떤 축으로 해소되는지 + **지금 적재돼 있는지**.
+
+    목록이 고정 8종이 아니라 `policy_fields()`인 이유: 고객이 올린 규정에서 새 별표가
+    들어오면 그것도 룰이 쓸 수 있는 변수라, 프롬프트가 모르면 모델은 그 값을 숫자
+    리터럴로 박는다(규정이 개정돼도 안 따라간다).
+    """
+    from domain.policies.context_builder import DERIVED_FROM_TABLE, load_tables, policy_fields
 
     tables = load_tables()
 
@@ -95,7 +103,7 @@ def _policy_vars(_params: dict) -> dict[str, Any]:
 
     return {
         "data": {
-            "vars": [row(f"policy.{field}", key) for field, key in RESOLVERS.items()],
+            "vars": [row(f"policy.{name}", key) for name, key in policy_fields(tables).items()],
             "derived": [row(path, key) for path, key in DERIVED_FROM_TABLE.items()],
         },
         "notes": [

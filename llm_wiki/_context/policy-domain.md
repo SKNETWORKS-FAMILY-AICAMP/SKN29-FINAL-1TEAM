@@ -102,6 +102,68 @@ RESOLVERS = {
 > 회계 담당자가 화면에서 직접 매핑을 추가해야 하는 요구가 생기면 그때 DB 테이블로 승격한다.
 > MVP에서는 코드 상수가 낫다 — 해소 규약은 데이터가 아니라 로직에 가깝고 코드리뷰 대상이다.
 
+### 3.1 개정 (2026-08-22) — 고정 8칸에서 **적재된 표에서 파생**으로
+
+위 각주의 "그때"가 왔다. 다만 화면 요구가 아니라 **제품 전제** 때문이다: 룰은 사전 탑재하지
+않고 고객이 올린 규정에서 생성한다(`CLAUDE.md` §2). 그런데 `RESOLVERS`가 코드 상수라
+**새 별표가 들어와도 `ctx.policy.*`에 앉을 자리가 없었다** — 룰은 생기는데 그 룰이 비교할
+숫자가 없는 상태다.
+
+```python
+policy_fields(tables)   # {ctx.policy 필드: 별표 key} — 적재된 표에서 파생
+allowed_var_paths()     # 정적 사실 ∪ 지금 적재된 별표가 만드는 policy.*
+```
+
+- 이름은 표 key에서 `_table`을 떼어 만든다(`welfare_limit_table` → `policy.welfare_limit`).
+- `RESOLVERS`는 **이름 override**로만 남는다 — `daily_limit_table` → `position_daily_limit`처럼
+  기계적으로 못 뽑는 8종. **하위호환이 목적이다**(이미 ACTIVE인 그래프의 조건이 그 이름을
+  참조하고 있어, 이름이 바뀌면 통째로 깨진다).
+- 제외 셋: 조립기 전용 파라미터(`NON_POLICY_TABLES`) · `policy` 밖 자리를 차지한 표
+  (`DERIVED_FROM_TABLE`) · **스칼라를 안 내놓는 표**(DSL은 스칼라 비교만 한다 — 목록을 올리면
+  룰이 비교할 수 없는 값을 자신 있게 참조한다).
+
+**왜 임계값만 열고 사실은 닫나 — 출처가 다르기 때문이다.** `policy.*`는 별표에서 오므로
+표가 적재된 순간 조립기가 **자동으로** 채운다. 사실(`tx.*`·`merchant.*`)은 SoR·첨부 추출에서
+오므로 경로만 늘리면 값이 영원히 `null`이고, 룰은 만들어지는데 판정은 전건 강등된다(§6).
+이건 EvalContext 다이어트 기준 ③("현실적인 출처가 있다")의 다른 표현이다.
+
+**검증기는 숨은 조회를 갖지 않는다.** `validate_graph_vars()`의 기본값은 정적 상수 그대로고,
+동적 집합은 호출부가 명시로 넘긴다 — 지금은 ACTIVE 전환 게이트(`services.activate`) 한 곳이다.
+판정 계열 코드에 조회를 숨기면 DB가 없는 자리에서 조용히 다르게 동작한다(실측: `SimpleTestCase`
+2건이 곧바로 깨졌다). 게이트가 실제로 넘기는지는 회귀로 고정했다(`test_policy_axes.py`).
+
+**프롬프트도 같은 목록을 본다.** `schema_catalog(policy_field_specs())`가 동적 변수를 함께 싣고,
+설명은 **별표 제목**을 쓴다(우리가 못 쓰는 설명이라 그게 가장 정확한 한 줄이다). 검증기만 알고
+프롬프트가 모르면 모델은 그 임계값을 숫자 리터럴로 박는다 — 규정이 개정돼도 안 따라간다.
+
+### 3.2 축은 여전히 닫힌 집합이다 — 그리고 이제 검사한다
+
+`key_axes`는 **사실 경로**를 가리키므로 위의 "닫힌 쪽"에 속한다. 축이 스키마에 없으면
+`resolve_path`가 늘 `None`을 돌려주고 `strict_keys=False`인 표는 `"*"`로 **조용히** 폴백한다 —
+값도 나오고 에러도 플래그도 없다.
+
+`check_table_axes()`가 **DB 행**을 대조한다(코드 상수가 아니라 — 시드가 낡아 생긴 드리프트가
+정확히 그 사각지대였다). `seed`가 별표 적재 직후 호출해 경고한다. `check_table_keys()`가 축의
+**값**을 본다면 이쪽은 축의 **이름**을 본다.
+
+실측으로 잡은 것: `dining_per_person_limit_table`의 축이 `category.scope`였다 — EvalContext에
+없는 경로라 **항상** 와일드카드로 떨어지고 있었다. payload에 실제로 있는 값이 단일 한도
+하나뿐이므로 **축을 뗐다**(선언을 가진 데이터에 맞춘다). 규정 원문(제14조①)에 조직단위별 값이
+실재한다면 그때 `dining.org_unit` 사실을 만들고 축을 되살린다 — **값이 생긴 다음에 축을 만드는**
+순서가 맞다.
+
+### 3.3 남은 것 — 별표 적재 파이프라인
+
+`ctx.policy.*`는 열렸지만 **`PolicyTable`에 행을 넣는 경로는 여전히 `tiger_tables.upsert_all()`
+하나뿐**이다(`source_doc` FK는 선언만 있고 쓰는 코드가 없다). 문서 적재는 별표를 표로 뽑지 않고
+"조에 안 속한 청크"로 검색에만 남긴다. 그래서 지금은 **고객이 규정을 올려도 임계값은 사람이
+넣어야 한다** — 다만 넣기만 하면 그 다음은 전부 자동이다(변수·프롬프트·검증·조립).
+
+다음 작업: 표 청크 판별(로직) → 축·변수명 제안(LLM) → **사람 승인**(화면) → `PolicyTable` INSERT.
+축 매핑을 자동 확정하면 안 된다 — 위 `category.scope` 결함을 대량 생산한다. 개정도 자동이면
+안 된다(`effective_date` INSERT는 과거 판정 재현의 축이다. 재색인이 룰을 자동 생성하지 않는
+것과 같은 규율).
+
 ---
 
 ## 4. 소비층 카탈로그 — `ctx.policy.*` 재정의
@@ -196,7 +258,7 @@ RESOLVERS = {
 |---|---|---|
 | `PolicyTable` | 규정 별표 원본(자유 JSON) | Django `domain/policies` |
 | `PolicyDoc` | RAG 소스 문서 메타(PDF 파싱 결과 연결) | Django `domain/policies` |
-| `ctx.policy.*` | 별표 선해소 스칼라 13종(DSL 계약) | `eval_context.py` 카탈로그 |
+| `ctx.policy.*` | 별표 선해소 스칼라 — **적재된 표에서 파생**(정적 8종 + 신규 별표, §3.1) | `eval_context.py` 카탈로그 + `context_builder.policy_fields()` |
 
 폐기: `Policy` 모델. 이관: `policy.gift_type` → `category.item_type`.
 `policyHints`(제출 전 안내)는 UX 용어로 유지하되 값은 `PolicyTable` 경유로 바꾼다.
