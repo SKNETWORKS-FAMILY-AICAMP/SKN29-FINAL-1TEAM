@@ -9,13 +9,30 @@
 import { useState } from 'react'
 import { Check, Copy, X } from 'lucide-react'
 import {
-  CLAUSE_STATUS_META, type ClauseRuleStatus, type PolicyClause,
+  CLAUSE_KIND_META, CLAUSE_STATUS_META, PRIORITY_META,
+  type ClauseRuleStatus, type PolicyClause,
 } from '../../types/domain'
 
 const TONE = {
   green: { bg: 'var(--tone-green-bg)', color: 'var(--tone-green)', border: '#bfe6d1' },
   amber: { bg: 'var(--tone-amber-bg)', color: 'var(--tone-amber)', border: '#e8d5a3' },
+  blue: { bg: 'var(--tone-blue-bg, #eaf1fb)', color: 'var(--tone-blue, #2f6fb5)', border: '#c3d8f0' },
   gray: { bg: 'var(--surface-muted)', color: 'var(--muted)', border: 'var(--border-strong)' },
+}
+
+/** AI가 매긴 룰 생성 우선순위. 사람의 결정(`ruleStatus`)과 **나란히** 놓는다 —
+ *  한 배지로 합치면 "AI가 제외로 봤다"와 "사람이 제외로 정했다"가 구분되지 않는다. */
+function PriorityBadge({ clause }: { clause: PolicyClause }) {
+  if (!clause.triagePriority && !clause.triageKind) return null
+  const meta = PRIORITY_META[clause.triagePriority]
+  const t = TONE[meta.tone]
+  const kind = CLAUSE_KIND_META[clause.triageKind]?.label
+  return (
+    <span title={clause.triageReason}
+          style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: t.bg, color: t.color, border: `1px solid ${t.border}`, whiteSpace: 'nowrap' }}>
+      {kind && clause.triagePriority === 'SKIP' ? kind : meta.label}
+    </span>
+  )
 }
 
 function StatusBadge({ status }: { status: ClauseRuleStatus }) {
@@ -91,6 +108,7 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
     <div className={'pd-clause' + (expanded && clause.ruleStatus === 'NEEDS_REVIEW' ? ' pd-clause-attn' : '')}>
       <button type="button" className="pd-clause-head" onClick={onToggle}>
         <span className="pd-clause-title">{heading}</span>
+        <PriorityBadge clause={clause} />
         <StatusBadge status={clause.ruleStatus} />
         <span className="pd-caret">{expanded ? '⌃' : '⌄'}</span>
       </button>
@@ -99,12 +117,23 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
         <div className="pd-clause-peek">
           {clause.ruleStatus === 'SKIPPED' && clause.decisionReason
             ? `결정 사유: ${clause.decisionReason}`
-            : `${clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ').slice(0, 60)}...`}
+            : clause.triageSummary
+              ? clause.triageSummary
+              : `${clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ').slice(0, 60)}...`}
         </div>
       )}
 
       {expanded && (
         <div className="pd-clause-body">
+          {clause.triageReason && (
+            <div className="note">
+              <b>AI 검토</b> · {CLAUSE_KIND_META[clause.triageKind]?.label || '분류 없음'}
+              {clause.triagePriority && <> · {PRIORITY_META[clause.triagePriority].label}</>}
+              <div>{clause.triageReason}</div>
+              {clause.triageSummary && <div className="text-meta">만들 규칙: {clause.triageSummary}</div>}
+            </div>
+          )}
+
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="text-meta">원본 조항 (Markdown)</span>
             <CopyButton text={clause.body} />
@@ -130,9 +159,16 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
 
           {clause.ruleStatus === 'NEEDS_REVIEW' && !skipping && (
             <div className="pd-decide">
-              <p>이 조항은 아직 자동 판단 규칙이 없어요. 규칙을 만들지, 만들지 않을지 결정해주세요.</p>
+              <p>
+                {clause.triagePriority === 'SKIP'
+                  // AI가 규칙 대상이 아니라고 본 조항. **차단하지 않는다** — 모델이 못
+                  // 알아본 규칙이 반드시 있고, 통로가 없으면 그 조항은 영영 룰이 못 된다.
+                  ? 'AI는 규칙 대상이 아니라고 봤어요. 그래도 필요하면 직접 만들 수 있어요.'
+                  : '이 조항은 아직 자동 판단 규칙이 없어요. 규칙을 만들지, 만들지 않을지 결정해주세요.'}
+              </p>
               <div className="row" style={{ gap: 8 }}>
-                <button className="btn primary" onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
+                <button className={'btn' + (clause.triagePriority === 'SKIP' ? '' : ' primary')}
+                        onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
                 <button className="btn" onClick={() => setSkipping(true)} disabled={busy}>
                   규칙 생성 안 함으로 표시
                 </button>
@@ -154,9 +190,13 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
                 <b>결정 사유:</b> {clause.decisionReason}
                 {clause.decidedBy && <span className="text-meta"> · {clause.decidedBy}</span>}
               </div>
-              <button className="btn sm" onClick={onReset} disabled={busy}>
-                <X size={11} /> 수정
-              </button>
+              <div className="row" style={{ gap: 6 }}>
+                {/* 「안 만들겠다」고 정한 뒤에도 만들 수 있다 — 결정은 되돌릴 수 있어야 한다. */}
+                <button className="btn sm" onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
+                <button className="btn sm" onClick={onReset} disabled={busy}>
+                  <X size={11} /> 수정
+                </button>
+              </div>
             </div>
           )}
         </div>

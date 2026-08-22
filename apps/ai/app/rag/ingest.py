@@ -27,6 +27,7 @@ from app.rag.embedding import store
 from app.rag.parsing import engine
 from app.rag.parsing import mock
 from app.rag.parsing.corrections import pipeline
+from app.rag import triage
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,18 @@ class IngestResult:
     error: str = ""
     warnings: list[str] = field(default_factory=list)
     clauses: list[dict[str, Any]] = field(default_factory=list)
+    # 별표 → 임계값 표 후보(승인 대기). core가 `PolicyTableProposal`로 받는다.
+    table_proposals: list[dict[str, Any]] = field(default_factory=list)
+    # 분류 단계가 돌았는지·건너뛴 사유. 조용한 누락을 만들지 않기 위해 결과에 남긴다.
+    triage: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "ok": self.ok, "docId": self.doc_id, "name": self.name, "profile": self.profile,
             "collection": self.collection, "chunkCount": self.chunk_count,
             "leafCount": self.leaf_count, "error": self.error, "warnings": self.warnings,
-            "clauses": self.clauses,
+            "clauses": self.clauses, "tableProposals": self.table_proposals,
+            "triage": self.triage,
         }
 
 
@@ -189,6 +195,16 @@ def ingest_pdf(
 
     leaves = sum(1 for c in chunks if c.chunk_role != "parent")
     clauses, orphans = build_clauses(chunks)
+
+    # ── 분류(triage) — 조항 성격·룰 우선순위 + 별표 → 임계값 표 후보 ──────────
+    #  적재가 **끝난 뒤에** 돈다(룰 트리거와 같은 순서 의존은 아니지만, 실패해도 적재를
+    #  되돌리지 않으려면 마지막이어야 한다). 예외는 triage 안에서 이미 삼켜진다.
+    triage_result = triage.run(
+        chunks=chunks, clauses=clauses, collection=collection,
+        axis_options=triage.axis_options(),
+    )
+    for row in clauses:
+        row.update(triage_result.clauses.get(row["articleLabel"], {}))
     # 모킹 경고를 **맨 앞에** 둔다 — 화면 경고 배너가 앞쪽 몇 줄만 보여주므로,
     # 뒤에 두면 "이건 실제 파싱 결과가 아니다"라는 사실이 잘려 안 보일 수 있다.
     warnings = ([mock_warning] if mock_warning else [])
@@ -205,8 +221,14 @@ def ingest_pdf(
         )
 
     logger.info("적재 완료 %s → %s (%d청크/잎 %d)", doc.name, collection, upsert.total, leaves)
+    if triage_result.skipped_reason:
+        warnings.append(triage_result.skipped_reason)
+    if triage_result.error:
+        warnings.append(f"분류 일부 실패 — {triage_result.error}")
+
     return IngestResult(
         ok=True, doc_id=doc.doc_id, name=doc.name, profile=doc.profile,
         collection=collection, chunk_count=upsert.total, leaf_count=leaves,
         warnings=warnings[:20], clauses=clauses,
+        table_proposals=triage_result.tables, triage=triage_result.to_dict(),
     )

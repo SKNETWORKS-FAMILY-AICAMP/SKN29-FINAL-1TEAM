@@ -82,11 +82,17 @@ def _run(req: IngestRequest) -> None:
 
     # 적재가 끝난 **뒤에만** 룰을 트리거한다 — 그 전이면 검색이 0건이라 NO_SOURCE로 끝난다.
     # 실패해도 적재를 실패로 만들지 않는다: 문서는 이미 검색 가능하고, 룰은 수동 생성이 된다.
+    auto_clauses = [
+        {"label": c.get("articleLabel", ""), "title": c.get("articleTitle", ""),
+         "summary": c.get("triageSummary", "")}
+        for c in result.clauses if c.get("triagePriority") == "AUTO"
+    ]
     try:
         trigger = rule_trigger.trigger(
             doc_id=result.doc_id, doc_name=result.name,
             scope=req.ruleScope, collection=result.collection,
             is_reindex=req.isReindex,
+            auto_clauses=auto_clauses, triaged=bool(result.triage.get("ran")),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("룰 트리거 실패 doc=%s: %s", req.policyDocId, exc)
@@ -102,7 +108,11 @@ def _run(req: IngestRequest) -> None:
         "error": "\n".join(result.warnings[:5]),   # 경고는 실패가 아니지만 보여야 한다
         "ruleTrigger": trigger,
         # 조 단위 조항 — 화면이 보여주고 사람이 "규칙 만들지 말지"를 결정하는 단위.
+        # 분류(triage)가 돌았으면 조항마다 성격·우선순위가 함께 실려 있다.
         "clauses": result.clauses,
+        # 별표 → 임계값 표 후보. **승인 전까지 판정에 쓰이지 않는다**(PolicyTable과 별도 모델).
+        "tableProposals": result.table_proposals,
+        "triage": result.triage,
     })
 
 
