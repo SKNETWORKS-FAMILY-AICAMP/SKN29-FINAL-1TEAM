@@ -9,6 +9,7 @@ from domain.common.views import AiLabProxyView, CategoryMetaView, DashboardView,
 from domain.cards.views import CardViewSet
 from domain.context.views import AgentContextView
 from domain.erp.views import ErpVoucherViewSet
+from domain.notifications.views import NotificationViewSet
 from domain.policies.policy_doc_views import (
     DecisionCaseListView,
     IngestCallbackView,
@@ -38,6 +39,7 @@ router.register("rules", RuleGraphViewSet)          # 룰 그래프(최종 상�
 router.register("policy-docs", PolicyDocViewSet)    # RAG 소스 규정 문서(업로드·적재)
 router.register("erp/vouchers", ErpVoucherViewSet)
 router.register("cards", CardViewSet)              # S-09 법인카드 배정·회수
+router.register("notifications", NotificationViewSet, basename="notification")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

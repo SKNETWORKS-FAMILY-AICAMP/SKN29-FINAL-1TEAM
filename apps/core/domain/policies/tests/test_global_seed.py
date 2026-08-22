@@ -47,9 +47,9 @@ class GlobalRuleSeedTests(SimpleTestCase):
         context = {
             "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
-            "tx": {"payment_method": "카드"},
+            "tx": {"payment_method": "카드", "payment_time": "23:10"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
-            "derived": {"is_late_night": True, "is_weekend": True},
+            "derived": {"is_weekend": True},
         }
         result = run_rule_engine(context, self.graph)
         self.assertEqual(result.decision, "REVIEW")
@@ -60,9 +60,9 @@ class GlobalRuleSeedTests(SimpleTestCase):
         context = {
             "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
-            "tx": {"payment_method": "카드"},
+            "tx": {"payment_method": "카드", "payment_time": "23:10"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
-            "derived": {"is_late_night": True, "is_weekend": False},
+            "derived": {"is_weekend": False},
         }
         self.assertEqual(run_rule_engine(context, self.graph).decision, "PASS")
 
@@ -70,9 +70,9 @@ class GlobalRuleSeedTests(SimpleTestCase):
         context = {
             "merchant": {"merchant_type": "문구/사무용품", "merchant_info_resolved": True},
             "category": {"item_type": "비품"},
-            "tx": {"payment_method": "카드"},
+            "tx": {"payment_method": "카드", "payment_time": "13:20"},
             "card": {"card_type": "PERSONAL", "actual_user_recorded": True},
-            "derived": {"is_late_night": False, "is_weekend": False},
+            "derived": {"is_weekend": False},
         }
         result = run_rule_engine(context, self.graph)
         self.assertEqual(result.decision, "PASS")

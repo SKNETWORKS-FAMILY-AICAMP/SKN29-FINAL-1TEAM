@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useRole } from '../../context/RoleContext'
 import { ROLE_LABEL, type Role } from '../../types/domain'
 import { NotificationPanel } from './NotificationPanel'
-import { notifications as initialNotifications, type AppNotification } from '../../data/mock'
+import { useNotifications } from '../../lib/notifications'
 import { USE_MOCK } from '../../api/config'
 
 interface MenuItem {
@@ -52,16 +52,28 @@ export function Sidebar() {
   const { role, setRole } = useRole()
   const [notifOpen, setNotifOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
-  const hasUnread = notifications.some((n) => n.unread)
+  //  배지는 미읽음 개수만 폴링하고, 목록은 패널을 열 때 한 번 받는다.
+  const { items: notifications, unreadCount, loading: notifLoading, load: loadNotifications,
+          readOne, readAll } = useNotifications()
   const items = MENU.filter((m) => {
     const cap = m.capability
     if (!cap) return true
     return Array.isArray(cap) ? cap.some(can) : can(cap)
   })
 
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
-  const markOneRead = (id: string) => setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)))
+  const openNotifications = () => {
+    const next = !notifOpen
+    setNotifOpen(next)
+    if (next) void loadNotifications()   // 열 때만 받는다
+  }
+
+  /** 알림 클릭 = **읽음 + 이동**. 확인했다는 뜻이 곧 그 자리로 가는 것이다. */
+  const openNotification = (id: number, link: string) => {
+    void readOne(id)
+    setNotifOpen(false)
+    //  전체 리로드(`window.location`)를 쓰지 않는다 — 세션 복원이 매번 다시 돈다.
+    if (link) nav(link)
+  }
 
   // 로그인 플로우(O-1/R-0) 진입 전에도 기존 5개 화면을 데모 role-switch로 볼 수 있도록,
   // 인증된 user가 없으면 현재 선택된 role로 아바타 표시를 대신한다.
@@ -80,29 +92,38 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-user">
-        <div className="avatar-wrap">
-          <div className="avatar">{displayName.slice(0, 1)}</div>
-          <button
-            className="notif-badge-btn"
-            title="알림"
-            aria-label="알림"
-            onClick={() => setNotifOpen((v) => !v)}
-          >
-            <Bell size={14} />
-            {hasUnread && <span className="dot" />}
-          </button>
-          {notifOpen && createPortal(
-            <NotificationPanel
-              notifications={notifications}
-              onClose={() => setNotifOpen(false)}
-              onMarkAllRead={markAllRead}
-              onMarkOneRead={markOneRead}
-            />,
-            document.body,
-          )}
-        </div>
+        <div className="avatar">{displayName.slice(0, 1)}</div>
         <div className="name">{displayName}</div>
         <div className="meta">{displayMeta}</div>
+      </div>
+
+      {/* 알림 — 기능 메뉴가 아니라 사용자 프로필에 속한 동작이라 프로필 블록 바로 아래
+          자체 줄로 뺀다(기능 메뉴 목록과는 옅은 구분선으로 분리). */}
+      <div className="sidebar-notif-row">
+        <button
+          className={'sidebar-notif-btn' + (unreadCount > 0 ? ' has-unread' : '')}
+          title="알림"
+          aria-label="알림"
+          onClick={openNotifications}
+        >
+          <span className="bell-wrap">
+            <Bell size={19} />
+            {unreadCount > 0 && <span className="dot" />}
+          </span>
+          {expanded && <span className="sidebar-label">알림</span>}
+          {expanded && unreadCount > 0 && <span className="notif-count-mini">{unreadCount}</span>}
+        </button>
+        {notifOpen && createPortal(
+          <NotificationPanel
+            notifications={notifications}
+            unreadCount={unreadCount}
+            loading={notifLoading}
+            onClose={() => setNotifOpen(false)}
+            onMarkAllRead={() => void readAll()}
+            onOpen={openNotification}
+          />,
+          document.body,
+        )}
       </div>
 
       <nav className="sidebar-nav">

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "domain.policies",     # policies / rules / rule_hits
     "domain.risk",         # risk_reviews / decision_labels
     "domain.erp",          # erp_vouchers
+    "domain.notifications",  # 알림(메시지 + 이동할 페이지)
 ]
 
 MIDDLEWARE = [

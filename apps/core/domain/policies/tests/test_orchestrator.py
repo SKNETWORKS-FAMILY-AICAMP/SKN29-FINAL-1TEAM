@@ -125,7 +125,7 @@ class RuleHitRecordingTests(OrchestratorBase):
         for hit in hits:
             # 그때의 사실이 남아야 판정을 다시 돌려볼 수 있다.
             self.assertTrue(hit.eval_context)
-            self.assertEqual(hit.eval_context_schema_version, 5)
+            self.assertEqual(hit.eval_context_schema_version, 6)
             self.assertEqual(hit.transaction_id, self.tx.pk)
 
     def test_hit_is_recorded_even_without_graphs(self):

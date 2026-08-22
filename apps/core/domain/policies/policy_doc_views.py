@@ -42,6 +42,8 @@ from .models import (
     PolicyClause, PolicyDoc, PolicyFolder, PolicyTableProposal, RuleNode,
     TableProposalStatus,
 )
+from domain.notifications import events as notification_events
+
 from .scope import normalize_scope
 from .serializers import PolicyDocSerializer
 
@@ -605,6 +607,15 @@ class IngestCallbackView(APIView):
         if state == IngestStatus.DONE:
             _replace_clauses(doc, request.data.get("clauses") or [])
             _replace_table_proposals(doc, request.data.get("tableProposals") or [])
+
+        #  **적재는 수십 초~분이 걸리고 그동안 사용자는 화면을 떠난다** — 결과를 알 통로가
+        #  알림뿐이다. 올린 사람에게 완료/실패를, 룰이 실제로 생겼으면 회계팀 전체에 알린다
+        #  (자동 생성된 룰은 곧 전 정산의 판정 기준이 된다).
+        #  actor를 넘기지 않는다 — 이 요청의 주체는 ai 서비스 계정이지 사람이 아니다.
+        if state in (IngestStatus.DONE, IngestStatus.FAILED):
+            notification_events.on_doc_ingested(doc, ok=state == IngestStatus.DONE)
+        if state == IngestStatus.DONE and doc.rule_trigger:
+            notification_events.on_rule_auto_created(doc, doc.rule_trigger)
         return Response({
             "ok": True, "status": doc.status,
             "clauses": doc.clauses.count(),

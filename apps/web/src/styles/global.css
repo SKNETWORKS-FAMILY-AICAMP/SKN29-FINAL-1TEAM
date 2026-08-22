@@ -116,25 +116,47 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 .sidebar-brand .brand-name { font-size: 17px; font-weight: 800; color: var(--sidebar-text); white-space: nowrap; }
 
-.sidebar-user { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; text-align: center; }
-.sidebar-user .avatar-wrap { position: relative; flex-shrink: 0; }
+.sidebar-user { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; text-align: center; }
 .sidebar-user .avatar {
   width: 56px; height: 56px; border-radius: 50%; background: var(--sidebar-brand); color: #fff;
   display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0;
 }
-/* 알림 — 기능 메뉴가 아니라 사용자 프로필에 속한 동작이라 아바타에 붙인 뱃지 버튼으로 뺀다(기존엔 사이드바 메뉴 탭 사이에 섞여 있었음) */
-.notif-badge-btn {
-  position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
-  background: var(--sidebar-active-bg, rgba(255,255,255,0.12)); color: var(--sidebar-text);
-  border: 2px solid var(--sidebar-bg); display: flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0;
-}
-.notif-badge-btn:hover { background: rgba(255,255,255,0.2); }
-.notif-badge-btn .dot { position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: var(--tone-red); border: 1.5px solid var(--sidebar-bg); }
 .sidebar-user .name { margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--sidebar-text); line-height: 1.3; }
 .sidebar-user .meta { font-size: 11.5px; color: var(--sidebar-sub); margin-top: 2px; }
 
-.sidebar-nav { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; width: 100%; }
+/* 알림 — 기능 메뉴가 아니라 사용자 프로필에 속한 동작이라 자체 줄로 뺀다(프로필 블록 바로
+   아래, 기능 메뉴 목록과는 옅은 구분선으로 분리). 평상시에도 은은한 배경을 깔아 다른 아이콘
+   버튼(투명 배경, hover 때만 보임)보다 한 단계 더 눈에 띄게 하고, 미확인 알림이 있으면
+   인주색(--tone-red) 링으로 더 강조한다. */
+.sidebar-notif-row { flex-shrink: 0; width: 100%; display: flex; justify-content: center; margin-bottom: 14px; }
+.sidebar-notif-btn {
+  height: 44px; border-radius: 13px; flex-shrink: 0; width: 44px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--sidebar-text-muted); border: none; cursor: pointer; padding: 0;
+  background: rgba(255,255,255,0.07);
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1),
+    box-shadow 150ms cubic-bezier(0.23,1,0.32,1), width 160ms, margin 160ms;
+}
+.sidebar-notif-btn:hover { color: var(--sidebar-text); background: rgba(255,255,255,0.14); }
+.sidebar-notif-btn.has-unread { color: var(--sidebar-text); box-shadow: inset 0 0 0 1.5px rgba(192,57,43,0.55); }
+.sidebar-notif-btn .bell-wrap { position: relative; display: flex; }
+.sidebar-notif-btn .bell-wrap .dot {
+  position: absolute; top: -2px; right: -3px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--tone-red); border: 2px solid var(--sidebar-bg);
+}
+.notif-count-mini {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); margin-left: auto;
+  background: var(--sidebar-brand-accent); color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.sidebar.expanded .sidebar-notif-btn {
+  width: calc(100% - 24px); margin: 0 12px; justify-content: flex-start; padding: 0 12px; border-radius: var(--radius-control);
+}
+
+.sidebar-nav {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; width: 100%;
+  padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);
+}
 .sidebar-icon-btn {
   width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0; position: relative;
   display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -666,6 +688,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .notif-row.tone-amber { color: var(--tone-amber); }
 .notif-row.tone-green { color: var(--tone-green); }
 .notif-row.tone-gray { color: var(--tone-gray); }
+.notif-row.tone-purple { color: var(--tone-purple); }
 .notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
 .notif-row .notif-body { min-width: 0; color: var(--text); }
 .notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--text-value); }

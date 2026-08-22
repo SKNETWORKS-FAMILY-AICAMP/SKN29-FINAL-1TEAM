@@ -104,6 +104,13 @@ export function SettlementDetailModal({
   //  분류가 늘어도 여기서만 안 보인다.
   const { categories } = useCategories()
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
+  //  참석 인원 — **빈 문자열은 「모름」이고 0은 「확인했더니 없음」이다**(서버 계약).
+  //  숫자 state로 두면 그 구분이 사라져 안 적은 건이 "인원 0명"으로 단정된다.
+  //  이 값이 없으면 1인당 환산액(`tx.per_person_amount`)이 아예 만들어지지 않아
+  //  1인당 한도 룰이 전건 미해소로 강등된다 — 입력칸이 없던 시절의 실제 증상이다.
+  const [headcount, setHeadcount] = useState(
+    item?.headcount === null || item?.headcount === undefined ? '' : String(item.headcount),
+  )
   const [aiSuggested, setAiSuggested] = useState(item?.aiSuggested ?? false)
   // 가맹점 업종 — 사람이 고르는 값이 아니라 **서버가 조회해 준 사실**이라 입력칸이 없다.
   //  화면이 들고 있다가 저장 때 같이 올린다(안 올리면 판정이 쓸 업종이 통째로 비어 버린다).
@@ -292,7 +299,10 @@ export function SettlementDetailModal({
       ? await reviseDraft(text, {
           merchant, amount: numOnly(amountText), category, aiCategory: category,
           merchantIndustry: industry, merchantIndustryCode: industryCode,
-          purpose, evidence, headcount: 0,
+          //  예전엔 `0`을 하드코딩해 보냈다 — 안 적은 건을 "인원 0명"이라고 Agent에게
+          //  단정해 알려주던 셈이다. 모르면 모른다고 보낸다.
+          purpose, evidence,
+          headcount: headcount.trim() === '' ? null : Number(headcount),
         })
       : await suggestDraft({ merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence })
     setPending(false)
@@ -370,6 +380,9 @@ export function SettlementDetailModal({
         purpose: purpose || '',
         merchantIndustry: industry || '',
         merchantIndustryCode: industryCode || '',
+        //  비었으면 `null`(모름)을 명시적으로 보낸다 — 키를 빼면 서버가 옛 값을 유지하므로
+        //  사용자가 지운 것이 반영되지 않는다.
+        headcount: headcount.trim() === '' ? null : Number(headcount),
         merchant: merchant || undefined,
         amount: numOnly(amountText) || undefined,
         date: dateStr,
@@ -815,6 +828,24 @@ export function SettlementDetailModal({
                     </div>
                   )}
                 </div>
+              </div>
+              <div className="field">
+                <label>
+                  참석 인원
+                  <span className="text-meta" style={{ marginLeft: 6, fontWeight: 400 }}>
+                    비워두면 「모름」 · 0은 「해당 없음」
+                  </span>
+                </label>
+                <input
+                  type="number" min={0} inputMode="numeric" value={headcount} disabled={readOnly}
+                  onChange={(e) => setHeadcount(e.target.value)}
+                  placeholder="식대·회식·접대처럼 1인당 한도를 보는 지출이면 적어주세요"
+                />
+                {headcount.trim() !== '' && Number(headcount) > 0 && numOnly(amountText) > 0 && (
+                  <div className="text-meta" style={{ marginTop: 4 }}>
+                    1인당 {Math.floor(numOnly(amountText) / Number(headcount)).toLocaleString()}원으로 판정됩니다
+                  </div>
+                )}
               </div>
               <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>
                 <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" disabled={readOnly} />

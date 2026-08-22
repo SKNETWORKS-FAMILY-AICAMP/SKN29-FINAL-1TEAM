@@ -632,21 +632,17 @@ class Command(BaseCommand):
         ctx["tx"].update({"amount": 452000, "per_person_amount": 113000,
                           "payment_time": "22:41", "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "SHARED", "actual_user_recorded": True})
-        ctx["user"].update({"position": "차장", "finance_dept_is_spender": False, "is_working_hours": False})
         ctx["merchant"].update({"merchant_type": "일반음식점", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "접대", "confidence": 0.91, "item_type": "식사"})
-        ctx["evidence"].update({"has_valid_receipt": False, "has_supporting_evidence": True,
-                                "expense_purpose_missing": False})
+        ctx["evidence"].update({"has_valid_receipt": False, "expense_purpose_missing": False})
         ctx["approval"].update({"pre_approval_obtained": False})
         ctx["participants"].update({"participant_count": 4, "external_participant_count": 2,
                                     "has_kickback_law_target": False})
         ctx["dining"].update({"includes_alcohol": True, "is_secondary_venue": False})
         ctx["history"].update({"same_vendor_count": 2, "daily_cumulative_amount": 452000, "monthly_cumulative_amount": 1284000})
         ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 600000,
-                              "position_monthly_limit": 3000000, "position_required_level": "본부장",
-                              "approver_daily_limit": 1000000})
-        ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 1,
-                               "is_late_night": True, "is_weekend": False})
+                              "position_monthly_limit": 3000000})
+        ctx["derived"].update({"business_days_since_expense": 1, "is_weekend": False})
         ctx["tables"].update({"pre_approval_threshold_table": "REG-2026-003-T3",
                               "kickback_limit_table": "ACRC-2026-T1"})
         ctx["meta"].update({"tx_id": "TX-DEMO-ENT-001", "settlement_id": "ST-DEMO-ENT-001",
@@ -658,19 +654,16 @@ class Command(BaseCommand):
         ctx = empty_eval_context()
         ctx["tx"].update({"amount": 386000, "payment_time": "23:12", "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "POST_PAID", "actual_user_recorded": True})
-        ctx["user"].update({"position": "대리", "finance_dept_is_spender": True, "is_working_hours": False})
         ctx["merchant"].update({"merchant_type": "숙박", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "출장", "confidence": 0.96, "item_type": "숙박"})
-        ctx["evidence"].update({"has_valid_receipt": True, "has_supporting_evidence": True,
-                                "expense_purpose_missing": False})
+        ctx["evidence"].update({"has_valid_receipt": True, "expense_purpose_missing": False})
         ctx["approval"].update({"pre_approval_obtained": True})
         ctx["trip"].update({"trip_type": "국내", "region_grade": "B", "lodging_amount_per_night": 193000})
         ctx["history"].update({"same_vendor_count": 1, "daily_cumulative_amount": 386000,
                                "monthly_cumulative_amount": 947600})
         ctx["policy"].update({**DEMO_POLICY, "lodging_limit": 120000, "position_daily_limit": 400000,
                               "position_monthly_limit": 2000000})
-        ctx["derived"].update({"personal_use_suspected": True, "business_days_since_expense": 2,
-                               "is_late_night": True, "is_weekend": True})
+        ctx["derived"].update({"business_days_since_expense": 2, "is_weekend": True})
         ctx["tables"].update({"lodging_limit_table": "REG-2026-003-T7"})
         ctx["meta"].update({"tx_id": "TX-DEMO-TRIP-002", "settlement_id": "ST-DEMO-TRIP-002",
                             "schema_version": EVAL_CONTEXT_SCHEMA_VERSION, "builder_version": BUILDER_VERSION,
@@ -682,7 +675,6 @@ class Command(BaseCommand):
         ctx["tx"].update({"amount": 128000, "per_person_amount": 10667, "payment_time": "14:22",
                           "payment_method": "법인카드"})
         ctx["card"].update({"card_type": "SHARED", "actual_user_recorded": True})
-        ctx["user"].update({"position": "과장", "is_working_hours": True})
         ctx["merchant"].update({"merchant_type": "카페", "merchant_info_resolved": True, "forbidden": False})
         ctx["category"].update({"value": "식대", "confidence": 0.88, "item_type": "음료"})
         ctx["evidence"].update({"has_valid_receipt": True, "expense_purpose_missing": False})
@@ -691,8 +683,7 @@ class Command(BaseCommand):
         ctx["dining"].update({"includes_alcohol": False, "is_secondary_venue": False})
         ctx["history"].update({"same_vendor_count": 12, "daily_cumulative_amount": 128000, "monthly_cumulative_amount": 612000})
         ctx["policy"].update({**DEMO_POLICY, "position_daily_limit": 300000})
-        ctx["derived"].update({"personal_use_suspected": False, "business_days_since_expense": 3,
-                               "is_late_night": False, "is_weekend": False})
+        ctx["derived"].update({"business_days_since_expense": 3, "is_weekend": False})
         ctx["meta"].update({"tx_id": "TX-DEMO-DINE-003", "settlement_id": "ST-DEMO-DINE-003",
                             "schema_version": EVAL_CONTEXT_SCHEMA_VERSION, "builder_version": BUILDER_VERSION,
                             "built_at": now.isoformat(timespec="seconds")})
