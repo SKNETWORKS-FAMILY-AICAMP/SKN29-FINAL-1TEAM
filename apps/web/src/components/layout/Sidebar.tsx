@@ -80,7 +80,27 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-user">
-        <div className="avatar">{displayName.slice(0, 1)}</div>
+        <div className="avatar-wrap">
+          <div className="avatar">{displayName.slice(0, 1)}</div>
+          <button
+            className="notif-badge-btn"
+            title="알림"
+            aria-label="알림"
+            onClick={() => setNotifOpen((v) => !v)}
+          >
+            <Bell size={14} />
+            {hasUnread && <span className="dot" />}
+          </button>
+          {notifOpen && createPortal(
+            <NotificationPanel
+              notifications={notifications}
+              onClose={() => setNotifOpen(false)}
+              onMarkAllRead={markAllRead}
+              onMarkOneRead={markOneRead}
+            />,
+            document.body,
+          )}
+        </div>
         <div className="name">{displayName}</div>
         <div className="meta">{displayMeta}</div>
       </div>
@@ -98,27 +118,6 @@ export function Sidebar() {
             {expanded && <span className="sidebar-label">{m.label}</span>}
           </NavLink>
         ))}
-        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <button
-            className="sidebar-icon-btn"
-            title="알림"
-            aria-label="알림"
-            onClick={() => setNotifOpen((v) => !v)}
-          >
-            <Bell size={20} />
-            {expanded && <span className="sidebar-label">알림</span>}
-            {hasUnread && <span className="dot" />}
-          </button>
-          {notifOpen && createPortal(
-            <NotificationPanel
-              notifications={notifications}
-              onClose={() => setNotifOpen(false)}
-              onMarkAllRead={markAllRead}
-              onMarkOneRead={markOneRead}
-            />,
-            document.body,
-          )}
-        </div>
       </nav>
 
       <div className="sidebar-spacer" />
