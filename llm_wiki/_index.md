@@ -51,6 +51,7 @@ llm_wiki/
 | 가맹점 업종 어휘 = 정본 1곳 · 미확정을 `기타`로 안 민다 | `_context/merchant-industry-vocabulary.md` |
 | AI는 판정을 예측하지 않는다(엔진 dry-run) | `_context/draft-agent-v2.md` |
 | 화면·흐름 불변식(이상 건 정의·결정 버튼·저장 vs 파생) | `_context/settlement-ui-rules.md` |
+| 알림 = 메시지 + 이동할 페이지 · 생성 지점 한 곳 | `_context/notifications.md` |
 | 인가 = Capability RBAC 6종 | 기술 §3.1a |
 
 ## 2a. 지금 무엇이 되고 무엇이 안 되나
@@ -75,6 +76,7 @@ llm_wiki/
 | `policy-domain.md` | 규정 임계값 2층 구조 + `ctx.policy.*` 동적화(§3) + 축 정합 검사 |
 | `category-vocabulary.md` | 비용분류 어휘 정본 — 서버 단일 창구, `기타` ≠ 미기재 |
 | `merchant-industry-vocabulary.md` | 가맹점 업종 어휘 정본 15종 — 코드/라벨 분리, 미확정 처리 |
+| `notifications.md` | 알림 11종 — 자격 조건, 수신자(Capability 기준), 묶기, 「화면에 있으면 화면이 접는다」 |
 | `settlement-ui-rules.md` | **정산 화면·흐름 불변식** — 새 화면·버튼 만들기 전에 읽는다 |
 | `draft-agent-v2.md` | Draft Agent — 사실 주입 + 엔진 dry-run 판정 미리보기 |
 | `evidence-extraction-agent.md` | 증빙 추출 — 관측 계약(부재 확인 ≠ 미관측), 종류별 추출 대상 |

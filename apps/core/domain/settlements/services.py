@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from domain.common.models import AuditLog
 from domain.erp.models import ErpVoucher
+from domain.notifications import events as notification_events
 from domain.risk import case_index, decision_cases
 from domain.risk.models import DecisionLabel
 
@@ -58,6 +59,10 @@ def transition(settlement: Settlement, to_state: str, actor=None, reason: str = 
         actor=actor, action="settlement.transition", target=f"settlement:{settlement.id}",
         before={"status": frm}, after={"status": to_state, "reason": reason},
     )
+    #  **알림은 여기서만 만든다.** 전이의 유일한 통로이기 때문이다 — 뷰마다 각자 만들면
+    #  하나는 반드시 빠진다(`risk_review`가 judge 액션에만 있어 제출 경로에서 통째로
+    #  안 돌던 것과 같은 실수). 알림 실패는 전이를 되돌리지 않는다(`on_transition` 내부에서 흡수).
+    notification_events.on_transition(settlement, frm, to_state, actor, reason)
     return settlement
 
 

@@ -13,6 +13,8 @@ from .context_builder import load_tables, lookup
 from .eval_context import empty_eval_context
 from .models import RuleAuthoringMessage, RuleFlag, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
 from .rule_agent_v0_views import action_schema_payload
+from domain.notifications import events as notification_events
+
 from .scope import normalize_scope
 from .serializers import RuleGraphListSerializer, RuleGraphSerializer
 
@@ -107,6 +109,22 @@ def _graph_content(graph):
     }
 
 
+def _notify_graph_result(payload: dict, actor, *, what: str) -> None:
+    """룰 생성 응답에서 저장된 그래프를 찾아 요청자에게 알린다.
+
+    **저장이 실제로 일어난 경우에만** 알린다(`DRAFT_SAVED`). 근거 문서가 없어 실패한 경우
+    (`NO_SOURCE`)는 응답 본문에 그대로 뜨고, 그건 화면이 즉시 보여주는 오류다.
+    """
+    if not isinstance(payload, dict) or payload.get("status") != "DRAFT_SAVED":
+        return
+    graph_id = (payload.get("graph") or {}).get("graph_id") or (payload.get("graph") or {}).get("id")
+    if not graph_id:
+        return
+    graph = RuleGraph.objects.filter(pk=graph_id).first()
+    if graph is not None:
+        notification_events.on_rule_updated(graph, actor, what=what)
+
+
 class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
     """GET /api/rules/ (룰 그래프 목록/상세) + activate/rollback 액션."""
     queryset = RuleGraph.objects.prefetch_related("nodes", "routings", "versions")
@@ -146,10 +164,14 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
         graph = self.get_object()
+        actor = _actor(request)
         try:
-            services.activate(graph, _actor(request))
+            services.activate(graph, actor)
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
+        #  이 순간부터 모든 정산이 새 그래프로 판정된다 — 승인자만 아는 변경이면
+        #  판정 결과가 달라진 이유를 나머지 담당자가 설명할 수 없다.
+        notification_events.on_rule_activated(graph, actor)
         data = RuleGraphSerializer(graph).data
         # 레지스트리에 없는 플래그 — 활성화를 막지는 않되(고객 어휘일 수 있다) 승인자에게
         # 알린다. 조용히 넘기면 오타가 그대로 화면·집계에 남는다.
@@ -257,6 +279,11 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
                     simulation.apply_action_assessment(run, data.get("action"))
             except Exception:  # noqa: BLE001  # 서술 생성 실패는 시뮬레이션 실패가 아니다 — 템플릿 폴백 유지
                 pass
+        #  **사용자가 직접 누른 실행만 알린다.** `narrate=false`는 검증셋 자동생성의
+        #  자체검증 루프가 노드마다 내부 호출하는 경로라(최대 2회/노드), 알림을 만들면
+        #  한 번의 생성으로 수십 개가 쌓인다.
+        if request.data.get("narrate", True):
+            notification_events.on_simulation_done(graph, run, _actor(request))
         return Response(simulation.report_from_run(run))
 
     @action(detail=True, methods=["get"], url_path="simulation")
@@ -276,10 +303,12 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": "검토자 코멘트를 입력해주세요."}, status=400)
         if simulation.latest_run(graph) is None:
             return Response({"detail": "시뮬레이션을 먼저 실행해야 Active 요청을 할 수 있습니다."}, status=400)
+        actor = _actor(request)
         try:
-            services.request_activation(graph, comment, _actor(request))
+            services.request_activation(graph, comment, actor)
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
+        notification_events.on_activation_requested(graph, comment, actor)
         return Response(RuleGraphSerializer(graph).data)
 
     @action(detail=True, methods=["post"], url_path="versions")
@@ -332,6 +361,9 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             payload = resp.json()
         except ValueError:
             payload = {"detail": resp.text[:2000]}
+        #  생성은 최대 300초까지 걸린다 — 그 사이 화면을 떠났으면 결과를 알 길이 없다.
+        #  화면에 그대로 있으면 룰 콘솔이 이 알림을 자동으로 읽음 처리한다(`read-target`).
+        _notify_graph_result(payload, _actor(request), what="생성")
         return Response(payload, status=resp.status_code)
 
     @action(detail=True, methods=["post"], url_path="converse")
@@ -374,6 +406,10 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
             payload = resp.json()
         except ValueError:
             payload = {"detail": resp.text[:2000]}
+        if resp.status_code == 200 and payload.get("applied_changes"):
+            #  **실제로 그래프가 바뀐 경우에만** 알린다 — 질문만 하고 끝난 대화("왜 이렇게
+            #  됐어?")까지 알리면 대화 한 줄마다 알림이 쌓인다.
+            notification_events.on_rule_updated(graph, _actor(request), what="수정")
         return Response(payload, status=resp.status_code)
 
     @action(detail=True, methods=["post"], url_path="test-cases/generate")

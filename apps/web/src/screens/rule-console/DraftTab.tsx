@@ -7,6 +7,7 @@ import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
 import { GRAPH_STATUS_LABEL, type ChatMessage, type GraphNode, type RuleGraph } from './data/ruleConsoleMock'
+import { useReadOpenTarget } from '../../lib/notifications'
 
 type ApiMessage = { role: 'user' | 'ai'; text: string; appliedNote: string }
 
@@ -71,6 +72,10 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   }, {})), [visibleGraphs])
   const nodesFor = (graph: RuleGraph) => graph.nodes
   const selGraph = graphs.find((graph) => graph.id === sel?.graphId)
+  //  **화면에 열려 있으면 알림을 접는다.** 「룰 수정 완료는 그래프 수정 화면을 벗어나
+  //  있을 때만 알린다」를 서버가 판단할 수 없어서(서버는 화면이 어디 있는지 모른다)
+  //  알림은 항상 만들고 여기서 읽음 처리한다.
+  useReadOpenTarget(sel?.graphId ? `rulegraph:${sel.graphId}` : null)
   const selNode = selGraph?.nodes.find((node) => node.nodeKey === sel?.nodeKey)
 
   const toggle = (id: string) => setExpanded((previous) => {
