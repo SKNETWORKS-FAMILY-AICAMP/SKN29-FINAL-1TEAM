@@ -505,6 +505,20 @@ class Command(BaseCommand):
         #  ⚠️ TIGER-REG-2026-003 별표 원문 대조는 아직 미완(해당 모듈 docstring 참조).
         upsert_policy_tables()
 
+        # 축 이름이 EvalContext 스키마에 없으면 그 표는 **항상** 와일드카드로 떨어진다
+        #  (값도 나오고 에러도 없다 — `check_table_keys`가 축의 *값*을 대조한다면 이쪽은
+        #  축 *이름*을 본다). 코드 상수가 아니라 방금 적재된 DB 행을 본다.
+        from domain.policies.context_builder import check_table_axes
+
+        bad_axes = check_table_axes()
+        if bad_axes:
+            self.stdout.write(self.style.WARNING(
+                "[경고] 별표 축이 EvalContext 스키마에 없다 - 해당 표는 항상 와일드카드로 해소된다:\n"
+                + "\n".join(f"  - {key}: {', '.join(axes)}" for key, axes in bad_axes.items())
+                + "\n  축을 실재하는 사실 경로로 바꾸거나, 값이 하나뿐이면 축을 빼라"
+                " (policies/tiger_tables.py)."
+            ))
+
         self._judge_dining_demo(dining_demo)
 
         # ── 시연 하이라이트 3건: RAG 내규 검증 보고서 + 실제 EvalContext 스냅샷 ──

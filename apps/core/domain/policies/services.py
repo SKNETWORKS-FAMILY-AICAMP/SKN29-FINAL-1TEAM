@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from domain.common.models import AuditLog
 
+from .context_builder import allowed_var_paths
 from .engine import validate_graph
 from .eval_context import validate_graph_vars
 from .flags import unknown_flags
@@ -148,7 +149,10 @@ def activate(graph: RuleGraph, actor=None) -> RuleGraph:
     # 기존 ACTIVE를 건드리기 전에 새 그래프의 실행 가능성을 hard gate로 검증한다.
     snapshot = _snapshot(graph)
     validate_graph(snapshot)
-    missing = validate_graph_vars(snapshot)
+    # 허용 경로는 **지금 적재된 별표**까지 반영해서 본다 — 고객이 올린 규정에서 새 임계값
+    #  표가 들어오면 그걸 참조하는 룰이 승인될 수 있어야 한다(`policy.*`는 별표에서 오므로
+    #  표가 있으면 조립기가 자동으로 채운다). 사실 경로는 그래도 닫혀 있다.
+    missing = validate_graph_vars(snapshot, allowed_var_paths())
     if missing:
         raise ValueError(f"EvalContext에 정의되지 않은 경로입니다: {', '.join(sorted(missing))}")
     graph.unknown_flags = unknown_flags(snapshot)   # 응답용 경고(저장하지 않는다)

@@ -46,6 +46,116 @@ DERIVED_FROM_TABLE: dict[str, str] = {
     "merchant.forbidden": "forbidden_merchant_table",
 }
 
+# 조립기가 직접 쓰는 파라미터 표 — `ctx.policy`에 올리지 않는다(DSL 비교 대상이 아니다).
+NON_POLICY_TABLES: frozenset[str] = frozenset({"history_window_table"})
+
+#: 표 key → `ctx.policy` 필드명. `RESOLVERS`의 역방향이다 — 표 키에서 기계적으로 못 뽑는
+#  이름(`daily_limit_table` → `position_daily_limit`)만 여기 명시로 남는다.
+_EXPLICIT_FIELD: dict[str, str] = {table_key: field for field, table_key in RESOLVERS.items()}
+
+
+def _payload_leaves(node: Any, depth: int) -> list[Any]:
+    """축을 `depth`번 따라간 자리의 값들. 축 선언과 payload 깊이가 어긋나면 빈 목록."""
+    if depth <= 0:
+        return [node]
+    if not isinstance(node, dict):
+        return []
+    out: list[Any] = []
+    for child in node.values():
+        out.extend(_payload_leaves(child, depth - 1))
+    return out
+
+
+def _exposes_scalar(table: PolicyTable) -> bool:
+    """이 표가 `ctx.policy.*`에 올릴 **스칼라**를 내놓는가.
+
+    DSL은 스칼라 비교만 하므로 리프가 목록·중첩인 표(예: 분류별 필요증빙)는 올리지 않는다.
+    올려두면 룰이 비교할 수 없는 값을 자신 있게 참조하고, 그 결과는 에러가 아니라 조용한
+    거짓이 된다.
+    """
+    axes = list(table.key_axes or [])
+    if not axes:
+        leaves = [table.payload.get("value")] if isinstance(table.payload, dict) else []
+    else:
+        leaves = _payload_leaves(table.payload, len(axes))
+    return bool(leaves) and all(isinstance(v, (bool, int, float, str)) for v in leaves)
+
+
+def policy_fields(tables: dict[str, PolicyTable] | None = None) -> dict[str, str]:
+    """`ctx.policy.<필드>` → 별표 key. **적재된 표에서 파생한다.**
+
+    고정 8칸이 아닌 이유: 고객이 자사 규정을 올려 새 별표가 들어오면 그 임계값이 곧바로
+    룰이 쓸 수 있는 변수가 되어야 한다. 표 키에서 `_table`을 떼어 이름을 만들고,
+    `RESOLVERS`는 이제 **이름 override**로만 남는다(하위호환 — 기존 그래프의 조건이
+    `policy.position_daily_limit`을 참조하고 있다).
+
+    제외 셋: 조립기 전용 파라미터(`NON_POLICY_TABLES`) · 이미 `policy` 밖 자리를 차지한 표
+    (`DERIVED_FROM_TABLE`, 금지업종 → `merchant.forbidden`) · 스칼라를 안 내놓는 표.
+    """
+    tables = load_tables() if tables is None else tables
+    claimed = set(DERIVED_FROM_TABLE.values()) | NON_POLICY_TABLES
+    fields = dict(RESOLVERS)          # 명시 이름이 먼저 자리를 잡는다
+    for key in sorted(tables):
+        if key in claimed or key in _EXPLICIT_FIELD:
+            continue
+        if not _exposes_scalar(tables[key]):
+            continue
+        name = key.removesuffix("_table")
+        if name in fields:            # 이름 충돌 — 명시 매핑이 이긴다(조용히 덮지 않는다)
+            continue
+        fields[name] = key
+    return fields
+
+
+def allowed_var_paths(tables: dict[str, PolicyTable] | None = None) -> frozenset[str]:
+    """룰 조건이 참조할 수 있는 경로 — 정적 사실 ∪ **지금 적재된 별표가 만드는 `policy.*`**.
+
+    사실은 닫고 임계값은 여는 이유는 **출처가 다르기 때문**이다. 사실은 SoR·첨부 추출에서
+    오므로 경로만 늘리면 값이 영원히 null이지만(룰은 만들어지는데 판정은 전건 강등된다),
+    `policy.*`는 별표에서 오므로 표가 적재된 순간 조립기가 **자동으로** 채운다.
+    """
+    from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS
+
+    return EVAL_CONTEXT_SCHEMA_PATHS | {f"policy.{name}" for name in policy_fields(tables)}
+
+
+def policy_field_specs(tables: dict[str, PolicyTable] | None = None) -> dict[str, Any]:
+    """동적 `policy.*` 필드의 프롬프트용 설명 — `{필드: FieldSpec}`.
+
+    정적 8종은 `eval_context._SCHEMA_FIELDS`가 손으로 쓴 설명을 갖고 있으므로 건드리지
+    않는다. 새로 들어온 표는 우리가 설명을 쓸 수 없으니 **표 제목**이 가장 정확한 한 줄이다.
+    """
+    from .eval_context import FieldSpec
+
+    tables = load_tables() if tables is None else tables
+    specs: dict[str, Any] = {}
+    for name, key in policy_fields(tables).items():
+        if name in RESOLVERS:
+            continue
+        table = tables.get(key)
+        title = (table.title if table and table.title else key).strip()
+        specs[name] = FieldSpec("number", f"{title} (별표 선해소값).")
+    return specs
+
+
+def check_table_axes(tables: dict[str, PolicyTable] | None = None) -> dict[str, list[str]]:
+    """적재된 별표의 축 중 **EvalContext 스키마에 없는 것**을 찾아 돌려준다.
+
+    축이 스키마에 없으면 `resolve_path`가 항상 None을 돌려주고, `strict_keys=False`인 표는
+    `"*"`로 조용히 폴백한다 — 값도 나오고 에러도 플래그도 없어서 그 표가 축을 잃은 걸
+    아무도 모른다. `check_table_keys()`가 payload의 **값**을 대조한다면 이쪽은 **축 이름**을
+    본다(코드 상수가 아니라 DB 행을 보므로, 시드가 낡아 생긴 드리프트도 잡힌다).
+    """
+    from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS
+
+    tables = load_tables() if tables is None else tables
+    bad: dict[str, list[str]] = {}
+    for key, table in sorted(tables.items()):
+        unknown = [a for a in (table.key_axes or []) if a not in EVAL_CONTEXT_SCHEMA_PATHS]
+        if unknown:
+            bad[key] = unknown
+    return bad
+
 
 def load_tables(as_of: date | None = None) -> dict[str, PolicyTable]:
     """지출 시점에 유효한 별표를 key당 1개씩 로드한다.
@@ -103,6 +213,9 @@ def lookup(table: PolicyTable, ctx: dict[str, Any]) -> Any:
 def resolve_policy(ctx: dict[str, Any], tables: dict[str, PolicyTable]) -> list[str]:
     """별표를 `ctx.policy.*` 스칼라로 선해소하고 원본을 `ctx.tables.*`에 보존한다.
 
+    채우는 필드 목록은 `policy_fields(tables)`가 정한다 — **적재된 표에서 파생**하므로
+    고객이 올린 새 별표도 코드 변경 없이 여기로 들어온다.
+
     Returns: 해소하지 못한 policy 필드 이름들(호출부 로깅용). 엔진의 미해소 가드는
     실제 참조된 것만 보므로, 여기서 못 채워도 그 필드를 안 쓰는 그래프는 영향받지 않는다.
     """
@@ -117,7 +230,7 @@ def resolve_policy(ctx: dict[str, Any], tables: dict[str, PolicyTable]) -> list[
             ctx["tables"][table_key] = table.payload   # 감사용 원본 (DSL 미참조)
         return value
 
-    for field, table_key in RESOLVERS.items():
+    for field, table_key in policy_fields(tables).items():
         value = _resolve(table_key)
         if value is None:
             unresolved.append(field)
@@ -173,7 +286,7 @@ def build_rule_context(
     unresolved = resolve_policy(ctx, tables)
 
     if facts:
-        apply_facts(ctx, facts)
+        apply_facts(ctx, facts, allowed_var_paths(tables))
 
     ctx["meta"].update({
         "schema_version": EVAL_CONTEXT_SCHEMA_VERSION,
@@ -183,15 +296,21 @@ def build_rule_context(
     return ctx, unresolved
 
 
-def apply_facts(ctx: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
+def apply_facts(
+    ctx: dict[str, Any], facts: dict[str, Any], allowed: frozenset[str] | None = None,
+) -> dict[str, Any]:
     """``{"tx.amount": 500000}`` 형태의 dot-path facts를 컨텍스트에 얹는다.
+
+    허용 경로는 룰 조건과 **같은 집합**이다(`allowed_var_paths`) — 검증셋이 "만약 한도가
+    X라면"을 시험하려면 룰이 참조할 수 있는 임계값은 오버라이드도 가능해야 한다. 이미
+    별표를 로드해 둔 호출부는 `allowed`를 넘겨 재조회를 아낀다.
 
     스키마에 없는 경로는 조용히 버린다(화면이 임의 키를 보내도 판정이 깨지지 않도록).
     """
-    from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS
+    allowed = allowed_var_paths() if allowed is None else allowed
 
     for path, value in (facts or {}).items():
-        if path not in EVAL_CONTEXT_SCHEMA_PATHS:
+        if path not in allowed:
             continue
         section, field = path.split(".", 1)
         ctx[section][field] = value

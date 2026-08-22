@@ -114,10 +114,16 @@ TABLES: list[dict] = [
         "source_clause": f"{REG} 제11조",
     },
     {
+        # ⚠️ 축을 뗐다(2026-08-22). 선언은 `category.scope`였는데 그건 EvalContext에 없는
+        #    경로라 `resolve_path`가 늘 None을 돌려주고 `strict_keys=False` 폴백으로 **항상**
+        #    `"*"`로 떨어졌다 — 값도 나오고 에러도 없어서 축이 죽은 걸 아무도 몰랐다.
+        #    payload에 실제로 있는 값이 단일 한도 하나뿐이므로, 선언을 가진 데이터에 맞춘다.
+        #    규정 원문(제14조①)에 조직단위(팀·본부·전사)별 값이 실재한다면 그때 `dining.org_unit`
+        #    사실을 만들고 축을 되살린다 — **값이 생긴 다음에 축을 만드는** 순서가 맞다.
         "key": "dining_per_person_limit_table",
-        "title": "회식 조직단위별 1인당 한도",
-        "key_axes": ["category.scope"],
-        "payload": {"*": 50_000},
+        "title": "회식 1인당 한도",
+        "key_axes": [],
+        "payload": _scalar(50_000),
         "source_clause": f"{REG} 제14조①",
     },
     {

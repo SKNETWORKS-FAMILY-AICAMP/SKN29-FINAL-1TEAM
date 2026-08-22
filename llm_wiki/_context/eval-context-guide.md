@@ -182,6 +182,12 @@
 
 `apps/core/domain/policies/eval_context.py`의 `_SCHEMA_FIELDS`가 정본이다.
 
+> ⚠️ **2026-08-20부터 이 표는 정본이 아니다.** 필드의 **타입과 한 줄 설명이 코드로
+> 승격됐다**(`FieldSpec(type, desc, enum)`) — 그 값이 그대로 에이전트 프롬프트에 나가기
+> 때문이다(`_context/agent-context-tool.md`). 아래 표는 사람이 읽는 해설로 남기고, 값이
+> 어긋나면 코드가 이긴다. 현재 코드는 v5(47 필드, `user.position` → `user.job_title` +
+> `job_title_rank`)라 아래 v4 표와 이미 다르다.
+
 ### 8.1 사실 섹션 (33)
 
 | 섹션 | 필드 | 뜻 | 출처 | 현재 |

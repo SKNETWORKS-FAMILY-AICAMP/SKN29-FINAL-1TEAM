@@ -43,6 +43,8 @@ import json
 import re
 from typing import Any
 
+from app.context import Bundle, get_context
+
 from .. import mcp_client
 from . import django_client
 from .settings import settings
@@ -69,33 +71,32 @@ def _openai():
     return _client
 
 
-# decision/severity 카탈로그 — 이전엔 여기 하드코딩(그리고 `chat.py`가 별도로 또
-# 하드코딩)했다. Django `engine.py`가 유일한 소스가 됐다(§8 후속, 2026-08-19) — 첫 호출
-# 때 fetch해 프로세스 수명 동안 캐시한다(`_openai()`와 같은 지연 초기화 패턴 — import
-# 시점에 Django가 안 떠 있어도 라우터 import가 안 죽는다. 조회 실패 시엔 예전 하드코딩
-# 값과 같은 기본값으로 안전하게 대체된다 — `django_client.get_action_schema` 참조).
-_action_schema_cache: dict[str, Any] | None = None
+# 도메인 카탈로그(DSL 문법·허용 경로·판정 선택지·플래그·별표 축)는 **전부 core가 만든다**
+# (`domain/context`). 이 파일이 갖고 있던 사본 두 개 — decision/severity 하드코딩과
+# `_ALLOWED_OPS` — 는 그래서 없어졌다. 사본이 문제인 이유는 값이 틀려서가 아니라,
+# 틀려도 아무 신호가 없어서다(프롬프트가 `EvalContext v4`라고 말하는 동안 코드는 v5였다).
+#
+# 프롬프트에 실리는 목록과 아래 검증기(`_validate_condition`·`_sanitize_nodes`)가 쓰는
+# 기준은 **같은 Bundle 객체**에서 나온다. 갈리면 "모델에게 말한 것"과 "우리가 강제하는 것"이
+# 달라진다.
+CATALOG_PROFILE = "rule_generate"
 
 
-def _action_schema() -> dict[str, Any]:
-    global _action_schema_cache
-    if _action_schema_cache is None:
-        _action_schema_cache = django_client.get_action_schema()
-    return _action_schema_cache
+def catalog(profile: str = CATALOG_PROFILE) -> Bundle:
+    """카탈로그 조회(TTL 캐시). 실패해도 stale Bundle을 돌려주고 멈추지 않는다."""
+    return get_context(profile)
 
 
 def severities() -> list[str]:
-    return _action_schema()["severities"]
+    return catalog().severities
 
 
 def decisions() -> list[str]:
-    return _action_schema()["decisions"]
+    return catalog().decisions
 
 
 def severity_priority() -> dict[str, int]:
     return {s: i for i, s in enumerate(severities())}  # CRITICAL=0 … INFO=4
-
-_ALLOWED_OPS = {"and", "or", "not", "==", "!=", ">", ">=", "<", "<=", "in", "var"}
 
 # 검증→재생성 루프 최대 시도 횟수(최초 1회 + 재시도 2회). agent-v1-upgrade-plan.md §1.2-4
 # 결정 근거: LLM 자기수정은 2~3회 이후 수확체감이 커서 그 이상은 비용 대비 이득이 적다.
@@ -129,16 +130,23 @@ _SYSTEM_PROMPT = """당신은 법인카드 정산 규정을 실행 가능한 룰
    - not이 필요하면 negate:true로 표시하세요(연산자를 감쌉니다).
    - 산술 연산 금지. 필요한 계산값은 이미 컨텍스트에 선계산되어 있다고 가정하세요.
 
-2. var 경로(left_path/right_var_path)는 아래 [허용 경로 목록]에 있는 것만 사용하세요.
-   목록에 없는 사실이 필요하면 그 룰은 생성하지 말고 skipped에 사유를 남기세요.
+2. var 경로(left_path/right_var_path)·연산자·판정값·플래그·임계값 변수는 모두 아래
+   [도메인 카탈로그]에 있는 것만 사용하세요. 카탈로그는 이 시스템의 실제 모델에서 생성된
+   것이라, 거기 없는 사실·어휘는 존재하지 않습니다. 필요한 것이 없으면 그 룰은 만들지 말고
+   skipped에 사유를 남기세요.
 3. 임계값 숫자는 조항에 명시된 경우에만 사용하되, 별표(한도표) 조회값이면 숫자 리터럴 대신
-   policy.* 경로(right_kind="var")를 사용하세요.
-4. decision은 PASS/REJECT/RETURN/REVIEW 중 하나를 직접 지정하세요.
+   policy.* 경로(right_kind="var")를 사용하세요 — 어떤 변수가 어느 별표에서 오는지, 지금
+   적재돼 있는지는 카탈로그의 [규정 임계값] 섹션에 있습니다.
+4. decision은 카탈로그 [판정·심각도 선택지]에서 고르세요.
    - 규정상 명백한 금지·위반: REJECT
    - 기재·증빙 보완이 필요한 경우: RETURN
    - 사람 검토가 필요한 경우: REVIEW
    (PASS 노드는 만들지 마세요 — 종단 PASS는 시스템이 자동 추가합니다.)
-5. severity는 CRITICAL/HIGH/MEDIUM/LOW/INFO 중 하나.
+5. severity도 카탈로그 목록에서 고르세요.
+5-A. flag는 "왜 걸렸는가"를 나타내는 사유 코드입니다. **카탈로그 [사유 플래그 어휘]에서 뜻이
+   맞는 코드를 먼저 찾아 그대로 쓰세요.** 정말 맞는 것이 하나도 없을 때만 새 코드를 만들되
+   같은 표기 규칙(영문 대문자·언더스코어)을 따르세요. 뜻이 어긋난 코드를 갖다 붙이면 검토
+   화면이 엉뚱한 담당자에게 일을 보냅니다.
 6. source_citation에는 제공된 청크의 citation 문자열을 그대로 복사하세요.
    「문서명」 제N조 형태 전체를 유지하고, 제공되지 않은 조항을 지어내지 마세요.
 7. when/then은 비개발자(회계 담당자)용 쉬운 문장입니다. DSL 경로·영문 판정코드를 쓰지 마세요.
@@ -171,7 +179,7 @@ _CONDITION_NODE_SCHEMA = {
 }
 
 def _response_schema() -> dict[str, Any]:
-    """호출 시점에 조립 — `severity` enum이 `_action_schema()`(Django 소스)를 따라야
+    """호출 시점에 조립 — `severity` enum이 카탈로그(Django `engine.py` 소스)를 따라야
     해서 모듈 로드 시점 상수로 못 둔다. `decision`은 이 생성 흐름이 만드는 노드가 항상
     비-PASS 종단이라는 v0 설계(모듈 docstring 참조)에 따라 의도적으로 서브셋
     (REJECT/RETURN/REVIEW만, 전체 카탈로그의 PASS·PASS_THROUGH 제외)이다."""
@@ -238,16 +246,16 @@ def _format_chunks(chunks: list[dict]) -> str:
 
 
 def _build_user_prompt(
-    scope: str, chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+    scope: str, chunks: list[dict], ctx: Bundle, feedback: str | None = None
 ) -> str:
-    paths_block = (
-        "\n".join(sorted(schema_paths))
-        if schema_paths
-        else "(목록 조회 실패 — 확실한 경로만 보수적으로 사용하고 불확실하면 skipped 처리)"
-    )
+    """카탈로그 블록은 core가 만든 것을 **그대로** 싣는다.
+
+    여기서 요약하거나 손으로 다시 적으면 그 순간 사본이 된다 — 프롬프트가 스키마 버전을
+    직접 적고 있던 시절(`EvalContext v4`, 코드는 이미 v5)이 그 결과였다.
+    """
     prompt = (
         f"대상 scope(비용 분류): {scope}\n\n"
-        f"[허용 경로 목록 — EvalContext v4]\n{paths_block}\n\n"
+        f"[도메인 카탈로그 — 이 시스템의 실제 어휘]\n{ctx.prompt()}\n\n"
         f"[규정 조항 청크 — 1차 검색 결과]\n{_format_chunks(chunks)}\n\n"
         "위 청크만으로 부족하면 `search_policy` 툴을 다른 질의로 호출해 추가 근거를 "
         "확보하세요. 준비되면 `submit_rule_nodes` 툴을 호출해 최종 결과를 제출하세요 "
@@ -293,7 +301,7 @@ def _submit_nodes_tool() -> dict[str, Any]:
 
 
 def _run_generation_loop(
-    scope: str, initial_chunks: list[dict], schema_paths: list[str], feedback: str | None = None
+    scope: str, initial_chunks: list[dict], ctx: Bundle, feedback: str | None = None
 ) -> dict:
     """MCP 툴콜링 멀티턴 루프. `submit_rule_nodes` 호출 시 그 인자를 최종 결과로 반환.
 
@@ -302,7 +310,7 @@ def _run_generation_loop(
     """
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _build_user_prompt(scope, initial_chunks, schema_paths, feedback)},
+        {"role": "user", "content": _build_user_prompt(scope, initial_chunks, ctx, feedback)},
     ]
 
     for _ in range(MAX_TOOL_TURNS):
@@ -420,9 +428,13 @@ def _build_condition(node: dict) -> dict:
     return result
 
 
-def _validate_condition(cond: Any, schema_paths: set[str]) -> list[str]:
+def _validate_condition(cond: Any, schema_paths: set[str], allowed_ops: set[str]) -> list[str]:
     """DSL 화이트리스트 + 경로 사전검증. 최종 게이트는 Django validate_expr/
-    validate_graph_vars — 여기서는 명백한 불량만 걸러 왕복을 줄인다."""
+    validate_graph_vars — 여기서는 명백한 불량만 걸러 왕복을 줄인다.
+
+    `allowed_ops`/`schema_paths`는 **프롬프트에 실린 것과 같은 카탈로그**에서 온다. 비어
+    있으면(카탈로그 조회 실패) 그 항목의 검사를 건너뛴다 — 조회 장애로 전건 반려가 되면
+    생성 자체가 멈춘다. 어차피 Django `validate_expr`가 저장 시점에 다시 막는다."""
     errors: list[str] = []
 
     def walk(node: Any, depth: int = 0) -> None:
@@ -434,7 +446,7 @@ def _validate_condition(cond: Any, schema_paths: set[str]) -> list[str]:
                 errors.append(f"연산자 객체는 키 1개여야 함: {list(node.keys())}")
                 return
             op, args = next(iter(node.items()))
-            if op not in _ALLOWED_OPS:
+            if allowed_ops and op not in allowed_ops:
                 errors.append(f"허용되지 않은 연산자: {op}")
                 return
             if op == "var":
@@ -461,7 +473,7 @@ _NODE_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_\-]{0,63}$")
 
 
 def _sanitize_nodes(
-    raw_nodes: list[dict], schema_paths: set[str]
+    raw_nodes: list[dict], schema_paths: set[str], allowed_ops: set[str] | None = None
 ) -> tuple[list[dict], list[dict]]:
     """LLM 출력 → 저장 후보 노드. 불량은 rejected로 분리(조용한 통과 금지)."""
     accepted, rejected = [], []
@@ -479,7 +491,7 @@ def _sanitize_nodes(
             cond = None
             problems.append(f"condition 조립 실패: {exc}")
         if cond is not None:
-            problems.extend(_validate_condition(cond, schema_paths))
+            problems.extend(_validate_condition(cond, schema_paths, allowed_ops or set()))
         if n.get("decision") not in {"REJECT", "RETURN", "REVIEW"}:
             problems.append(f"decision 불량: {n.get('decision')}")
 
@@ -610,8 +622,10 @@ def generate(req: Any) -> dict[str, Any]:
             "query": query,
         }
 
-    # ② EvalContext 카탈로그 확보(프롬프트 주입 + 1차 경로 검증)
-    schema_paths = django_client.get_eval_context_schema()
+    # ② 도메인 카탈로그 확보 — **프롬프트에 실리는 목록과 검증 기준이 같은 객체**여야 한다.
+    #    (`domain/context` 프로파일 `rule_generate`. 조회 실패해도 stale 표시만 하고 진행)
+    ctx = catalog()
+    schema_paths = ctx.paths
 
     # ③~⑤ 검증→재생성 루프 (agent-v1-upgrade-plan.md §1.2-4, A안).
     #   - RAG 청크(①)는 시도 전체에서 재사용한다 — 재조회하면 "피드백이 통했는지"와
@@ -623,8 +637,10 @@ def generate(req: Any) -> dict[str, Any]:
     attempt_history: list[dict[str, Any]] = []
 
     for attempt_no in range(1, MAX_GENERATE_ATTEMPTS + 1):
-        llm_out = _run_generation_loop(req.scope, chunks, schema_paths, feedback)
-        accepted, rejected = _sanitize_nodes(llm_out.get("nodes", []), set(schema_paths))
+        llm_out = _run_generation_loop(req.scope, chunks, ctx, feedback)
+        accepted, rejected = _sanitize_nodes(
+            llm_out.get("nodes", []), set(schema_paths), ctx.operators
+        )
 
         if not accepted:
             attempt_history.append({
@@ -660,6 +676,10 @@ def generate(req: Any) -> dict[str, Any]:
                 {"citation": c["citation"], "chunk_id": c["chunk_id"], "score": c["score"]}
                 for c in chunks
             ],
+            # 어떤 어휘로 만들어졌는지 — 플래그가 27종이던 시절의 생성물을 지금 목록으로
+            # 설명하면 어긋난다. 카탈로그 해시를 함께 남겨 나중에 되짚게 한다.
+            "catalog_etag": ctx.etag,
+            "catalog_stale": ctx.stale,
             "rejected_node_count": len(rejected),
             "llm_skipped": llm_out.get("skipped", []),
             "generation_attempts": attempt_no,
