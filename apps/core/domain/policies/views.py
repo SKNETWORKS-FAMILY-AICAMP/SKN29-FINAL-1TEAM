@@ -135,8 +135,10 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
     def action_schema(self, request):
         """GET /api/rules/action-schema/ — decision/severity 선택지 카탈로그(룰 콘솔 화면용).
 
-        `engine.py`가 유일한 소스 — AI 서비스가 쓰는 내부 API(`ActionSchemaView`)와 같은
-        페이로드를 재사용한다(§8 후속, 2026-08-19). 프론트가 각자 하드코딩하던
+        `engine.py`가 유일한 소스 — AI 서비스가 쓰는 카탈로그(`domain/context`의
+        `action.schema` 섹션)와 같은 `action_schema_payload()`를 재사용한다. 이 창구를
+        따로 두는 이유는 **브라우저**이기 때문이다: 룰 콘솔은 인가(`rule_view`)를 지나야
+        해서 AllowAny 내부 API를 쓸 수 없다. 프론트가 각자 하드코딩하던
         `<option>PASS</option>...` 목록을 여기서 받아 대체한다.
         """
         return Response(action_schema_payload())

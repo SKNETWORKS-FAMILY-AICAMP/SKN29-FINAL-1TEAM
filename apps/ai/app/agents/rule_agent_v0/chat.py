@@ -41,6 +41,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app.context import Bundle, get_context
+
 from .. import mcp_client
 from . import django_client
 from .agent import _CONDITION_NODE_SCHEMA, _build_condition, _openai, _validate_condition, decisions, severities
@@ -63,7 +65,9 @@ _SYSTEM_PROMPT = """당신은 법인카드 정산 룰 콘솔의 편집 보조입
    호출하세요. 여러 노드를 고쳐야 하면 여러 번 호출해도 됩니다.
 2. 규정 근거가 더 필요하면 `search_policy`로 찾아보세요.
 3. 조건(condition)은 재귀 구조화 필드(comparison/group)로 채우세요 — JSON 문자열을
-   직접 조립하지 마세요. var 경로는 [허용 경로 목록]에 있는 것만 쓰세요.
+   직접 조립하지 마세요. var 경로·연산자·판정값·플래그는 [도메인 카탈로그]에 있는 것만
+   쓰세요(카탈로그는 이 시스템의 실제 모델에서 생성된 것이라, 거기 없는 어휘는 없는 것입니다).
+   한도·기준액은 숫자로 박지 말고 카탈로그 [규정 임계값]의 policy.* 변수를 쓰세요.
 4. 그래프를 바꾸지 않는 질문(예: "왜 이렇게 판정돼?", "이 조건이 뭐야?")이면 그래프를
    건드리지 말고 바로 `answer`로 답하세요.
 5. 작업이 끝나면(변경을 했든 안 했든) 반드시 `answer` 툴을 호출해 사용자에게 보여줄
@@ -73,7 +77,7 @@ _SYSTEM_PROMPT = """당신은 법인카드 정산 룰 콘솔의 편집 보조입
    주어졌다면) 그 노드를 우선 적용하세요. 노드 이름이 명시되지 않았는데 여러 노드가
    똑같이 그럴듯해 보이면, 지어맞추지 말고 `answer`로 "어느 노드를 말씀하시는 건가요?"
    라고 되물으세요 — 애매할 때 여러 노드를 동시에 고치지 마세요.
-8. **조건을 고치기 전에 먼저 스스로에게 물으세요: "[허용 경로 목록]에 이 요청의 뜻을
+8. **조건을 고치기 전에 먼저 스스로에게 물으세요: "[도메인 카탈로그]에 이 요청의 뜻을
    정확히 담은 var가 있는가?"** 없으면(예: "목적이 부실하게 작성됐는지", "설명이
    성의없는지" — 사람이 읽고 판단해야 하는 정성적 평가) 그 자리에서 멈추세요.
    금지된 행동: (a) 의미가 비슷해 보이는 다른 var를 대신 갖다 붙이는 것
@@ -143,10 +147,9 @@ def _format_simulation(report: dict[str, Any] | None) -> str:
 
 
 def _build_user_prompt(
-    graph: dict[str, Any], schema_paths: list[str], message: str,
+    graph: dict[str, Any], ctx: Bundle, message: str,
     node_key: str | None = None, simulation: dict[str, Any] | None = None,
 ) -> str:
-    paths_block = "\n".join(sorted(schema_paths)) if schema_paths else "(목록 조회 실패)"
     focus_block = ""
     if node_key:
         node = next((n for n in graph.get("nodes", []) if n["nodeKey"] == node_key), None)
@@ -154,7 +157,7 @@ def _build_user_prompt(
         focus_block = f"\n\n[사용자가 지금 화면에서 보고 있는 노드]\nnode_key={node_key!r} ({title})"
     return (
         f"[현재 그래프 상태]\n{_format_graph(graph)}\n\n"
-        f"[허용 경로 목록 — EvalContext v4]\n{paths_block}"
+        f"[도메인 카탈로그 — 이 시스템의 실제 어휘]\n{ctx.prompt()}"
         f"{focus_block}\n\n"
         f"[최근 시뮬레이션 결과]\n{_format_simulation(simulation)}\n\n"
         f"[사용자 지시]\n{message}"
@@ -259,7 +262,9 @@ def _all_tools() -> list[dict[str, Any]]:
     return [_SEARCH_POLICY_TOOL, _update_node_tool(), _create_node_tool(), _DELETE_NODE_TOOL, _ANSWER_TOOL]
 
 
-def _condition_and_text(args: dict[str, Any], schema_paths: set[str]) -> tuple[Any, str, list[str]]:
+def _condition_and_text(
+    args: dict[str, Any], schema_paths: set[str], allowed_ops: set[str] | None = None,
+) -> tuple[Any, str, list[str]]:
     """LLM 인자의 condition/when/then → (DSL, condition_text, 검증 문제). 생성 파이프라인의
     `_sanitize_nodes`와 같은 방어 — 존재하지 않는 EvalContext 경로 등을 여기서도 거른다."""
     problems: list[str] = []
@@ -267,7 +272,7 @@ def _condition_and_text(args: dict[str, Any], schema_paths: set[str]) -> tuple[A
     if "condition" in args and args["condition"] is not None:
         try:
             cond = _build_condition(args["condition"])
-            problems.extend(_validate_condition(cond, schema_paths))
+            problems.extend(_validate_condition(cond, schema_paths, allowed_ops or set()))
         except (KeyError, TypeError, ValueError) as exc:
             problems.append(f"condition 조립 실패: {exc}")
     text = ""
@@ -299,7 +304,10 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
     docstring 참조).
     """
     graph = django_client.get_graph(graph_id)
-    schema_paths = django_client.get_eval_context_schema()
+    # 생성과 **같은 카탈로그**를 쓴다 — 대화형 수정이 다른 어휘를 알고 있으면 방금 만든
+    # 그래프를 고치면서 없는 경로·플래그를 끌어온다.
+    ctx = get_context("rule_chat")
+    schema_paths = ctx.paths
     try:
         simulation = django_client.get_latest_simulation(graph_id)
     except Exception:  # noqa: BLE001 — 시뮬레이션 컨텍스트 조회 실패가 대화 자체를 막으면 안 된다
@@ -307,7 +315,7 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
     messages.extend(_load_history(graph_id))
-    messages.append({"role": "user", "content": _build_user_prompt(graph, schema_paths, message, node_key, simulation)})
+    messages.append({"role": "user", "content": _build_user_prompt(graph, ctx, message, node_key, simulation)})
     applied: list[dict[str, Any]] = []
     final_answer = ""
     graph_gone = False  # dedup 원복으로 DRAFT가 삭제되면 True — 이후 그래프 접근 금지
@@ -363,7 +371,7 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
 
             elif name == "update_node":
                 node_key = args.get("node_key", "")
-                cond, text, problems = _condition_and_text(args, set(schema_paths))
+                cond, text, problems = _condition_and_text(args, set(schema_paths), ctx.operators)
                 existing = next((n for n in graph.get("nodes", []) if n["nodeKey"] == node_key), None)
                 if problems:
                     tool_content = f"반영 실패 — {'; '.join(problems)}"
@@ -415,7 +423,7 @@ def converse(graph_id: str, message: str, node_key: str | None = None) -> dict[s
 
             elif name == "create_node":
                 node_key = args.get("node_key", "")
-                cond, text, problems = _condition_and_text(args, set(schema_paths))
+                cond, text, problems = _condition_and_text(args, set(schema_paths), ctx.operators)
                 if problems:
                     tool_content = f"생성 실패 — {'; '.join(problems)}"
                 elif any(n["nodeKey"] == node_key for n in graph.get("nodes", [])):

@@ -19,52 +19,14 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
 from app.clients import core_auth
 from app.clients.core_auth import ServiceAuthError  # noqa: F401  — 기존 호출부 호환
 
-_TIMEOUT = core_auth.TIMEOUT
-_base = core_auth.base
 _request = core_auth.request
 
 
-# ---------------------------------------------------------------- 조회
-
-def get_eval_context_schema() -> list[str]:
-    """EvalContext 허용 경로 카탈로그. SoT는 Django `eval_context.py`.
-
-    `EvalContextSchemaView`(AllowAny)라 인증과 무관하게 동작해야 한다. 조회에 실패하면
-    빈 목록을 돌려주고, 프롬프트가 "허용 경로 조회 실패" 안내로 대체한다 — 여기서
-    멈추면 스키마 조회 장애가 생성 전체를 막는다.
-    """
-    try:
-        r = httpx.get(f"{_base()}/api/internal/rule-agent-v0/eval-context-schema/", timeout=_TIMEOUT)
-        r.raise_for_status()
-        return list(r.json().get("paths", []))
-    except Exception:  # noqa: BLE001
-        return []
-
-
-def get_action_schema() -> dict[str, Any]:
-    """decision/severity 선택지 카탈로그. SoT는 Django `engine.py`(§8 후속, 2026-08-19).
-
-    이전엔 이 파일을 호출하는 `agent.py`가 `DECISIONS`/`SEVERITIES`를 직접 하드코딩했다
-    (프론트 `DraftTab.tsx`도 별도로 하드코딩 — 3곳에 독립 존재). 조회 실패 시엔 그 옛
-    하드코딩 값을 기본값으로 돌려준다 — Django가 잠깐 안 떠 있어도 룰 생성 자체가
-    막히면 안 된다(§ `get_eval_context_schema`와 같은 원칙).
-    """
-    fallback = {"decisions": ["PASS", "REJECT", "RETURN", "REVIEW", "PASS_THROUGH"],
-                "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], "passThrough": "PASS_THROUGH"}
-    try:
-        r = httpx.get(f"{_base()}/api/internal/rule-agent-v0/action-schema/", timeout=_TIMEOUT)
-        r.raise_for_status()
-        data = r.json()
-        if data.get("decisions") and data.get("severities"):
-            return data
-        return fallback
-    except Exception:  # noqa: BLE001
-        return fallback
+# 조회(EvalContext 경로·decision/severity 카탈로그)는 여기 있었지만 `app/context`로 옮겼다.
+# 프롬프트에 실리는 목록과 검증 기준이 같은 객체여야 해서, 카탈로그 조회 창구를 하나로 모았다.
 
 
 # ---------------------------------------------------------------- 쓰기
