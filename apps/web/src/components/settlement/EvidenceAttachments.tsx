@@ -26,6 +26,8 @@ import {
 
 const POLL_MS = 3000
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic'
+//  판독이 더 진행되지 않는 상태 — 여기 도달하면 상위에 한 번 알린다.
+const TERMINAL: Attachment['extractionStatus'][] = ['DONE', 'FAILED', 'SKIPPED']
 
 export function EvidenceAttachments({
   settlementId,
@@ -54,8 +56,10 @@ export function EvidenceAttachments({
     try {
       const rows = await fetchAttachments(settlementId)
       setItems(rows)
+      //  **끝난 것은 성공이든 실패든 알린다.** DONE만 알리면 판독이 실패했을 때
+      //  상위(초안 재작성)가 영원히 기다린다 — 화면은 계속 "판독 중"으로 보인다.
       rows.forEach((a) => {
-        if (a.extractionStatus === 'DONE' && !notified.current.has(a.id)) {
+        if (TERMINAL.includes(a.extractionStatus) && !notified.current.has(a.id)) {
           notified.current.add(a.id)
           onFactsExtracted?.(a)
         }

@@ -6,10 +6,11 @@ POST /agent/draft — 생성 모드(신규 초안) / 수정 모드(자연어 지
 """
 from typing import Literal, Optional
 
+import httpx
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, ValidationError
 
-from app.agents import draft_agent
+from app.agents import draft_agent, submit_polish
 from app.schemas import CardType, Evidence
 
 router = APIRouter()
@@ -91,6 +92,46 @@ class DraftResponse(BaseModel):
     changes: list[str] = []  # 수정 모드에서만 채워짐(생성 모드는 빈 배열)
     comments: list[DraftComment]
     policyHints: list[PolicyHint]
+
+
+class SettlementDraftRequest(BaseModel):
+    """정산 기반 초안 — 사실은 서버가 조회한다(화면이 보내는 건 id와 지시뿐)."""
+    settlementId: int
+    instruction: str = ""
+
+
+@router.post("/draft/settlement")
+def run_settlement_draft(req: SettlementDraftRequest):
+    """저장된 정산 한 건으로 초안 작성.
+
+    응답 모델을 고정하지 않는다 — `notices`·`judgement`는 core가 조립한 사실을 그대로
+    실어 보내는 자리라, 여기서 다시 pydantic으로 좁히면 core가 필드를 늘릴 때마다
+    **응답 검증에서** 막힌다(분류 어휘를 `str`로 푼 것과 같은 이유).
+    """
+    try:
+        return draft_agent.run_for_settlement(req.settlementId, req.instruction)
+    except httpx.HTTPStatusError as exc:
+        #  사실 조회 실패를 200으로 덮지 않는다 — 사실 없이 쓴 초안은 실패보다 나쁘다.
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"정산 사실 조회 실패({exc.request.url.path}): {exc.response.text[:300]}",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail=f"core 연결 실패: {exc}") from exc
+
+
+class PolishRequest(BaseModel):
+    purpose: str
+    contextHint: str = ""
+
+
+@router.post("/draft/polish")
+def polish_purpose(req: PolishRequest):
+    """제출 직전 「지출 목적」 문체 다듬기.
+
+    사실이 늘었는지는 **서버가 기계적으로 대조**한다(`submit_polish` 모듈 docstring).
+    """
+    return submit_polish.polish(req.purpose, req.contextHint)
 
 
 @router.post("/draft", response_model=DraftResponse)

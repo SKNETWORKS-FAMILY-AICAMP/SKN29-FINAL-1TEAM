@@ -90,6 +90,19 @@ def judge_settlement(settlement_id: int) -> dict:
     return resp.json()
 
 
+def get_draft_context(settlement_id: int, timeout: float = 15) -> dict:
+    """Draft Agent 입력 한 묶음 (Django `SettlementDraftContextView`).
+
+    기본 내역(ERP 수집·영수증 비전·카드 원장)·업종·첨부 추출 사실·EvalContext·**엔진 판정
+    미리보기**·보완요청 맥락이 한 번에 온다. 초안이 「지어낼 수 없어야 하는 것」은 전부
+    여기서 오고, 모델에게는 분류·목적·설명만 남는다.
+
+    실패는 감추지 않고 올린다 — 사실 없이 초안을 쓰면 그게 정확히 이 구조가 없앤 문제다
+    (모델이 폼 값만 보고 그럴듯한 문장을 만들던 상태로 되돌아간다).
+    """
+    return _get(f"/api/internal/settlement-draft-context/{settlement_id}/", timeout=timeout)
+
+
 def get_settlement_summary(settlement_id: int) -> dict:
     """정산 요약(거래 ID·분류·가맹점·금액·목적) 조회 (Django `SettlementSummaryView`).
 

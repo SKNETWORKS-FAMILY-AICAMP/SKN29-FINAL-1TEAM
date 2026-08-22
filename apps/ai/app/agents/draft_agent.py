@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from functools import lru_cache
 
 from openai import OpenAI
 from pydantic import BaseModel, create_model
 
+from app.agents import draft_facts
 from app.clients import core_client
 from app.config import settings
 from app.mcp import tools
@@ -83,6 +84,53 @@ class LLMReviseOutput(BaseModel):
     comments: list[LLMComment]
 
 
+class FlagExplanation(BaseModel):
+    """판정 플래그 하나에 대한 **사용자용 한 문장**.
+
+    `code`는 서버가 준 목록에서만 고르게 하고, 목록 밖 코드는 서버가 버린다 —
+    모델이 없는 사유를 만들어 안내하면 사용자는 있지도 않은 문제를 고치려 한다.
+    """
+    code: str
+    text: str
+
+
+class LLMSettlementDraftOutput(BaseModel):
+    """정산 기반 초안 — **분류·목적·설명만** 낸다.
+
+    가맹점·금액·일시·업종은 스키마에 아예 없다. 그것들은 ERP 수집·영수증 비전·카드 원장이
+    이미 확정한 사실이라, 모델이 낼 수 있는 자리를 두면 언젠가 덮어쓴다(업종을 스키마에서
+    뺀 것과 같은 이유 — `_resolve_industry` docstring).
+    """
+    category: Category
+    purpose: str
+    reasoning: str                       # 왜 이 분류·목적인지 사용자에게 하는 설명
+    flagExplanations: list[FlagExplanation]
+
+
+SYSTEM_PROMPT_SETTLEMENT = """당신은 법인카드 정산 초안 작성 보조입니다.
+사용자가 지출 건을 올리면, 확정된 사실을 읽고 **비용 분류와 지출 목적**을 채우고
+**왜 그렇게 했는지, 지금 제출하면 어떻게 되는지**를 사용자에게 설명합니다.
+
+반드시 지켜야 할 규칙:
+1. 비용 분류(category)는 다음 중 하나만 선택하세요: {categories}.
+   - 지출 성격은 파악됐지만 나열된 분류 어디에도 맞지 않으면 "기타".
+   - 주어진 사실로 판단할 수 없으면 **빈 문자열("")** 로 두세요. 추측하지 마세요.
+2. **기본 내역(가맹점·금액·일시·업종·카드)은 확정된 사실입니다.** 다시 추측하거나
+   바꾸려 하지 말고, 목적·설명을 쓸 때 근거로만 쓰세요.
+3. **판정 결과를 스스로 계산하지 마세요.** 룰 엔진이 이미 판정했고 그 결과가 주어집니다.
+   당신은 그 결과를 사용자가 알아들을 말로 옮기기만 합니다.
+   - 판정이 REVIEW면 **정상입니다.** "회계 담당자가 직접 확인하는 건"이라고만 안내하고,
+     문제가 있는 것처럼 쓰지 마세요.
+   - 판정이 RETURN/REJECT면 지금 제출하면 되돌아온다는 뜻입니다. 무엇을 하면 해소되는지
+     구체적으로 안내하세요(첨부 추가·인원 기재·목적 보완 등).
+4. flagExplanations에는 **주어진 플래그 코드에 대해서만** 한 문장씩 쓰세요. 코드를
+   지어내지 말고, 설명할 것이 없는 코드는 빼세요.
+5. purpose(지출 목적)는 주어진 사실에 있는 내용만으로 1~2문장으로 쓰세요.
+   참석자 수·거래처명처럼 **사실에 없는 정보를 채워 넣지 마세요.** 모르면 쓰지 않습니다.
+6. reasoning은 사용자에게 하는 설명입니다. 내부 필드명(evidence.* 같은 dot-path)이나
+   플래그 코드를 그대로 노출하지 말고 일상어로 쓰세요."""
+
+
 # ── 분류 어휘 주입 — 구조화 출력 enum을 **런타임에 core 목록으로 다시 만든다** ─────────
 #  위 두 모델의 `Category`(정적 미러)는 core 미기동 시 폴백이다. 정상 경로에서는
 #  `_with_categories()`가 같은 모델을 core 어휘 + 빈 값으로 다시 찍어 `response_format`에
@@ -113,6 +161,10 @@ def _draft_output_model() -> type[BaseModel]:
 
 def _revise_output_model() -> type[BaseModel]:
     return _with_categories(LLMReviseOutput, tuple(category_values()))
+
+
+def _settlement_output_model() -> type[BaseModel]:
+    return _with_categories(LLMSettlementDraftOutput, tuple(category_values()))
 
 
 # ── 프롬프트 ────────────────────────────────────────────────────────────
@@ -437,3 +489,151 @@ def revise(req: "ReviseRequest", trace: dict | None = None) -> dict:
         "comments": comments,
         "policyHints": _build_policy_hints(draft["amount"], draft["evidence"], draft["category"], trace),
     }
+
+
+# ── 정산 기반 초안 (settlement 모드) ────────────────────────────────────
+#
+# 기존 폼 기반 모드(`run`/`revise`)와의 차이는 "무엇을 사실로 받는가"다. 폼 모드는
+# 사용자가 타이핑한 가맹점·금액만 봤고, 그래서 모델이 지어낼 수 있는 자리가 넓었다.
+# 이 모드는 core `draft_context`가 조립한 사실 묶음(기본 내역·첨부 추출·EvalContext·
+# **엔진 판정 미리보기**·보완요청 맥락)을 받는다.
+#
+# 판정을 LLM이 예측하지 않는다는 것이 이 모드의 핵심이다 — 자세한 근거는
+# core `domain/settlements/draft_context.py` 모듈 docstring 참조.
+
+def _notice_level(decision: str, flag: dict) -> str:
+    """안내 등급. **판정이 정하고 플래그가 이유를 댄다.**
+
+    REVIEW를 경고로 올리지 않는 이유: 룰이 자동 판단하지 않고 회계가 보는 것뿐이라
+    지출자가 고칠 것이 없다. 여기서 경고를 띄우면 정상 건마다 사용자가 멈춰 선다.
+    """
+    if decision in draft_facts.BLOCKING_DECISIONS:
+        return "blocker"
+    if decision == "REVIEW":
+        return "info"
+    return "info"
+
+
+def _build_notices(ctx: dict, explanations: list) -> list[dict]:
+    """LLM 문장 + 엔진 사실을 합쳐 안내 목록을 만든다.
+
+    **코드는 서버가 정하고 문장만 LLM에서 받는다.** 모델이 코드를 지어내면 사용자는
+    있지도 않은 문제를 고치려 한다 — 목록 밖 코드는 버린다.
+    설명이 안 온 플래그는 등록된 `description`으로 채운다(빈손으로 두지 않는다).
+    """
+    judgement = ctx.get("judgement") or {}
+    decision = judgement.get("decision") or ""
+    by_code = {e.code: e.text for e in explanations if getattr(e, "code", "")}
+
+    notices = []
+    for flag in judgement.get("flags") or []:
+        code = flag.get("code")
+        if not code:
+            continue
+        notices.append({
+            "level": _notice_level(decision, flag),
+            "code": code,
+            "label": flag.get("label") or code,
+            "severity": flag.get("severityLabel") or flag.get("severity") or "",
+            "owner": flag.get("ownerLabel") or flag.get("owner") or "",
+            "text": by_code.get(code) or flag.get("description") or flag.get("label") or code,
+        })
+
+    dropped = sorted(set(by_code) - {n["code"] for n in notices})
+    if dropped:
+        logger.info("모델이 목록 밖 플래그 코드를 설명했다(버림): %s", dropped)
+    return notices
+
+
+def _judgement_summary(ctx: dict) -> dict:
+    """화면이 그대로 쓸 판정 요약 — LLM을 거치지 않은 엔진 원본."""
+    j = ctx.get("judgement") or {}
+    return {
+        "available": bool(j.get("available")),
+        "decision": j.get("decision") or "",
+        "blocking": bool(j.get("blocking")),
+        "scope": j.get("scope") or "",
+        "graphs": j.get("graphs") or [],
+        "error": j.get("error") or "",
+    }
+
+
+def _call_llm_settlement(ctx: dict, instruction: str, trace: dict | None) -> Any:
+    system_prompt = _system_prompt(SYSTEM_PROMPT_SETTLEMENT)
+    user_prompt = draft_facts.render(ctx)
+    if instruction:
+        user_prompt += (
+            f"\n\n[사용자 지시]\n{instruction}\n"
+            "→ 지시에 해당하는 항목만 고치고, 나머지는 현재 값을 유지하라. "
+            "지시가 사실과 어긋나면(없는 참석자 수를 넣으라는 등) 따르지 말고 그 이유를 reasoning에 적어라."
+        )
+    _record_call(trace, system_prompt, user_prompt)
+    started = time.perf_counter()
+    resp = _get_client().beta.chat.completions.parse(
+        model=MODEL,
+        temperature=0.3,
+        timeout=25,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format=_settlement_output_model(),
+    )
+    _record_response(trace, resp, started)
+    parsed = resp.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError("LLM이 구조화된 응답을 반환하지 않았습니다(모델 거부 등)")
+    return parsed
+
+
+def run_for_settlement(settlement_id: int, instruction: str = "", trace: dict | None = None) -> dict:
+    """저장된 정산 한 건으로 초안을 만든다.
+
+    **사실 조회 실패는 감추지 않는다.** 사실 없이 초안을 쓰면 모델이 폼 값만 보고 그럴듯한
+    문장을 만들던 상태로 되돌아가는데, 그건 실패보다 나쁘다(사용자는 성공으로 읽는다).
+    LLM 호출 실패는 흡수하되 분류를 지어내지 않고 비워 둔다.
+    """
+    ctx = core_client.get_draft_context(settlement_id)
+    if trace is not None:
+        trace["draftContext"] = ctx
+
+    current = ctx.get("current") or {}
+    judgement = _judgement_summary(ctx)
+
+    try:
+        out = _call_llm_settlement(ctx, instruction.strip(), trace)
+        return {
+            "mode": "settlement",
+            "settlementId": settlement_id,
+            "draft": {
+                "category": out.category,
+                "purpose": out.purpose,
+                #  기본 내역은 **되돌려 보내기만** 한다 — 화면이 다시 그리는 값이고
+                #  모델은 이 자리에 아무것도 쓸 수 없다(스키마에 없다).
+                **(ctx.get("basics") or {}),
+            },
+            "reasoning": out.reasoning,
+            "notices": _build_notices(ctx, out.flagExplanations),
+            "judgement": judgement,
+            "returnContext": ctx.get("returnContext"),
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("정산 초안 생성 실패(settlement=%s)", settlement_id)
+        if trace is not None:
+            trace["error"] = f"{type(exc).__name__}: {exc}"
+            trace["fallbackUsed"] = True
+        return {
+            "mode": "settlement",
+            "settlementId": settlement_id,
+            "draft": {
+                "category": current.get("category") or "",
+                "purpose": current.get("purpose") or "",
+                **(ctx.get("basics") or {}),
+            },
+            "reasoning": f"초안을 생성하지 못했습니다 — 분류와 목적을 직접 입력해 주세요. ({type(exc).__name__})",
+            #  LLM이 없어도 **판정 사유는 그대로 안내한다** — 등록된 설명이 있으므로
+            #  빈손으로 두지 않는다(사유 코드를 펴는 것이지 지어내는 게 아니다).
+            "notices": _build_notices(ctx, []),
+            "judgement": judgement,
+            "returnContext": ctx.get("returnContext"),
+        }

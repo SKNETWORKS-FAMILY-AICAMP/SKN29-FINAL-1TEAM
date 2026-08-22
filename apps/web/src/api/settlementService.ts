@@ -276,3 +276,81 @@ export async function deleteSettlement(id: string): Promise<boolean> {
     return true
   } catch { return false }
 }
+
+// ── 정산 기반 초안 · 제출 준비 (Draft Agent 고도화) ───────────────────
+//
+// 폼 값을 보내는 `suggestDraft`와 다르다. 여기서는 **기본 내역을 화면이 보내지 않는다** —
+// ERP 수집·영수증 비전·카드 원장이 확정한 사실을 서버가 직접 읽어 모델에 넣는다.
+// 그래서 가맹점·금액이 모델 출력 스키마에 아예 없다(지어낼 자리가 없다).
+
+/** 판정 사유 하나에 대한 사용자용 안내. `code`는 서버가 정하고 문장만 모델이 쓴다. */
+export interface DraftNotice {
+  level: 'blocker' | 'warn' | 'info'
+  code: string
+  label: string
+  text: string
+  severity?: string
+  owner?: string
+}
+
+/** 엔진 dry-run 결과 — **모델이 예측한 값이 아니다.** */
+export interface JudgementPreview {
+  available: boolean
+  decision: '' | 'PASS' | 'REVIEW' | 'RETURN' | 'REJECT'
+  blocking: boolean
+  scope: string
+  graphs: { scope: string; name: string; version: number; decision: string; path: string[] }[]
+  error?: string
+}
+
+export interface SettlementDraft {
+  mode: 'settlement'
+  settlementId: number
+  draft: Record<string, string | number | boolean | null>
+  reasoning: string
+  notices: DraftNotice[]
+  judgement: JudgementPreview
+  returnContext?: { statusLabel?: string; reason?: string; actor?: string; at?: string } | null
+}
+
+/**
+ * 저장된 정산 한 건으로 초안을 만든다(분류·목적·설명·안내).
+ *
+ * **실패를 조용히 삼키지 않는다** — 사실 조회가 실패했는데 폼 값으로 그럴듯한 초안을
+ * 만들면 사용자는 그걸 성공으로 읽는다. 호출부가 사유를 그대로 보여줄 수 있게 던진다.
+ */
+export async function draftForSettlement(
+  id: string, instruction = '',
+): Promise<SettlementDraft> {
+  const { data } = await endpoints.draftForSettlement(id, instruction)
+  return data as SettlementDraft
+}
+
+export interface SubmitPreparation {
+  purpose: string
+  polish: {
+    applied: boolean
+    original: string
+    polished: string
+    review: DraftNotice[]
+    diff: Record<string, unknown>
+  }
+  judgement: JudgementPreview & { flags?: DraftNotice[] }
+  notices: DraftNotice[]
+  /** 참이면 사람을 멈춰 세운다. **기준은 서버가 정한다**(화면이 갖고 있으면 곧 갈린다). */
+  shouldConfirm: boolean
+}
+
+/**
+ * 제출 직전 준비 — 문체를 다듬고, 지금 제출하면 어떻게 되는지 확인한다.
+ *
+ * 기본 동작은 **조용히 다듬어 그대로 제출**이다. `shouldConfirm`이 참일 때만 팝업을 띄운다.
+ * 호출 실패는 제출을 막지 않는다(다듬기는 편의 기능이다) — null을 돌려주고 그대로 진행한다.
+ */
+export async function prepareSubmit(id: string): Promise<SubmitPreparation | null> {
+  if (USE_MOCK) { await mockDelay(); return null }
+  try {
+    const { data } = await endpoints.prepareSubmit(id)
+    return data as SubmitPreparation
+  } catch { return null }
+}

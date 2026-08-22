@@ -21,10 +21,14 @@ import { useCan } from '../../lib/capabilities'
 import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
-  createSettlement, decideTeamSettlement, deleteSettlement, raiseSettlements, reviewSettlement,
-  reviseDraft, submitSettlements, suggestDraft, updateSettlement,
-  type DraftSuggestion, type PolicyHint,
+  createSettlement, decideTeamSettlement, deleteSettlement, draftForSettlement,
+  prepareSubmit, raiseSettlements, reviewSettlement, reviseDraft, submitSettlements,
+  suggestDraft, updateSettlement,
+  type DraftNotice, type DraftSuggestion, type JudgementPreview, type PolicyHint,
+  type SubmitPreparation,
 } from '../../api/settlementService'
+import { AgentPanel } from './AgentPanel'
+import { SubmitConfirmModal } from './SubmitConfirmModal'
 import { DecisionReasonModal } from './DecisionReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
 import { RuleJudgementPanel } from './RuleJudgementPanel'
@@ -120,6 +124,24 @@ export function SettlementDetailModal({
   // 신규 등록(F-1) 시안은 방금 생성된 fact.json을 펼쳐서 보여준다 — 기존 건 조회는 접어둔 채 시작.
   const [factOpen, setFactOpen] = useState(isCreate)
 
+  // ── 신규 등록: **저장 먼저 → 비전 판독 → 초안** ─────────────────────
+  //  예전엔 저장 전에 폼 값으로 초안을 만들었다. 그러면 모델이 보는 건 사람이 타이핑한
+  //  값뿐이라 「비전이 기본 내역을 채운다」가 성립하지 않는다. 지금은 파일을 고르는 순간
+  //  DRAFT로 저장하고(첨부 판독이 그 자리에서 예약된다), 판독이 끝나면 그 사실로 초안을 쓴다.
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  /** 저장 이후에는 이 id로 첨부·초안·제출이 돈다. */
+  const workingId = item?.id ?? createdId
+  //  Agent가 무엇을 하고 있는지 **단계로** 보여준다 — 스피너만 돌리면 수십 초 동안
+  //  멈춘 것처럼 보인다(비전 판독은 실제로 오래 걸린다).
+  const [agentPhase, setAgentPhase] = useState<'' | 'saving' | 'reading' | 'drafting'>('')
+  const [agentError, setAgentError] = useState('')
+  const [reasoning, setReasoning] = useState('')
+  const [notices, setNotices] = useState<DraftNotice[]>([])
+  const [judgement, setJudgement] = useState<JudgementPreview | null>(null)
+  //  제출 전 확인 — 서버가 `shouldConfirm`을 준 경우에만 뜬다.
+  const [submitPrep, setSubmitPrep] = useState<SubmitPreparation | null>(null)
+  const submitAfterConfirm = useRef<null | (() => Promise<void>)>(null)
+
   const [pending, setPending] = useState(false)
   //  결정은 **항상 사유 모달을 거친다** — 팀 반려가 확인 없이 바로 나가던 것도 여기로 합쳤다.
   const [decisionTarget, setDecisionTarget] = useState<'RETURN' | 'REJECT' | null>(null)
@@ -169,34 +191,72 @@ export function SettlementDetailModal({
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
   /**
-   * 영수증 **파일**을 고른다. 예전엔 파일 없이 버튼만 누르면 `receiptUp=true`가 되고
-   * 서버가 `receipts/<tx>.jpg`라는 있지도 않은 경로로 `Receipt`를 만들었다 — 증빙이
-   * 있다고 기록됐지만 파일은 어디에도 없었고 비전 판독도 열 파일이 없었다.
+   * 영수증 **파일**을 고르면 그 자리에서 저장한다(신규 등록).
    *
-   * 저장 전까지는 파일을 **화면이 들고 있다가**(정산 id가 아직 없다) 저장 요청에 함께 보낸다.
-   * 저장된 건은 `EvidenceAttachments`가 별도로 다룬다(그쪽은 정산 id가 있다).
+   * 여기가 이 화면의 핵심 변경점이다. 예전 순서는 「사람이 가맹점·금액을 친다 → 폼 값으로
+   * 초안 → 저장」이었고, 그러면 모델이 보는 건 사람이 타이핑한 값뿐이라 **영수증은 초안에
+   * 아무 영향도 주지 못했다**(판독은 저장 후에야 돌고, 저장하면 모달이 닫혔다).
+   *
+   * 지금은 「파일 → 저장(DRAFT) → 서버가 판독 → 판독한 사실로 초안」이다. 사용자는
+   * 파일 하나만 고르면 되고, 가맹점·금액은 **비전이 채운다**(`evidence_extract`가 거래
+   * 원장에 반영한다 — 사람이 직접 친 값은 덮지 않는다).
+   *
+   * 저장을 되돌리는 「취소」는 두지 않는다 — 파일을 고른 시점에 이미 건이 생겼으므로,
+   * 없애려면 「삭제」가 맞다(그게 실제로 일어나는 일이다).
    */
-  const pickReceipt = (file: File | undefined) => {
-    if (!file) return
+  const pickReceipt = async (file: File | undefined) => {
+    if (!file || createdId) return
     setReceiptFile(file)
     setReceiptUp(true)
-    pushComment({ icon: 'ocr', text: `영수증 "${file.name}"을 첨부했습니다. 저장하면 판독이 시작됩니다.` })
-    void suggestFromForm()
+    setAgentError('')
+    setAgentPhase('saving')
+    try {
+      //  가맹점·금액을 **보내지 않는다**. 서버가 `basicsPending`으로 표시해 두고,
+      //  영수증 판독이 읽은 값으로 채운다. 사람이 미리 친 값이 있으면 그건 그대로 존중된다.
+      const created = await createSettlement(draft(), file)
+      setCreatedId(created.id)
+      onCreated?.(created)
+      setAgentPhase('reading')
+      pushComment({ icon: 'ocr', text: `영수증 "${file.name}"을 올렸습니다. 판독이 끝나면 초안을 작성합니다.` })
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setAgentPhase('')
+      setAgentError(detail ?? '저장하지 못했습니다.')
+      setReceiptFile(null)
+      setReceiptUp(false)
+    }
   }
 
-  /** 입력값으로 초안 제안 — 파일 판독은 저장 후 서버가 한다(여기선 폼 값만 쓴다). */
-  const suggestFromForm = async () => {
-    setPending(true)
-    const result = await suggestDraft({
-      merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence: 'OK',
-    })
-    setPending(false)
-    if (!result) {
-      pushComment({ icon: 'ai', text: '초안 제안을 받지 못했습니다 — 내용을 직접 입력해 주세요.' })
-      return
+  /**
+   * 저장된 건의 사실로 초안을 만든다(분류·목적·설명·안내).
+   *
+   * **폴백을 두지 않는다.** 사실 조회가 실패했는데 폼 값으로 그럴듯한 초안을 만들면
+   * 사용자는 그걸 성공으로 읽는다 — 이 흐름이 없애려던 상태로 되돌아간다.
+   */
+  const runSettlementDraft = useCallback(async (id: string, instruction = '') => {
+    setAgentPhase('drafting')
+    setAgentError('')
+    try {
+      const result = await draftForSettlement(id, instruction)
+      const d = result.draft
+      if (d.merchant) setMerchant(String(d.merchant))
+      if (d.amount) setAmountText(String(d.amount))
+      if (d.date) setDateStr(String(d.date))
+      if (d.industry !== undefined) setIndustry(String(d.industry ?? ''))
+      if (d.industryCode !== undefined) setIndustryCode(String(d.industryCode ?? ''))
+      //  분류를 비워 보내면(판단 불가) 덮지 않는다 — 「선택 필요」로 남아 사람이 고른다.
+      if (d.category) { setCategory(String(d.category)); setAiSuggested(true) }
+      if (d.purpose) setPurpose(String(d.purpose))
+      setReasoning(result.reasoning ?? '')
+      setNotices(result.notices ?? [])
+      setJudgement(result.judgement ?? null)
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setAgentError(detail ?? '초안을 만들지 못했습니다 — 분류와 목적을 직접 입력해 주세요.')
+    } finally {
+      setAgentPhase('')
     }
-    applyDraft(result)
-  }
+  }, [])
 
   /** Draft Agent 응답을 폼·코멘트·규정 힌트에 반영 */
   const applyDraft = (result: DraftSuggestion) => {
@@ -214,9 +274,19 @@ export function SettlementDetailModal({
     result.comments?.forEach((c) => pushComment({ icon: c.icon as AiComment['icon'], text: c.text }))
   }
 
-  // 자연어 지시로 초안 수정(수정 모드)
+  /**
+   * 자연어 지시로 초안 수정.
+   *
+   * **저장된 건이면 정산 모드로 보낸다** — 그래야 지시가 판정 사실·판독 결과와 함께 읽힌다.
+   * 폼 값을 실어 보내는 옛 경로(`reviseDraft`)는 아직 저장 전인 경우에만 남는다.
+   */
   const askAgent = async () => {
     const text = instruction.trim()
+    if (workingId) {
+      setInstruction('')
+      await runSettlementDraft(workingId, text)
+      return
+    }
     setPending(true)
     const result = text
       ? await reviseDraft(text, {
@@ -239,16 +309,35 @@ export function SettlementDetailModal({
     setExtraFiles((prev) => (prev.some((f) => f.id === String(a.id)) ? prev : [...prev, { id: String(a.id), name: a.originalName }]))
     setComments((prev) => [...prev, {
       icon: 'doc',
-      text: n > 0
-        ? `증빙 문서 "${a.originalName}" 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
-        : `증빙 문서 "${a.originalName}"을 판독했지만 확인된 판정 사실이 없습니다.`,
+      text: a.extractionStatus === 'FAILED'
+        ? `증빙 문서 "${a.originalName}" 판독에 실패했습니다 — 사실 없이 초안을 씁니다.`
+        : n > 0
+          ? `증빙 문서 "${a.originalName}" 판독 완료 — 판정 사실 ${n}건을 확인했습니다.`
+          : `증빙 문서 "${a.originalName}"을 판독했지만 확인된 판정 사실이 없습니다.`,
     }])
-  }, [])
+
+    //  **판독이 끝나면 초안을 (다시) 쓴다.** 추가 증빙이 붙으면 판정 사실이 늘어나므로
+    //  분류·목적·안내가 달라질 수 있다 — 사람이 별도 버튼을 눌러야 하면 아무도 안 누른다.
+    //  실패도 트리거다(무한정 기다리지 않는다). 진행 중이면 겹쳐 부르지 않는다.
+    const id = itemIdRef.current
+    if (!id || agentPhaseRef.current === 'drafting') return
+    void runSettlementDraft(id)
+  }, [runSettlementDraft])
+
+  //  콜백이 매번 새로 만들어지면 `EvidenceAttachments`의 폴링 이펙트가 재시작된다 —
+  //  최신 값은 ref로 읽고 콜백 자체는 고정한다.
+  const itemIdRef = useRef<string | null>(null)
+  const agentPhaseRef = useRef(agentPhase)
+  useEffect(() => { itemIdRef.current = workingId ?? null }, [workingId])
+  useEffect(() => { agentPhaseRef.current = agentPhase }, [agentPhase])
 
 
   const draft = (): Omit<Settlement, 'id' | 'status'> => ({
     date: dateStr,
-    merchant: merchant || '미상 가맹점',
+    //  **빈 값을 그대로 보낸다.** 예전엔 여기서 '미상 가맹점'을 채워 보냈는데, 서버는
+    //  그걸 「사람이 친 값」으로 보고 영수증 판독이 채워도 되는 자리인지 판단할 근거를
+    //  잃는다(`basicsPending`). 플레이스홀더는 서버가 정한다.
+    merchant,
     amount: numOnly(amountText),
     cardType,
     cardId,
@@ -274,9 +363,9 @@ export function SettlementDetailModal({
    * 조회 전용(남의 건)일 땐 건너뛴다 — 팀장이 팀원 건을 제출할 때 남의 입력을 덮어쓰면 안 된다.
    */
   const persistEdits = async (): Promise<boolean> => {
-    if (!item || readOnly) return true
+    if (!workingId || readOnly) return true
     try {
-      await updateSettlement(item.id, {
+      await updateSettlement(workingId, {
         category,
         purpose: purpose || '',
         merchantIndustry: industry || '',
@@ -295,55 +384,92 @@ export function SettlementDetailModal({
     }
   }
 
-  // 신규 저장 → createSettlement → 목록에 추가. **영수증 파일이 없으면 저장 자체가 안 된다.**
-  const save = async () => {
-    if (!receiptFile) return
-    setPending(true)
-    try {
-      const created = await createSettlement(draft(), receiptFile)
-      onCreated?.(created)
-      onClose()
-    } catch (e: unknown) {
-      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      pushComment({ icon: 'ai', text: `저장하지 못했습니다 — ${detail ?? '서버 오류'}` })
-    } finally {
-      setPending(false)
-    }
-  }
-
   // '내 지출' 삭제 — 아직 팀·회계로 넘어가지 않은 건만.
+  //  신규 등록에서 「취소」를 대신하는 자리이기도 하다 — 영수증을 고른 시점에 이미
+  //  건이 생겼으므로, 없애는 동작의 정확한 이름은 취소가 아니라 삭제다.
   const remove = async () => {
-    if (!item) return
-    if (!window.confirm(`“${item.merchant}” 지출 건을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`)) return
+    if (!workingId) return
+    const label = merchant || item?.merchant || '이'
+    if (!window.confirm(`“${label}” 지출 건을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`)) return
     setPending(true)
-    const ok = await deleteSettlement(item.id)
+    const ok = await deleteSettlement(workingId)
     setPending(false)
     if (!ok) { window.alert('이미 팀·회계로 넘어간 건은 삭제할 수 없습니다.'); return }
-    onDeleted?.(item.id)
+    onDeleted?.(workingId)
     onClose()
   }
 
   // 개인 '올림' (DRAFT → TEAM_COLLECTING). 1인 팀도 팀 취합 단계를 거친다.
-  const raise = async () => {
-    if (!item) return
-    setPending(true)
-    if (!await persistEdits()) { setPending(false); return }
-    const status = await raiseSettlements([item.id])
-    onStatusChange?.(item.id, status)
-    setPending(false)
+  /**
+   * 올림·제출 공통 전처리 — **저장 → 문체 다듬기 → 판정 미리보기**.
+   *
+   * 기본 동작은 「조용히 다듬어 그대로 진행」이다. 서버가 `shouldConfirm`을 참으로 준
+   * 경우에만 팝업을 띄우고, 그 기준은 서버가 소유한다(화면이 갖고 있으면 곧 갈린다).
+   *
+   * 준비 호출이 실패해도 진행을 막지 않는다 — 다듬기는 편의 기능이다.
+   *
+   * @returns 계속 진행해도 되면 true, 팝업을 띄웠으면 false
+   */
+  const prepareThen = async (go: () => Promise<void>): Promise<boolean> => {
+    if (!workingId) return true
+    if (!await persistEdits()) return false
+
+    const prep = await prepareSubmit(workingId)
+    if (prep) {
+      //  다듬기가 적용됐으면 서버가 이미 저장했다 — 화면 값도 맞춰 둔다
+      //  (안 맞추면 다음 `persistEdits`가 옛 문장으로 되돌린다).
+      if (prep.purpose && prep.purpose !== purpose) setPurpose(prep.purpose)
+      if (prep.shouldConfirm) {
+        submitAfterConfirm.current = go
+        setSubmitPrep(prep)
+        return false
+      }
+      setNotices(prep.notices ?? [])
+      setJudgement(prep.judgement ?? null)
+    }
+    await go()
+    return true
+  }
+
+  const doRaise = async () => {
+    if (!workingId) return
+    const status = await raiseSettlements([workingId])
+    onStatusChange?.(workingId, status)
     onClose()
+  }
+
+  const raise = async () => {
+    setPending(true)
+    try { await prepareThen(doRaise) } finally { setPending(false) }
   }
 
   // 팀 제출 (TEAM_COLLECTING → SUBMITTED) · 회계 보완요청 재제출 (RETURNED → SUBMITTED)
   //  제출 직후 룰 엔진 1차판정이 이어 돌아 실제 도착 상태는 건마다 다르다 — 그 값을 그대로 반영한다.
-  const submit = async () => {
-    if (!item) return
-    setPending(true)
-    if (!await persistEdits()) { setPending(false); return }
-    const outcome = await submitSettlements([item.id])
-    onStatusChange?.(item.id, outcome.status[item.id] ?? 'SUBMITTED')
-    setPending(false)
+  const doSubmit = async () => {
+    if (!workingId) return
+    const outcome = await submitSettlements([workingId])
+    onStatusChange?.(workingId, outcome.status[workingId] ?? 'SUBMITTED')
     onClose()
+  }
+
+  const submit = async () => {
+    setPending(true)
+    try { await prepareThen(doSubmit) } finally { setPending(false) }
+  }
+
+  /** 확인 팝업에서 고른 문장으로 저장하고 이어서 진행한다. */
+  const confirmAndGo = async (chosen: string) => {
+    const go = submitAfterConfirm.current
+    setPending(true)
+    try {
+      if (workingId && chosen !== purpose) {
+        setPurpose(chosen)
+        await updateSettlement(workingId, { purpose: chosen })
+      }
+      setSubmitPrep(null)
+      submitAfterConfirm.current = null
+      await go?.()
+    } finally { setPending(false) }
   }
 
   const approve = async () => {
@@ -382,6 +508,18 @@ export function SettlementDetailModal({
     }
   }
 
+  //  제출 전 확인 — **서버가 `shouldConfirm`을 준 경우에만** 여기 온다(기본은 조용히 진행).
+  if (submitPrep) {
+    return (
+      <SubmitConfirmModal
+        prep={submitPrep}
+        busy={pending}
+        onCancel={() => { setSubmitPrep(null); submitAfterConfirm.current = null }}
+        onSubmit={(chosen) => void confirmAndGo(chosen)}
+      />
+    )
+  }
+
   // F-2: 사유는 별도 모달에서 (상세 모달은 잠시 숨김)
   if (decisionTarget && item) {
     return (
@@ -397,18 +535,33 @@ export function SettlementDetailModal({
 
   //  **영수증은 필수다.** 증빙 없이 등록되면 판정이 곧바로 「증빙 누락」으로 잡고,
   //  담당자는 되돌려보낼 뿐이다 — 그 왕복을 등록 단계에서 없앤다.
-  const canSave = merchant.trim() !== '' && numOnly(amountText) > 0 && Boolean(receiptFile)
+  //  신규 등록에서 아직 파일을 안 골랐으면 할 수 있는 게 없다.
+  const creatingBeforeUpload = isCreate && !createdId
 
   const footer = (
     <>
-      {/* 팀 취합 뷰에선 취소 버튼을 두지 않는다(닫기는 우상단 X·Esc). 그 외 화면은 기존대로 취소/닫기 노출 */}
-      {!isTeamView && (
-        <button className="btn" onClick={onClose} disabled={pending}>{readOnly ? '닫기' : '취소'}</button>
+      {/*  「취소」를 두지 않는다 — 영수증을 고른 순간 이미 건이 저장돼 있어서, 취소라는
+          이름이 실제로 일어나는 일과 어긋난다(없애려면 삭제다). 파일을 고르기 전이거나
+          조회 전용일 때만 닫기를 남긴다. 팀 취합 뷰는 종전대로 우상단 X·Esc로 닫는다. */}
+      {!isTeamView && (creatingBeforeUpload || readOnly) && (
+        <button className="btn" onClick={onClose} disabled={pending}>닫기</button>
       )}
-      {isCreate ? (
-        <button className="btn primary" onClick={save} disabled={pending || !canSave}>
-          {pending ? '저장 중…' : '저장(등록)'}
-        </button>
+      {creatingBeforeUpload ? (
+        <span className="text-meta">영수증 파일을 고르면 등록되고 초안 작성이 시작됩니다.</span>
+      ) : isCreate ? (
+        <>
+          <button className="btn reject" onClick={remove} disabled={pending || agentPhase !== ''}>
+            <Trash2 size={13} /> 삭제
+          </button>
+          <button
+            className="btn primary"
+            onClick={raise}
+            disabled={pending || agentPhase !== ''}
+            title={agentPhase !== '' ? 'AI가 초안을 작성하는 중입니다.' : undefined}
+          >
+            {agentPhase !== '' ? 'AI 작성 중…' : '팀에 올림'}
+          </button>
+        </>
       ) : canTeamDecide ? (
         /* 팀 취합 — 목록 행과 **같은 버튼 세트**다(화면마다 눌러야 할 자리가 다르면 안 된다).
            제출은 사유 없이 바로 회계로 올리고, 보완·반려는 사유 모달을 거친다. */
@@ -515,19 +668,25 @@ export function SettlementDetailModal({
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.webp,.heic"
                     style={{ display: 'none' }}
-                    onChange={(e) => pickReceipt(e.target.files?.[0])}
+                    onChange={(e) => void pickReceipt(e.target.files?.[0])}
                   />
-                  <button
-                    className="btn primary"
-                    style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}
-                    onClick={() => receiptRef.current?.click()}
-                    disabled={pending}
-                  >
-                    <Upload size={14} /> {receiptFile ? '영수증 다시 고르기' : '영수증 파일 선택 (필수)'}
-                  </button>
-                  {/* 판독은 저장 후 서버가 한다 — 지금 "판독했습니다"라고 말하면 거짓이 된다. */}
+                  {/*  **파일을 고르면 그 자리에서 등록된다.** 다시 고르기는 두지 않는다 —
+                      이미 저장된 건의 영수증을 바꾸는 건 「다시 고르기」가 아니라 삭제 후
+                      재등록이거나 추가 증빙 첨부다(아래 증빙 자료). */}
+                  {!createdId && (
+                    <button
+                      className="btn primary"
+                      style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}
+                      onClick={() => receiptRef.current?.click()}
+                      disabled={pending || agentPhase !== ''}
+                    >
+                      <Upload size={14} /> 영수증 파일 선택
+                    </button>
+                  )}
                   <div className="text-meta" style={{ marginTop: 6 }}>
-                    저장하면 서버가 영수증을 판독해 품목·주류 포함 여부 같은 <b>판정 사실</b>을 뽑습니다.
+                    파일을 고르면 <b>바로 등록</b>되고, 서버가 영수증을 판독해 가맹점·금액과
+                    품목·주류 포함 여부 같은 <b>판정 사실</b>을 읽습니다. 읽은 내용으로 분류와
+                    지출 목적 초안이 채워집니다.
                   </div>
                 </>
               )}
@@ -541,7 +700,7 @@ export function SettlementDetailModal({
 
           {/* 증빙 첨부 + 판독 — 업로드가 곧 판독 트리거다(서버가 비전 판독을 돌린다). */}
           <EvidenceAttachments
-            settlementId={item?.id ?? null}
+            settlementId={workingId ?? null}
             readOnly={readOnly}
             onFactsExtracted={onFactsExtracted}
           />
@@ -572,8 +731,17 @@ export function SettlementDetailModal({
           </div>
         </div>
 
-        {/* ───────── 우측: 기본내역 + 분류·사유 + fact.json + AI 코멘트 ───────── */}
+        {/* ───────── 우측: Agent 진행·안내 + 기본내역 + 분류·사유 + fact.json ───────── */}
         <div className="stack">
+          {/*  진행 상태를 맨 위에 둔다 — 저장→판독→초안이 수십 초 걸리는 동안 사용자가
+              무슨 일이 벌어지는지 알 수 있어야 한다(가짜 진행률은 쓰지 않는다). */}
+          <AgentPanel
+            phase={agentPhase}
+            error={agentError}
+            reasoning={reasoning}
+            notices={notices}
+            judgement={judgement}
+          />
           <div className="card">
             <div className="card-head">
               <h3>기본 내역</h3>

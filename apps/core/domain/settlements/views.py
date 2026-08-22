@@ -24,7 +24,10 @@ from domain.common.permissions import (
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import decision_reasons, draft_agent, erp_import, evidence_extract, risk_review, services
+from . import (
+    decision_reasons, draft_agent, draft_context, erp_import, evidence_extract,
+    risk_review, services, submit_prep,
+)
 from .attachments import Attachment, AttachmentKind
 from .models import Category, Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
@@ -163,8 +166,19 @@ class SettlementViewSet(viewsets.ModelViewSet):
         if bad:
             return Response({"detail": bad}, status=400)
 
+        #  **기본 내역을 사람이 안 넣었으면 영수증 판독이 채우도록 표시한다.**
+        #  화면이 파일만 받고 저장하는 흐름(비전이 가맹점·금액을 읽어 채운다)의 진입점이다.
+        #  사람이 직접 친 값에는 표시를 달지 않는다 — 나중에 판독이 그 값을 덮으면
+        #  사용자가 보는 앞에서 사실이 바뀐다.
+        typed_merchant = str(d.get("merchant") or "").strip()
+        basics_pending = not typed_merchant or amount <= 0
         tx = Transaction.objects.create(
-            card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
+            card=card,
+            merchant=typed_merchant or evidence_extract.PLACEHOLDER_MERCHANT,
+            amount=amount,
+            ts=ts,
+            raw_payload={"source": "USER_UPLOAD",
+                         evidence_extract.BASICS_PENDING_KEY: basics_pending},
         )
         actor = _actor(request)
         industry_code, industry_label = industry_vocab.resolve(
@@ -522,6 +536,56 @@ class SettlementViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(s).data)
 
     # POST /api/settlements/{id}/risk-review/  — AI 위험 검토 재실행
+    @action(detail=True, methods=["post"], url_path="draft")
+    def draft_for_settlement(self, request, pk=None):
+        """POST /api/settlements/{id}/draft/ — 저장된 건으로 초안 작성(분류·목적·설명·안내).
+
+        폼 값을 보내는 `draft-suggest`와 다르다. 여기서는 **기본 내역을 화면이 보내지 않는다** —
+        ERP 수집·영수증 비전·카드 원장이 확정한 사실을 ai가 서버에서 직접 읽어 간다
+        (`/api/internal/settlement-draft-context/`). 그래서 모델이 가맹점·금액을 지어낼 자리가 없다.
+
+        **폴백을 두지 않는다.** 사실 조회가 실패했는데 폼 값으로 그럴듯한 초안을 만들면
+        사용자는 그걸 성공으로 읽는다 — 이 모드가 없애려던 상태로 되돌아간다.
+        """
+        settlement = self.get_object()
+        actor = _actor(request)
+        if actor and settlement.submitted_by_id and settlement.submitted_by_id != actor.id:
+            return Response({"detail": "본인이 등록한 건만 초안을 만들 수 있습니다."}, status=403)
+
+        try:
+            resp = httpx.post(
+                f"{settings.AI_BASE_URL}/agent/draft/settlement",
+                json={"settlementId": settlement.pk,
+                      "instruction": str(request.data.get("instruction") or "")},
+                timeout=60,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            return Response({"detail": f"초안 작성 실패: {exc.response.text[:300]}"},
+                            status=exc.response.status_code)
+        except httpx.HTTPError as exc:
+            return Response(
+                {"detail": f"AI 서비스({settings.AI_BASE_URL})에 연결하지 못했습니다 — "
+                           f"{type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        return Response(resp.json())
+
+    @action(detail=True, methods=["post"], url_path="prepare-submit")
+    def prepare_submit(self, request, pk=None):
+        """POST /api/settlements/{id}/prepare-submit/ — 제출 직전 다듬기 + 확인 필요 여부.
+
+        기본 동작은 **조용히 다듬어 그대로 제출**이다. `shouldConfirm`이 참일 때만 화면이
+        사람을 멈춰 세운다 — 그 기준은 서버가 정한다(화면이 갖고 있으면 곧 갈린다).
+        """
+        settlement = self.get_object()
+        actor = _actor(request)
+        if actor and settlement.submitted_by_id and settlement.submitted_by_id != actor.id:
+            return Response({"detail": "본인이 등록한 건만 제출 준비를 할 수 있습니다."}, status=403)
+        if settlement.status not in EDITABLE_STATUSES:
+            return Response({"detail": "이미 넘어간 건은 제출 준비를 할 수 없습니다."}, status=400)
+        return Response(submit_prep.prepare(settlement))
+
     @action(detail=True, methods=["post"], url_path="risk-review")
     def rerun_risk_review(self, request, pk=None):
         """실패한(또는 결과가 안 온) Risk Review를 다시 돌린다.
@@ -633,6 +697,33 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": "첨부를 찾을 수 없습니다."}, status=404)
         evidence_extract.schedule(att)
         return Response(AttachmentSerializer(att).data)
+
+
+class SettlementDraftContextView(APIView):
+    """GET /api/internal/settlement-draft-context/<settlement_id>/ — Draft Agent 입력(내부 read API).
+
+    초안 Agent가 **지어낼 수 없는 것을 전부 사실로** 받아 가는 창구다. 기본 내역(ERP 수집·
+    영수증 비전·카드 원장)·업종·첨부 추출 사실·EvalContext·**엔진 판정 미리보기**·보완요청 맥락.
+
+    판정 미리보기가 여기 있는 이유: 「보완요청/반려될 것 같은가」는 결정론적 엔진이 이미
+    답을 갖고 있다. 룰 그래프를 LLM에 주고 예측시키면 틀리고, 틀려도 티가 안 난다
+    (`draft_context` 모듈 docstring 참조).
+
+    조립은 `domain/settlements/draft_context.py`가 한다 — 뷰는 창구만 연다.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, settlement_id):
+        s = (
+            Settlement.objects
+            .select_related("transaction", "transaction__card")
+            .prefetch_related("attachments", "events")
+            .filter(pk=settlement_id)
+            .first()
+        )
+        if s is None:
+            return Response({"detail": "정산을 찾을 수 없습니다."}, status=404)
+        return Response(draft_context.build(s))
 
 
 class SettlementSummaryView(APIView):

@@ -16,6 +16,7 @@ from domain.policies.policy_doc_views import (
 )
 from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
 from domain.settlements.views import (
+    SettlementDraftContextView,
     SettlementSummaryView,
     SettlementViewSet,
     TeamBudgetOverviewView,
@@ -68,6 +69,9 @@ urlpatterns = [
     path("api/internal/merchant-category/", MerchantCategoryUpsertView.as_view(), name="internal_merchant_category_upsert"),
     path("api/internal/merchant-category/<str:normalized_name>/", MerchantCategoryLookupView.as_view(), name="internal_merchant_category_lookup"),
     path("api/internal/settlement-summary/<int:settlement_id>/", SettlementSummaryView.as_view(), name="internal_settlement_summary"),
+    #  Draft Agent 입력 — 기본 내역·첨부 추출 사실·EvalContext·**엔진 판정 미리보기**를 한 묶음으로.
+    path("api/internal/settlement-draft-context/<int:settlement_id>/",
+         SettlementDraftContextView.as_view(), name="internal_settlement_draft_context"),
     # 에이전트 프롬프트용 카탈로그(DSL 문법·허용 경로·판정 선택지·플래그·별표 축) — `domain/context`.
     path("api/internal/agent-context/", AgentContextView.as_view(), name="internal_agent_context"),
     # 적재 결과 회신(ai → core). read 계열과 달리 **쓰기**라 서비스 계정 인증을 요구한다.

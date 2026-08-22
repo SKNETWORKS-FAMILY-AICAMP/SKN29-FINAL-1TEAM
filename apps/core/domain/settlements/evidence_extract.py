@@ -13,6 +13,18 @@ DB 커넥션을 붙들고, 판독이 실패하면 **업로드까지 롤백된다
 기록이 사라지는 게 제일 나쁘다. 커밋 후에 돌리고, 실패는 `extraction_status=FAILED`와
 사유로 남긴다(`risk_review.py`와 같은 판단).
 
+## 사용내역(가맹점·금액·일시)은 「비어 있는 자리에만」 채운다
+
+`read_receipt`는 판정 사실뿐 아니라 **사용내역**(가맹점·금액·결제일시)도 읽는다. 그동안
+그 값은 여기서 통째로 버려졌다 — 영수증을 올려도 거래 원장은 사용자가 타이핑한 값 그대로였다.
+
+지금은 `_apply_receipt_basics()`가 거래에 반영하되, **`basicsPending`인 거래에만** 넣는다:
+  · ERP 수집 건은 카드사 원장이 정본이다 — 영수증이 원장을 덮으면 안 된다(부분취소·팁으로
+    금액이 다를 수 있고, 그때 맞는 쪽은 원장이다).
+  · 사람이 직접 친 값도 덮지 않는다. 사용자가 보는 앞에서 값이 바뀌면 무엇이 사실인지
+    알 수 없게 된다.
+읽지 못한 항목은 그대로 둔다(빈 값으로 덮어쓰지 않는다).
+
 ## 관측 계약을 여기서 깨뜨리지 않는다
 
 ai가 돌려준 `extracted`를 **그대로** 저장한다. 빈 값을 0/False로 채우지 않는다 —
@@ -22,18 +34,77 @@ ai가 돌려준 `extracted`를 **그대로** 저장한다. 빈 값을 0/False로
 from __future__ import annotations
 
 import logging
+from datetime import datetime, time
 
 import httpx
 from django.conf import settings
 from django.db import transaction as db_tx
 from django.utils import timezone
 
-from .attachments import Attachment, ExtractionStatus
+from .attachments import Attachment, AttachmentKind, ExtractionStatus
 
 logger = logging.getLogger(__name__)
 
 #  비전 호출은 페이지 수만큼 이미지 토큰이 붙는다(`VISION_MAX_PAGES` 상한 있음).
 TIMEOUT = 90.0
+
+
+#: 사용자가 값을 안 넣고 만든 거래 — 영수증 판독이 채워도 되는 자리라는 표시.
+BASICS_PENDING_KEY = "basicsPending"
+
+#: 가맹점을 아직 모를 때 넣어 두는 값(`SettlementViewSet.create`).
+PLACEHOLDER_MERCHANT = "미상 가맹점"
+
+
+def _apply_receipt_basics(att: Attachment, result: dict) -> list[str]:
+    """영수증이 읽은 사용내역을 거래에 반영한다. 반영한 항목 이름을 돌려준다.
+
+    `basicsPending`이 아닌 거래는 **건드리지 않는다**(모듈 docstring 참조).
+    """
+    from django.utils.dateparse import parse_date, parse_time
+
+    settlement = att.settlement
+    tx = getattr(settlement, "transaction", None)
+    if tx is None or not (tx.raw_payload or {}).get(BASICS_PENDING_KEY):
+        return []
+
+    applied: list[str] = []
+    fields: list[str] = []
+
+    merchant = str(result.get("merchant") or "").strip()
+    if merchant and (not tx.merchant or tx.merchant == PLACEHOLDER_MERCHANT):
+        tx.merchant = merchant[:200]
+        fields.append("merchant")
+        applied.append("가맹점")
+
+    amount = result.get("amount")
+    if isinstance(amount, (int, float)) and amount > 0 and int(tx.amount or 0) == 0:
+        tx.amount = int(amount)
+        fields.append("amount")
+        applied.append("금액")
+
+    #  날짜만 읽히고 시각이 없으면 **시각을 지어내지 않는다** — 정오로 밀면 심야 판정이
+    #  조용히 뒤집힌다(`SettlementViewSet.update`가 날짜 수정에서 같은 이유로 시각을 보존한다).
+    day = parse_date(str(result.get("date") or "")[:10])
+    if day is not None:
+        clock = parse_time(str(result.get("time") or "")[:5]) or timezone.localtime(tx.ts).time()
+        tx.ts = timezone.make_aware(datetime.combine(day, time(clock.hour, clock.minute)))
+        fields.append("ts")
+        applied.append("결제일시")
+
+    if not fields:
+        return []
+
+    #  다 채웠으면 표시를 내린다 — 다음 영수증(재업로드)이 확정된 값을 덮지 않게.
+    payload = dict(tx.raw_payload or {})
+    payload[BASICS_PENDING_KEY] = False
+    payload["basicsFilledBy"] = "RECEIPT_VISION"
+    tx.raw_payload = payload
+    fields.append("raw_payload")
+
+    tx.save(update_fields=fields)
+    logger.info("영수증 판독으로 거래 기본 내역 반영(tx=%s): %s", tx.pk, ", ".join(applied))
+    return applied
 
 
 def schedule(attachment: Attachment) -> None:
@@ -89,6 +160,15 @@ def run(attachment_id: int) -> Attachment | None:
         "extraction_status", "extracted", "field_confidence", "evidence_spans",
         "extractor_version", "extracted_at", "error",
     ])
+    #  판정 사실과 사용내역은 **다른 축**이다 — 사실은 위에서 그대로 저장하고,
+    #  사용내역은 거래 원장에 「비어 있는 자리에만」 반영한다.
+    if att.kind == AttachmentKind.RECEIPT:
+        try:
+            _apply_receipt_basics(att, result)
+        except Exception as exc:  # noqa: BLE001
+            #  기본 내역 반영이 실패해도 추출 결과는 이미 저장됐다 — 되돌리지 않는다.
+            logger.warning("영수증 기본 내역 반영 실패(attachment=%s): %s", att.pk, exc)
+
     logger.info(
         "extract-evidence 저장(attachment=%s kind=%s): status=%s facts=%d",
         att.pk, att.kind, att.extraction_status, len(att.extracted),

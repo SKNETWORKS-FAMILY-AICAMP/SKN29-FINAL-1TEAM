@@ -313,6 +313,10 @@ export function MyExpenses() {
           item={null}
           onClose={() => setCreating(false)}
           onCreated={addExpense}
+          //  신규 등록도 **저장된 뒤에는 일반 건과 같다** — 모달 안에서 올림·삭제가
+          //  일어나므로 목록이 그 결과를 받아야 한다(예전엔 저장하면 바로 닫혀서 필요 없었다).
+          onStatusChange={updateStatus}
+          onDeleted={removeExpense}
         />
       )}
     </>

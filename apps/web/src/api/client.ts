@@ -74,6 +74,11 @@ export const endpoints = {
   rejectRuleActivation: (id: string, comment: string) => api.post(`/rules/${id}/reject-activation/`, { comment }),
   discardRuleDraft: (id: string) => api.delete(`/rules/${id}/draft/`),
   deleteRuleGraph: (id: string) => api.delete(`/rules/${id}/delete/`),
+  //  정산 기반 초안 — 기본 내역은 서버가 읽는다(화면이 보내지 않는다).
+  draftForSettlement: (id: string, instruction: string) =>
+    api.post(`/settlements/${id}/draft/`, { instruction }),
+  //  제출 직전 문체 다듬기 + 판정 미리보기.
+  prepareSubmit: (id: string) => api.post(`/settlements/${id}/prepare-submit/`, {}),
   createRuleGraph: (name: string, scope: string) => api.post('/rules/drafts/', { name, scope }),
   // 규정 문서(RAG)에서 룰 그래프 DRAFT 자동 생성 — Django가 FastAPI Rule Agent로 전달한다.
   // LLM+임베딩+저장이 직렬로 얹혀 수십 초가 걸릴 수 있어 axios 기본 타임아웃을 늘려 잡는다.
