@@ -111,15 +111,6 @@ class SourcingTests(TestCase):
         today = self._settle(10_000)
         self.assertEqual(self.ctx(today)["derived"]["business_days_since_expense"], 0)
 
-    # ── 근무시간 ──────────────────────────────────────────────────────────
-    def test_근무시간_판별(self):
-        monday = (self.now - timedelta(days=self.now.weekday())).replace(hour=14, minute=0)
-        night = monday.replace(hour=23)
-        weekend = (monday + timedelta(days=5)).replace(hour=14)
-        self.assertIs(self.ctx(self._settle(1, when=monday))["user"]["is_working_hours"], True)
-        self.assertIs(self.ctx(self._settle(1, when=night))["user"]["is_working_hours"], False)
-        self.assertIs(self.ctx(self._settle(1, when=weekend))["user"]["is_working_hours"], False)
-
     # ── ③ 첨부 종류별 ─────────────────────────────────────────────────────
     def test_첨부는_종류별로_묻는다(self):
         s = self._settle(30_000)
@@ -151,7 +142,7 @@ class SourcingTests(TestCase):
     def test_신규_경로가_전부_스키마에_있다(self):
         """스키마에 없으면 조립돼도 룰이 못 쓴다(ACTIVE 전환에서 막힌다)."""
         for path in (
-            "user.team", "user.bu", "user.is_working_hours",
+            "user.team", "user.bu",
             "card.actual_user_is_spender", "merchant.industry_confidence",
             "evidence.has_meeting_minutes", "evidence.has_participant_list",
             "evidence.has_trip_plan", "evidence.has_contract",

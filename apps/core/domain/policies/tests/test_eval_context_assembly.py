@@ -94,7 +94,6 @@ CASES = [
             "tx.payment_method": "법인카드",
             "merchant.merchant_type": "일반음식점",   # 저장값 `한식` → 정본(§7-1)
             "merchant.merchant_info_resolved": True,
-            "derived.is_late_night": False,
             "derived.is_weekend": False,
         },
     ),
@@ -104,15 +103,16 @@ CASES = [
         expect={"merchant.merchant_type": None, "merchant.merchant_info_resolved": False},
     ),
     Case(
-        "심야(23:30) 결제",
+        # 심야 여부는 **조립기가 판단하지 않는다**(v6) — 원자(결제 시각)만 주고 룰이
+        # `payment_time >= "22:00"`으로 비교한다. 기준 시각이 회사마다 다르기 때문이다.
+        "심야(23:30) 결제 — 시각만 관측하고 판단은 룰에 맡긴다",
         Given(ts=WED_NIGHT),
-        expect={"tx.payment_time": "23:30", "derived.is_late_night": True,
-                "derived.is_weekend": False},
+        expect={"tx.payment_time": "23:30", "derived.is_weekend": False},
     ),
     Case(
-        "주말(토) 낮 결제",
+        "주말(토) 낮 결제 — 요일은 DSL이 못 만들어 조립기가 준다(예외③)",
         Given(ts=SAT_LUNCH),
-        expect={"derived.is_late_night": False, "derived.is_weekend": True},
+        expect={"derived.is_weekend": True},
     ),
 
     # ── 증빙
@@ -219,14 +219,17 @@ CASES = [
                 "trip.lodging_amount_per_night": 193_000},
     ),
     Case(
-        "추가 증빙(영수증 외) 첨부 여부",
+        # `has_supporting_evidence` 하나로 접지 않는다(v6) — 종류별 불린의 `or`로 룰이
+        # 조합한다. "명단이 필요한 지출인데 명단이 있는가"를 물으려면 종류가 필요하다.
+        "회의록 첨부 — 종류별로 관측한다",
         Given(attachments=(("MEETING_MINUTES", {}, True),)),
-        expect={"evidence.has_supporting_evidence": True},
+        expect={"evidence.has_meeting_minutes": True,
+                "evidence.has_participant_list": False},
     ),
     Case(
-        "영수증만 있으면 '추가 증빙'은 아니다",
+        "영수증만 있으면 다른 종류는 전부 '확인했더니 없음'",
         Given(attachments=(("RECEIPT", {}, True),)),
-        expect={"evidence.has_supporting_evidence": False},
+        expect={"evidence.has_meeting_minutes": False, "evidence.has_trip_plan": False},
     ),
 
     # ── 별표 선해소 (PolicyTable → policy.*)

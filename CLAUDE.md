@@ -39,6 +39,7 @@ daily_scrum/  주차별 진행 보고
 - **비용분류 어휘 = 서버가 내려준다**: 정본 `settlements.Category` 7종(회식·회의·식대·출장·접대·비품·**기타**), 창구는 `GET /api/meta/categories/` 하나. 화면(`useCategories()`)·ai(`core_client.get_categories()`)가 런타임에 받아 쓰고 **저장 검증은 서버가 한다**(목록 밖 값은 400). **`기타` ≠ 미기재** — `기타`는 "어디에도 안 맞는다"는 확정, `""`는 "아직 못 정했다"(게이트가 `CATEGORY_MISSING`으로 잡는다). → `_context/category-vocabulary.md`
 - **AI는 판정을 예측하지 않는다**: 「지금 제출하면 보완요청될까」는 결정론적 엔진이 이미 답을 갖고 있다(`orchestrator.judge(record=False)`). 룰 그래프를 프롬프트에 주고 순회를 흉내내게 하면 틀리고, 틀려도 티가 안 나며, 사용자에겐 "AI가 통과라 했는데 반려됨"이 된다. **엔진이 결정하고 모델은 사람 말로 옮긴다**(`narrate.py`·MCP `run_rule_engine`과 같은 분업). 모델이 낼 수 없어야 하는 값은 지시가 아니라 **출력 스키마에서 뺀다**. → `_context/draft-agent-v2.md`
 - **인가 = 기능 단위(Capability) RBAC**: 역할이 아니라 6개 Capability(`team_aggregate`·`accounting_review`·`rule_view`·`rule_activate`·`governance_view`·`ai_lab`)로 판정. **유효능력 = 역할 기본값 ∪ 개인 추가부여(`users.extra_capabilities`)** — 예: `acc`=회계+룰열람+팀취합, `acclead`=회계+룰열람+룰활성. 룰콘솔은 열람(`rule_view`)/활성(`rule_activate`) 분리. DRF `HasCapability` 파생 권한으로 백엔드 강제, `/api/me`에 `capabilities` 노출, 프론트는 `useCan()`로 게이트. **Django admin에서 사용자별 `extra_capabilities` 체크박스 부여**. (기술 §3.1a)
+- **EvalContext는 파생 불린을 두지 않고, 룰 조건에 상수를 허용한다**(v6) — 심야 22시 같은 기준을 조립기에 박으면 회사마다 다른 값을 바꾸려고 재배포해야 하고, 그 상수는 룰 콘솔에도 판정 스냅샷에도 안 보인다. 그래프가 `tx.payment_time >= "22:00"`으로 직접 비교한다(내규 개정은 잦지 않고 룰은 Rule Agent가 관리한다). **예외 셋만 조립기가 접는다** — ① null 여부(미해소 가드가 값 평가 전에 강등해 `x == null`을 룰로 못 쓴다) ② 별표 선해소(DSL에 룩업 연산자 없음 — 표로 개정되는 값은 그대로 별표다) ③ 산술·날짜(DSL에 연산자·요일 함수 없음). 남기는 불린은 **왜 예외인지를 필드 설명에 적는다**. → [[eval-context-sourcing]] §16
 
 ---
 
@@ -65,7 +66,7 @@ daily_scrum/  주차별 진행 보고
 | 룰 그래프(트리) 도메인 | ✅ | scope별 버전·DRAFT 복제/원복·DSL 쉽게보기·검증 시뮬레이션·승인 흐름·롤백. 구조 시각화는 플로우차트(순환 감지) |
 | 룰 엔진 판정 | ✅ | 게이트 우선(GLOBAL→scope) · 그래프당 `rule_hits` 1행 · **엔진은 최종반려를 만들지 않는다**(REJECT여도 상태는 RETURNED) · 제출이 판정을 이어 돌린다. → [[rule-engine]] |
 | 네임드 플래그 | ✅ | 2계층(닫힌 `SystemFlag` / 열린 `RuleFlag`). **불변식: 플래그는 상태머신을 움직이지 않는다.** `code`는 데이터 계약. → [[rule-flags]] |
-| EvalContext | ✅ v5 (55필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. 2026-08-22 실측 감사로 조립 5종 보강 + 사실 8종 신설(팀·본부·실사용자 일치·첨부 종류별·업종 신뢰도). → [[eval-context-sourcing]] §15 |
+| EvalContext | ✅ v6 (51필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. **파생 불린 4건 제거·상수는 룰에 허용**(§2). → [[eval-context-sourcing]] §15~16 |
 | 규정 임계값(policy) | ✅ 동적화 완료 | 저장층 `PolicyTable`(자유 JSON+`key_axes`) → 소비층 `ctx.policy.*`. **적재된 표에서 파생**(코드 상수 아님), `RESOLVERS`는 이름 override로만. 축 정합 검사(`check_table_axes`, DB 행 대조). → [[policy-domain]] §3 |
 | 기본 게이트(DEFAULT GATE) | ✅ | 제품 기본 제공은 **이것 하나**. 기본 `REVIEW`+사유, `PASS`는 화이트리스트, `RETURN`/`REJECT` 안 냄. → [[default-gate]] |
 | 판정 입력(사실) 조립 | 🚧 대부분 해소 | 이력 집계·영업일·근무시간을 채워 「룰이 참조하는데 미조립」이 4→1로 줄었다(남은 1은 `trip.*`, 첨부 추출은 되나 **화면 입력칸이 없다**). `finance_dept_is_spender`는 `Team.is_finance` 필요. → [[eval-context-sourcing]] §15 |

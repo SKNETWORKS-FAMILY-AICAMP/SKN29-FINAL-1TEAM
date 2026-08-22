@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Any, NamedTuple, TypedDict
 
 
-EVAL_CONTEXT_SCHEMA_VERSION = 5
-BUILDER_VERSION = "5.0"
+EVAL_CONTEXT_SCHEMA_VERSION = 6
+BUILDER_VERSION = "6.0"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 정적 카탈로그. ACTIVE 전환 게이트(`validate_graph_vars`)와 룰 편집 UI가 사용한다.
@@ -32,6 +32,26 @@ BUILDER_VERSION = "5.0"
 #       `tx.is_holiday`(공휴일 캘린더 부재)·`merchant.merchant_grade` 등
 #   (d) **과세분화 제거**: 출장 상세 9종·참석자 상세 5종·세부유형 3종
 #   되살릴 때는 원천(모델/추출)을 먼저 확보하고 그 다음 필드를 추가한다. 순서를 지킨다.
+#
+# v6 결정 (2026-08-23) — **파생 불린을 두지 않는다. 상수는 룰에 허용한다.**
+#   조립기가 `is_late_night`(22~06)·`is_working_hours`(09~18)처럼 **판단 기준을 코드에 박고**
+#   불린으로 접어 주면, 그 숫자를 바꾸려고 Django를 재배포해야 한다. 회사마다 다른 값이고
+#   룰은 Rule Agent가 관리한다 — 그래프가 `tx.payment_time >= "22:00"`으로 직접 쓰는 편이
+#   유연하다. **룰 조건에 상수가 박히는 것은 허용한다**(팀 결정): 내규 개정은 잦지 않고,
+#   개정 시 고칠 대상이 조립기 코드가 아니라 룰 그래프인 편이 낫다.
+#
+#   삭제(4): `derived.is_late_night` · `user.is_working_hours` ← `tx.payment_time` 비교로 대체
+#            `evidence.has_supporting_evidence` ← 첨부 종류별 불린의 `or`
+#            `user.finance_dept_is_spender` ← `user.team == "재무회계팀"`
+#
+#   **예외 셋은 남긴다** — 이건 취향이 아니라 DSL의 구조적 한계다:
+#     ① **null 여부**(`merchant.merchant_info_resolved`) — 미해소 가드가 참조 경로의 `None`을
+#        보고 값 평가 **전에** REVIEW로 강등하므로, `x == null`을 룰로 표현할 수 없다.
+#     ② **별표 선해소**(`merchant.forbidden`) — DSL에 룩업 연산자가 없다. 리터럴 목록으로
+#        풀면 규정 개정을 못 따라간다.
+#     ③ **산술·날짜**(`derived.is_weekend`·`business_days_since_expense`·`tx.per_person_amount`)
+#        — DSL에 연산자·요일 함수가 없다. 원자(요일)가 스키마에 없어 조합도 불가능하다.
+#   남기는 불린은 **왜 예외인지를 설명에 적는다**. 이유가 없는 파생 불린은 지워도 되는 것이다.
 #
 # v2 유산 (유지되는 규율)
 #   · **필드명에 상수를 넣지 않는다.** `biz_days_over_7`·`*_3m`처럼 숫자가 이름에 박히면
@@ -90,8 +110,6 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "job_title_rank": _F(
             "integer", "직책 서열. 클수록 상위. 「부서장 이상」을 이름 비교 없이 표현할 때 쓴다.",
         ),
-        "finance_dept_is_spender": _F("boolean", "지출자가 재무회계 소속인가."),
-        "is_working_hours": _F("boolean", "근무시간 내 결제인가(평일 09~18시)."),
         # 조직 축. v3에서 뺐던 `dept`와 다르다 — 그때는 "부서명을 비교하는 룰이 없다"가
         #  근거였는데, 별표 축(본부별 한도)으로는 실제로 쓰인다. 이름 비교가 아니라
         #  **룩업 키**가 용도다.
@@ -103,13 +121,21 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "merchant_type": _F(
             "string", "가맹점 업종. 밝히지 못하면 null로 남는다(`기타`로 채우지 않는다).", "vocab.industry",
         ),
-        "merchant_info_resolved": _F("boolean", "업종 조회에 성공했는가."),
+        "merchant_info_resolved": _F(
+            "boolean",
+            "업종 조회에 성공했는가. **예외① null 여부** — 미해소 가드 때문에 "
+            "`merchant_type == null`을 룰로 쓸 수 없어 별도 불린이 필요하다.",
+        ),
         "industry_confidence": _F(
             "number",
             "업종 판정 신뢰도 0~1. 조회에 성공해도 확신이 낮을 수 있다 — `merchant_info_resolved`"
             "만 보면 「확실한 업종」과 「가까스로 찍은 업종」이 같아 보인다.",
         ),
-        "forbidden": _F("boolean", "금지업종 별표에 걸리는가(별표 선해소값). 업종 미상이면 null."),
+        "forbidden": _F(
+            "boolean",
+            "금지업종 별표에 걸리는가(별표 선해소값). 업종 미상이면 null. "
+            "**예외② 별표 선해소** — DSL에 룩업 연산자가 없다.",
+        ),
     },
     # 세부유형 3종 제거. item_type은 청탁금지 한도 룩업 키라 유지.
     "category": {
@@ -123,7 +149,6 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
     # 첨부·기재 세분화 7종 제거. "누락"은 대상 필드의 None/0으로 판정한다.
     "evidence": {
         "has_valid_receipt": _F("boolean", "적격증빙(카드매출전표 등)이 첨부됐는가."),
-        "has_supporting_evidence": _F("boolean", "영수증 외 보조 증빙(회의록·명단 등)이 있는가."),
         "expense_purpose_missing": _F(
             "boolean", "지출 목적이 비어 있는가. **역극성 필드** — true가 문제 상황이다.",
         ),
@@ -183,8 +208,11 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
     # 판정 필드(personal_use_suspected·category_specific_*) 제거. 시각·경과일 관찰만 남긴다.
     "derived": {
         "business_days_since_expense": _F("integer", "결제일로부터 지난 영업일 수."),
-        "is_late_night": _F("boolean", "심야 시간대 결제인가."),
-        "is_weekend": _F("boolean", "주말 결제인가."),
+        "is_weekend": _F(
+            "boolean",
+            "주말 결제인가. **예외③ 날짜 연산** — DSL에 요일 함수가 없고 원자(요일)도 "
+            "스키마에 없어 조합할 수 없다.",
+        ),
     },
     # tables는 감사용 원본 스냅샷이며 DSL이 참조하지 않는다 → 고정 목록을 두지 않고
     # 조립기가 실제 사용한 별표만 동적으로 담는다(별표가 늘어도 스키마 변경 없음).

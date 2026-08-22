@@ -485,15 +485,10 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
     sor("evidence.has_valid_receipt",
         bool(tx is not None and tx.receipts.exclude(status="MISSING").exists()))
     sor("evidence.expense_purpose_missing", not bool(settlement.purpose))
-    sor("evidence.has_supporting_evidence",
-        settlement.attachments.exclude(kind="RECEIPT").exists())
-    sor("derived.is_late_night", bool(ts and (ts.hour >= 22 or ts.hour < 6)))
+    #  심야·근무시간은 **조립기가 판단하지 않는다**(v6). 22시·09시 같은 기준을 코드에 박으면
+    #  회사마다 다른 값을 바꾸려고 재배포해야 한다 — 그래프가 `tx.payment_time`을 직접
+    #  비교한다. 요일만은 남긴다: DSL에 요일 함수가 없어 조합할 수 없다(예외③).
     sor("derived.is_weekend", bool(ts and ts.weekday() >= 5))
-    #  근무시간은 평일 09~18시. `is_late_night`(22~06)과 같은 계열의 관측이다 —
-    #  회사마다 다르면 별표(`policy.*`)로 올려 그래프가 비교하게 하는 게 맞고, 여기서는
-    #  일반적인 기본값만 관측한다.
-    sor("user.is_working_hours",
-        bool(ts and ts.weekday() < 5 and 9 <= ts.hour < 18))
     #  결제일로부터 지난 영업일. 제출 기한(`policy.settlement_deadline_days`) 비교 대상인데
     #  조립되지 않아 그 룰이 전건 미해소였다. 공휴일 캘린더가 없어 **주말만** 뺀다
     #  (있는 것보다 나은 근사이고, 없으면 기한 룰 자체를 못 만든다).
