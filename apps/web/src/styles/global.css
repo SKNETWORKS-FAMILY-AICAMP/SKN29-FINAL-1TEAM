@@ -613,23 +613,65 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .onboarding-stats .stat { background: var(--surface-2); border-radius: var(--radius-control); padding: var(--space-3); }
 .onboarding-stats .stat .value { font-size: var(--text-h1); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-/* ── F-3 알림 패널 (알림벨 드롭다운) ───────── */
+/* ── F-3 알림 패널 (아바타 알림 뱃지 드롭다운) ───────────────────────────
+   법인 결재문서함 모티프 — 헤더는 사이드바와 같은 남색 표지, 각 알림은 종류별
+   좌측 인주색 계열 강조바 하나로 구분한다(회색 원형 아이콘 뭉치지 않기). */
 .notif-backdrop { position: fixed; inset: 0; z-index: 55; background: transparent; }
 .notif-panel {
-  /* 사이드바 알림벨 옆에 뜨는 팝오버 — 벨이 사이드바 안에 있어 뷰포트 기준 고정 위치로 앉힌다 */
-  position: fixed; top: 16px; left: calc(var(--sidebar-width) + 12px); width: 400px; max-height: 70vh; overflow-y: auto;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-overlay);
-  box-shadow: 0 20px 40px rgba(16,24,40,0.16); z-index: 56; animation: modal-in 160ms cubic-bezier(0.23,1,0.32,1);
+  /* 아바타 옆에 뜨는 팝오버 — 아바타가 사이드바 안에 있어 뷰포트 기준 고정 위치로 앉힌다 */
+  position: fixed; top: 16px; left: calc(var(--sidebar-width) + 12px); width: 448px; max-height: 76vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(16,24,40,0.04), 0 12px 20px -8px rgba(16,24,40,0.14), 0 24px 48px -12px rgba(16,24,40,0.20);
+  z-index: 56; animation: modal-in 180ms cubic-bezier(0.23,1,0.32,1); transform-origin: top left;
 }
-.notif-panel-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-4) var(--space-3); }
-.notif-panel-head h3 { font-size: var(--text-value); }
-.notif-tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-4) var(--space-3); }
-.notif-tabs button { border: none; background: none; padding: 6px 10px; border-radius: var(--radius-control); font-size: var(--text-meta); color: var(--muted); cursor: pointer; }
-.notif-tabs button.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
-.notif-row { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); }
-.notif-row .icon { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--text-body); }
-.notif-row .title-row .unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+.notif-panel-head {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  padding: 18px var(--space-5); background: var(--sidebar-bg);
+}
+.notif-panel-title { display: flex; align-items: center; gap: var(--space-2); }
+.notif-panel-head h3 { font-size: 17px; font-weight: 800; letter-spacing: -0.2px; color: var(--sidebar-text); }
+.notif-count {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill);
+  background: var(--sidebar-brand-accent); color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;
+}
+.notif-markall {
+  border: none; background: rgba(255,255,255,0.1); color: var(--sidebar-text-muted);
+  padding: 7px 12px; border-radius: var(--radius-control); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.notif-markall:hover:not(:disabled) { background: rgba(255,255,255,0.18); color: var(--sidebar-text); }
+.notif-markall:disabled { opacity: 0.4; cursor: default; }
+
+.notif-tabs { display: flex; gap: var(--space-5); padding: 0 var(--space-5); flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.notif-tabs button {
+  border: none; background: none; padding: 12px 2px 11px; margin-bottom: -1px; box-shadow: inset 0 -2px 0 transparent;
+  font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
+  transition: color 150ms cubic-bezier(0.23,1,0.32,1), box-shadow 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.notif-tabs button.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--primary); }
+.notif-tabs button:hover:not(.active) { color: var(--text); }
+
+.notif-list { overflow-y: auto; }
+.notif-empty { padding: 48px var(--space-5); text-align: center; font-size: var(--text-body); color: var(--muted); }
+
+.notif-row { position: relative; display: flex; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-4) 18px; border-top: 1px solid var(--border); }
+.notif-row:first-child { border-top: none; }
+.notif-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; }
+.notif-row.unread { background: var(--surface-2); }
+.notif-row.unread::before { background: currentColor; }
+.notif-row.tone-red { color: var(--tone-red); }
+.notif-row.tone-blue { color: var(--tone-blue); }
+.notif-row.tone-amber { color: var(--tone-amber); }
+.notif-row.tone-green { color: var(--tone-green); }
+.notif-row.tone-gray { color: var(--tone-gray); }
+.notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.notif-row .notif-body { min-width: 0; color: var(--text); }
+.notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--text-value); }
+.notif-row .title-row .unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+.notif-row .text-meta { margin-top: 3px; line-height: 1.5; }
+.notif-row .notif-time { margin-top: 6px; font-size: var(--text-caption); color: var(--muted); }
 
 /* ── S-08 예산 관리 — 계정과목 추세·예산 산정 지표 (구 거버넌스 대시보드에서 이관) ──
    차트 규칙: 얇은 마크 · 실선 헤어라인 그리드 · 상태는 색+기호+라벨을 함께.
