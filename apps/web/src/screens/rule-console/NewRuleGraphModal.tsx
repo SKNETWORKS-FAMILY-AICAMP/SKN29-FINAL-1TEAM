@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { FilePlus2, Sparkles } from 'lucide-react'
 import { Modal } from '../../components/ui/Modal'
+import { useCategories } from '../../lib/categories'
 
-// GLOBAL ∪ settlements.Category. SoT는 Django `Category`이며 [2026-08-14] "업무활성"은
-// 폐지되고 "회식"이 독립 카테고리로 대체됐다(회식 규정 그래프도 scope="회식"으로 이전).
-const RULE_SCOPES = ['회식', '회의', '식대', '출장', '접대', '비품'] as const
+// scope 목록(GLOBAL ∪ settlements.Category)은 **서버가 정본**이다 —
+// `useCategories().ruleScopes`(`GET /api/meta/categories/`). 여기 상수로 두던 시절엔
+// "업무활성"→"회식" 리네임 때마다 손으로 따라가야 했다.
 
 export type NewRuleChoice =
   | { kind: 'new'; name: string; scope: string }
@@ -25,6 +26,9 @@ export function NewRuleGraphModal({
   const [scope, setScope] = useState('')
   const [query, setQuery] = useState('')
   const [includeLaw, setIncludeLaw] = useState(false)
+  //  GLOBAL은 공통 게이트라 여기서 새로 만들 대상이 아니다 — 과목별 scope만 고른다.
+  const { ruleScopes } = useCategories()
+  const scopeOptions = ruleScopes.filter((value) => value !== 'GLOBAL')
 
   const canConfirm = !busy && name.trim() !== '' && scope.trim() !== ''
   const confirm = () => {
@@ -49,7 +53,7 @@ export function NewRuleGraphModal({
     <div className="field" style={{ marginBottom: 0 }}><label>비용분류 (scope)</label>
       <select value={scope} onChange={(e) => setScope(e.target.value)} disabled={busy}>
         <option value="">비용분류 선택</option>
-        {RULE_SCOPES.map((value) => <option key={value} value={value}>{value}</option>)}
+        {scopeOptions.map((value) => <option key={value} value={value}>{value}</option>)}
       </select>
     </div>
   )

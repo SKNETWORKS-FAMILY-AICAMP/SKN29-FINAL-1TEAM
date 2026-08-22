@@ -344,7 +344,7 @@ class Command(BaseCommand):
 
         **불변식 2개를 지킨다**(예산 화면 둘이 기대하는 형태):
           ① 팀 총한도(`category=""` 행) = 과목 한도의 **합**
-          ② **6개 과목 전부** 행을 만든다 — 하나라도 빠지면 그 과목 지출이 총액에는
+          ② **모든 과목**(`Category.values`) 행을 만든다 — 하나라도 빠지면 그 과목 지출이 총액에는
              잡히는데 항목 카드엔 안 보여서 "항목 합 != 총액"이 된다(과거 실제 결함).
 
         금액은 **제품 기본값**이다. 회사가 정한 예산이 아니므로 사람이 조정해야 하지만
@@ -360,6 +360,7 @@ class Command(BaseCommand):
             Category.TRIP: 3_000_000,
             Category.ENTERTAIN: 3_000_000,
             Category.SUPPLIES: 1_000_000,
+            Category.OTHER: 500_000,
         }
         missing = set(Category.values) - {c.value for c in default_limits}
         assert not missing, f"예산 행이 없는 과목: {missing} (불변식 2)"

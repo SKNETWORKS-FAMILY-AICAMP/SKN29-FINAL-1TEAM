@@ -18,12 +18,16 @@ import random
 import re
 from typing import Any
 
+from domain.settlements.models import Category
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import MerchantCategory
 
 # 업종·가맹점명 키워드 → 비용분류 추론 (가맹점 업종 캐시가 없을 때의 폴백)
 #  [2026-08-14] "업무활성"(캐치올) 폐지 → 비품(SUPPLIES)으로 흡수. "회식"은 새 독립 카테고리라
 #  회식성 업소(포차·호프·노래방 등, 식당/카페 키워드와 겹치지 않는 것 위주) 키워드를 추가했다.
+#  [2026-08-22] 업무활성 폐지 때 비품이 떠안았던 캐치올(우체국·택배·인쇄)을 `기타`로 옮겼다 —
+#  비품은 자기 예산 행과 scope 그래프를 가진 실제 과목이라, 성격이 다른 지출을 흘려보내면
+#  그 과목의 집계·판정이 함께 흐려진다.
 KEYWORD_CATEGORY = [
     (("호텔", "리조트", "스테이", "항공", "KTX", "코레일", "렌터카", "주유"), "출장", "숙박·교통"),
     (("한우", "일식", "룸", "다이닝", "라운지", "바"), "접대", "접대성 업소"),
@@ -31,7 +35,7 @@ KEYWORD_CATEGORY = [
     (("카페", "커피", "스타벅스", "투썸", "메가"), "회의", "카페·다과"),
     (("김밥", "백반", "국밥", "식당", "분식", "배달", "푸드"), "식대", "일반 식사"),
     (("문구", "오피스", "다이소", "쿠팡", "마트", "이마트", "전자"), "비품", "소모품·비품"),
-    (("우체국", "등기", "택배", "인쇄", "복사"), "비품", "일반 업무비"),
+    (("우체국", "등기", "택배", "인쇄", "복사"), "기타", "일반 업무비"),
 ]
 
 # 규정 임계값은 **별표(PolicyTable)에서 읽는다** — 여기에 숫자를 두지 않는다.
@@ -53,6 +57,7 @@ PURPOSE_TEMPLATE = {
     "출장": "{merchant} — {region} 출장 {expense_kind}",
     "비품": "{merchant} — {topic} 용도 소모품 구매",
     "회식": "{merchant} — {topic} 팀 회식 (참석 {headcount}명)",
+    "기타": "{merchant} — 업무 관련 지출",
 }
 
 
@@ -96,14 +101,21 @@ def _industry_of(merchant: str) -> tuple[str, str]:
 
 
 def _guess_category(merchant: str, industry: str) -> tuple[str, float, str]:
-    """(분류, 신뢰도, 근거) — 업종 캐시를 우선 쓰고 키워드로 보완한다."""
+    """(분류, 신뢰도, 근거) — 업종 캐시를 우선 쓰고 키워드로 보완한다.
+
+    **못 정하면 빈 값을 돌려준다.** 예전엔 `비품`(구 캐치올 잔재)으로 밀었는데, 그러면
+    확인하지 않은 건이 실제 과목의 예산·룰 집계에 섞이고 사람은 "AI가 정했다"고 믿는다.
+    빈 값이면 기본 게이트가 `CATEGORY_MISSING`으로 잡아 검토로 보내고, 화면은 「선택 필요」로
+    표시해 사람이 직접 고르게 한다. `기타`로 밀지 않는 것도 같은 이유다 — `기타`는
+    "6개 중 어디에도 안 맞는다"는 **확정**이지 "모른다"가 아니다.
+    """
     haystack = f"{merchant} {industry}"
     for keywords, category, label in KEYWORD_CATEGORY:
         if any(word in haystack for word in keywords):
             confidence = 0.93 if industry else 0.78
             source = f"가맹점 업종 '{industry}'" if industry else f"가맹점명 키워드"
             return category, confidence, f"{source} 기준 {label}로 판단해 '{category}'로 분류했습니다."
-    return "비품", 0.52, "업종·가맹점명으로 분류를 특정하지 못해 기본값으로 두었습니다. 직접 확인해주세요."
+    return "", 0.0, "업종·가맹점명으로 비용분류를 특정하지 못했습니다 — 직접 골라주세요."
 
 
 def _resolve_hint_limits(category: str) -> dict[str, tuple[int, str, str]]:
@@ -205,7 +217,9 @@ def suggest_draft(payload: dict[str, Any]) -> dict[str, Any]:
 # 자연어 지시 → 초안 필드 패치 규칙 (Draft Agent 수정 모드의 계약 예시)
 _AMOUNT = re.compile(r"([\d,]+)\s*(만원|원)")
 _HEADCOUNT = re.compile(r"(?:참석|인원)\s*([\d]+)\s*명")
-_CATEGORIES = ("접대", "회의", "식대", "출장", "비품", "회식")
+#  자연어 지시에서 찾을 분류 어휘. 정본(`Category`)에서 받아 온다 — 여기에 손으로 적어
+#  두면 분류가 늘어날 때 "지시는 했는데 안 바뀐다"가 조용히 생긴다.
+_CATEGORIES = tuple(Category.values)
 
 
 def revise_draft(payload: dict[str, Any]) -> dict[str, Any]:

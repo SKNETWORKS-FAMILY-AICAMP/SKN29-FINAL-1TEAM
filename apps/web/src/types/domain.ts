@@ -82,18 +82,35 @@ export const CARD_NEEDS_EXTRA_INPUT: Record<CardType, boolean> = {
   PERSONAL: false, TEAM: true, SHARED: true, POST_PAID: false, PREPAID: false,
 }
 
-// ── 비용 분류(6종 기본) ───────────────────
-export type Category = '회식' | '회의' | '식대' | '출장' | '접대' | '비품'
-export const CATEGORIES: Category[] = ['회식', '회의', '식대', '출장', '접대', '비품']
+// ── 비용 분류 ─────────────────────────────
+//  **목록의 정본은 서버다**(`settlements.Category` → `GET /api/meta/categories/`).
+//  화면은 `useCategories()`(`lib/categories.ts`)로 받아 쓴다 — 여기에 상수로 복사해 두면
+//  서버가 분류를 늘렸을 때 드롭다운에만 안 보이고, 목록에 없는 값이 저장된 건은 화면에서
+//  고를 수도 없게 된다(룰 플래그 라벨을 프론트가 복사했다가 어긋났던 것과 같은 종류).
+//  타입을 유니언으로 좁히지 않는 것도 같은 이유다 — 서버가 정하는 값을 컴파일 시점에
+//  못 박을 수 없다. 대신 **빈 문자열은 「아직 못 정했다」**는 별도 상태로 다룬다.
+export type Category = string
 
-/** 비용분류 뱃지 색상 — 시안 실측(식대=amber·비품=gray·출장=purple·접대=red) 기반, 회식·회의는 준하는 톤으로 확장. */
-export const CATEGORY_TONE: Record<Category, Tone> = {
+/** 미분류 — 「선택 필요」. `기타`("나열된 어디에도 안 맞는다"는 확정)와 다르다. */
+export const CATEGORY_UNSET = ''
+
+/** mock 모드 전용 폴백 목록(실 모드는 서버 응답을 쓴다). */
+export const CATEGORIES_FALLBACK: Category[] = ['회식', '회의', '식대', '출장', '접대', '비품', '기타']
+
+/** 비용분류 뱃지 색상 — 시안 실측(식대=amber·비품=gray·출장=purple·접대=red) 기반, 나머지는 준하는 톤. */
+export const CATEGORY_TONE: Record<string, Tone> = {
   식대: 'amber',
   비품: 'gray',
   출장: 'purple',
   접대: 'red',
   회식: 'orange',
   회의: 'teal',
+  기타: 'gray',
+}
+
+/** 팔레트에 없는 분류(서버가 새로 늘린 값)도 렌더는 되게 — 색만 기본값으로 떨어진다. */
+export function categoryTone(category: string | undefined): Tone {
+  return (category && CATEGORY_TONE[category]) || 'gray'
 }
 
 // ── 증빙자료 추출 Agent — `_context/evidence-extraction-agent.md` ──────────

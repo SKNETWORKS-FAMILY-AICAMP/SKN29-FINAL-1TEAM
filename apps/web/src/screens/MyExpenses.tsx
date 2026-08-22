@@ -3,9 +3,10 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, Download, FileText, Loader2, Plus, Search, UserPlus } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORIES, CATEGORY_TONE,
+  CARD_TYPE_LABEL, categoryTone,
   type CardType, type Category, type Settlement, type SettlementStatus,
 } from '../types/domain'
+import { useCategories } from '../lib/categories'
 import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
 import { StatusText } from '../components/ui/StatusText'
@@ -51,6 +52,7 @@ export function MyExpenses() {
   const [view, setView] = useState<ViewFilter>('ACTIVE')
   const [cardTypeFilter, setCardTypeFilter] = useState<CardType | 'ALL'>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<Category | 'ALL'>('ALL')
+  const { categories } = useCategories()   // 목록 정본은 서버(`/api/meta/categories/`)
   const [evidenceFilter, setEvidenceFilter] = useState<'ALL' | 'OK' | 'MISSING'>('ALL')
   const [search, setSearch] = useState('')
   // "이번 달" = 오늘이 속한 달(단순 월 기준). 일자는 보지 않으므로 같은 달이면 미래 일자도 포함된다.
@@ -81,7 +83,9 @@ export function MyExpenses() {
       }
     })
     if (cardTypeFilter !== 'ALL') l = l.filter((e) => e.cardType === cardTypeFilter)
-    if (categoryFilter !== 'ALL') l = l.filter((e) => e.aiCategory === categoryFilter)
+    //  배지가 보여주는 값(확정 우선)과 **같은 기준**으로 거른다 — 예전엔 필터만
+    //  `aiCategory`를 봐서, 사람이 분류를 고쳐 확정한 건이 화면에 보이는 분류로는 안 걸렸다.
+    if (categoryFilter !== 'ALL') l = l.filter((e) => (e.category || e.aiCategory) === categoryFilter)
     if (evidenceFilter !== 'ALL') l = l.filter((e) => e.evidence === evidenceFilter)
     const q = search.trim()
     if (q) l = l.filter((e) => e.merchant.includes(q))
@@ -181,7 +185,7 @@ export function MyExpenses() {
           </select>
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as Category | 'ALL')}>
             <option value="ALL">비용 분류</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           <select value={evidenceFilter} onChange={(e) => setEvidenceFilter(e.target.value as 'ALL' | 'OK' | 'MISSING')}>
             <option value="ALL">증빙</option>
@@ -240,8 +244,9 @@ export function MyExpenses() {
                     <td className="num">{won(e.amount)}</td>
                     <td>{CARD_TYPE_LABEL[e.cardType]}</td>
                     <td>
-                      <span className="tag" style={{ color: `var(--tone-${CATEGORY_TONE[e.aiCategory]})`, background: `var(--tone-${CATEGORY_TONE[e.aiCategory]}-bg)`, borderColor: 'transparent' }}>
-                        {e.aiCategory}{e.aiSuggested ? ' · AI' : ''}
+                      <span className="tag" style={{ color: `var(--tone-${categoryTone(e.category || e.aiCategory)})`, background: `var(--tone-${categoryTone(e.category || e.aiCategory)}-bg)`, borderColor: 'transparent' }}>
+                        {(e.category || e.aiCategory) || '선택 필요'}
+                        {e.aiSuggested && (e.category || e.aiCategory) ? ' · AI' : ''}
                       </span>
                     </td>
                     <td>

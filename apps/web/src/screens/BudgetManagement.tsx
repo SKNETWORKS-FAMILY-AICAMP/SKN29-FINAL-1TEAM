@@ -14,7 +14,6 @@
 // 값이라고 오해하게 된다.
 import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import type { Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { endpoints } from '../api/client'
 import { Sparkline, DeltaText } from '../components/ui/GovCharts'
@@ -117,7 +116,7 @@ export function BudgetManagement() {
 
   // 계정과목별 지출 추세(13개월, 목업) — 전월 대비 고정(시안에 YOY 토글 없음).
   const trendRows = useMemo(() => CATEGORY_ORDER.map((cat) => {
-    const series = CATEGORY_SPEND[cat as Category]
+    const series = CATEGORY_SPEND[cat]
     const now = series[IDX_NOW]
     const base = series[IDX_PREV_MONTH]
     const diff = now - base

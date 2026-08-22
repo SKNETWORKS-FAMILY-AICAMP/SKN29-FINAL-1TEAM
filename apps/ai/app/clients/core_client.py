@@ -2,11 +2,14 @@
 
 관계형 데이터는 반드시 Django를 경유한다. LLM/Tool의 Postgres 직접 접근 금지.
 """
+import logging
 from urllib.parse import quote
 
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _get(path: str, timeout: float = 10) -> dict:
@@ -22,6 +25,41 @@ def health() -> dict:
 def get_transaction(tx_id: int) -> dict:
     # TODO: Django 내부 조회 API(/api/internal/transactions/{id}/) 구현 후 연결
     return _get(f"/api/internal/transactions/{tx_id}/")
+
+
+_categories_cache: list[str] | None = None
+
+
+def get_categories(*, refresh: bool = False) -> list[str]:
+    """비용분류 어휘 정본(`settlements.Category`)을 Django에서 받아 온다.
+
+    **여기서 목록을 들고 있지 않는다.** ai가 자체 상수를 두면 core가 분류를 늘렸을 때
+    Draft Agent 프롬프트·구조화 출력 enum만 옛 목록으로 남아, LLM이 새 분류를 아예
+    고를 수 없게 된다(`rule_agent_v0/django_client.get_action_schema`가 decision/severity
+    카탈로그를 같은 이유로 core에서 받아 오는 것과 같은 관례).
+
+    프로세스 수명 동안 캐시한다 — 어휘는 배포 단위로만 바뀐다. 조회에 실패하면 정적
+    미러(`app.schemas.Category`)로 떨어진다: 초안 작성 전체가 core 가용성에 묶이는 것보다
+    한 세대 낡은 목록으로라도 도는 편이 낫다(값이 사라지는 변경은 없으므로 안전한 방향).
+    """
+    global _categories_cache
+    if _categories_cache is not None and not refresh:
+        return _categories_cache
+
+    try:
+        data = _get("/api/meta/categories/", timeout=5)
+        values = [str(row["value"]) for row in data.get("categories", []) if row.get("value")]
+    except Exception:  # noqa: BLE001  # core 미기동·타임아웃·형식 변경 전부
+        from typing import get_args
+
+        from app.schemas import Category as CategoryLiteral
+
+        logger.warning("비용분류 어휘 조회 실패 — 정적 미러(app.schemas.Category)로 폴백")
+        values = list(get_args(CategoryLiteral))
+
+    if values:
+        _categories_cache = values
+    return values
 
 
 def get_policy(category: str) -> dict:

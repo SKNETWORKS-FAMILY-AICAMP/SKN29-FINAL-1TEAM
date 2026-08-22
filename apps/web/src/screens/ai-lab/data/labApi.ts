@@ -31,7 +31,10 @@ export interface LabStatus {
 }
 
 // ── Draft Agent ───────────────────────────────────────
-export type DraftCategory = '회식' | '회의' | '식대' | '출장' | '접대' | '비품'
+//  분류 어휘 정본은 서버다(`GET /api/meta/categories/`). 여기서 유니언으로 못 박으면
+//  서버가 분류를 늘렸을 때 AI-LAB만 옛 목록으로 남는다 — 이 화면은 "운영과 같은 것을
+//  본다"는 게 존재 이유라 그 어긋남이 특히 나쁘다. 빈 문자열은 미분류(선택 필요).
+export type DraftCategory = string
 
 export interface DraftResult {
   mode: 'create' | 'revise'

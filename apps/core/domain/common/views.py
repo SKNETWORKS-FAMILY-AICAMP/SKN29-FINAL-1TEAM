@@ -1,4 +1,4 @@
-"""공통 뷰 — 헬스체크, 역할별 대시보드 지표, AI-LAB 프록시."""
+"""공통 뷰 — 헬스체크, 어휘 메타, 역할별 대시보드 지표, AI-LAB 프록시."""
 import logging
 
 import httpx
@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from domain.accounts.models import Capability
 from domain.common.permissions import CanUseAiLab
-from domain.settlements.models import Settlement
+from domain.settlements.models import Category, Settlement
 from domain.settlements.models import SettlementStatus as S
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,28 @@ def health(_request):
     except Exception:  # noqa: BLE001
         db_ok = False
     return Response({"status": "ok", "service": "core", "db": db_ok})
+
+
+class CategoryMetaView(APIView):
+    """GET /api/meta/categories/ — 비용분류 어휘 정본을 화면·ai에 내려준다.
+
+    이 목록을 각자 상수로 복사해 두면 반드시 갈라진다 — 룰 플래그 라벨이 백엔드 27개 vs
+    프론트 9개로 어긋났던 것과 같은 종류의 사고다. `settlements.Category` 한 곳만 고치면
+    화면 드롭다운·룰 scope 선택·Draft Agent 프롬프트가 함께 따라오게 하는 것이 목적이다.
+
+    `ruleScopes`를 따로 싣는 이유: "GLOBAL ∪ Category"라는 조합 규칙까지 클라이언트가
+    알 필요는 없다(그것도 서버 도메인이다 — `policies.models.RULE_SCOPE_CHOICES`).
+
+    인가는 AllowAny — 사용자 데이터가 아니라 **어휘**이고, 로그인 화면 이전에도 필요하다
+    (다른 내부 read API와 같은 취급).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, _request):
+        return Response({
+            "categories": [{"value": v, "label": l} for v, l in Category.choices],
+            "ruleScopes": ["GLOBAL", *Category.values],
+        })
 
 
 class DashboardView(APIView):

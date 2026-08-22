@@ -18,11 +18,13 @@ Chroma에 직접 써서 `embedder_version`을 남기지 않았고(=`assert_singl
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from app.clients import core_client
 
 from . import agent as rule_agent
 from . import chat as rule_chat
@@ -32,16 +34,25 @@ from .django_client import ServiceAuthError
 
 router = APIRouter(prefix="/agent/rule-v0", tags=["rule-agent"])
 
-# scope 허용값: GLOBAL 또는 settlements.Category 실제 값(정식 SoT — `domain/policies/models.py`
-# RULE_SCOPE_CHOICES = [GLOBAL, *Category.choices]).
-# [2026-08-14] "업무활성" Category가 실제로 폐지되고 "회식"이 독립 카테고리로 대체됐다(팀 확정 —
-# 이전에 이 파일에 있던 같은 취지의 주장은 그 시점엔 사실이 아니었으나, 지금은 맞다). 회식 규정
-# 그래프도 scope="식대"에서 scope="회식"으로 옮겨졌다(seed_rules.py `_seed_dining`).
-Scope = Literal["GLOBAL", "회식", "회의", "식대", "출장", "접대", "비품"]
+# scope 허용값 = GLOBAL ∪ settlements.Category. **정본은 core**이고
+# (`domain/policies/models.py` RULE_SCOPE_CHOICES = [GLOBAL, *Category.choices]),
+# 여기서는 `core_client.get_categories()`로 받아 검증한다 — 예전엔 이 파일에 Literal로
+# 박아 뒀는데 "업무활성"→"회식" 리네임 때 두 번(한 번은 틀린 방향으로) 손댔던 자리다.
+#
+# 형식 검증이 아니라 **호출 시점 검증**인 이유: Literal로 두면 core가 분류를 늘렸을 때
+# ai만 옛 목록으로 남아 정상 scope가 422로 막힌다. 반대로 검증을 아예 빼면 오타 scope가
+# RAG 검색·LLM 호출을 다 태운 뒤 마지막 Django 저장에서 400으로 죽는다(비싸다).
+def _validate_scope(scope: str) -> None:
+    allowed = {"GLOBAL", *core_client.get_categories()}
+    if scope not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"알 수 없는 scope입니다: {scope} (가능한 값: {', '.join(sorted(allowed))})",
+        )
 
 
 class RuleGenerateRequest(BaseModel):
-    scope: Scope
+    scope: str
     query: Optional[str] = None          # 미지정 시 scope별 기본 질의
     top_k: int = Field(default=6, ge=1, le=20)
     name: Optional[str] = None
@@ -57,6 +68,7 @@ def generate_rules(req: RuleGenerateRequest):
     올려야 화면이 "왜 안 되는지"를 보여줄 수 있다 — 전부 502로 덮으면 인증 문제와
     입력 문제가 구분되지 않는다(v0에서 실제로 그랬다).
     """
+    _validate_scope(req.scope)
     try:
         return rule_agent.generate(req)
     except ServiceAuthError as exc:

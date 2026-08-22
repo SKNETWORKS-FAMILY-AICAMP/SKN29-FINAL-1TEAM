@@ -15,9 +15,12 @@ import logging
 import time
 from typing import TYPE_CHECKING, Literal
 
-from openai import OpenAI
-from pydantic import BaseModel
+from functools import lru_cache
 
+from openai import OpenAI
+from pydantic import BaseModel, create_model
+
+from app.clients import core_client
 from app.config import settings
 from app.mcp import tools
 from app.schemas import Category, Evidence
@@ -42,7 +45,11 @@ def _get_client() -> OpenAI:
     return _client
 
 
-VALID_CATEGORIES = {"회식", "회의", "식대", "출장", "접대", "비품"}
+#  비용분류 어휘는 **core가 정본**이다(`settlements.Category`). 여기에 상수로 적어 두면
+#  core가 분류를 늘려도 LLM이 새 값을 고를 수 없어 조용히 옛 목록만 돈다.
+#  `UNSET`은 「아직 못 정했다」 — `기타`("나열된 어디에도 안 맞는다"는 확정)와 다르다.
+#  화면은 이 값을 「선택 필요」로 띄우고, 판정은 `CATEGORY_MISSING`으로 검토에 넘긴다.
+UNSET_CATEGORY = ""
 
 # get_policy(Django 실연동, B-3)가 실패했을 때만 쓰는 최후 폴백값 — 정상 경로에서는 쓰이지 않는다.
 FALLBACK_POLICY = {"limit": 30000, "required_evidence": ["영수증"]}
@@ -76,12 +83,49 @@ class LLMReviseOutput(BaseModel):
     comments: list[LLMComment]
 
 
+# ── 분류 어휘 주입 — 구조화 출력 enum을 **런타임에 core 목록으로 다시 만든다** ─────────
+#  위 두 모델의 `Category`(정적 미러)는 core 미기동 시 폴백이다. 정상 경로에서는
+#  `_with_categories()`가 같은 모델을 core 어휘 + 빈 값으로 다시 찍어 `response_format`에
+#  넘긴다 — 그래야 "분류가 늘었는데 모델이 그 값을 낼 방법이 없다"가 생기지 않는다.
+#  (API가 enum을 강제하므로 목록 밖 값이 나오는 일 자체가 없다는 기존 성질은 그대로다.)
+
+
+def category_values() -> list[str]:
+    """core 정본 어휘. 조회 실패 시 정적 미러로 떨어진다(`core_client.get_categories`)."""
+    return core_client.get_categories()
+
+
+@lru_cache(maxsize=8)
+def _with_categories(base: type[BaseModel], values: tuple[str, ...]) -> type[BaseModel]:
+    #  빈 문자열을 enum에 포함시킨다 — 모델이 판단할 수 없을 때 **아무거나 고르는 대신**
+    #  비워 둘 자리가 필요하다. 없으면 정보가 부족한 건도 반드시 하나를 찍게 되고,
+    #  그 추측이 `ai_category`로 저장돼 사람에게는 "AI가 정했다"로 보인다.
+    return create_model(
+        f"{base.__name__}Runtime",
+        __base__=base,
+        category=(Literal[(UNSET_CATEGORY, *values)], ...),
+    )
+
+
+def _draft_output_model() -> type[BaseModel]:
+    return _with_categories(LLMDraftOutput, tuple(category_values()))
+
+
+def _revise_output_model() -> type[BaseModel]:
+    return _with_categories(LLMReviseOutput, tuple(category_values()))
+
+
 # ── 프롬프트 ────────────────────────────────────────────────────────────
 
+#  분류 목록은 프롬프트에도 **런타임에 끼워 넣는다** — 스키마(enum)만 바꾸고 지시문에
+#  옛 목록이 남아 있으면 모델이 "고를 수 있지만 고르면 안 되는 값"으로 취급한다.
 SYSTEM_PROMPT_CREATE = """당신은 법인카드 정산 초안 작성 보조입니다.
 
 반드시 지켜야 할 규칙:
-1. 비용 분류(category)는 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
+1. 비용 분류(category)는 다음 중 하나만 선택하세요: {categories}.
+   - 지출 성격은 파악됐지만 나열된 분류 어디에도 맞지 않으면 "기타"를 고르세요.
+   - 주어진 정보로 지출 성격 자체를 판단할 수 없으면 **빈 문자열("")로 두세요.**
+     추측해서 아무 분류나 고르지 마세요 — 비워 두면 사람이 직접 고릅니다.
 2. 가맹점 업종은 **서버가 조회해 사용자 메시지로 함께 준다**. 주어진 값을 분류 판단의 근거로
    참고하되, 값이 "미확인"이면 업종을 추측하지 말고 다른 정보(가맹점명·금액·시간)만 쓰세요.
    업종은 보조 힌트일 뿐이라 세무·회계 판단의 근거로 삼지 마세요.
@@ -104,7 +148,8 @@ SYSTEM_PROMPT_REVISE = """당신은 법인카드 정산 초안 수정 보조입�
 
 반드시 지켜야 할 규칙:
 1. 지시에 해당하는 항목만 수정하고, 언급되지 않은 항목은 현재 값을 그대로 유지하세요.
-2. 비용 분류(category)를 바꾸는 경우 다음 6개 중 하나만 선택하세요: 회식, 회의, 식대, 출장, 접대, 비품.
+2. 비용 분류(category)를 바꾸는 경우 다음 중 하나만 선택하세요: {categories}.
+   나열된 어디에도 맞지 않으면 "기타", 판단할 수 없으면 빈 문자열("")로 두세요.
 3. 지시를 해석하지 못했다면 모든 값을 원래대로 유지하고, comments에 어떤 지시를 이해하지 못했는지 안내하세요.
 4. changes에는 실제로 값이 바뀐 항목만 "필드명 → 새 값" 형태의 문장으로 나열하세요. 아무것도 안 바뀌었으면 빈 배열로 두세요.
 5. 정책 한도·규정 문구는 절대 스스로 계산하거나 만들어내지 마세요."""
@@ -169,6 +214,10 @@ def _resolve_policy(category: str, trace: dict | None = None) -> dict:
 
 def _build_policy_hints(amount: int, evidence: str, category: str, trace: dict | None = None) -> list[dict]:
     """LLM이 지어내지 않고, 정책 숫자를 근거로 서버가 결정론적으로 생성(감사 가능성)."""
+    if not category:
+        #  분류가 아직 없으면 안내할 임계값 자체가 정해지지 않는다 — 조회 URL도 성립하지
+        #  않고(`/api/internal/policies//`), "POLICY-" 같은 빈 근거를 화면에 띄우게 된다.
+        return []
     policy = _resolve_policy(category, trace)
     limit = policy["limit"]
     hints = []
@@ -207,7 +256,13 @@ def _record_response(trace: dict | None, resp, started: float) -> None:
     trace["finishReason"] = getattr(resp.choices[0], "finish_reason", None)
 
 
+def _system_prompt(template: str) -> str:
+    """지시문에 현재 분류 어휘를 끼워 넣는다(스키마와 같은 목록을 본다)."""
+    return template.format(categories=", ".join(category_values()))
+
+
 def _call_llm_create(req: "DraftRequest", industry: str, trace: dict | None = None) -> LLMDraftOutput:
+    system_prompt = _system_prompt(SYSTEM_PROMPT_CREATE)
     user_prompt = USER_PROMPT_TEMPLATE_CREATE.format(
         merchant=req.merchant,
         industry=industry or "미확인",
@@ -217,17 +272,17 @@ def _call_llm_create(req: "DraftRequest", industry: str, trace: dict | None = No
         evidence=req.evidence or "OK",
         headcount=req.headcount or 0,
     )
-    _record_call(trace, SYSTEM_PROMPT_CREATE, user_prompt)
+    _record_call(trace, system_prompt, user_prompt)
     started = time.perf_counter()
     resp = _get_client().beta.chat.completions.parse(
         model=MODEL,
         temperature=0.3,
         timeout=15,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT_CREATE},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        response_format=LLMDraftOutput,
+        response_format=_draft_output_model(),
     )
     _record_response(trace, resp, started)
     parsed = resp.choices[0].message.parsed
@@ -238,6 +293,7 @@ def _call_llm_create(req: "DraftRequest", industry: str, trace: dict | None = No
 
 def _call_llm_revise(req: "ReviseRequest", industry: str, trace: dict | None = None) -> LLMReviseOutput:
     current = req.current
+    system_prompt = _system_prompt(SYSTEM_PROMPT_REVISE)
     user_prompt = USER_PROMPT_TEMPLATE_REVISE.format(
         merchant=current.merchant,
         industry=industry or "미확인",
@@ -248,17 +304,17 @@ def _call_llm_revise(req: "ReviseRequest", industry: str, trace: dict | None = N
         headcount=current.headcount or 0,
         instruction=req.instruction,
     )
-    _record_call(trace, SYSTEM_PROMPT_REVISE, user_prompt)
+    _record_call(trace, system_prompt, user_prompt)
     started = time.perf_counter()
     resp = _get_client().beta.chat.completions.parse(
         model=MODEL,
         temperature=0.3,
         timeout=15,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT_REVISE},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        response_format=LLMReviseOutput,
+        response_format=_revise_output_model(),
     )
     _record_response(trace, resp, started)
     parsed = resp.choices[0].message.parsed
@@ -296,12 +352,15 @@ def run(req: "DraftRequest", trace: dict | None = None) -> dict:
         if trace is not None:
             trace["error"] = f"{type(exc).__name__}: {exc}"
             trace["fallbackUsed"] = True
-        comments = [{"icon": "ai", "text": f"LLM 호출/응답 처리에 실패해 기본값으로 채웠습니다: {exc}"}]
+        #  **실패했을 때 분류를 지어내지 않는다.** 예전엔 "비품"으로 채웠는데, 사용자에게는
+        #  AI가 판단한 값과 구분되지 않아 그대로 확정되곤 했다(비품은 자기 예산·룰을 가진
+        #  실제 과목이다). 비워 두면 화면이 「선택 필요」로 띄우고 판정이 검토로 보낸다.
+        comments = [{"icon": "ai", "text": f"LLM 호출/응답 처리에 실패해 비용분류를 비워 두었습니다 — 직접 골라주세요: {exc}"}]
         draft = {
             "merchant": req.merchant,
             "amount": req.amount,
-            "category": "비품",
-            "aiCategory": "비품",
+            "category": UNSET_CATEGORY,
+            "aiCategory": UNSET_CATEGORY,
             "aiSuggested": True,
             # 업종 조회는 LLM과 별개 경로라 살아 있다 — 초안이 실패해도 이건 버리지 않는다.
             "merchantIndustry": industry["industry_label"],

@@ -556,7 +556,9 @@ def _assemble_linear_graph(nodes: list[dict]) -> tuple[list[dict], list[dict], s
 
 DEFAULT_QUERIES = {
     # scope → 규칙화 가능 조항을 끌어올 기본 질의. 사용자가 query를 주면 그것을 우선.
-    # 키는 GLOBAL ∪ settlements.Category — scope Literal(api.py)과 같은 집합이어야 한다.
+    # 키는 GLOBAL ∪ settlements.Category. **없어도 동작한다** — 아래 `generate()`가
+    # `f"{scope} 관련 규정"`으로 떨어지므로, 어휘 정본(core)에 분류가 추가돼도 여기에
+    # 항목이 없다는 이유로 막히지 않는다(이건 허용 목록이 아니라 질의 힌트다).
     # [2026-08-14] "회식"이 정식 독립 카테고리가 되며 유효한 scope가 됐다(회식 규정
     # 그래프도 scope="식대"→"회식"으로 이전됨 — seed_rules.py `_seed_dining`). "업무활성"은
     # Category에서 폐지됐고(TEST 픽스처는 scope="TEST_DEMO"로 이동) 더는 유효 scope가 아니다.
@@ -567,6 +569,7 @@ DEFAULT_QUERIES = {
     "비품": "비품 구매 한도 증빙",
     "회의": "회의비 한도 증빙 참석자",
     "회식": "회식비 한도 증빙 요건 승인권자 야간 주류",
+    "기타": "법인카드 사용 범위 증빙 요건 일반 기준",
 }
 
 

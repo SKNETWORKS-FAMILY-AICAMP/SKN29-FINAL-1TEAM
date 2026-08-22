@@ -10,9 +10,9 @@ import {
   type DraftRunResponse,
 } from './data/labApi'
 import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
+import { useCategories } from '../../lib/categories'
 
 const CARD_TYPES = ['PERSONAL', 'TEAM', 'SHARED', 'POST_PAID', 'PREPAID'] as const
-const CATEGORIES: DraftCategory[] = ['회식', '회의', '식대', '출장', '접대', '비품']
 
 interface CreateForm {
   merchant: string
@@ -71,6 +71,7 @@ export function DraftLab() {
   const [error, setError] = useState('')
   const [response, setResponse] = useState<DraftRunResponse | null>(null)
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  const { categories } = useCategories()   // 운영과 같은 어휘를 본다(서버 정본)
 
   // 폼 → 요청 payload. 원문 편집 모드에서는 이 값이 편집 시작점이 된다.
   const payload = useMemo<Record<string, unknown>>(() => {
@@ -292,8 +293,9 @@ export function DraftLab() {
                         setReviseForm({ ...reviseForm, category: e.target.value as DraftCategory })
                       }
                     >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                      <option value="">(미분류)</option>
+                      {categories.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
                       ))}
                     </select>
                   </div>
