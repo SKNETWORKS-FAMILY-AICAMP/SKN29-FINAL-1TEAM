@@ -203,7 +203,7 @@ def report_spy(monkeypatch) -> _ReportRecorder:
 def test_background_run_reports_parsing_then_done(
     fake_openai, local_chroma, report_spy, monkeypatch
 ):
-    monkeypatch.setattr(embeddings_api, "MEDIA_ROOT", SAMPLE_PDF.parent)
+    monkeypatch.setenv("RAG_MEDIA_ROOT", str(SAMPLE_PDF.parent))
     req = embeddings_api.IngestRequest(policyDocId=1, filePath=SAMPLE_PDF.name)
 
     embeddings_api._run(req)
@@ -222,7 +222,7 @@ def test_background_run_reports_parsing_then_failed_on_parse_error(
 ):
     bad_pdf = tmp_path / "broken.pdf"
     bad_pdf.write_bytes(b"not a pdf")
-    monkeypatch.setattr(embeddings_api, "MEDIA_ROOT", tmp_path)
+    monkeypatch.setenv("RAG_MEDIA_ROOT", str(tmp_path))
     req = embeddings_api.IngestRequest(policyDocId=2, filePath=bad_pdf.name)
 
     embeddings_api._run(req)
@@ -242,12 +242,12 @@ def test_retry_after_failure_succeeds_without_duplicate_growth(
     Chroma에 중복이 쌓이지 않는다."""
     bad_pdf = tmp_path / "broken.pdf"
     bad_pdf.write_bytes(b"not a pdf")
-    monkeypatch.setattr(embeddings_api, "MEDIA_ROOT", tmp_path)
+    monkeypatch.setenv("RAG_MEDIA_ROOT", str(tmp_path))
 
     embeddings_api._run(embeddings_api.IngestRequest(policyDocId=3, filePath=bad_pdf.name))
     assert report_spy.calls[-1][2]["status"] == "FAILED"
 
-    monkeypatch.setattr(embeddings_api, "MEDIA_ROOT", SAMPLE_PDF.parent)
+    monkeypatch.setenv("RAG_MEDIA_ROOT", str(SAMPLE_PDF.parent))
     embeddings_api._run(embeddings_api.IngestRequest(policyDocId=3, filePath=SAMPLE_PDF.name))
     assert report_spy.calls[-1][2]["status"] == "DONE"
 
