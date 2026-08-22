@@ -5,11 +5,13 @@ import { useState } from 'react'
 import { AlertTriangle, Play } from 'lucide-react'
 import { labApi, labErrorMessage, type RuleGenerateLabResponse } from './data/labApi'
 import { EmptyHint, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
+import { useCategories } from '../../lib/categories'
 
-const SCOPES = ['GLOBAL', '회식', '회의', '식대', '출장', '접대', '비품'] as const
+//  scope 목록도 서버가 정한다(GLOBAL ∪ Category) — `useCategories().ruleScopes`.
 
 export function RuleLab() {
   const [scope, setScope] = useState<string>('GLOBAL')
+  const { ruleScopes } = useCategories()
   const [query, setQuery] = useState('')
   const [topK, setTopK] = useState(6)
   const [name, setName] = useState('')
@@ -51,7 +53,7 @@ export function RuleLab() {
             <div className="field" style={{ marginBottom: 0, minWidth: 160 }}>
               <label>scope</label>
               <select value={scope} onChange={(e) => setScope(e.target.value)}>
-                {SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {ruleScopes.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="field" style={{ marginBottom: 0, width: 100 }}>

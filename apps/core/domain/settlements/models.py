@@ -10,12 +10,25 @@ from django.db import models
 
 
 class Category(models.TextChoices):
+    """비용분류 — **이 목록이 정본이다.**
+
+    화면(`/api/meta/categories/`)·ai(`core_client.get_categories`)·룰 그래프 scope가 전부
+    여기서 값을 받아 간다. 값을 늘릴 때 `RuleGraph.ck_rulegraph_scope` CHECK 제약이
+    `Category.values`를 참조하므로 **마이그레이션(넓히기)이 함께 필요**하다.
+
+    `OTHER("기타")`는 **사람이 "6개 중 어디에도 안 맞는다"고 확정한 값**이다 —
+    「아직 못 정했다」는 `""`(빈 값)이고 둘은 다르다. 미확정을 기타로 밀면 기본 게이트의
+    `CATEGORY_MISSING`이 안 걸려서 확인 안 한 건이 확인된 것으로 취급된다
+    (가맹점 업종 어휘가 같은 이유로 `기타`와 미확정을 가른다 — `transactions/industry.py`).
+    """
+
     GATHERING = "회식", "회식"
     MEETING = "회의", "회의"
     MEAL = "식대", "식대"
     TRIP = "출장", "출장"
     ENTERTAIN = "접대", "접대"
     SUPPLIES = "비품", "비품"
+    OTHER = "기타", "기타"
 
 
 class ItemType(models.TextChoices):

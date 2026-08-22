@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from domain.accounts.views import CsrfView, LoginView, LogoutView, MeView
-from domain.common.views import AiLabProxyView, DashboardView, health
+from domain.common.views import AiLabProxyView, CategoryMetaView, DashboardView, health
 from domain.cards.views import CardViewSet
 from domain.context.views import AgentContextView
 from domain.erp.views import ErpVoucherViewSet
@@ -50,6 +50,10 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/dashboard/<str:role>/", DashboardView.as_view(), name="dashboard"),
+
+    #  어휘 메타 — 비용분류·룰 scope 정본. 화면과 ai가 같은 목록을 여기서 받아 간다
+    #  (상수 복사본을 각자 두면 갈라진다 — `CategoryMetaView` docstring 참조).
+    path("api/meta/categories/", CategoryMetaView.as_view(), name="meta_categories"),
     # 결정 사례(월별) — 문서 관리 화면의 「결정 사례」 트리. PolicyDoc이 아니라 DecisionCase를 읽는다.
     path("api/policy-docs/cases/", DecisionCaseListView.as_view(), name="policy_doc_cases"),
     path("api/team-budget/", TeamBudgetView.as_view(), name="team_budget"),

@@ -26,7 +26,7 @@ from domain.transactions.models import Receipt, Transaction
 
 from . import decision_reasons, draft_agent, erp_import, evidence_extract, risk_review, services
 from .attachments import Attachment, AttachmentKind
-from .models import Settlement, SettlementEvent, SettlementStatus, TeamBudget
+from .models import Category, Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
 
 #  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
@@ -39,6 +39,25 @@ DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
 # 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
 #  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
 EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
+
+
+def _invalid_category(*values):
+    """저장하려는 비용분류가 정본(`Category`) 밖이면 사유 문자열, 아니면 None.
+
+    `choices=`는 Django에서 **DB 제약이 아니고** DRF 커스텀 create/update는 `full_clean()`을
+    부르지 않는다 — 그래서 여기서 막지 않으면 임의 문자열이 그대로 저장된다. 이 값은
+    `category.value` 판정 사실이자 룰 그래프 scope 선택 키라, 오타 하나가 "적용할 룰이
+    없다"로 조용히 흘러간다(화면 드롭다운만 믿을 자리가 아니다).
+
+    빈 값은 통과시킨다 — `""`는 「아직 못 정했다」는 유효한 상태이고, 기본 게이트가
+    `CATEGORY_MISSING`으로 잡아 검토로 보낸다(`기타`와는 다른 상태다).
+    """
+    allowed = set(Category.values)
+    for value in values:
+        if value and value not in allowed:
+            return (f"알 수 없는 비용분류입니다: {value} "
+                    f"(가능한 값: {', '.join(Category.values)})")
+    return None
 
 
 def _resolve_card(data, actor):
@@ -140,6 +159,9 @@ class SettlementViewSet(viewsets.ModelViewSet):
         #  `cardId`가 없는 옛 호출은 종전대로 구분 매칭으로 떨어진다(하위호환).
         card = _resolve_card(d, _actor(request))
         category = d.get("category") or d.get("aiCategory") or ""
+        bad = _invalid_category(category, d.get("aiCategory"))
+        if bad:
+            return Response({"detail": bad}, status=400)
 
         tx = Transaction.objects.create(
             card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
@@ -206,6 +228,9 @@ class SettlementViewSet(viewsets.ModelViewSet):
             # 빈 값이면 지우지 않고 그대로 둔다 — 화면이 실수로 빈 값을 보내 확정 분류를
             # 날리는 편보다, 안 바뀌는 편이 낫다(지우려면 사용자가 다른 분류를 고른다).
             if d.get("category"):
+                bad = _invalid_category(d["category"])
+                if bad:
+                    return Response({"detail": bad}, status=400)
                 settlement.category = d["category"]
                 # **사람이 확인한 순간 AI 제안 딱지를 뗀다.** `ai_suggested`는 "이 분류는 AI가
                 # 넣은 값이라 사람 확인이 필요하다"는 뜻인데, 지금 그 확인이 일어났다. 남겨두면

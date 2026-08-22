@@ -14,8 +14,14 @@ export const GOV_MONTHS = [
 export const IDX_NOW = GOV_MONTHS.length - 1
 export const IDX_PREV_MONTH = GOV_MONTHS.length - 2
 
+//  ⚠️ 이 섹션은 **목업 전용**이다 — 13개월 시계열을 내려주는 API가 아직 없다.
+//  그래서 서버 어휘(`useCategories()`)를 따르지 않고 아래 목록만으로 자족한다
+//  (서버가 분류를 늘려도 여기엔 시계열이 없으므로 넣으면 빈 그래프가 그려진다).
+//  실 데이터가 생기면 이 파일째 걷어내고 서버 응답의 분류를 그대로 쓴다.
+export type TrendCategory = '식대' | '출장' | '접대' | '회식' | '비품' | '회의'
+
 // 계정과목별 월 지출(만원) — 접대·출장이 가파르게 오르고 회의·비품은 평탄.
-export const CATEGORY_SPEND: Record<Category, number[]> = {
+export const CATEGORY_SPEND: Record<TrendCategory, number[]> = {
   식대:   [380, 402, 395, 430, 455, 412, 388, 405, 441, 468, 452, 489, 501],
   출장:   [290, 315, 342, 301, 288, 275, 330, 358, 372, 395, 410, 438, 472],
   접대:   [180, 205, 232, 198, 176, 165, 210, 244, 268, 291, 322, 358, 431],
@@ -24,7 +30,7 @@ export const CATEGORY_SPEND: Record<Category, number[]> = {
   회의:   [88, 92, 85, 90, 96, 84, 89, 93, 87, 95, 91, 88, 79],
 }
 
-export const CATEGORY_ORDER: Category[] = ['접대', '출장', '식대', '회식', '비품', '회의']
+export const CATEGORY_ORDER: TrendCategory[] = ['접대', '출장', '식대', '회식', '비품', '회의']
 
 export const monthTotal = (index: number) =>
   CATEGORY_ORDER.reduce((sum, cat) => sum + CATEGORY_SPEND[cat][index], 0)

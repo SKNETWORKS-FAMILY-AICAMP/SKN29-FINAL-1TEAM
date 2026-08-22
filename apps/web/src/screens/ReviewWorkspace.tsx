@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ReviewItem } from '../types/domain'
-import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
+import { CARD_TYPE_LABEL } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
 import { RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
@@ -71,11 +71,11 @@ type View = 'PENDING' | 'CONFIRM' | 'HISTORY'
 // 위험도(anomaly_score×100) 색 구간: ~30 정상(초록) / 30~60 주의(주황) / 60~ 고위험(빨강)
 const riskColor = (score: number) => (score >= 60 ? 'var(--tone-red)' : score >= 30 ? 'var(--tone-amber)' : 'var(--tone-green)')
 
-// 비용분류 2글자 약어(표시용). Category는 고정 enum이라 프론트 매핑으로 충분 — 미지값은 앞 2글자 폴백.
-// (2026-08-14: '업무활성'→'회식' 카테고리 교체로 특수 약어가 필요 없어짐 — '회식'은 이미 2글자라
-// 폴백만으로 충분하다. 새로 특수 약어가 필요한 카테고리가 생기면 여기 추가할 것.)
-const CAT_ABBR: Partial<Record<Category, string>> = {}
-const catAbbr = (c: string) => CAT_ABBR[c as Category] ?? c.slice(0, 2)
+// 비용분류 2글자 약어(표시용). 어휘 정본은 서버라 목록을 여기 두지 않는다 — 특수 약어가
+// 필요한 값만 예외로 적고 나머지는 앞 2글자로 접는다(현재 6종+기타는 전부 2글자라 비어 있다).
+// 값이 없으면 「미정」 — 빈 칩은 판독 실패처럼 보인다.
+const CAT_ABBR: Record<string, string> = {}
+const catAbbr = (c: string) => (c ? CAT_ABBR[c] ?? c.slice(0, 2) : '미정')
 
 // 이미 처리된 건의 "실제 결과" — 이전 처리 탭은 AI 권장이 아니라 이 값으로 세고·거르고·표시한다.
 //  **`PENDING_CONFIRM`은 여기 없다.** 그건 처리 결과가 아니라 **확정 대기**다 — 룰 판정
@@ -140,7 +140,9 @@ export function ReviewWorkspace() {
     amount: sel.amount,
     date: `${sel.date}${sel.time ? ` ${sel.time}` : ''}`,
     cardType: sel.cardType,
-    category: sel.aiCategory,
+    //  판정이 보는 값은 **사람이 확정한 분류**(`category.value`)다 — AI 제안을 사실처럼
+    //  보여주면 "이 값으로 판정됐다"고 읽힌다. 미확정은 null로 둔다(추측을 채우지 않는다).
+    category: sel.category || null,
     evidence: sel.evidence === 'OK' ? 'attached' : 'missing',
     purpose: sel.purpose ?? null,
     anomalyScore: sel.anomalyScore,
@@ -383,7 +385,9 @@ export function ReviewWorkspace() {
                           <span className="team">{i.dept}</span>
                           <span className="name">{i.user}</span>
                         </div>
-                        <span className="tag cat" title={i.aiCategory}>{catAbbr(i.aiCategory)}</span>
+                        <span className="tag cat" title={i.category || i.aiCategory || '분류 미기재'}>
+                          {catAbbr(i.category || i.aiCategory || '')}
+                        </span>
                         {/* 이전 처리·확정 대기 뷰는 AI 권장이 아니라 실제 상태를 보여준다.
                             확정 대기에서 AI 권장 배지를 띄우면 "권장 승인"과 "승인되어 확정 대기"가
                             같은 칩으로 보여 담당자가 둘을 구별할 수 없다. */}
@@ -426,7 +430,7 @@ export function ReviewWorkspace() {
                 <div className="card">
                   <div className="card-head">
                     <h3>선택 건 상세 — {sel.user}</h3>
-                    <span className="text-meta">{sel.dept} · {sel.aiCategory}</span>
+                    <span className="text-meta">{sel.dept} · {sel.category || sel.aiCategory || '분류 미기재'}</span>
                   </div>
                   <div className="card-body">
                     <div className="text-meta" style={{ marginBottom: 6 }}>영수증 이미지</div>
@@ -457,11 +461,19 @@ export function ReviewWorkspace() {
                         <input value={CARD_TYPE_LABEL[sel.cardType] + (sel.cardType === 'SHARED' ? ' → 실사용자 입력 필요' : '')} readOnly />
                       </div>
                       <div className="field">
-                        <label>비용분류 <span className="tag ai">● AI 제안</span></label>
-                        {/* key: 선택 건이 바뀌면 remount해 AI 제안값으로 되돌린다(비제어 select) */}
-                        <select key={sel.id} defaultValue={sel.aiCategory}>
-                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        {/*  이 카드는 조회 전용이다. 예전엔 여기만 `<select>`였는데 `onChange`도
+                            저장 경로도 없어서, 고를 수 있게 생겼지만 아무 일도 안 일어났다
+                            (게다가 확정 분류가 아니라 AI 제안을 보여주고 있었다). 분류를 고치는
+                            자리는 지출자의 상세 모달이고, 여기서 할 결정은 승인·보완요청·반려다. */}
+                        <label>
+                          비용분류
+                          {sel.category
+                            ? <span className="tag ok">확정</span>
+                            : sel.aiCategory
+                              ? <span className="tag ai">● AI 제안</span>
+                              : <span className="tag warn">미기재</span>}
+                        </label>
+                        <input value={sel.category || sel.aiCategory || '선택 필요 — 지출자가 아직 고르지 않았습니다'} readOnly />
                       </div>
                     </div>
                     {sel.purpose && (

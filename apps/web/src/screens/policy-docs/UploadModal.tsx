@@ -14,10 +14,11 @@ import { Modal } from '../../components/ui/Modal'
 import {
   DOC_PROFILE_LABEL, type DocProfile, type PolicyFolder,
 } from '../../types/domain'
+import { useCategories } from '../../lib/categories'
 
 const MAX_MB = 50
-// GLOBAL ∪ settlements.Category. 비우면 적재 후 룰 자동 생성을 건너뛴다(SKIPPED_NO_SCOPE).
-const RULE_SCOPES = ['GLOBAL', '회식', '회의', '식대', '출장', '접대', '비품'] as const
+// scope(GLOBAL ∪ settlements.Category)는 서버 정본을 받아 쓴다 — `useCategories().ruleScopes`.
+// 비우면 적재 후 룰 자동 생성을 건너뛴다(SKIPPED_NO_SCOPE).
 
 export type UploadInput = {
   file: File
@@ -50,6 +51,7 @@ export function UploadModal({ folders, defaultFolderId, busy, onClose, onSubmit 
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const { ruleScopes } = useCategories()
 
   const options = useMemo(() => flatten(folders), [folders])
 
@@ -164,7 +166,7 @@ export function UploadModal({ folders, defaultFolderId, busy, onClose, onSubmit 
         <label>비용분류 <span className="text-meta">(적재 후 룰 자동 생성 대상)</span></label>
         <select value={ruleScope} onChange={(e) => setRuleScope(e.target.value)} disabled={busy}>
           <option value="">지정 안 함 — 룰 자동 생성 건너뜀</option>
-          {RULE_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+          {ruleScopes.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
     </Modal>

@@ -7,7 +7,9 @@ import { CARD_TYPE_LABEL, type Settlement } from '../../types/domain'
 const ROWS: { label: string; render: (item: Settlement) => string }[] = [
   { label: '가맹점', render: (item) => item.merchant },
   { label: '금액', render: (item) => `${won(item.amount)}원` },
-  { label: '비용분류', render: (item) => item.aiCategory },
+  //  방금 제출한 건의 **확정 분류**를 보여준다 — AI 제안을 띄우면 사람이 고쳐 올린
+  //  값과 다른 것이 확인 화면에 뜬다. 안 골랐으면 그 사실을 그대로 적는다.
+  { label: '비용분류', render: (item) => item.category || item.aiCategory || '미기재 — 회계 검토로 넘어갑니다' },
   { label: '카드', render: (item) => CARD_TYPE_LABEL[item.cardType] },
   { label: '상태', render: (item) => `${item.status} · 판정 대기` },
 ]

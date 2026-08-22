@@ -10,9 +10,10 @@ import {
   Receipt, Sparkles, Trash2, Upload,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORIES,
+  CARD_TYPE_LABEL, CATEGORY_UNSET,
   type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
 } from '../../types/domain'
+import { useCategories } from '../../lib/categories'
 import { needsAttention } from '../../lib/judgement'
 import { Modal } from '../ui/Modal'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -91,7 +92,13 @@ export function SettlementDetailModal({
   const cardType = (selectedCard?.type ?? item?.cardType ?? 'PERSONAL') as CardType
   // 사람이 확정한 분류(`category`)가 있으면 그게 먼저다. 없으면 AI 제안을 미리 채워
   //  두고, 사용자가 그대로 제출하면 그 순간 확정값이 된다(`persistEdits`).
-  const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? '접대')
+  //  **둘 다 없으면 비워 둔다** — 예전엔 '접대'로 떨어뜨렸는데, 아무도 고르지 않은 건이
+  //  화면에는 접대로 보이고 제출하면 그대로 접대로 확정됐다(판정은 「분류 미기재」로 걸고
+  //  있었으니 화면과 판정이 서로 다른 사실을 말한 셈이다).
+  const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? CATEGORY_UNSET)
+  //  드롭다운 목록은 서버 어휘를 쓴다(`GET /api/meta/categories/`) — 화면 상수로 두면
+  //  분류가 늘어도 여기서만 안 보인다.
+  const { categories } = useCategories()
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   const [aiSuggested, setAiSuggested] = useState(item?.aiSuggested ?? false)
   // 가맹점 업종 — 사람이 고르는 값이 아니라 **서버가 조회해 준 사실**이라 입력칸이 없다.
@@ -196,6 +203,8 @@ export function SettlementDetailModal({
     const d = result.draft
     if (d.merchant) setMerchant(String(d.merchant))
     if (d.amount) setAmountText(String(d.amount))
+    //  Agent가 분류를 비워 보내면(판단 불가) **덮지 않는다** — 사람이 이미 고른 값이
+    //  있으면 그게 낫고, 없으면 그대로 「선택 필요」로 남아 사람이 고르게 된다.
     if (d.category) { setCategory(d.category as Category); setAiSuggested(true) }
     if (d.merchantIndustry !== undefined) setIndustry(String(d.merchantIndustry ?? ''))
     if (d.merchantIndustryCode !== undefined) setIndustryCode(String(d.merchantIndustryCode ?? ''))
@@ -622,10 +631,21 @@ export function SettlementDetailModal({
                   )}
                 </div>
                 <div className="field">
-                  <label>비용 분류 {aiSuggested && <span className="tag ai">AI 제안</span>}</label>
+                  <label>
+                    비용 분류 {aiSuggested && category && <span className="tag ai">AI 제안</span>}
+                    {!category && <span className="tag warn">선택 필요</span>}
+                  </label>
                   <select value={category} onChange={(e) => setCategory(e.target.value as Category)} disabled={readOnly}>
-                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    {/* 미분류를 고를 수 있는 자리를 남긴다 — 없으면 아무도 안 고른 건이
+                        첫 항목으로 보이고, 그 값이 저장되면 「사람이 확정했다」는 기록이 된다. */}
+                    <option value="">선택 필요 — 분류를 골라주세요</option>
+                    {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
+                  {!category && !readOnly && (
+                    <div className="text-meta" style={{ marginTop: 4 }}>
+                      고르지 않고 제출하면 「분류 미기재」 사유가 붙어 회계 검토로 넘어갑니다.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>

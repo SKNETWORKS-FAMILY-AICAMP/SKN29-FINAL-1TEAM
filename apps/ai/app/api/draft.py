@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, ValidationError
 
 from app.agents import draft_agent
-from app.schemas import Category, CardType, Evidence
+from app.schemas import CardType, Evidence
 
 router = APIRouter()
 
@@ -37,8 +37,8 @@ class ReviseCurrent(BaseModel):
     """수정 모드의 `current` — 화면에 지금 떠 있는 초안 값 그대로."""
     merchant: str
     amount: int
-    category: Category
-    aiCategory: Optional[Category] = None
+    category: str = ""                  # ""=미분류(사람이 아직 안 골랐다)
+    aiCategory: Optional[str] = None
     # 생성 모드에서 서버가 조회해 넣어 준 업종. 수정 모드는 이걸 그대로 물려받는다
     # (재조회는 비어 있을 때만 — §7-1 캐스케이드를 매 수정마다 다시 태울 이유가 없다).
     merchantIndustry: str = ""
@@ -69,8 +69,13 @@ class PolicyHint(BaseModel):
 class Draft(BaseModel):
     merchant: str
     amount: int
-    category: Category
-    aiCategory: Category
+    #  `Category` Literal로 묶지 않는다 — 어휘 정본은 core이고 ai는 런타임에 그 목록을
+    #  받아 구조화 출력 enum으로 강제한다(`draft_agent._with_categories`). 여기서 정적
+    #  미러로 한 번 더 조이면 core가 분류를 늘렸을 때 **응답 검증에서** 422가 나서,
+    #  모델은 새 값을 제대로 골랐는데 화면에는 서버 오류로 보인다.
+    #  빈 문자열은 「아직 못 정했다」 — 화면이 「선택 필요」로 띄운다.
+    category: str
+    aiCategory: str
     aiSuggested: bool
     merchantIndustry: str = ""
     merchantIndustryCode: str = ""
