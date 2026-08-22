@@ -35,6 +35,21 @@ class ItemType(models.TextChoices):
     OTHER = "기타", "기타"
 
 
+class RiskReviewState(models.TextChoices):
+    """이상탐지 + RAG 내규검증의 진행 상태.
+
+    **「결과가 없다」는 세 가지 다른 상황을 뭉갠다** — 그래서 상태를 따로 기록한다:
+      · `NOT_STARTED` 대상이 아니다(룰이 통과시켜 검토를 거치지 않는 건)
+      · `RUNNING`     예약돼 돌고 있다(최대 60초)
+      · `DONE`        결과가 있다
+      · `FAILED`      돌았는데 결과를 못 받았다(ai 미기동·타임아웃) → 재실행 대상
+    """
+    NOT_STARTED = "NOT_STARTED", "미실시"
+    RUNNING = "RUNNING", "검토 중"
+    DONE = "DONE", "완료"
+    FAILED = "FAILED", "실패"
+
+
 class SettlementStatus(models.TextChoices):
     DRAFT = "DRAFT", "개인 보유중"
     # ② 팀 취합 단계
@@ -122,6 +137,23 @@ class Settlement(models.Model):
     # 목록 화면이 N+1 없이 읽을 요약이다.
     rule_judgement = models.JSONField("룰 판정 결과", default=dict, blank=True)
     rule_judged_at = models.DateTimeField("룰 판정 시각", null=True, blank=True)
+
+    # ── Risk Review 진행 상태 ────────────────────────────────────────
+    #
+    # 이상탐지 + RAG 내규검증은 판정이 `IN_REVIEW`로 넘긴 건에만, **커밋 후 비동기로**
+    # 돈다(최대 60초). 그 사이 `risk_reviews`가 비어 있는데, 결과 유무만 보면 세 가지가
+    # 한 덩어리로 뭉친다 — **돌고 있는 중 / 실패해서 결과가 없는 것 / 애초에 대상이
+    # 아닌 것(룰 통과)**. 화면이 이걸 구분하지 못해 검토 중인 건에 "룰 판정으로 통과된
+    # 건입니다"라는 안내가 떴다(실제로 겪은 오표시).
+    #
+    # 경과 시간으로 추정하지 않고 **실제 상태를 기록**한다(첨부 판독 `Attachment.
+    # extraction_status`와 같은 규율).
+    risk_review_state = models.CharField(
+        "Risk Review 상태", max_length=12,
+        choices=RiskReviewState.choices, default=RiskReviewState.NOT_STARTED,
+    )
+    risk_review_error = models.TextField("Risk Review 실패 사유", blank=True)
+    risk_review_started_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

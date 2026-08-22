@@ -23,12 +23,19 @@ AI-LAB은 그 앞단을 전부 걷어내고 **AI 기능만 단독으로** 돌린
 |---|---|---|
 | 상태 점검 | OpenAI 키·Chroma 적재량·Core 연결·이상탐지 모델 학습 여부 | `GET /lab/status` |
 | ① Draft Agent | 생성/수정 모드 단독 실행. 폼 또는 요청 JSON 직접 편집, 세션 실행 이력, 생성→수정 연쇄 | `POST /lab/draft/run` |
+| ② Rule Agent | RAG→LLM 노드 초안→결정론적 조립을 단독 실행. **부작용 있음**(Django에 실제 RuleGraph DRAFT 생성 — dry-run 경로 없음, 실행 전 확인 팝업으로 고지) | `POST /lab/rule/generate` |
+| ③ Risk Review | 1차 이상탐지(`get_tx_features`+`ml_infer`) → 2차 RAG 내규 검증을 정산 id로 단독 실행. 부작용 없음(FastAPI는 Postgres에 쓰지 않는다) | `POST /lab/risk/run` |
+| 증빙자료 추출 | 첨부 문서(사전승인·회의록·출장계획서·영수증) 판독을 단독 실행. **새 파일을 직접 올릴 수 없다**(ai 컨테이너는 media 볼륨을 읽기전용 마운트) — 이미 업로드된 파일의 `fileRef`를 입력받는다 | `POST /lab/extract/run` |
 | RAG 검색 | 질의 → 조문 단위 히트. top-K·부모 확장·질의 접두(Q_ctx) on/off | `POST /lab/rag/search` |
 | 임베딩 인스펙터 | 문장 → 벡터·cosine 유사도 행렬. "임베딩 문제인가 적재 문제인가"를 가른다 | `POST /lab/rag/embed` |
 | 적재 현황 | 컬렉션별 건수·임베딩 신원(혼입 경고), 적재된 청크 원본 열람 | `GET /lab/rag/collections[/{name}/sample]` |
 
-아직 stub이라 탭을 열지 않은 것: **Rule Agent**(생성·검증은 S-04에서 실동작), **Risk Review**(RAG 내규검증
-2차 미착수), **증빙자료 추출 Agent**(미착수). 화면에는 "예정"으로 사유와 함께 표시한다.
+**미착수 기능 없음(2026-08-21)** — Draft·Rule·Risk Review·증빙자료 추출 4개 Agent 모두 단독
+실행 탭을 갖췄다. Rule Agent·증빙자료 추출은 원칙 ①("운영과 같은 코드를 부른다")을 지키다 보니
+다른 탭과 성격이 다르다: **Rule Agent는 부작용이 있고**(그 자체가 "그래프 저장"이라 dry-run이
+없다), **증빙자료 추출은 이 화면에서 파일을 직접 못 올린다**(media 볼륨 읽기전용 — RAG 검색
+탭의 "Chroma 적재가 선행돼야 한다"와 같은 종류의 제약). 새 기능이 stub 상태로 남으면 그때
+"예정" 표시를 다시 쓴다.
 
 ## 3. 경로와 인가
 

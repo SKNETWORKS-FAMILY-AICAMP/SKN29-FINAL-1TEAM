@@ -96,6 +96,27 @@ export const CATEGORY_TONE: Record<Category, Tone> = {
   회의: 'teal',
 }
 
+// ── 증빙자료 추출 Agent — `_context/evidence-extraction-agent.md` ──────────
+export type AttachmentKind =
+  | 'RECEIPT' | 'PRE_APPROVAL' | 'MEETING_MINUTES' | 'PARTICIPANT_LIST' | 'TRIP_PLAN' | 'CONTRACT' | 'OTHER'
+
+export interface Attachment {
+  id: number
+  kind: AttachmentKind
+  kindLabel: string
+  fileUrl: string | null
+  originalName: string
+  extractionStatus: 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'SKIPPED'
+  /** EvalContext dot-path → 값. 판정에 실제로 반영된 것은 이 중 신뢰도가 임계값 이상인 것만(서버가 가른다). */
+  extracted: Record<string, unknown>
+  fieldConfidence: Record<string, number>
+  evidenceSpans: { path: string; quote: string; source: string }[]
+  extractorVersion: string
+  uploadedAt: string
+  extractedAt: string | null
+  error: string
+}
+
 // ── 엔티티 ────────────────────────────────
 export interface Settlement {
   id: string
@@ -103,6 +124,9 @@ export interface Settlement {
   merchant: string
   amount: number
   cardType: CardType
+  /** 실제로 붙은 카드. 구분만으로는 어느 카드인지 알 수 없다. */
+  cardId?: number | null
+  cardName?: string | null
   aiCategory: Category
   /** AI 제안 분류가 저신뢰라 사용자 확인이 필요한지 */
   aiSuggested: boolean
@@ -124,6 +148,8 @@ export interface Settlement {
   /** 업종 코드(정본 어휘 키). 라벨은 표기라 개정될 수 있어 필터·배지는 이 값을 잡는다. */
   merchantIndustryCode?: string
   additionalEvidence?: { id: number; name: string; status: string }[]
+  /** 첨부 증빙(사전승인·회의록·출장계획서 등) + 증빙자료 추출 Agent 판독 결과. 상세 조회에만 실린다. */
+  attachments?: Attachment[]
   facts?: Record<string, unknown>
   events?: { id: number; fromState: string; toState: string; actor?: string; reason?: string; createdAt: string }[]
   ruleHits?: { graph: string | null; graphVersion: number; path: string[]; decision: string; flags?: string[]; confidence: number }[]
@@ -148,7 +174,17 @@ export interface Settlement {
    * 구분하지 못해 아무도 안 본 건을 "이상 없음 0점"으로 그린다.
    */
   riskReviewed?: boolean
+  /**
+   * Risk Review 진행 상태. **`riskReviewed`(결과 유무)만으로는 세 상황이 뭉친다** —
+   * 미실시(룰 통과라 대상이 아님) / 검토 중(최대 60초) / 실패(ai 미기동·타임아웃).
+   * 구분하지 않으면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
+   */
+  riskReviewState?: RiskReviewState
+  riskReviewError?: string
 }
+
+export type RiskReviewState = 'NOT_STARTED' | 'RUNNING' | 'DONE' | 'FAILED'
+
 
 /** 룰 엔진 판정. 사람의 결정(APPROVE/RETURN/REJECT)이나 AI 권고와는 다른 축이다. */
 export type RuleDecision = 'PASS' | 'RETURN' | 'REJECT' | 'REVIEW'
@@ -192,6 +228,12 @@ export interface ImportResult {
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */
 export interface ReviewItem extends Settlement {
   anomalyScore: number // 0~1 (비지도 이상탐지)
+  /**
+   * 1차 이상탐지 점수의 3단계 등급. 원시 점수는 −0.0127처럼 사람이 크기를 가늠할 수 없는
+   * 값이라, 같은 판정을 읽을 수 있는 축으로 함께 내려준다.
+   * **Agent가 아직 안 돈 건은 `''`**(`aiRecommendation`과 같은 계약 — 없는 판단을 지어내지 않는다).
+   */
+  riskTier: 'HIGH' | 'MEDIUM' | 'LOW' | ''
   featureContribs: { feature: string; weight: number }[]
   ragRefs: { title: string; source: string; kind?: 'policy' | 'case'; excerpt?: string; relevance?: number }[]
   /** RAG 내규 검증 보고서(마크다운). 비면 요약 문장으로 대체 렌더링한다. */

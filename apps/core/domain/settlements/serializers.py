@@ -11,6 +11,8 @@ from .models import Settlement, SettlementEvent
 
 class RiskReviewSerializer(serializers.ModelSerializer):
     anomalyScore = serializers.FloatField(source="anomaly_score", read_only=True)
+    # 1차 등급(HIGH/MEDIUM/LOW) — 원시 점수는 사람이 크기를 가늠할 수 없어 같이 내려준다.
+    riskTier = serializers.CharField(source="risk_tier", read_only=True)
     featureContribs = serializers.JSONField(source="reasons", read_only=True)
     ragRefs = serializers.JSONField(source="rag_refs", read_only=True)
     ragReport = serializers.CharField(source="rag_report", read_only=True)
@@ -19,7 +21,8 @@ class RiskReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RiskReview
-        fields = ["anomalyScore", "featureContribs", "ragRefs", "ragReport", "aiRecommendation", "aiConfidence"]
+        fields = ["anomalyScore", "riskTier", "featureContribs", "ragRefs", "ragReport",
+                  "aiRecommendation", "aiConfidence"]
 
 
 class SettlementEventSerializer(serializers.ModelSerializer):
@@ -45,6 +48,10 @@ class SettlementSerializer(serializers.ModelSerializer):
         source="transaction.amount", max_digits=12, decimal_places=0, read_only=True
     )
     cardType = serializers.SerializerMethodField()
+    #  구분만으로는 **어느 카드인지** 알 수 없다. 화면이 카드를 직접 고르므로 id를 함께 낸다
+    #  (예전엔 화면이 구분만 보내고 서버가 그 구분의 아무 카드나 붙였다 — 남의 카드가 붙었다).
+    cardId = serializers.SerializerMethodField()
+    cardName = serializers.SerializerMethodField()
     aiCategory = serializers.CharField(source="ai_category", read_only=True)
     aiSuggested = serializers.BooleanField(source="ai_suggested", read_only=True)
     merchantIndustry = serializers.CharField(source="merchant_industry", read_only=True)
@@ -60,6 +67,8 @@ class SettlementSerializer(serializers.ModelSerializer):
     claimPending = serializers.SerializerMethodField()
     # ── Risk 평탄화 (ReviewItem 셰이프) ──
     anomalyScore = serializers.SerializerMethodField()
+    # 1차 이상탐지 점수의 3단계 등급. Agent가 아직 안 돈 건은 `''`(없는 판단을 지어내지 않는다).
+    riskTier = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
@@ -85,18 +94,26 @@ class SettlementSerializer(serializers.ModelSerializer):
     # **Risk Review(이상탐지+RAG)를 거쳤는가.** 룰 판정 PASS로 승인 대기에 바로 온 건은
     #  거치지 않는다(`risk_review.schedule`은 IN_REVIEW만 예약한다). 이 값이 없으면 화면이
     #  `anomaly_score`가 없는 것과 **0점인 것**을 구분하지 못해 "정상 0점"으로 그린다.
+    #  상태 변경 이력 — viewset이 이미 `events`를 prefetch하므로 목록에 실어도 추가 쿼리가
+    #  없다. 검토 화면이 **누가 무슨 사유로** 처리했는지를 상세 조회 없이 보여준다
+    #  (예전엔 화면이 이력을 하드코딩한 세 줄로 흉내내고 있었다).
+    events = SettlementEventSerializer(many=True, read_only=True)
     riskReviewed = serializers.SerializerMethodField()
+    #  **「결과가 없다」의 세 가지 상황을 가른다** — 미실시(룰 통과) / 검토 중 / 실패.
+    #  결과 유무만 보면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
+    riskReviewState = serializers.CharField(source="risk_review_state", read_only=True)
+    riskReviewError = serializers.CharField(source="risk_review_error", read_only=True)
 
     class Meta:
         model = Settlement
         fields = [
-            "id", "date", "time", "merchant", "amount", "cardType",
+            "id", "date", "time", "merchant", "amount", "cardType", "cardId", "cardName",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
-            "anomalyScore", "aiRecommendation", "aiConfidence",
+            "anomalyScore", "riskTier", "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
-            "ruleHits", "riskReviewed",
+            "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError", "events",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 
@@ -110,10 +127,26 @@ class SettlementSerializer(serializers.ModelSerializer):
         card = getattr(obj.transaction, "card", None)
         return card.card_type if card else None
 
+    def get_cardId(self, obj):
+        card = getattr(obj.transaction, "card", None)
+        return card.id if card else None
+
+    def get_cardName(self, obj):
+        card = getattr(obj.transaction, "card", None)
+        if card is None:
+            return None
+        return f"{card.name or card.get_card_type_display()}" + (f" {card.number_masked}" if card.number_masked else "")
+
     def get_evidence(self, obj):
-        # 증빙 '누락'은 하드 플래그로 차단하지 않는다 — 영수증 없이도 자동 유연처리 지원(AI가 별도 판단).
-        # 영수증이 매칭되면 'OK', 없어도 누락으로 막지 않고 'OK'로 통과시킨다(누락 여부 판단은 AI 몫, post-MVP).
-        return "OK"
+        """증빙이 **실제로 있는가**. 판정이 보는 사실(`evidence.has_valid_receipt`)과 같은 기준이다.
+
+        예전엔 무조건 `"OK"`를 돌려줬다 — 화면은 전건 「증빙 완료」로 보이는데 판정은
+        「증빙 누락」으로 걸어서, 담당자가 화면과 판정 사유가 어긋나는 걸 설명할 수 없었다.
+        (누락을 **차단하지 않는다**는 원래 방침은 그대로다 — 차단은 룰이 정하고 여기는 표시만 한다.)
+        """
+        if not obj.transaction_id:
+            return "MISSING"
+        return "OK" if obj.transaction.receipts.exclude(status="MISSING").exists() else "MISSING"
 
     def get_claimPending(self, obj):
         return obj.submitted_by_id is None and obj.status == "DRAFT"
@@ -128,6 +161,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_anomalyScore(self, obj):
         r = self._risk(obj)
         return r.anomaly_score if r else None
+
+    def get_riskTier(self, obj):
+        r = self._risk(obj)
+        return r.risk_tier if r else ""
 
     def get_aiRecommendation(self, obj):
         r = self._risk(obj)
@@ -239,8 +276,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
         ]
 
 class SettlementDetailSerializer(SettlementSerializer):
-    """상세: Audit Trail(상태 이력) + Risk(이상탐지+RAG) 포함."""
-    events = SettlementEventSerializer(many=True, read_only=True)
+    """상세: Risk(이상탐지+RAG) 원본 + 첨부 + facts 포함. (`events`는 베이스로 올렸다)"""
     risk = serializers.SerializerMethodField()
     additionalEvidence = serializers.SerializerMethodField()
     facts = serializers.SerializerMethodField()
@@ -248,7 +284,7 @@ class SettlementDetailSerializer(SettlementSerializer):
     class Meta(SettlementSerializer.Meta):
         # `ruleHits`는 베이스로 올렸다 — 검토 화면이 목록에서 바로 판정 경로를 본다.
         fields = SettlementSerializer.Meta.fields + [
-            "events", "risk", "additionalEvidence", "facts",
+            "risk", "additionalEvidence", "facts",
         ]
 
     def get_risk(self, obj):

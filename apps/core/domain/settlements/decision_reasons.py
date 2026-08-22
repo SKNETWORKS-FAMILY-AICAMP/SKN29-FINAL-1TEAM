@@ -35,6 +35,12 @@ TIMEOUT = 30.0
 #: 사유 선택지 — 화면 칩과 LLM 출력 enum이 **같은 목록**을 본다.
 RETURN_REASONS = ["증빙 누락", "건당 한도 초과", "업무관련성 소명 부족", "사전승인 누락", "기타"]
 REJECT_REASONS = ["명백한 규정 위반", "사적 사용 의심", "허위 증빙 의심", "중복 제출", "기타"]
+#: 승인 사유는 **AI·룰과 다르게 판단할 때만** 받는다 — 권고대로 승인하는 건 설명할 게 없다.
+#  그래서 목록이 "왜 기계 판단을 따르지 않았는가"에 대한 답으로 구성된다.
+APPROVE_REASONS = [
+    "업무관련성 확인됨", "증빙 별도 확인", "규정상 예외 인정",
+    "AI 과탐지(오탐)", "경미하여 통과", "기타",
+]
 
 #: 판정 사유 코드 → 기본 선택지. LLM이 실패했을 때 쓰는 폴백 매핑이고, LLM이 있을 때도
 #  "이 코드면 보통 이 사유"라는 힌트로 프롬프트에 함께 넘긴다.
@@ -58,8 +64,27 @@ FLAG_TO_REASON = {
 }
 
 
+DECISIONS = {"APPROVE": APPROVE_REASONS, "RETURN": RETURN_REASONS, "REJECT": REJECT_REASONS}
+
+
 def options(decision: str) -> list[str]:
-    return REJECT_REASONS if decision == "REJECT" else RETURN_REASONS
+    return DECISIONS.get(decision, RETURN_REASONS)
+
+
+def divergence(settlement, decision: str) -> dict:
+    """이 결정이 **기계 판단과 다른가** — 화면이 사유를 받을지 정하는 근거.
+
+    판별 로직을 프론트에 복사하지 않는다(사례 기록도 같은 규약을 쓴다 —
+    `domain/risk/decision_cases.expected_decision`).
+    """
+    from domain.risk.decision_cases import expected_decision
+
+    expected, source = expected_decision(settlement)
+    return {
+        "expected": expected,
+        "expectedFrom": source,
+        "diverges": bool(expected) and expected != decision,
+    }
 
 
 def build_context(settlement, decision: str) -> dict:
@@ -98,6 +123,8 @@ def build_context(settlement, decision: str) -> dict:
         },
         # "이 코드면 보통 이 사유" — 모델이 목록 밖 값을 만들지 않게 하는 힌트.
         "reason_hints": {f["code"]: FLAG_TO_REASON[f["code"]] for f in flags if f["code"] in FLAG_TO_REASON},
+        #  "AI는 이렇게 봤는데 사람은 다르게 판단한다" — 승인 사유 초안의 전제가 된다.
+        "divergence": divergence(settlement, decision),
     }
 
 
@@ -109,6 +136,11 @@ def fallback(context: dict) -> dict:
 
     if not flags:
         detail = ""
+    elif context["decision"] == "APPROVE":
+        #  승인은 **기계 판단을 따르지 않은 이유**를 적는 자리다. 플래그 설명을 그대로
+        #  이어붙이면 "이래서 문제다"만 남아 승인 사유가 되지 않는다 — 사람이 채우게 둔다.
+        detail = ""
+        reason = APPROVE_REASONS[0]
     else:
         parts = [f"{f['label']}: {f['description']}" for f in flags if f.get("description")]
         detail = " ".join(parts)
@@ -128,7 +160,8 @@ def draft(settlement, decision: str) -> dict:
         result = resp.json()
     except Exception as exc:  # noqa: BLE001  — 미기동·타임아웃·5xx 전부
         logger.info("decision-reason 초안 생성 폴백(settlement=%s): %s", settlement.pk, exc)
-        return {**fallback(context), "options": context["options"]}
+        return {**fallback(context), "options": context["options"],
+                "divergence": context["divergence"]}
 
     reason = str(result.get("reason") or "").strip()
     # 목록 밖 값은 버린다 — 화면 칩과 어긋난 문자열이 그대로 저장되면 집계가 갈린다.
@@ -139,4 +172,5 @@ def draft(settlement, decision: str) -> dict:
         "detail": str(result.get("detail") or "").strip(),
         "source": "ai",
         "options": context["options"],
+        "divergence": context["divergence"],
     }

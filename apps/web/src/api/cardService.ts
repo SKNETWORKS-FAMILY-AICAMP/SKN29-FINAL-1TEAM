@@ -89,3 +89,15 @@ export async function reactivateCard(id: number): Promise<CorpCard> {
   const { data } = await endpoints.reactivateCard(id)
   return data
 }
+
+/**
+ * 지출 등록·수정 화면의 카드 선택지 — **본인이 쓸 수 있는 카드만.**
+ *
+ * 예전엔 화면이 카드 **구분**(개인/팀/공용)만 골랐고 서버가 그 구분의 아무 카드나 붙였다.
+ * 카드 귀속은 판정 사실(`card.actual_user_recorded` 등)이 되므로 엉뚱한 카드가 붙으면
+ * 그대로 오판이 된다.
+ */
+export async function fetchMyCards(): Promise<CorpCard[]> {
+  const { data } = await endpoints.myCards()
+  return data ?? []
+}

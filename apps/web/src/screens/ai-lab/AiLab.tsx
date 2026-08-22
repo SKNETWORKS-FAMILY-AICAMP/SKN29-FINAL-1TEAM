@@ -10,6 +10,9 @@ import { USE_MOCK } from '../../api/config'
 import { labApi, labErrorMessage, type LabStatus } from './data/labApi'
 import { StatusPanel, StatusStrip } from './StatusPanel'
 import { DraftLab } from './DraftLab'
+import { RuleLab } from './RuleLab'
+import { RiskLab } from './RiskLab'
+import { ExtractLab } from './ExtractLab'
 import { RagSearchLab } from './RagSearchLab'
 import { EmbeddingLab } from './EmbeddingLab'
 import { CollectionsLab } from './CollectionsLab'
@@ -31,17 +34,17 @@ interface LabModule {
 const MODULES: LabModule[] = [
   { key: 'STATUS', label: '상태 점검', group: '환경', render: (ctx) => <StatusPanel {...ctx} /> },
   { key: 'DRAFT', label: '① Draft Agent', group: 'Agent', render: () => <DraftLab /> },
+  { key: 'RULE', label: '② Rule Agent', group: 'Agent', render: () => <RuleLab /> },
+  { key: 'RISK', label: '③ Risk Review', group: 'Agent', render: () => <RiskLab /> },
+  { key: 'EXTRACT', label: '증빙자료 추출', group: 'Agent', render: () => <ExtractLab /> },
   { key: 'RAG', label: 'RAG 검색', group: 'RAG', render: () => <RagSearchLab /> },
   { key: 'EMBED', label: '임베딩 인스펙터', group: 'RAG', render: () => <EmbeddingLab /> },
   { key: 'COLLECTIONS', label: '적재 현황', group: 'RAG', render: () => <CollectionsLab /> },
 ]
 
-// 아직 stub이라 실험 대상이 아닌 기능 — 구현되면 MODULES로 옮긴다(빈 화면 대신 사실을 적어 둔다).
-const PLANNED = [
-  { label: '② Rule Agent', note: '룰 생성·검증은 S-04 Rule 콘솔에서 실동작. 단독 실행은 Agent 구현 후' },
-  { label: '③ Risk Review', note: '이상탐지 1차는 학습 완료, RAG 내규검증 2차 미착수' },
-  { label: '증빙자료 추출', note: '첨부 → EvalContext 추출 Agent 미착수' },
-]
+// 미착수 기능 없음(2026-08-21) — Draft·Rule·Risk Review·증빙자료 추출 4개 Agent 모두
+// 단독 실행 탭을 갖췄다. 새 기능이 stub 상태로 남으면 다시 여기 적는다.
+const PLANNED: { label: string; note: string }[] = []
 
 export function AiLab() {
   const [tab, setTab] = useState('STATUS')
@@ -93,12 +96,15 @@ export function AiLab() {
               {m.label}
             </button>
           ))}
-          <span className="lab-planned">
-            예정:
-            {PLANNED.map((p) => (
-              <span key={p.label} className="lab-chip disabled" title={p.note}>{p.label}</span>
-            ))}
+          {/* 예정 목록이 비면 "예정:" 라벨만 남는다 — 빈 배열이면 통째로 감춘다. */}
+            {PLANNED.length > 0 && (
+            <span className="lab-planned">
+              예정:
+              {PLANNED.map((p) => (
+                <span key={p.label} className="lab-chip disabled" title={p.note}>{p.label}</span>
+              ))}
           </span>
+          )}
         </div>
       </div>
 

@@ -109,6 +109,27 @@ class DecisionReasonTests(TestCase):
         # 반려는 최종이라 재제출을 안내하지 않는다.
         self.assertNotIn("다시 제출", body["detail"])
 
+    def test_승인도_사유_초안_대상이다(self):
+        """AI·룰과 다르게 승인할 때 그 이유를 남긴다 — 사례로 저장돼 다음 검토에 인용된다."""
+        with patch("domain.settlements.decision_reasons.httpx.post", side_effect=RuntimeError("x")):
+            body = self.client.post(self.url, {"decision": "APPROVE"}, format="json").json()
+        self.assertEqual(body["options"], decision_reasons.APPROVE_REASONS)
+        #  승인 사유는 플래그 설명을 이어붙이지 않는다 — "이래서 문제다"만 남아 승인 사유가
+        #  되지 않는다. 사람이 채우게 비워 둔다.
+        self.assertEqual(body["detail"], "")
+
+    def test_다름_여부를_함께_알려준다(self):
+        """화면이 사유를 받을지 정하는 기준 — 판별을 프론트에 복사하지 않는다."""
+        from domain.risk.models import RiskReview
+
+        RiskReview.objects.create(settlement=self.settlement, ai_recommendation="RETURN")
+        with patch("domain.settlements.decision_reasons.httpx.post", side_effect=RuntimeError("x")):
+            approve = self.client.post(self.url, {"decision": "APPROVE"}, format="json").json()
+            same = self.client.post(self.url, {"decision": "RETURN"}, format="json").json()
+        self.assertTrue(approve["divergence"]["diverges"])
+        self.assertEqual(approve["divergence"]["expected"], "RETURN")
+        self.assertFalse(same["divergence"]["diverges"])
+
     def test_잘못된_decision은_400(self):
-        r = self.client.post(self.url, {"decision": "APPROVE"}, format="json")
+        r = self.client.post(self.url, {"decision": "CONFIRM"}, format="json")
         self.assertEqual(r.status_code, 400)

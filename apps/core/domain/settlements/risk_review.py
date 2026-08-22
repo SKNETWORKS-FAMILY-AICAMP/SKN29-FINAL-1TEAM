@@ -19,10 +19,11 @@ import logging
 import httpx
 from django.conf import settings
 from django.db import transaction as db_tx
+from django.utils import timezone
 
 from domain.risk.models import RiskReview
 
-from .models import SettlementStatus as S
+from .models import RiskReviewState, Settlement, SettlementStatus as S
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,21 @@ RECOMMENDATION_MAP = {"APPROVE": "APPROVE", "SUPPLEMENT": "RETURN", "REJECT": "R
 def schedule(settlement) -> None:
     """`IN_REVIEW`로 끝난 판정에 한해, 커밋 후 Risk Review를 돌리도록 예약한다.
 
+    **예약과 동시에 `RUNNING`을 기록한다.** 실행이 커밋 후라 그 사이 화면이 목록을
+    읽으면 결과가 비어 있는데, 상태가 없으면 "룰 통과라 검토를 안 거친 건"과 구분되지
+    않는다 — 실제로 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 떴다.
+
     테스트(`TestCase`)에서는 트랜잭션이 롤백되므로 콜백이 자동으로 뜨지 않는다 —
     검증하려면 `captureOnCommitCallbacks(execute=True)`를 쓴다.
     """
     if settlement.status != S.IN_REVIEW:
         return
+    settlement.risk_review_state = RiskReviewState.RUNNING
+    settlement.risk_review_error = ""
+    settlement.risk_review_started_at = timezone.now()
+    settlement.save(update_fields=[
+        "risk_review_state", "risk_review_error", "risk_review_started_at", "updated_at",
+    ])
     db_tx.on_commit(lambda: run(settlement))
 
 
@@ -60,6 +71,11 @@ def run(settlement) -> RiskReview | None:
         result = resp.json()
     except Exception as exc:  # noqa: BLE001  # 미기동·타임아웃·5xx 전부
         logger.warning("risk-review 호출 실패(settlement=%s): %s", settlement.id, exc)
+        # 실패를 상태로 남긴다 — 안 남기면 화면이 「아직 도는 중」과 구분하지 못해
+        # 담당자가 오지 않을 결과를 계속 기다린다.
+        Settlement.objects.filter(pk=settlement.pk).update(
+            risk_review_state=RiskReviewState.FAILED, risk_review_error=str(exc)[:500],
+        )
         return None
 
     stage1 = result.get("stage1_anomaly") or {}
@@ -67,6 +83,9 @@ def run(settlement) -> RiskReview | None:
     review = RiskReview.objects.create(
         settlement=settlement,
         anomaly_score=stage1.get("anomaly_score", 0.0),
+        # 1차 등급(HIGH/MEDIUM/LOW). AI가 판정 시점 임계값으로 매긴 값을 그대로 보존한다 —
+        # 예전엔 이 값을 여기서 읽지 않아, AI가 계산해 응답에 실어 보내도 조용히 버려졌다.
+        risk_tier=stage1.get("risk_tier", ""),
         # `reasons`는 1차 feature 기여도(프론트 기존 계약), `anomaly_reasons`는 2차 검토 사유.
         reasons=stage1.get("contribs", []),
         anomaly_reasons=stage2.get("review_reasons", []),
@@ -89,6 +108,9 @@ def run(settlement) -> RiskReview | None:
         ai_recommendation=RECOMMENDATION_MAP.get(stage2.get("recommendation", ""), ""),
         # LLM 원본 출력은 따로 보존한다 — 기존 `reasons` 계약을 깨지 않기 위해 분리했다.
         stage2_verdict=stage2,
+    )
+    Settlement.objects.filter(pk=settlement.pk).update(
+        risk_review_state=RiskReviewState.DONE, risk_review_error="",
     )
     logger.info(
         "risk-review 저장(settlement=%s): verdict=%s recommendation=%s",

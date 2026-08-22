@@ -14,13 +14,22 @@ export async function fetchSettlementDetail(item: Settlement): Promise<Settlemen
 const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 250))
 
 /** F-1: 신규 지출 등록(영수증 업로드 + AI 판독 확인 후 제출). id/status는 서버가 생성 — mock에서는 흉내낸다. */
-export async function createSettlement(draft: Omit<Settlement, 'id' | 'status'>): Promise<Settlement> {
+export async function createSettlement(
+  draft: Omit<Settlement, 'id' | 'status'>, receipt: File,
+): Promise<Settlement> {
   if (USE_MOCK) {
     await mockDelay()
     // 신규 건은 '개인 보유중(DRAFT)'으로 생성 — 이후 목록에서 제출
     return { ...draft, id: `S-1${Math.floor(100 + Math.random() * 900)}`, status: 'DRAFT' }
   }
-  const res = await endpoints.createSettlement(draft)
+  //  **영수증 파일과 함께 보낸다**(multipart). 예전엔 `evidence: 'OK'` 한 글자만 보내면
+  //  서버가 있지도 않은 경로로 Receipt를 만들어, 증빙이 있다고 기록됐지만 파일이 없었다.
+  const form = new FormData()
+  for (const [key, value] of Object.entries(draft)) {
+    if (value !== undefined && value !== null) form.append(key, String(value))
+  }
+  form.append('receipt', receipt)
+  const res = await endpoints.createSettlement(form)
   return res.data
 }
 
@@ -144,13 +153,35 @@ export async function confirmSettlement(id: string): Promise<SettlementStatus | 
   } catch { return null }
 }
 
-/** 보완요청·반려 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
+/**
+ * AI 위험 검토 재실행. 실패해도 화면을 막지 않는다 — 결과 없이도 증빙·판정 사유로
+ * 판단할 수 있어야 한다.
+ */
+export async function rerunRiskReview(id: string): Promise<boolean> {
+  if (USE_MOCK) { await mockDelay(); return true }
+  try {
+    await endpoints.rerunRiskReview(id)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 사유를 받는 결정 — 승인도 포함한다(AI·룰과 다르게 판단할 때). */
+export type DecisionKind = 'APPROVE' | 'RETURN' | 'REJECT'
+
+/** 결정 사유 초안 (Draft Agent). `source`는 'ai' 또는 'fallback'(판정 플래그 기반). */
 export interface DecisionReasonDraft {
   reason: string
   detail: string
   source: 'ai' | 'fallback'
   /** 사유 선택지 — **서버가 준다**. 화면과 LLM이 같은 목록을 봐야 어긋나지 않는다. */
   options: string[]
+  /**
+   * 이 결정이 **기계 판단과 다른가**. 판별을 프론트에 복사하지 않는다 — 사례 기록
+   * (`decision_cases.expected_decision`)과 같은 규약을 서버가 한 곳에서 쓴다.
+   */
+  divergence?: { expected: string; expectedFrom: 'AI' | 'RULE' | ''; diverges: boolean }
 }
 
 /**
@@ -160,7 +191,7 @@ export interface DecisionReasonDraft {
  * 초안 생성에 묶이면 ai가 죽었을 때 정산이 멈춘다.
  */
 export async function fetchDecisionReason(
-  id: string, decision: 'RETURN' | 'REJECT',
+  id: string, decision: DecisionKind,
 ): Promise<DecisionReasonDraft | null> {
   if (USE_MOCK) { await mockDelay(); return null }
   try {
@@ -215,6 +246,26 @@ export async function reviseDraft(
     const res = await endpoints.suggestDraft({ instruction, current })
     return res.data as DraftSuggestion
   } catch { return null }
+}
+
+export interface ReviewStats {
+  autoProcessedRate: number | null // 0~1. 이번 달 판정 자체가 없으면 null(집계 불가 ≠ 0%)
+  avgReviewMinutes: number | null  // 사람이 실제로 내린 결정이 없으면 null
+}
+
+/** S-03 헤더 요약(자동처리율·평균 검토시간) — 룰 판정·검토 이력 기반 서버 집계.
+ *  실패해도 화면이 죽으면 안 된다(부가 지표라 숫자 대신 자리표시자로 대체). */
+export async function fetchReviewStats(): Promise<ReviewStats | null> {
+  if (USE_MOCK) {
+    await mockDelay()
+    return { autoProcessedRate: 0.82, avgReviewMinutes: 6.2 }
+  }
+  try {
+    const res = await endpoints.reviewStats()
+    return { autoProcessedRate: res.data.autoProcessedRate, avgReviewMinutes: res.data.avgReviewMinutes }
+  } catch {
+    return null
+  }
 }
 
 /** '내 지출': 아직 올리지 않은 건 삭제. 성공 여부를 돌려준다. */

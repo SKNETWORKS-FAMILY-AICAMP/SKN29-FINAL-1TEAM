@@ -23,11 +23,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
 from pydantic import BaseModel, Field
 
 from app import media
 from app.clients import core_auth
+from app.rag import case_store
 from app.rag import ingest as ingest_mod
 from app.rag import rule_trigger
 from app.rag.embedding import config as emb_config
@@ -110,6 +111,32 @@ def ingest(req: IngestRequest, background: BackgroundTasks):
     """적재 **요청 접수**. 실제 작업은 백그라운드에서 돌고 결과는 core로 회신된다."""
     background.add_task(_run, req)
     return {"accepted": True, "policyDocId": req.policyDocId, "status": PARSING}
+
+
+@router.post("/cases")
+def upsert_cases(payload: dict = Body(...)) -> dict:
+    """결정 사례를 `case_history`에 upsert — Risk Review 2차 검증의 유사사례 근거.
+
+    Django가 **회계 담당자가 AI·룰과 다르게 판단했을 때** 부른다. 그 판단과 사유가
+    다음 검토에서 근거로 끌려 나오게 하는 경로다(그 전까지 `case_history`는 골든
+    시드 10건뿐이었다 — 실 결정이력 적재 파이프라인이 없었다).
+
+    `case_id`가 문서 id라 재적재해도 중복되지 않는다(멱등 upsert).
+
+    실패를 200으로 덮지 않는다 — core가 `index_error`로 남기고 나중에 다시 올린다.
+    """
+    cases = payload.get("cases") or []
+    if not isinstance(cases, list) or not cases:
+        raise HTTPException(status_code=400, detail="cases(비어 있지 않은 배열)가 필요합니다.")
+    for case in cases:
+        if not case.get("case_id") or not str(case.get("text") or "").strip():
+            raise HTTPException(status_code=400, detail="각 사례에 case_id와 text가 필요합니다.")
+    try:
+        n = case_store.upsert_cases(cases)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("case_history 적재 실패")
+        raise HTTPException(status_code=502, detail=f"사례 적재 실패: {exc}") from exc
+    return {"upserted": n, "collection": case_store.COLLECTION}
 
 
 @router.get("/collections")

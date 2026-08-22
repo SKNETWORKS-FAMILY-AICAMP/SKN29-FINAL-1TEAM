@@ -297,6 +297,13 @@ class FactMerger:
         ctx["conflicts"].update(self.conflicts)
 
 
+# 저신뢰 추출값은 판정에 넣지 않는다(`_context/evidence-extraction-agent.md` §6 결정 2) —
+# "적용하되 표시"는 저신뢰 오추출이 자동 통과를 만들 수 있어, 이 프로젝트의 원칙(사람 확정·
+# 조용한 실패 금지)에 비추면 미달은 미해소로 남겨 REVIEW로 보내는 쪽이 일관된다. 값 자체는
+# `Attachment.extracted`에 그대로 남아 S-03에서 "저신뢰라 반영 안 됨"으로 보여줄 수 있다.
+ATTACHMENT_CONFIDENCE_THRESHOLD = 0.6
+
+
 def collect_from_attachments(merger: FactMerger, settlement) -> None:
     """첨부 문서에서 추출된 사실을 제안한다(`RANK_EXTRACT`).
 
@@ -306,7 +313,10 @@ def collect_from_attachments(merger: FactMerger, settlement) -> None:
     ordered = settlement.attachments.filter(extraction_status="DONE").order_by("extracted_at", "id")
     for attachment in ordered:
         origin = f"attachment:{attachment.pk}({attachment.kind})"
+        confidence = attachment.field_confidence or {}
         for path, value in (attachment.extracted or {}).items():
+            if confidence.get(path, 1.0) < ATTACHMENT_CONFIDENCE_THRESHOLD:
+                continue
             merger.offer(path, value, RANK_EXTRACT, origin)
 
 

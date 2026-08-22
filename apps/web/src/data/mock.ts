@@ -69,6 +69,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '이영희', dept: 'AI플랫폼부',
     purpose: '거래처 A사 계약 논의 접대',
     anomalyScore: 0.92,
+    riskTier: 'HIGH',
     featureContribs: [
       { feature: '전월대비 결제금액 급증', weight: 0.45 },
       { feature: '심야 시간대 결제', weight: 0.32 },
@@ -86,6 +87,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '접대', aiSuggested: true, evidence: 'OK', status: 'IN_REVIEW', user: '박민수', dept: '영업본부',
     purpose: '거래처 접대 후 숙박',
     anomalyScore: 0.78,
+    riskTier: 'HIGH',
     featureContribs: [
       { feature: '건당 한도 근접', weight: 0.36 },
       { feature: '유사 반려사례 존재', weight: 0.28 },
@@ -101,6 +103,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '회의', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '최지우', dept: '데이터부',
     purpose: '팀 회의 다과',
     anomalyScore: 0.65,
+    riskTier: 'MEDIUM',
     featureContribs: [
       { feature: '동일 가맹점 빈도 급증', weight: 0.41 },
       { feature: '한도 임계값 바로 아래', weight: 0.22 },
@@ -116,6 +119,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '비품', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '김철수', dept: '클라우드부',
     purpose: '사무용품 구매',
     anomalyScore: 0.51,
+    riskTier: 'MEDIUM',
     featureContribs: [{ feature: '분류 신뢰도 낮음', weight: 0.28 }],
     ragRefs: [],
     aiRecommendation: 'APPROVE', aiConfidence: 0.72,
@@ -126,6 +130,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '정하늘', dept: '전략기획부',
     purpose: '주말 근무 식대',
     anomalyScore: 0.43,
+    riskTier: 'MEDIUM',
     featureContribs: [{ feature: '주말 결제', weight: 0.19 }],
     ragRefs: [],
     aiRecommendation: 'APPROVE', aiConfidence: 0.81,
@@ -136,6 +141,7 @@ export const reviewItems: ReviewItem[] = [
     aiCategory: '식대', aiSuggested: false, evidence: 'OK', status: 'IN_REVIEW', user: '이도윤', dept: '공공사업부',
     purpose: '업무 오찬',
     anomalyScore: 0.30,
+    riskTier: 'MEDIUM',
     featureContribs: [{ feature: '경미한 금액 편차', weight: 0.12 }],
     ragRefs: [],
     aiRecommendation: 'APPROVE', aiConfidence: 0.88,

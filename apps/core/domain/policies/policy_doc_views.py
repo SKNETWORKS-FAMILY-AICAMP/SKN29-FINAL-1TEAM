@@ -34,6 +34,8 @@ from rest_framework.views import APIView
 
 from domain.common.permissions import CanViewRule
 
+from domain.risk.models import DecisionCase
+
 from .models import (
     DOC_PROFILE_CHOICES, ClauseDecision, IngestStatus, PolicyClause, PolicyDoc,
     PolicyFolder, RuleNode,
@@ -456,3 +458,69 @@ def _replace_clauses(doc: PolicyDoc, rows: list[dict]) -> None:
         for index, row in enumerate(rows)
         if row.get("articleLabel")
     ])
+
+
+class DecisionCaseListView(APIView):
+    """GET /api/policy-docs/cases/ — 결정 사례를 **월별로 묶어** 돌려준다(S-05 트리의 「결정 사례」).
+
+    ## 왜 `PolicyDoc`으로 만들지 않는가
+
+    사례는 문서가 아니다. 이미 결정 시점에 `case_history`에 적재돼 있어서 문서 파이프라인
+    (파싱 → 청킹 → 임베딩 → `policy_docs`)에 태우면 **같은 내용이 두 컬렉션에 이중 적재**되고
+    검색이 자기 자신과 겹친다. 게다가 `PolicyDoc`은 파일(FileField) 전제라 원문보기·재색인
+    버튼이 전부 빈 껍데기가 된다.
+
+    그래서 트리에 자리만 만들고(사람이 찾는 분류), 내용은 `DecisionCase`를 직접 읽는다.
+
+    ## 왜 월별인가
+
+    1건 = 1항목이면 트리가 금세 수백 줄이 된다. 반대로 전부 한 덩어리면 "언제 결정한
+    사례인가"를 못 고른다. 결정은 **월 단위로 몰려서 검토·집계**되므로(팀 통계·검토 이력이
+    이미 이번 달 기준이다) 월이 자연스러운 묶음이다.
+
+    인가는 `rule_view` — 사례는 판정의 근거 코퍼스라 규정 문서와 같은 권한으로 묶는다.
+    """
+    permission_classes = [CanViewRule]
+
+    def get(self, request):
+        month = (request.query_params.get("month") or "").strip()
+        qs = DecisionCase.objects.select_related("decided_by", "settlement").order_by("-decided_at")
+
+        #  월 목록은 **항상 전체 기준**으로 낸다 — 선택한 달만 보이면 다른 달로 못 넘어간다.
+        months: dict[str, dict] = {}
+        for case in qs:
+            key = case.decided_at.strftime("%Y-%m")
+            row = months.setdefault(key, {"key": key, "count": 0, "indexed": 0})
+            row["count"] += 1
+            row["indexed"] += bool(case.indexed_at)
+
+        listed = [c for c in qs if not month or c.decided_at.strftime("%Y-%m") == month]
+        return Response({
+            "months": sorted(months.values(), key=lambda m: m["key"], reverse=True),
+            "month": month,
+            "cases": [_case_row(c) for c in listed],
+            "total": qs.count(),
+        })
+
+
+def _case_row(case) -> dict:
+    return {
+        "id": case.pk,
+        "caseId": case.case_id,
+        "category": case.category,
+        "outcome": case.outcome,
+        "expected": case.expected,
+        "divergedFrom": case.diverged_from,
+        "reason": case.reason,
+        "text": case.text,
+        "facts": case.facts,
+        "ruleFlags": case.rule_flags,
+        "citation": case.citation,
+        # **누가 결정했는가** — 사례를 읽는 사람의 첫 질문이다.
+        "decidedBy": (case.decided_by.first_name or case.decided_by.username) if case.decided_by_id else "",
+        "decidedAt": case.decided_at,
+        "settlementId": case.settlement_id,
+        # 적재 상태를 감추지 않는다 — 안 올라간 사례는 검색에 안 잡힌다(재적재 대상).
+        "indexed": bool(case.indexed_at),
+        "indexError": case.index_error,
+    }

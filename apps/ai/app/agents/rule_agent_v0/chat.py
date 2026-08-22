@@ -41,7 +41,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from . import django_client, mcp_client
+from .. import mcp_client
+from . import django_client
 from .agent import _CONDITION_NODE_SCHEMA, _build_condition, _openai, _validate_condition, decisions, severities
 from .settings import settings
 

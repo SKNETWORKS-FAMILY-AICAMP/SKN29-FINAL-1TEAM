@@ -1,18 +1,21 @@
 // S-03 검토 워크스페이스 — 회계 담당자.
 // FR-UI-03, FR-RR-01~08, FR-RL-01~02, FR-DB-04
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL, CATEGORIES, type Category } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
-import { RulePassedNotice } from '../components/settlement/RulePassedNotice'
+import { RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { confirmSettlement, reviewSettlement } from '../api/settlementService'
+import {
+  confirmSettlement, fetchReviewStats, rerunRiskReview, reviewSettlement,
+  type ReviewStats,
+} from '../api/settlementService'
 import { AWAITING_CONFIRM_STATUSES, REVIEW_HISTORY_STATUSES } from '../api/settlements'
 import { useSettlements } from '../context/SettlementsContext'
 import { useCan } from '../lib/capabilities'
@@ -24,6 +27,19 @@ import { currentMonth, isInMonth, monthLabel } from '../lib/period'
 // 반드시 갈라 놓아야 한다: AI **권장** 승인 / 사람이 승인해 **확정 대기**(PENDING_CONFIRM) /
 // **확정 완료**(CONFIRMED).
 type Reco = 'APPROVE' | 'RETURN' | 'REJECT'
+
+//  룰 판정 → 사람 결정 대응. 서버(`decision_cases.RULE_TO_HUMAN`)와 같은 표다 —
+//  룰의 `REVIEW`는 판단을 미룬 것이라 비교 대상이 아니다(무엇과도 "다르다"고 할 수 없다).
+const RULE_TO_HUMAN: Record<string, Reco> = { PASS: 'APPROVE', RETURN: 'RETURN', REJECT: 'REJECT' }
+
+/**
+ * 이 결정이 **기계 판단과 다른가.** AI 권고 우선, 없으면 룰 판정과 비교한다.
+ * 사유를 받을지 정하는 기준이고, 서버가 사례를 남기는 기준과 같아야 한다.
+ */
+function divergesFromMachine(item: ReviewItem, decision: Reco): boolean {
+  const expected = item.aiRecommendation || RULE_TO_HUMAN[item.ruleDecision ?? ''] || ''
+  return Boolean(expected) && expected !== decision
+}
 type RecoOrNone = ReviewItem['aiRecommendation']
 const RECO_LABEL: Record<Reco, { text: string; abbr: string; cls: string }> = {
   APPROVE: { text: '승인', abbr: '승인', cls: 'ok' },
@@ -70,17 +86,27 @@ const OUTCOME_BY_STATUS: Partial<Record<ReviewItem['status'], Reco>> = {
 }
 const outcomeOf = (item: ReviewItem): RecoOrNone => OUTCOME_BY_STATUS[item.status] ?? item.aiRecommendation
 
+//  AI 위험 검토가 도는 동안 목록을 되읽는 주기. 판독이 보통 수십 초라 3초면 충분하다.
+const RISK_REVIEW_POLL_MS = 3000
+
 export function ReviewWorkspace() {
-  const { reviewItems: items, updateStatus } = useSettlements()
+  const { reviewItems: items, updateStatus, refresh } = useSettlements()
   const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
   const [selId, setSelId] = useState<string | undefined>(items[0]?.id)
   const [filter, setFilter] = useState<Filter>('ALL')
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [showHistory, setShowHistory] = useState(false)
   const [showFact, setShowFact] = useState(false)
-  const [modal, setModal] = useState<{ decision: 'RETURN' | 'REJECT'; ids: string[] } | null>(null)
+  const [modal, setModal] = useState<{ decision: Reco; ids: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>('PENDING')
+  const [stats, setStats] = useState<ReviewStats | null>(null)
+
+  // 헤더 요약(자동처리율·평균 검토시간) — 이 화면과 무관하게 실패해도 나머지 기능은 그대로
+  // 동작해야 하므로 별도 useEffect로 분리한다(목록 로딩과 실패 경로를 안 섞는다).
+  useEffect(() => {
+    fetchReviewStats().then(setStats)
+  }, [])
   const isHistory = view === 'HISTORY'
   const isConfirm = view === 'CONFIRM'
   const month = currentMonth()
@@ -173,24 +199,51 @@ export function ReviewWorkspace() {
     setBusy(false)
   }
 
-  // 상세 패널 단건 처리
+  /**
+   * 상세 패널 단건 처리.
+   *
+   * **기계 판단과 다르면 승인도 사유를 받는다** — 그 사유가 결정 사례로 저장돼 다음
+   * 검토의 근거가 된다(`domain/risk/decision_cases`). 권고대로 승인하는 건 설명할 게
+   * 없으므로 그대로 처리한다.
+   *
+   * 다름 판정은 **서버 값을 쓴다**(`aiRecommendation` → 없으면 `ruleDecision`) — 같은
+   * 규약을 프론트에 복사하면 사유를 받는 기준과 사례를 남기는 기준이 곧 갈린다.
+   */
   const decideOne = (decision: Reco) => {
     if (!sel) return
-    if (decision === 'APPROVE') applyDecision('APPROVE', [sel.id])
-    else setModal({ decision, ids: [sel.id] })
+    if (decision === 'APPROVE' && !divergesFromMachine(sel, 'APPROVE')) {
+      applyDecision('APPROVE', [sel.id])
+      return
+    }
+    setModal({ decision, ids: [sel.id] })
   }
-  // 리스트의 권장 처리 배지 클릭 → 해당 건에 곧바로 권장 결정 적용(승인은 즉시, 보완/반려는 사유 모달)
+  // 리스트의 권장 처리 배지 클릭 → 해당 건 처리. **승인은 여기서 하지 않는다** —
+  //  목록에서 원클릭 승인하면 화면을 열어보지 않고 통과시키게 된다(승인은 상세에서만).
   const decideItem = (item: ReviewItem, decision: RecoOrNone) => {
-    if (!decision) return   // AI가 안 돈 건 — 권고가 없으니 원클릭 처리도 없다
-    if (decision === 'APPROVE') applyDecision('APPROVE', [item.id])
-    else setModal({ decision, ids: [item.id] })
+    if (!decision || decision === 'APPROVE') return
+    setModal({ decision, ids: [item.id] })
   }
-  // 필터 칩 기준 일괄 처리
+  //  일괄 처리 — **승인은 제외한다.** 승인은 되돌리기 어려운 방향이라 건별로 근거를 보고
+  //  내려야 하는 결정이다(보완요청·반려는 사람에게 돌아가 다시 검토될 여지가 남는다).
   const decideBulk = () => {
-    if (filter === 'ALL' || checked.size === 0) return
-    const ids = [...checked]
-    if (filter === 'APPROVE') applyDecision('APPROVE', ids)
-    else setModal({ decision: filter, ids })
+    if (filter === 'ALL' || filter === 'APPROVE' || checked.size === 0) return
+    setModal({ decision: filter, ids: [...checked] })
+  }
+
+  //  AI 위험 검토가 도는 동안(RUNNING) 목록을 되읽는다 — 결과가 도착하면 화면이 스스로
+  //  갱신돼야 한다. 도는 건이 없으면 폴링하지 않는다(끝났는데 계속 두드리면 서버만 친다).
+  const anyRunning = items.some((i) => i.riskReviewState === 'RUNNING')
+  useEffect(() => {
+    if (!anyRunning) return
+    const t = setInterval(() => refresh(), RISK_REVIEW_POLL_MS)
+    return () => clearInterval(t)
+  }, [anyRunning, refresh])
+
+  const retryRiskReview = async (id: string) => {
+    setBusy(true)
+    await rerunRiskReview(id)
+    refresh()
+    setBusy(false)
   }
 
   const modalItem = modal ? source.find((i) => i.id === modal.ids[0]) : undefined
@@ -205,6 +258,8 @@ export function ReviewWorkspace() {
 
   return (
     <div className="review-ws">
+      {/* 디자인은 프론트 브랜치의 hero-band, 지표는 main의 **서버 집계**를 쓴다
+          (예전엔 `82%`·`6.2분`이 하드코딩이었다). */}
       <div className="hero-band">
         <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
@@ -214,10 +269,18 @@ export function ReviewWorkspace() {
           </div>
           {/* 요약 지표 — 제목 우측 상단에 작게 */}
           <div className="head-stats">
-            <div className="head-stat"><span className="v">82%</span><span className="l">자동처리율</span></div>
+            {/* 이번 달 룰 판정·검토 이력 기반 서버 집계(`/settlements/review-stats/`). 이번 달
+                판정 자체가 없으면 null — "0%"는 실제로 전부 검토가 필요했다는 뜻이라 다르다. */}
+            <div className="head-stat">
+              <span className="v">{stats?.autoProcessedRate != null ? pct(stats.autoProcessedRate) : '—'}</span>
+              <span className="l">자동처리율</span>
+            </div>
             <div className="head-stat"><span className="v">{pending.length}건</span><span className="l">검토 대기</span></div>
             <div className="head-stat"><span className="v">{awaiting.length}건</span><span className="l">확정 대기</span></div>
-            <div className="head-stat"><span className="v">6.2분</span><span className="l">평균 검토 시간</span></div>
+            <div className="head-stat">
+              <span className="v">{stats?.avgReviewMinutes != null ? `${stats.avgReviewMinutes}분` : '—'}</span>
+              <span className="l">평균 검토 시간</span>
+            </div>
           </div>
         </div>
       </div>
@@ -256,22 +319,27 @@ export function ReviewWorkspace() {
               ))}
             </div>
             )}
-            {/* 확정 대기 일괄 처리 — FR-ST-03의 '사람 확정'을 여기서 수행한다. */}
+            {/* 확정 대기 일괄 확정은 두지 않는다 — 확정도 승인이고, 승인은 화면을 열어
+                근거를 보고 건별로 내려야 하는 결정이다(FR-ST-03 사람 확정 원칙). */}
             {isConfirm && checked.size > 0 && (
-              <div className="row" style={{ justifyContent: 'space-between', padding: '10px 16px 0' }}>
-                <span className="text-meta">{checked.size}건 선택됨</span>
-                <button className="btn sm approve" disabled={busy || !canReview} onClick={() => confirmIds([...checked])}>
-                  선택 {checked.size}건 확정(CONFIRMED)
-                </button>
+              <div className="row" style={{ padding: '10px 16px 0' }}>
+                <span className="text-meta">
+                  {checked.size}건 선택됨 · 확정은 오른쪽에서 <b>건별로</b> 근거를 보고 처리합니다.
+                </span>
               </div>
             )}
             {/* 일괄 처리 바 (추천 필터 선택 시) — 이전 처리 뷰에선 숨김 */}
             {view === 'PENDING' && filter !== 'ALL' && checked.size > 0 && (
               <div className="row" style={{ justifyContent: 'space-between', padding: '10px 16px 0' }}>
                 <span className="text-meta">추천: {RECO_LABEL[filter].text} {checked.size}건 선택됨</span>
-                <button className={'btn sm ' + (filter === 'APPROVE' ? 'approve' : filter === 'RETURN' ? 'return' : 'reject')} disabled={busy || !canReview} onClick={decideBulk}>
-                  선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
-                </button>
+                {/* **일괄 승인은 없다.** 화면을 열어보지 않고 통과시키게 되므로 승인은 상세에서만. */}
+                {filter === 'APPROVE' ? (
+                  <span className="text-meta">승인은 건별로 열어 확인 후 처리합니다.</span>
+                ) : (
+                  <button className={'btn sm ' + (filter === 'RETURN' ? 'return' : 'reject')} disabled={busy || !canReview} onClick={decideBulk}>
+                    선택 {checked.size}건 일괄 {RECO_LABEL[filter].text}
+                  </button>
+                )}
               </div>
             )}
             {listed.length === 0 && (
@@ -279,9 +347,10 @@ export function ReviewWorkspace() {
             )}
             <ul className="review-list">
               {listed.map((i) => {
-                // Risk Review를 거치지 않은 건(룰 PASS로 승인 대기 직행)은 **점수가 없다**.
-                // 0으로 그리면 "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
-                const score = i.riskReviewed ? Math.round(i.anomalyScore * 100) : null
+                // 점수가 없는 세 상황(미실시·검토 중·실패)을 뭉개지 않는다 — 0으로 그리면
+                // "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
+                const scoreLabel = riskScoreLabel(i.riskReviewState, i.anomalyScore)
+                const score = i.riskReviewState === 'DONE' ? Math.round(i.anomalyScore * 100) : null
                 const reco = recoLabel(i.aiRecommendation)
                 return (
                   <li
@@ -304,9 +373,9 @@ export function ReviewWorkspace() {
                     <span
                       className="risk-score"
                       style={{ color: score === null ? 'var(--muted)' : riskColor(score) }}
-                      title={score === null ? '이상탐지를 거치지 않은 건입니다(룰 판정 통과)' : undefined}
+                      title={riskScoreTitle(i.riskReviewState)}
                     >
-                      {score ?? '-'}
+                      {scoreLabel}
                     </span>
                     <div className="review-item-body">
                       <div className="review-item-top">
@@ -438,11 +507,26 @@ export function ReviewWorkspace() {
                   </button>
                   {showHistory && (
                     <div className="card-body">
-                      <ul className="timeline">
-                        <li><div>DRAFT → SUBMITTED</div><div className="t-meta">{sel.user} · {sel.date}</div></li>
-                        <li><div>SUBMITTED → RPA_JUDGED (Rule 미매칭)</div><div className="t-meta">Rule Agent</div></li>
-                        <li><div>RPA_JUDGED → IN_REVIEW (Risk Review 이관)</div><div className="t-meta">①이상탐지 → ②RAG검증</div></li>
-                      </ul>
+                      {/* **실제 이력이다.** 예전엔 세 줄을 하드코딩해서, 누가 무슨 사유로
+                          처리했는지가 화면에 아예 없었다. */}
+                      {(sel.events ?? []).length === 0 ? (
+                        <div className="text-meta">기록된 상태 변경이 없습니다.</div>
+                      ) : (
+                        <ul className="timeline">
+                          {(sel.events ?? []).map((ev) => (
+                            <li key={ev.id}>
+                              <div>{ev.fromState || '(신규)'} → {ev.toState}</div>
+                              <div className="t-meta">
+                                {/* 처리자를 남긴다 — "누가 이 결정을 내렸나"가 감사의 첫 질문이다. */}
+                                {ev.actor ?? '시스템'} · {ev.createdAt.replace('T', ' ').slice(0, 16)}
+                              </div>
+                              {ev.reason && (
+                                <div className="t-meta" style={{ whiteSpace: 'pre-wrap' }}>{ev.reason}</div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>
@@ -454,14 +538,10 @@ export function ReviewWorkspace() {
                 <div className="card">
                   <div className="card-head">
                     <h3>① 이상탐지 결과</h3>
-                    <span className="tag" style={sel.riskReviewed
-                      ? { color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }
-                      : { color: 'var(--muted)' }}>
-                      anomaly {sel.riskReviewed ? sel.anomalyScore.toFixed(2) : '-'}
-                    </span>
+                    <RiskScoreBadge item={sel} />
                   </div>
                   <div className="card-body">
-                    {sel.riskReviewed ? (
+                    {sel.riskReviewState === 'DONE' ? (
                       <>
                         <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
                         <div className="stack">
@@ -471,7 +551,7 @@ export function ReviewWorkspace() {
                         </div>
                       </>
                     ) : (
-                      <RulePassedNotice item={sel} />
+                      <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />
                     )}
                   </div>
                 </div>
@@ -487,10 +567,15 @@ export function ReviewWorkspace() {
                           {VERDICT_LABEL[sel.violationVerdict]}
                         </span>
                       )}
-                      <span className={'tag ' + recoLabel(sel.aiRecommendation).cls}>
-                        {sel.aiRecommendation
+                      {/* 「권장 없음」의 이유를 상태별로 갈라 적는다 — 「미실행」한 마디로는
+                          도는 중인 건과 끝난 건이 같아 보인다. */}
+                      <span className={'tag ' + (sel.riskReviewState === 'DONE' ? recoLabel(sel.aiRecommendation).cls : '')}
+                            style={sel.riskReviewState === 'DONE' ? undefined : { color: 'var(--muted)' }}>
+                        {sel.riskReviewState === 'DONE' && sel.aiRecommendation
                           ? `AI 권장: ${recoLabel(sel.aiRecommendation).text} · ${pct(sel.aiConfidence)}`
-                          : 'AI 권장 없음 (미실행)'}
+                          : sel.riskReviewState === 'RUNNING' ? 'AI 권장: 검토 중'
+                            : sel.riskReviewState === 'FAILED' ? 'AI 권장 없음 (검토 실패)'
+                              : 'AI 권장 없음 (검토 대상 아님)'}
                       </span>
                     </span>
                   </div>
@@ -501,17 +586,20 @@ export function ReviewWorkspace() {
                         근거가 부족해 <b>판단을 보류</b>한 건입니다. 아래 내용은 참고용이며, 증빙·사유를 직접 확인해주세요.
                       </p>
                     )}
-                    {sel.ragReport
-                      ? <Markdown source={sel.ragReport} />
-                      : (
-                        <p style={{ margin: '0 0 12px' }}>
-                          {!sel.aiRecommendation
-                            ? 'Risk Review Agent가 아직 실행되지 않았습니다. 아래 근거 없이 판단하지 마세요.'
-                            : sel.ragRefs.length === 0
-                              ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
-                              : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${recoLabel(sel.aiRecommendation).text}을(를) 권장합니다.`}
-                        </p>
-                      )}
+                    {/* **결과가 오기 전에 결론처럼 읽히는 문장을 쓰지 않는다.** 예전엔 검토
+                        중인 건에도 "이상 신호가 낮아 내규 위반 소지가 크지 않습니다"가 떠서,
+                        아직 돌지도 않은 판단을 이미 난 것처럼 보여줬다. */}
+                    {sel.riskReviewState !== 'DONE' ? (
+                      <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />
+                    ) : sel.ragReport ? (
+                      <Markdown source={sel.ragReport} />
+                    ) : (
+                      <p style={{ margin: '0 0 12px' }}>
+                        {sel.ragRefs.length === 0
+                          ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
+                          : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${recoLabel(sel.aiRecommendation).text}을(를) 권장합니다.`}
+                      </p>
+                    )}
                     {sel.ragRefs.length > 0 && (
                       <div className="stack" style={{ marginTop: sel.ragReport ? 14 : 0 }}>
                         <div className="text-meta" style={{ fontWeight: 700 }}>참조 근거 {sel.ragRefs.length}건</div>
@@ -553,13 +641,17 @@ export function ReviewWorkspace() {
                         <StatusBadge status={sel.status} />
                       </div>
                     )}
-                    {/* 확정 대기는 '검토 결정'이 아니라 '확정'만 남은 단계다. 여기에 승인·보완·반려를
-                        그대로 두면 이미 내려진 결정을 다시 내리는 것처럼 보인다(전이도 불가). */}
+                    {/* 확정 대기 — 주된 일은 확정이지만, 열어보고 **되돌릴 수도 있어야 한다.**
+                        룰이 통과시킨 건을 담당자가 보고 "이건 아니다"라고 판단하는 일이 실제로
+                        생기는데, 확정만 허용하면 그 판단을 반영할 방법이 없어 잘못된 줄 알면서
+                        확정하거나 그냥 두게 된다. 되돌리면 이력에 「룰 통과 → 회계 재분류」로 남는다. */}
                     {isConfirm ? (
                       <div className="row review-actions">
                         <button className="btn approve" disabled={busy || !canReview} onClick={() => confirmIds([sel.id])}>
                           확정(CONFIRMED)
                         </button>
+                        <button className="btn return" disabled={busy || !canReview} onClick={() => decideOne('RETURN')}>보완요청</button>
+                        <button className="btn reject" disabled={busy || !canReview} onClick={() => decideOne('REJECT')}>반려(최종)</button>
                       </div>
                     ) : (
                       <div className="row review-actions">
@@ -569,7 +661,9 @@ export function ReviewWorkspace() {
                       </div>
                     )}
                     <div className="text-meta" style={{ marginTop: 10, textAlign: 'right' }}>
-                      {isConfirm ? '확정 시 ERP 전표(안)가 생성됩니다 (FR-ST-03)' : '결정 → decision_labels 적재 (MVP 재학습 미적용)'}
+                      {isConfirm
+                        ? '확정 시 ERP 전표(안)가 생성됩니다 (FR-ST-03) · 되돌리면 「룰 통과 → 회계 재분류」로 이력에 남습니다'
+                        : '결정 → decision_labels 적재 (MVP 재학습 미적용)'}
                     </div>
                   </div>
                 </div>

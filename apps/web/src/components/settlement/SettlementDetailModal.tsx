@@ -3,7 +3,7 @@
 //  item=Settlement → 상세보기 및 수정 (내 건이 아니면 조회 전용)
 //  context='team' → 팀 취합 뷰: 팀장이 팀원 건을 팀 보완요청/팀 반려 처리
 //  좌: 영수증/추가증빙 업로드 + 상태변경이력 / 우: 기본내역·분류·사유 + fact.json(자동생성) + AI 코멘트
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock,
@@ -28,9 +28,7 @@ import { DecisionReasonModal } from './DecisionReasonModal'
 import { EvidenceAttachments } from './EvidenceAttachments'
 import { RuleJudgementPanel } from './RuleJudgementPanel'
 import type { Attachment } from '../../api/attachmentService'
-
-// 신규등록 시 영수증 Vision 판독을 흉내내는 mock 추출값 (백엔드 연동 전까지의 데모용)
-const MOCK_OCR = { merchant: '강남 한식당', amount: '452,000', category: '접대' as Category }
+import { fetchMyCards, type CorpCard } from '../../api/cardService'
 
 interface AiComment { icon: 'ocr' | 'doc' | 'ai'; text: string }
 interface ExtraFile { id: string; name: string }
@@ -83,7 +81,14 @@ export function SettlementDetailModal({
   // 기본으로 이번 달만 보여주므로 **목록에서 사라진 것처럼 보였다**.
   const [dateStr, setDateStr] = useState(item?.date ?? todayISO())
   const [amountText, setAmountText] = useState(item ? String(item.amount) : '')
-  const [cardType, setCardType] = useState<CardType>(item?.cardType ?? 'PERSONAL')
+  //  카드는 **구분이 아니라 실물**을 고른다. 예전엔 구분(개인/팀/공용)만 골랐고 서버가
+  //  그 구분의 아무 카드나 붙여서, 남의 개인카드가 내 지출에 붙을 수 있었다.
+  const [cardId, setCardId] = useState<number | null>(item?.cardId ?? null)
+  const [myCards, setMyCards] = useState<CorpCard[]>([])
+  const [cardsLoaded, setCardsLoaded] = useState(false)
+  //  카드 구분은 이제 **선택한 카드에서 따라온다**(초안 요청·표시에 쓰인다).
+  const selectedCard = myCards.find((c) => c.id === cardId)
+  const cardType = (selectedCard?.type ?? item?.cardType ?? 'PERSONAL') as CardType
   // 사람이 확정한 분류(`category`)가 있으면 그게 먼저다. 없으면 AI 제안을 미리 채워
   //  두고, 사용자가 그대로 제출하면 그 순간 확정값이 된다(`persistEdits`).
   const [category, setCategory] = useState<Category>(item?.category ?? item?.aiCategory ?? '접대')
@@ -96,6 +101,9 @@ export function SettlementDetailModal({
 
   // ── 좌측 업로드 상태 ──
   const [receiptUp, setReceiptUp] = useState(item?.evidence === 'OK')
+  //  신규 등록은 정산 id가 없어 첨부 API를 못 쓴다 — 저장 요청에 함께 보낼 파일을 들고 있는다.
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const receiptRef = useRef<HTMLInputElement>(null)
   const [extraFiles, setExtraFiles] = useState<ExtraFile[]>([])
 
   // ── AI 코멘트 로그 / 규정 힌트 / 지시 입력 / fact.json 접힘 ──
@@ -133,20 +141,51 @@ export function SettlementDetailModal({
     aiSuggested,
   }), [merchant, amountText, dateStr, cardType, category, industry, evidence, extraFiles.length, purpose, receiptUp, aiSuggested])
 
+  //  카드 목록은 모달이 열릴 때 한 번. 조회 전용(남의 건)이면 고칠 일이 없어 부르지 않는다.
+  useEffect(() => {
+    if (readOnly) { setCardsLoaded(true); return }
+    let alive = true
+    void (async () => {
+      try {
+        const cards = await fetchMyCards()
+        if (!alive) return
+        setMyCards(cards)
+        //  이미 붙은 카드가 목록에 없으면(배정이 바뀌었거나 정지됨) 비워 둔다 —
+        //  임의로 다른 카드를 고르면 판정 사실이 조용히 바뀐다.
+        setCardId((prev) => (prev && cards.some((c) => c.id === prev) ? prev : cards[0]?.id ?? null))
+      } catch { /* 목록을 못 받아도 나머지 입력은 계속 쓸 수 있어야 한다 */ }
+      finally { if (alive) setCardsLoaded(true) }
+    })()
+    return () => { alive = false }
+  }, [readOnly])
+
   const pushComment = (c: AiComment) => setComments((prev) => [...prev, c])
 
-  // 영수증 업로드 → 초안 작성 Agent 호출(생성 모드). 실패 시 로컬 mock으로 폴백.
-  const uploadReceipt = async () => {
+  /**
+   * 영수증 **파일**을 고른다. 예전엔 파일 없이 버튼만 누르면 `receiptUp=true`가 되고
+   * 서버가 `receipts/<tx>.jpg`라는 있지도 않은 경로로 `Receipt`를 만들었다 — 증빙이
+   * 있다고 기록됐지만 파일은 어디에도 없었고 비전 판독도 열 파일이 없었다.
+   *
+   * 저장 전까지는 파일을 **화면이 들고 있다가**(정산 id가 아직 없다) 저장 요청에 함께 보낸다.
+   * 저장된 건은 `EvidenceAttachments`가 별도로 다룬다(그쪽은 정산 id가 있다).
+   */
+  const pickReceipt = (file: File | undefined) => {
+    if (!file) return
+    setReceiptFile(file)
     setReceiptUp(true)
+    pushComment({ icon: 'ocr', text: `영수증 "${file.name}"을 첨부했습니다. 저장하면 판독이 시작됩니다.` })
+    void suggestFromForm()
+  }
+
+  /** 입력값으로 초안 제안 — 파일 판독은 저장 후 서버가 한다(여기선 폼 값만 쓴다). */
+  const suggestFromForm = async () => {
     setPending(true)
     const result = await suggestDraft({
       merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence: 'OK',
     })
     setPending(false)
     if (!result) {
-      if (!merchant) setMerchant(MOCK_OCR.merchant)
-      if (!amountText) setAmountText(MOCK_OCR.amount)
-      pushComment({ icon: 'ocr', text: '영수증을 판독했습니다. (오프라인 폴백 — Core API 연결을 확인해주세요)' })
+      pushComment({ icon: 'ai', text: '초안 제안을 받지 못했습니다 — 내용을 직접 입력해 주세요.' })
       return
     }
     applyDraft(result)
@@ -203,6 +242,7 @@ export function SettlementDetailModal({
     merchant: merchant || '미상 가맹점',
     amount: numOnly(amountText),
     cardType,
+    cardId,
     // 화면 드롭다운 값은 **사람이 확정한 분류**다. `aiCategory`는 AI가 원래 뭐라고 했는지를
     // 남기는 자리라 여기서 덮어쓰지 않는다 — 서버가 확정값이 없으면 제안을 받아 채운다.
     category,
@@ -235,6 +275,7 @@ export function SettlementDetailModal({
         merchant: merchant || undefined,
         amount: numOnly(amountText) || undefined,
         date: dateStr,
+        cardId: cardId ?? undefined,
       })
       return true
     } catch (e: unknown) {
@@ -245,13 +286,20 @@ export function SettlementDetailModal({
     }
   }
 
-  // 신규 저장 → createSettlement → 목록에 추가
+  // 신규 저장 → createSettlement → 목록에 추가. **영수증 파일이 없으면 저장 자체가 안 된다.**
   const save = async () => {
+    if (!receiptFile) return
     setPending(true)
-    const created = await createSettlement(draft())
-    onCreated?.(created)
-    setPending(false)
-    onClose()
+    try {
+      const created = await createSettlement(draft(), receiptFile)
+      onCreated?.(created)
+      onClose()
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      pushComment({ icon: 'ai', text: `저장하지 못했습니다 — ${detail ?? '서버 오류'}` })
+    } finally {
+      setPending(false)
+    }
   }
 
   // '내 지출' 삭제 — 아직 팀·회계로 넘어가지 않은 건만.
@@ -338,7 +386,9 @@ export function SettlementDetailModal({
     )
   }
 
-  const canSave = merchant.trim() !== '' && numOnly(amountText) > 0
+  //  **영수증은 필수다.** 증빙 없이 등록되면 판정이 곧바로 「증빙 누락」으로 잡고,
+  //  담당자는 되돌려보낼 뿐이다 — 그 왕복을 등록 단계에서 없앤다.
+  const canSave = merchant.trim() !== '' && numOnly(amountText) > 0 && Boolean(receiptFile)
 
   const footer = (
     <>
@@ -443,14 +493,39 @@ export function SettlementDetailModal({
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 6, color: 'var(--muted)', border: '1px dashed var(--border-strong)',
               }}>
-                {receiptUp
-                  ? <><Receipt size={18} /> 영수증 미리보기</>
-                  : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '증빙 없음 — 업로드하거나 직접 기입'}</>}
+                {receiptFile
+                  ? <><Receipt size={18} /> {receiptFile.name}</>
+                  : receiptUp
+                    ? <><Receipt size={18} /> 첨부된 영수증</>
+                    : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '영수증을 첨부해 주세요 (필수)'}</>}
               </div>
-              {!readOnly && (
-                <button className="btn primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={uploadReceipt} disabled={pending}>
-                  <Upload size={14} /> {receiptUp ? '영수증 다시 업로드' : '영수증 업로드 (자동 분석)'}
-                </button>
+              {!readOnly && isCreate && (
+                <>
+                  <input
+                    ref={receiptRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.heic"
+                    style={{ display: 'none' }}
+                    onChange={(e) => pickReceipt(e.target.files?.[0])}
+                  />
+                  <button
+                    className="btn primary"
+                    style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}
+                    onClick={() => receiptRef.current?.click()}
+                    disabled={pending}
+                  >
+                    <Upload size={14} /> {receiptFile ? '영수증 다시 고르기' : '영수증 파일 선택 (필수)'}
+                  </button>
+                  {/* 판독은 저장 후 서버가 한다 — 지금 "판독했습니다"라고 말하면 거짓이 된다. */}
+                  <div className="text-meta" style={{ marginTop: 6 }}>
+                    저장하면 서버가 영수증을 판독해 품목·주류 포함 여부 같은 <b>판정 사실</b>을 뽑습니다.
+                  </div>
+                </>
+              )}
+              {!readOnly && !isCreate && (
+                <div className="text-meta" style={{ marginTop: 10 }}>
+                  추가 영수증·증빙은 아래 <b>증빙 자료</b>에서 첨부합니다.
+                </div>
               )}
             </div>
           </div>
@@ -523,10 +598,28 @@ export function SettlementDetailModal({
                 </div>
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
-                <div className="field"><label>카드 구분</label>
-                  <select value={cardType} onChange={(e) => setCardType(e.target.value as CardType)} disabled={readOnly}>
-                    {Object.entries(CARD_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                <div className="field"><label>사용 카드</label>
+                  {readOnly ? (
+                    <input value={item?.cardName ?? CARD_TYPE_LABEL[cardType]} readOnly disabled />
+                  ) : (
+                    <select
+                      value={cardId ?? ''}
+                      onChange={(e) => setCardId(e.target.value ? Number(e.target.value) : null)}
+                      disabled={!cardsLoaded || myCards.length === 0}
+                    >
+                      {/* 배정된 카드가 없으면 목록을 비워 두고 사유를 말한다 — 빈 드롭다운만
+                          남으면 사용자는 "왜 못 고르지"를 알 수 없다. */}
+                      {myCards.length === 0 && (
+                        <option value="">{cardsLoaded ? '배정된 카드가 없습니다' : '불러오는 중…'}</option>
+                      )}
+                      {myCards.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.typeLabel} · {c.name || c.number || `카드 ${c.id}`}
+                          {c.number && c.name ? ` (${c.number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="field">
                   <label>비용 분류 {aiSuggested && <span className="tag ai">AI 제안</span>}</label>

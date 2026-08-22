@@ -114,6 +114,61 @@ export interface RagSampleResponse {
   items: { chunkId: string; document: string; metadata: Record<string, unknown> }[]
 }
 
+// ── ② Rule Agent ──────────────────────────────────────
+export interface RuleGenerateLabRequest {
+  scope: string
+  query?: string
+  topK: number
+  name?: string
+  includeLaw: boolean
+}
+
+export interface RuleGenerateLabResponse {
+  request: RuleGenerateLabRequest
+  result: {
+    status: string
+    graph?: { id: string; name: string; scope: string; version: number; status: string } | Record<string, unknown>
+    entry_node_key?: string
+    query?: string
+    sources?: unknown[]
+    rejected_nodes?: unknown[]
+    llm_skipped?: boolean
+    attempts?: number
+  }
+  latencyMs: number
+  sideEffectNote: string
+}
+
+// ── ③ Risk Review Agent ───────────────────────────────
+export interface RiskRunLabResponse {
+  request: { settlementId: number }
+  result: {
+    settlement_id: number
+    stage1_anomaly: Record<string, unknown>
+    stage2_rag_review: Record<string, unknown>
+  }
+  latencyMs: number
+}
+
+// ── 증빙자료 추출 Agent ───────────────────────────────
+export interface ExtractRunLabResponse {
+  fileRef: string
+  kind: string
+  latencyMs: number
+  result: {
+    extraction_status: string
+    extracted: Record<string, unknown>
+    field_confidence: Record<string, number>
+    evidence_spans: { path: string; quote: string; source: string }[]
+    extractor_version: string
+    warnings: string[]
+    document_summary?: string
+    // read_receipt 전용 필드(kind=RECEIPT일 때만)
+    merchant?: string
+    amount?: number | null
+  }
+}
+
 // ── 호출 래퍼 ─────────────────────────────────────────
 /** 서버가 준 실패 사유를 문장 하나로. 422(pydantic)는 배열로 오므로 필드까지 풀어 쓴다. */
 export function labErrorMessage(err: unknown): string {
@@ -154,4 +209,11 @@ export const labApi = {
         params: { limit, ...(docName ? { docName } : {}) },
       })
       .then((r) => r.data),
+  // 룰 생성은 실제 DRAFT 그래프를 만들므로(부작용), 대화형 API 타임아웃(200s)과 맞춘다.
+  runRuleGenerate: (payload: RuleGenerateLabRequest) =>
+    api.post<RuleGenerateLabResponse>('/ai-lab/rule/generate', payload, { timeout: 200_000 }).then((r) => r.data),
+  runRisk: (settlementId: number) =>
+    api.post<RiskRunLabResponse>('/ai-lab/risk/run', { settlementId }, { timeout: 90_000 }).then((r) => r.data),
+  runExtract: (fileRef: string, kind: string) =>
+    api.post<ExtractRunLabResponse>('/ai-lab/extract/run', { fileRef, kind }, { timeout: 90_000 }).then((r) => r.data),
 }

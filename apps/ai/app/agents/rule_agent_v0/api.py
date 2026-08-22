@@ -2,8 +2,9 @@
 """Rule Agent 생성 라우터.
 
 엔드포인트는 `/agent/rule-v0/...` 네임스페이스에 있다. 기술명세서 §6.2의 정식 경로
-(`/agent/rule/generate`)는 아직 `agents/rule_agent.py` stub이 잡고 있어 경로가 겹치지
-않도록 분리해 둔 것이다 — 정식 경로로 승격할 때 이 라우터를 지우고 옮긴다.
+(`/agent/rule/generate`)로 옮기려던 계획은 폐기했다 — 그 경로를 잡고 있던
+`agents/rule_agent.py`(전부 stub, 아무도 안 부름)를 2026-08-21 전수 점검에서 삭제했다.
+`rule-v0` 네임스페이스가 사실상 정식 경로다(승격 이관은 불필요 — 이름만 남은 구분).
 
 **FastAPI는 내부 전용이다.** 브라우저는 이 경로를 직접 부르지 않고 Django
 `POST /api/rules/generate/`(capability `rule_view`)를 거친다 — AI-LAB 프록시와 같은 구조.

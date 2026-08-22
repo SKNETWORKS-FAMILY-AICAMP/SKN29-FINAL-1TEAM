@@ -423,6 +423,11 @@ class Command(BaseCommand):
         Card.objects.create(name="법인카드(개인)", card_type=CardType.PERSONAL, limit_amount=1_500_000)
         Card.objects.create(name="법인카드(팀)", card_type=CardType.TEAM, limit_amount=5_000_000)
         Card.objects.create(name="법인카드(공용)", card_type=CardType.SHARED, limit_amount=4_000_000)
+        #  개인카드로 결제하고 회사가 나중에 정산해 주는 수단. 법인카드가 없거나 못 쓰는
+        #  자리(해외·소액·긴급)에서 실제로 쓰이므로 **선택지에 있어야 한다** — 없으면
+        #  사용자가 엉뚱한 카드를 골라 카드 귀속이 사실과 어긋난다.
+        #  주인·팀이 없어 `/api/cards/mine/`에서 전 직원에게 보인다(회사 공용 수단).
+        Card.objects.create(name="개인카드 후정산", card_type=CardType.POST_PAID, limit_amount=2_000_000)
 
     # ── 기본 게이트 ───────────────────────────────────────────
     def _default_gate(self) -> RuleGraph:

@@ -4,7 +4,7 @@ from datetime import datetime, time
 
 import httpx
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import viewsets
@@ -24,9 +24,9 @@ from domain.common.permissions import (
 from domain.transactions import industry as industry_vocab
 from domain.transactions.models import Receipt, Transaction
 
-from . import decision_reasons, draft_agent, erp_import, evidence_extract, services
+from . import decision_reasons, draft_agent, erp_import, evidence_extract, risk_review, services
 from .attachments import Attachment, AttachmentKind
-from .models import Settlement, TeamBudget
+from .models import Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
 
 #  비전 판독기가 여는 형식만 받는다. 상한은 nginx `client_max_body_size 50m`보다 낮게 둔다 —
@@ -39,6 +39,33 @@ DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
 # 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
 #  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
 EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
+
+
+def _resolve_card(data, actor):
+    """요청이 지정한 카드 → `Card`. **본인이 쓸 수 없는 카드는 붙이지 않는다.**
+
+    화면 목록(`/api/cards/mine/`)과 같은 범위를 서버에서도 확인한다 — 목록만 좁히고
+    저장을 안 막으면 요청을 손댄 값이 그대로 들어간다.
+    """
+    card_id = data.get("cardId")
+    if card_id:
+        card = Card.objects.filter(pk=card_id).first()
+        if card is None:
+            return None
+        if actor is not None and card.owner_id and card.owner_id != actor.id:
+            return None                      # 남의 개인카드
+        if actor is not None and card.team_id and card.team_id != getattr(actor, "team_id", None):
+            return None                      # 다른 팀 카드
+        return card
+    #  하위호환: 구분만 보내던 옛 호출. 본인 범위 안에서 고른다(아무 카드나 집지 않는다).
+    card_type = data.get("cardType")
+    if not card_type:
+        return None
+    qs = Card.objects.filter(card_type=card_type)
+    if actor is not None:
+        qs = qs.filter(Q(owner=actor) | Q(team_id=getattr(actor, "team_id", None), owner__isnull=True)
+                       | Q(team__isnull=True, owner__isnull=True))
+    return qs.first()
 
 
 def _actor(request):
@@ -64,27 +91,59 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # 기능 단위 인가(Capability RBAC)
-        if self.action in ("review", "confirm"):
+        if self.action in ("review", "confirm", "review_stats"):
             return [CanAccountingReview()]
         if self.action == "team_decision":  # 팀 취합(보완요청/반려/제출) — 기존 미보호 구멍 방어
             return [CanTeamAggregate()]
         return super().get_permissions()
 
     # POST /api/settlements/  (신규 지출 등록 — 거래+정산 생성)
+    #  영수증 파일을 함께 받으므로 multipart를 허용한다(JSON도 계속 받는다 — 옛 호출부).
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def create(self, request, *args, **kwargs):
+        """신규 지출 등록. **영수증 파일이 필수다.**
+
+        예전엔 화면이 `evidence: "OK"` 한 글자만 보내면 서버가 `receipts/<tx>.jpg`라는
+        **있지도 않은 경로**로 `Receipt`를 만들었다 — 증빙이 있다고 기록됐지만 파일은
+        어디에도 없었고, 판정(`evidence.has_valid_receipt`)은 그걸 사실로 읽었다.
+        비전 판독도 열 파일이 없어 돌 수 없었다.
+
+        이제 실제 파일을 받아 저장하고, 같은 파일을 `Attachment(RECEIPT)`로도 걸어
+        **업로드가 곧 판독 트리거**가 되게 한다(첨부 경로와 같은 규약).
+        """
         d = request.data
+        upload = request.FILES.get("receipt")
+        if upload is None:
+            return Response(
+                {"detail": "영수증 파일이 필요합니다. 지출 등록에는 증빙 첨부가 필수입니다."},
+                status=400,
+            )
+        if not (upload.name or "").lower().endswith(ALLOWED_ATTACHMENT_SUFFIXES):
+            return Response(
+                {"detail": f"지원하지 않는 형식입니다: {upload.name} "
+                           f"({', '.join(ALLOWED_ATTACHMENT_SUFFIXES)}만 가능)"},
+                status=400,
+            )
+        if upload.size > MAX_ATTACHMENT_BYTES:
+            return Response(
+                {"detail": f"파일이 너무 큽니다. {MAX_ATTACHMENT_BYTES // (1024 * 1024)}MB 이하만 올릴 수 있습니다."},
+                status=400,
+            )
         raw_date = (d.get("date") or "")[:10]
         pd = parse_date(raw_date) if raw_date else None
         ts = timezone.make_aware(datetime.combine(pd, time(12, 0))) if pd else timezone.now()
         amount = int(re.sub(r"[^0-9]", "", str(d.get("amount") or "0")) or 0)
-        card = Card.objects.filter(card_type=d.get("cardType")).first() if d.get("cardType") else None
+        # 화면이 **어느 카드인지** 보낸다. 예전엔 구분(개인/팀/공용)만 받아 그 구분의
+        #  `first()`를 붙였다 — 남의 개인카드가 내 지출에 붙을 수 있었고, 카드 귀속이
+        #  판정 사실(`card.actual_user_recorded` 등)이라 그대로 오판이 된다.
+        #  `cardId`가 없는 옛 호출은 종전대로 구분 매칭으로 떨어진다(하위호환).
+        card = _resolve_card(d, _actor(request))
         category = d.get("category") or d.get("aiCategory") or ""
 
         tx = Transaction.objects.create(
             card=card, merchant=d.get("merchant") or "미상 가맹점", amount=amount, ts=ts,
         )
-        if d.get("evidence") == "OK":
-            Receipt.objects.create(matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=f"receipts/{tx.id}.jpg")
         actor = _actor(request)
         industry_code, industry_label = industry_vocab.resolve(
             d.get("merchantIndustryCode") or d.get("merchantIndustry")
@@ -98,6 +157,21 @@ class SettlementViewSet(viewsets.ModelViewSet):
             purpose=d.get("purpose", ""), submitted_by=actor,
             team=getattr(actor, "team", None), status="DRAFT",
         )
+
+        #  같은 파일을 두 자리에 건다. 역할이 다르다:
+        #   · `Receipt` — 거래-영수증 매칭(판정의 `evidence.has_valid_receipt`가 이걸 본다)
+        #   · `Attachment(RECEIPT)` — 판독 대상(비전이 품목·주류 여부 등 **판정 사실**을 뽑는다)
+        attachment = Attachment.objects.create(
+            settlement=s, kind=AttachmentKind.RECEIPT, file=upload,
+            original_name=upload.name[:200], mime_type=(upload.content_type or "")[:100],
+            uploaded_by=actor,
+        )
+        attachment.file_ref = attachment.file.name
+        attachment.save(update_fields=["file_ref"])
+        Receipt.objects.create(
+            matched_tx=tx, status=Receipt.Status.MATCHED, file_ref=attachment.file_ref,
+        )
+        evidence_extract.schedule(attachment)
         return Response(self.get_serializer(s).data, status=201)
 
     # PATCH /api/settlements/{id}/  — 상세 화면 수정 저장
@@ -163,6 +237,12 @@ class SettlementViewSet(viewsets.ModelViewSet):
 
         tx = settlement.transaction
         tx_fields = []
+        if d.get("cardId"):
+            card = _resolve_card(d, actor)
+            if card is None:
+                return Response({"detail": "선택한 카드를 사용할 수 없습니다."}, status=400)
+            tx.card = card
+            tx_fields.append("card")
         if d.get("merchant"):
             tx.merchant = d["merchant"]
             tx_fields.append("merchant")
@@ -335,6 +415,55 @@ class SettlementViewSet(viewsets.ModelViewSet):
             "judged": judged, "judgeFailed": judge_failed,
         })
 
+    # GET /api/settlements/review-stats/  — S-03 헤더 요약 지표(자동처리율·평균 검토시간)
+    @action(detail=False, methods=["get"], url_path="review-stats")
+    def review_stats(self, request):
+        """이번 달 자동처리율·평균 검토 소요시간. 예전엔 화면에 82%/6.2분이 하드코딩돼 있었다.
+
+        **자동처리율**은 룰 엔진 자체 판정(`rule_decision`)이 REVIEW가 아닌 비율이다 — REVIEW만
+        사람(Risk Review)에게 넘어가고 PASS/RETURN/REJECT는 룰이 그 자리에서 결론냈다는 뜻이라,
+        이게 "사람 손 없이 처리된 비율"의 정확한 정의다(현재 상태가 아니라 **룰의 최초 판정**
+        기준 — CONFIRMED건도 원래 REVIEW를 거쳤을 수 있어 현재 상태만 봐선 구분이 안 된다).
+
+        **평균 검토시간**은 `SettlementEvent`에서 `IN_REVIEW` 진입 시각 → 그 IN_REVIEW를 벗어난
+        결정 시각(이번 달)까지의 차를 건별로 구해 평균한다. 이 정보는 목록 API에 없다 —
+        `events`는 상세 조회에서만 내려가므로, 집계는 여기서 서버가 직접 한다.
+        """
+        now = timezone.now()
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = (start.replace(year=start.year + 1, month=1) if start.month == 12
+               else start.replace(month=start.month + 1))
+
+        judged_this_month = Settlement.objects.filter(rule_judged_at__gte=start, rule_judged_at__lt=end)
+        total_judged = judged_this_month.count()
+        needed_review = judged_this_month.filter(events__to_state="IN_REVIEW").distinct().count()
+        auto_processed_rate = round(1 - needed_review / total_judged, 4) if total_judged else None
+
+        decisions = (
+            SettlementEvent.objects
+            .filter(from_state="IN_REVIEW", created_at__gte=start, created_at__lt=end)
+            .order_by("settlement_id", "created_at")
+        )
+        durations_sec = []
+        for ev in decisions:
+            entered = (
+                SettlementEvent.objects
+                .filter(settlement_id=ev.settlement_id, to_state="IN_REVIEW", created_at__lte=ev.created_at)
+                .order_by("-created_at")
+                .first()
+            )
+            if entered:
+                durations_sec.append((ev.created_at - entered.created_at).total_seconds())
+        avg_review_minutes = round(sum(durations_sec) / len(durations_sec) / 60, 1) if durations_sec else None
+
+        return Response({
+            "month": start.strftime("%Y-%m"),
+            "totalJudged": total_judged,
+            "autoProcessedRate": auto_processed_rate,
+            "reviewedCount": len(durations_sec),
+            "avgReviewMinutes": avg_review_minutes,
+        })
+
     # POST /api/settlements/{id}/confirm/  (사람 최종 확정, FR-ST-03)
     @action(detail=True, methods=["post"])
     def confirm(self, request, pk=None):
@@ -367,6 +496,23 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=400)
         return Response(self.get_serializer(s).data)
 
+    # POST /api/settlements/{id}/risk-review/  — AI 위험 검토 재실행
+    @action(detail=True, methods=["post"], url_path="risk-review")
+    def rerun_risk_review(self, request, pk=None):
+        """실패한(또는 결과가 안 온) Risk Review를 다시 돌린다.
+
+        `/judge/`로는 안 된다 — 판정 재실행은 `SUBMITTED → RPA_JUDGED` 전이를 전제하는데
+        이 건은 이미 `IN_REVIEW`다. 상태를 건드리지 않고 **AI 호출만** 다시 예약한다.
+        """
+        settlement = self.get_object()
+        if settlement.status != SettlementStatus.IN_REVIEW:
+            return Response(
+                {"detail": "검토중(IN_REVIEW) 건만 위험 검토를 다시 실행할 수 있습니다."}, status=400,
+            )
+        risk_review.schedule(settlement)
+        settlement.refresh_from_db()
+        return Response(self.get_serializer(settlement).data)
+
     # POST /api/settlements/{id}/decision-reason/  — 보완요청·반려 사유 **초안**
     @action(detail=True, methods=["post"], url_path="decision-reason")
     def decision_reason(self, request, pk=None):
@@ -377,8 +523,11 @@ class SettlementViewSet(viewsets.ModelViewSet):
         """
         settlement = self.get_object()
         decision = str(request.data.get("decision") or "RETURN").upper()
-        if decision not in {"RETURN", "REJECT"}:
-            return Response({"detail": "decision은 RETURN 또는 REJECT여야 합니다."}, status=400)
+        if decision not in decision_reasons.DECISIONS:
+            return Response(
+                {"detail": f"decision은 {', '.join(decision_reasons.DECISIONS)} 중 하나여야 합니다."},
+                status=400,
+            )
         return Response(decision_reasons.draft(settlement, decision))
 
     # POST /api/settlements/{id}/judge/  (RPA 1차판정 — 재판정·수동 실행용)
