@@ -135,6 +135,35 @@ class ClauseDecision(models.TextChoices):
     SKIP = "SKIP", "규칙 생성 안 함"
 
 
+class ClauseKind(models.TextChoices):
+    """조항의 성격 — **AI 분류(제안)**다. 사람의 결정(`ClauseDecision`)과 다른 축이다.
+
+    적재된 조항을 전부 같은 무게로 늘어놓으면 담당자가 목적·정의·시행일 같은 조항까지
+    일일이 열어보게 된다. 실제로 규칙이 될 수 있는 조항이 어느 것인지를 먼저 갈라준다.
+    """
+    UNKNOWN = "", "미분류"
+    RULE = "RULE", "규정 조항"          # 판정 가능한 요건·한도·금지가 있다
+    INFO = "INFO", "안내·설명"          # 목적·정의·시행일·문의처 — 규칙 대상이 아니다
+    ANNEX = "ANNEX", "별표 참조"        # 값이 별표에 있다 — 임계값 표로 해소할 대상
+
+
+class ClausePriority(models.TextChoices):
+    """룰 생성 우선순위 — **AI 제안**이며 사람이 무시할 수 있다.
+
+    `AUTO`만 자동 생성 대상이고 나머지는 큐다. 전부 자동으로 만들면 룰 콘솔이 검증되지
+    않은 초안으로 뒤덮이고(`SKIPPED_REINDEX`를 둔 것과 같은 이유), 반대로 아무것도 안
+    만들면 담당자가 문서를 처음부터 다시 읽는다.
+
+    **`SKIP`이어도 사람이 직접 만들 수 있다** — 분류는 제안이지 차단이 아니다.
+    """
+    NONE = "", "미지정"
+    AUTO = "AUTO", "자동 생성"
+    P1 = "P1", "1순위"
+    P2 = "P2", "2순위"
+    P3 = "P3", "3순위"
+    SKIP = "SKIP", "제외"
+
+
 class PolicyClause(models.Model):
     """규정 문서의 조(條) 하나 — 화면이 보여주고 사람이 결정을 내리는 단위.
 
@@ -157,6 +186,20 @@ class PolicyClause(models.Model):
     page_start = models.PositiveIntegerField(default=0)
     page_end = models.PositiveIntegerField(default=0)
     chunk_ids = models.JSONField(default=list, blank=True)   # 이 조항을 이루는 Chroma 청크
+
+    # ── AI 분류(제안) ───────────────────────────────────────────
+    #  사람의 결정과 **다른 컬럼**에 둔다. 한 칸에 섞으면 "AI가 그렇게 봤다"와 "사람이
+    #  그렇게 정했다"를 구분할 수 없고, 재분류가 사람의 판단을 덮어쓴다.
+    triage_kind = models.CharField(
+        "AI 분류", max_length=8, choices=ClauseKind.choices, blank=True, default="",
+    )
+    triage_priority = models.CharField(
+        "룰 생성 우선순위", max_length=8, choices=ClausePriority.choices, blank=True, default="",
+    )
+    triage_reason = models.TextField("분류 근거", blank=True)
+    # 이 조항에서 뽑을 수 있다고 본 규칙의 한 줄 요약 — 담당자가 열어보기 전에 판단한다.
+    triage_summary = models.CharField("규칙 요약", max_length=300, blank=True)
+    triaged_at = models.DateTimeField(null=True, blank=True)
 
     # ── 사람의 결정 ─────────────────────────────────────────────
     decision = models.CharField(max_length=8, choices=ClauseDecision.choices, blank=True, default="")
@@ -243,6 +286,71 @@ class PolicyTable(models.Model):
 
     def __str__(self):
         return f"{self.key}@{self.effective_date}"
+
+
+class TableProposalStatus(models.TextChoices):
+    PENDING = "PENDING", "승인 대기"
+    APPROVED = "APPROVED", "승인됨"
+    REJECTED = "REJECTED", "반려"
+
+
+class PolicyTableProposal(models.Model):
+    """규정 문서에서 뽑아낸 **별표 후보** — 아직 판정에 쓰이지 않는다.
+
+    **왜 `PolicyTable`에 status를 두지 않고 별도 모델인가**: `load_tables()`는 필터 없이
+    전부 읽어 `ctx.policy.*`로 선해소한다. 같은 테이블에 미승인 행이 섞이면 status 필터를
+    잊은 한 곳 때문에 **검증되지 않은 임계값이 조용히 판정에 들어간다**. 모델을 갈라 두면
+    그 실수가 불가능하다 — `PolicyTable`에 있다는 것이 곧 "사람이 승인했다"는 뜻이 된다.
+
+    본문(`raw_markdown`)을 함께 보관하는 이유: 승인하는 사람이 **표 원문과 대조**할 수
+    있어야 한다. 축 매핑을 자동 확정하지 않는 것이 이 기능의 전제인데, 대조할 원문이
+    없으면 사람은 AI가 적어준 값을 그대로 누르게 된다.
+    """
+    doc = models.ForeignKey(PolicyDoc, on_delete=models.CASCADE, related_name="table_proposals")
+    # 출처 — 어느 청크에서 나왔나. 재색인 때 같은 표를 알아보는 키이기도 하다.
+    source_chunk_id = models.CharField(max_length=64, blank=True, db_index=True)
+    source_label = models.CharField("별표 표기", max_length=100, blank=True)   # "별표1" / 표 제목
+    citation = models.CharField(max_length=300, blank=True)
+    page_start = models.PositiveIntegerField(default=0)
+    page_end = models.PositiveIntegerField(default=0)
+    raw_markdown = models.TextField("표 원문", blank=True)
+
+    # ── AI 제안 (사람이 승인 화면에서 고칠 수 있다) ────────────────
+    key = models.CharField("별표 key", max_length=64, blank=True)
+    title = models.CharField(max_length=200, blank=True)
+    key_axes = models.JSONField(default=list, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    strict_keys = models.BooleanField(default=False)
+    effective_date = models.DateField(null=True, blank=True)
+    # 모델이 스스로 밝힌 불확실성. 낮다고 숨기지 않고 화면에 그대로 띄운다 —
+    # 숨기면 사람이 "AI가 확신했나 보다"로 읽는다.
+    confidence = models.FloatField(default=0.0)
+    notes = models.TextField("AI 메모", blank=True)
+
+    # ── 사람의 결정 ─────────────────────────────────────────────
+    status = models.CharField(
+        max_length=10, choices=TableProposalStatus.choices, default=TableProposalStatus.PENDING,
+    )
+    review_note = models.TextField("검토 메모", blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="reviewed_table_proposals",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    # 승인으로 만들어진 실물. 승인 뒤 제안을 지우지 않는 이유는 **무엇을 보고 승인했는지**
+    # (표 원문·AI 제안·수정 내역)가 감사 대상이기 때문이다.
+    approved_table = models.ForeignKey(
+        PolicyTable, null=True, blank=True, on_delete=models.SET_NULL, related_name="proposals",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["doc_id", "source_label", "id"]
+        verbose_name = verbose_name_plural = "별표 후보"
+
+    def __str__(self):
+        return f"{self.doc.title} {self.source_label or self.key} ({self.status})"
 
 
 class RuleGraphStatus(models.TextChoices):

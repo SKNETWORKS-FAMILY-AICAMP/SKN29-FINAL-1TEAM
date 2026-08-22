@@ -32,12 +32,24 @@ logger = logging.getLogger(__name__)
 
 SKIPPED_NO_SCOPE = "SKIPPED_NO_SCOPE"
 SKIPPED_REINDEX = "SKIPPED_REINDEX"
+SKIPPED_NO_AUTO_CLAUSE = "SKIPPED_NO_AUTO_CLAUSE"
+
+#: 자동 생성 질의에 실을 조항 수 상한. 전부 이어 붙이면 질의가 문서 전체가 되어
+#  검색이 아무것도 좁히지 못한다.
+AUTO_QUERY_CLAUSES = 6
 
 
 def trigger(
-    *, doc_id: str, doc_name: str, scope: str, collection: str, is_reindex: bool = False
+    *, doc_id: str, doc_name: str, scope: str, collection: str, is_reindex: bool = False,
+    auto_clauses: list[dict[str, Any]] | None = None, triaged: bool = False,
 ) -> dict[str, Any]:
-    """적재 완료 문서에 대해 룰 생성을 트리거한다."""
+    """적재 완료 문서에 대해 룰 생성을 트리거한다.
+
+    **분류(triage)가 돌았으면 그 결과를 따른다.** `AUTO`로 분류된 조항이 하나도 없으면
+    자동 생성을 하지 않는다 — 조건이 명확한 조항이 없다는 뜻이고, 그런 상태에서 만든
+    초안은 사람이 어차피 전부 고쳐야 한다(분류가 화면 장식이 아니라 실제로 무엇을 만들지
+    정한다). 분류가 안 돌았으면(법령 등) 예전대로 scope 기본 질의로 만든다.
+    """
     if not scope:
         return {
             "status": SKIPPED_NO_SCOPE,
@@ -56,12 +68,32 @@ def trigger(
             "collection": collection,
         }
 
+    picked = list(auto_clauses or [])
+    if triaged and not picked:
+        return {
+            "status": SKIPPED_NO_AUTO_CLAUSE,
+            "detail": (
+                "지금 바로 규칙으로 만들 만큼 조건이 명확한 조항을 찾지 못해 자동 생성을 "
+                "건너뜁니다 — 조항 목록의 우선순위를 보고 직접 만들어 주세요."
+            ),
+            "scope": scope, "docId": doc_id, "docName": doc_name, "collection": collection,
+        }
+
     from app.agents.rule_agent_v0 import agent as rule_agent
     from app.agents.rule_agent_v0.api import RuleGenerateRequest
 
+    # 분류가 고른 조항이 있으면 그것으로 질의를 만든다 — scope 기본 질의보다 이 문서의
+    # 실제 조항에 가깝고, "무엇을 근거로 만들어졌는지"가 트리거 결과에 남는다.
+    query = None
+    if picked:
+        query = " ".join(
+            " ".join(filter(None, [c.get("label", ""), c.get("title", ""), c.get("summary", "")]))
+            for c in picked[:AUTO_QUERY_CLAUSES]
+        ).strip()[:900]
+
     try:
         result = rule_agent.generate(
-            RuleGenerateRequest(scope=scope, name=f"{doc_name} 자동생성 초안")
+            RuleGenerateRequest(scope=scope, query=query, name=f"{doc_name} 자동생성 초안")
         )
     except Exception as exc:  # noqa: BLE001 — 트리거 실패가 적재 자체를 실패로 만들면 안 된다
         logger.warning("룰 자동생성 실패 doc=%s scope=%s: %s", doc_id, scope, exc)
@@ -90,4 +122,6 @@ def trigger(
         "docId": doc_id,
         "docName": doc_name,
         "collection": collection,
+        # 무엇을 근거로 자동 생성했는지 — 화면이 "이 조항들로 만들었다"를 보여준다.
+        "autoClauses": [c.get("label", "") for c in picked[:AUTO_QUERY_CLAUSES]],
     }

@@ -11,14 +11,16 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react
 import { AlertTriangle, FileText, RefreshCw, Scale, Search, Trash2, Upload } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
-  EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META,
-  type FolderDoc, type PolicyClause, type PolicyDocument, type PolicyFolder,
+  EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META, PRIORITY_META,
+  type AxisOption, type FolderDoc, type PolicyClause, type PolicyDocument,
+  type PolicyFolder, type PolicyTableProposal,
 } from '../types/domain'
 import { KpiCard } from '../components/ui/KpiCard'
 import { FolderTree } from './policy-docs/FolderTree'
 import { DecisionCasePanel, monthLabel, useDecisionCases } from './policy-docs/DecisionCasePanel'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
 import { ClauseCard } from './policy-docs/ClauseAccordion'
+import { TableProposalCard } from './policy-docs/TableProposalPanel'
 import './policy-docs/policy-docs.css'
 
 // pdfjs-dist는 무겁다(수백KB) — 열 때만 불러온다. 목록·조항 화면은 대부분의 방문에서
@@ -39,6 +41,11 @@ export function PolicyDocuments() {
   const [docs, setDocs] = useState<PolicyDocument[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [clauses, setClauses] = useState<PolicyClause[]>([])
+  const [proposals, setProposals] = useState<PolicyTableProposal[]>([])
+  const [axisOptions, setAxisOptions] = useState<AxisOption[]>([])
+  // 조항이 수십 개인 문서에서 "지금 할 일"만 보기 위한 필터. 기본은 전체 —
+  // 필터를 기본값으로 켜두면 안 보이는 조항이 있다는 걸 아무도 모른다.
+  const [onlyActionable, setOnlyActionable] = useState(false)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -81,13 +88,23 @@ export function PolicyDocuments() {
   // 선택한 문서의 조항. 첫 '확인 필요' 조항을 펼쳐 둔다 — 담당자가 할 일이 그것이다.
   const loadClauses = useCallback(async (id: string) => {
     try {
-      const { data } = await endpoints.policyClauses(id)
-      const rows = data as PolicyClause[]
+      const [clauseRes, tableRes] = await Promise.all([
+        endpoints.policyClauses(id),
+        // 별표는 조에 속하지 않아 조항 목록에 안 뜬다 — 임계값의 원천인데 화면에서
+        // 보이지 않던 자리라, 조항과 **함께** 가져온다.
+        endpoints.policyTableProposals(id),
+      ])
+      const rows = clauseRes.data as PolicyClause[]
       setClauses(rows)
-      const first = rows.find((c) => c.ruleStatus === 'NEEDS_REVIEW')
+      setProposals(tableRes.data.proposals ?? [])
+      setAxisOptions(tableRes.data.axisOptions ?? [])
+      // 담당자가 먼저 볼 것 = 자동 생성됐거나 1순위인 확인 필요 조항. 분류가 없으면
+      // 예전대로 첫 '확인 필요'를 편다.
+      const first = rows.find((c) => c.ruleStatus === 'NEEDS_REVIEW' && c.triagePriority === 'P1')
+        ?? rows.find((c) => c.ruleStatus === 'NEEDS_REVIEW')
       setExpanded(new Set(first ? [first.id] : []))
     } catch {
-      setClauses([])
+      setClauses([]); setProposals([])
       setError('조항을 불러오지 못했습니다.')
     }
   }, [])
@@ -155,6 +172,51 @@ export function PolicyDocuments() {
       await endpoints.decidePolicyClause(selectedId, clauseId, decision, reason)
       await Promise.all([loadClauses(selectedId), load()])
     }, '결정을 저장하지 못했습니다.')
+
+  // 별표 제안 — 수정 저장 / 승인·반려. 결정 뒤에는 다시 읽는다: 승인은 `PolicyTable`을
+  // 만들고 `problems`도 서버가 다시 계산하므로, 화면이 낙관적으로 그리면 어긋난다.
+  const saveProposal = (id: number, patch: Record<string, unknown>) =>
+    withBusy(async () => {
+      if (!selectedId) return
+      await endpoints.updatePolicyTableProposal(selectedId, id, patch)
+      await loadClauses(selectedId)
+    }, '별표 수정을 저장하지 못했습니다.')
+
+  const decideProposal = (id: number, action: 'APPROVE' | 'REJECT', note: string) =>
+    withBusy(async () => {
+      if (!selectedId) return
+      await endpoints.decidePolicyTableProposal(selectedId, id, action, note)
+      await loadClauses(selectedId)
+    }, '별표 결정을 저장하지 못했습니다.')
+
+  // 조항 하나로 룰 생성. **AI가 제외로 본 조항에서도 부를 수 있다** — 분류는 제안이다.
+  // 생성물의 편집·승인은 룰 콘솔이 주인이라, 여기서는 만들고 링크만 안내한다.
+  const createRule = (clause: PolicyClause) =>
+    withBusy(async () => {
+      if (!selectedId || !selected) return
+      const { data } = await endpoints.generateRuleFromClause(selectedId, clause.id, selected.ruleScope)
+      const graphId = data?.graph?.graph_id
+      if (graphId) {
+        setError('')
+        window.location.href = `/rules?graph=${graphId}`
+        return
+      }
+      // 생성이 실패해도 사유를 그대로 보여준다(NO_SOURCE·검증 소진 등).
+      setError(data?.detail || '규칙을 만들지 못했습니다 — 룰 콘솔에서 직접 만들어 주세요.')
+    }, '규칙 생성에 실패했습니다.')
+
+  // 우선순위 순으로 다시 세운다 — 순위를 보여주기만 하고 순서를 안 바꾸면 목록은
+  // 여전히 조 번호 순이라 아무 도움이 안 된다. 같은 순위면 원래 조 순서를 지킨다.
+  const orderedClauses = useMemo(() => {
+    const rows = onlyActionable
+      ? clauses.filter((c) => c.ruleStatus === 'NEEDS_REVIEW' && c.triagePriority !== 'SKIP')
+      : clauses
+    return [...rows].sort((a, b) =>
+      PRIORITY_META[a.triagePriority].rank - PRIORITY_META[b.triagePriority].rank)
+  }, [clauses, onlyActionable])
+
+  const triaged = clauses.some((c) => c.triagePriority)
+  const pendingTables = proposals.filter((p) => p.status === 'PENDING').length
 
   const kpi = useMemo(() => ({
     total: docs.length,
@@ -309,7 +371,45 @@ export function PolicyDocuments() {
                 </div>
               )}
 
-              <div className="pd-section-title">최근 조항 살펴보기</div>
+              {/* ── 별표(한도표) — 조에 속하지 않아 조항 목록에는 안 뜬다. 임계값의
+                     원천이라 위에 둔다: 별표를 승인하기 전에 만든 룰은 그 값을 참조해도
+                     미해소로 떨어져 전건 검토가 된다. */}
+              {proposals.length > 0 && (
+                <>
+                  <div className="pd-section-title">
+                    별표 — 판정 임계값
+                    {pendingTables > 0 && (
+                      <span className="pd-badge" style={{ marginLeft: 8, background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
+                        승인 대기 {pendingTables}
+                      </span>
+                    )}
+                  </div>
+                  <div className="note">
+                    승인하면 이 표의 값이 <b>모든 정산 판정</b>에 쓰입니다. 표 원문과 값을 대조한 뒤 눌러주세요.
+                  </div>
+                  {proposals.map((proposal) => (
+                    <TableProposalCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      axisOptions={axisOptions}
+                      busy={busy}
+                      onSave={(patch) => void saveProposal(proposal.id, patch)}
+                      onDecide={(action, note) => void decideProposal(proposal.id, action, note)}
+                    />
+                  ))}
+                </>
+              )}
+
+              <div className="pd-section-title row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>조항 {triaged && <span className="text-meta">· 우선순위 순</span>}</span>
+                {triaged && (
+                  <label className="row text-meta" style={{ gap: 6, alignItems: 'center', fontWeight: 400 }}>
+                    <input type="checkbox" checked={onlyActionable}
+                           onChange={(e) => setOnlyActionable(e.target.checked)} />
+                    규칙이 필요한 조항만
+                  </label>
+                )}
+              </div>
 
               {EMBEDDING_IN_PROGRESS.includes(selected.status) && (
                 <div className="text-meta" style={{ padding: 16 }}>
@@ -321,8 +421,15 @@ export function PolicyDocuments() {
                   조 단위로 인식된 조항이 없어요. 표·별표만 있는 문서이거나 파싱이 실패했을 수 있어요.
                 </div>
               )}
+              {/* 필터로 비었을 때와 원래 없을 때를 구분한다 — 같은 빈 화면으로 두면
+                  "규칙 만들 게 없다"와 "필터를 켜뒀다"가 섞인다. */}
+              {clauses.length > 0 && orderedClauses.length === 0 && (
+                <div className="text-meta" style={{ padding: 16 }}>
+                  규칙이 필요한 조항이 없어요. 필터를 끄면 전체 {clauses.length}개가 보입니다.
+                </div>
+              )}
 
-              {clauses.map((clause) => (
+              {orderedClauses.map((clause) => (
                 <ClauseCard
                   key={clause.id}
                   clause={clause}
@@ -331,12 +438,10 @@ export function PolicyDocuments() {
                   busy={busy}
                   onSkip={(reason) => void decide(clause.id, 'SKIP', reason)}
                   onReset={() => void decide(clause.id, 'RESET')}
-                  // 규칙 생성은 룰 콘솔이 주인이다 — 여기서 두 번째 생성 경로를 만들지 않는다.
-                  onCreateRule={() => {
-                    // 문서에 지정된 비용분류를 그대로 넘긴다(없으면 룰 콘솔에서 고르게 둔다).
-                    window.location.href = `/rules?generate=1&scope=${encodeURIComponent(selected.ruleScope)}`
-                      + `&query=${encodeURIComponent(clause.articleLabel + ' ' + clause.articleTitle)}`
-                  }}
+                  // 생성은 서버가 조항에서 질의를 만들어 돌린다(화면마다 다른 질의가
+                  // 나가지 않게). 만들어진 그래프의 편집·승인은 룰 콘솔이 주인이라
+                  // 생성 직후 그쪽으로 넘긴다 — 여기에 두 번째 편집 화면을 만들지 않는다.
+                  onCreateRule={() => void createRule(clause)}
                 />
               ))}
             </>

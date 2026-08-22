@@ -139,6 +139,20 @@ export const endpoints = {
     `${api.defaults.baseURL ?? '/api'}/policy-docs/${id}/file/${download ? '?download=1' : ''}`,
   decidePolicyClause: (docId: string, clauseId: number, decision: 'SKIP' | 'RESET', reason?: string) =>
     api.post(`/policy-docs/${docId}/clauses/${clauseId}/decision/`, { decision, reason }),
+  /**
+   * 조항 하나를 근거로 룰 그래프 DRAFT 생성. **AI가 `SKIP`으로 본 조항에서도 부를 수 있다** —
+   * 분류는 제안이지 차단이 아니다. 질의는 서버가 조항에서 만든다(화면마다 달라지지 않게).
+   */
+  generateRuleFromClause: (docId: string, clauseId: number, scope?: string) =>
+    api.post(`/policy-docs/${docId}/clauses/${clauseId}/generate-rule/`, { scope }),
+  // 별표 후보 — 승인 전까지 판정에 쓰이지 않는다. 축 목록을 함께 받아 드롭다운에 쓴다.
+  policyTableProposals: (docId: string) => api.get(`/policy-docs/${docId}/table-proposals/`),
+  // POST다 — PolicyDocViewSet이 PATCH/PUT을 의도적으로 막아 두었다(문서는 제자리 수정 대상이 아님).
+  updatePolicyTableProposal: (docId: string, id: number, patch: Record<string, unknown>) =>
+    api.post(`/policy-docs/${docId}/table-proposals/${id}/`, patch),
+  decidePolicyTableProposal: (
+    docId: string, id: number, action: 'APPROVE' | 'REJECT', note?: string,
+  ) => api.post(`/policy-docs/${docId}/table-proposals/${id}/decision/`, { action, note }),
   // Rule 버전 관리
   ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
 

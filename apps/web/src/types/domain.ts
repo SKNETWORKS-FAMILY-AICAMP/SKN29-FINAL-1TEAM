@@ -382,6 +382,29 @@ export const CLAUSE_STATUS_META: Record<ClauseRuleStatus, { label: string; tone:
   SKIPPED: { label: '규칙 생성 안 함', tone: 'gray' },
 }
 
+/**
+ * 룰 생성 우선순위 표기. **정렬 순서(`rank`)가 곧 담당자의 작업 순서**다 —
+ * 우선순위를 보여주기만 하고 순서를 안 바꾸면 목록은 여전히 조 번호 순이라 아무 도움이 안 된다.
+ */
+export const PRIORITY_META: Record<ClausePriority, {
+  label: string; tone: 'green' | 'amber' | 'gray' | 'blue'; rank: number
+}> = {
+  AUTO: { label: '자동 생성', tone: 'green', rank: 0 },
+  P1: { label: '1순위', tone: 'amber', rank: 1 },
+  P2: { label: '2순위', tone: 'blue', rank: 2 },
+  P3: { label: '3순위', tone: 'blue', rank: 3 },
+  SKIP: { label: '제외', tone: 'gray', rank: 5 },
+  '': { label: '미분류', tone: 'gray', rank: 4 },
+}
+
+/** 조항 성격 표기. `INFO`·`ANNEX`는 규칙 대상이 아니라는 뜻이지 무시하라는 뜻이 아니다. */
+export const CLAUSE_KIND_META: Record<ClauseKind, { label: string }> = {
+  RULE: { label: '규정 조항' },
+  INFO: { label: '안내·설명' },
+  ANNEX: { label: '별표 참조' },
+  '': { label: '' },
+}
+
 export interface LinkedRule {
   graphId: string
   graphName: string
@@ -407,4 +430,51 @@ export interface PolicyClause {
   decisionReason: string
   decidedBy: string
   decidedAt: string | null
+  // AI 분류(제안). 사람의 결정(`decision`)과 **다른 축**이다 — 합쳐 보이면
+  // "AI가 제외로 봤다"와 "사람이 제외로 정했다"를 구분할 수 없다.
+  triageKind: ClauseKind
+  triagePriority: ClausePriority
+  triageReason: string
+  triageSummary: string
+}
+
+/** 조항 성격 — AI 분류. 빈 문자열은 "아직 분류 안 됨"(법령·구버전 적재). */
+export type ClauseKind = '' | 'RULE' | 'INFO' | 'ANNEX'
+/** 룰 생성 우선순위 — AI 제안. `SKIP`이어도 사람은 직접 만들 수 있다. */
+export type ClausePriority = '' | 'AUTO' | 'P1' | 'P2' | 'P3' | 'SKIP'
+
+/** 별표 후보 — 승인 전까지 판정에 쓰이지 않는다(`PolicyTable`과 별도 모델). */
+export interface PolicyTableProposal {
+  id: number
+  sourceLabel: string
+  citation: string
+  pageStart: number
+  pageEnd: number
+  /** 표 원문. 승인하는 사람이 값을 **대조**할 근거 — 없으면 승인이 형식이 된다. */
+  rawMarkdown: string
+  key: string
+  title: string
+  keyAxes: string[]
+  payload: Record<string, unknown>
+  strictKeys: boolean
+  effectiveDate: string | null
+  confidence: number
+  notes: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  reviewNote: string
+  reviewedBy: string
+  reviewedAt: string | null
+  approvedTableId: number | null
+  /** 지금 승인하면 걸릴 문제들 — 누르기 전에 보여준다. */
+  problems: string[]
+  /** 승인 시 생길 판정 변수(`policy.<이름>`). */
+  policyVar: string
+}
+
+/** 별표 축으로 쓸 수 있는 판정 사실 경로. 자유 입력 대신 이 목록에서 고른다. */
+export interface AxisOption {
+  path: string
+  type: string
+  desc: string
+  section: string
 }

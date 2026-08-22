@@ -36,9 +36,11 @@ from domain.common.permissions import CanViewRule
 
 from domain.risk.models import DecisionCase
 
+from . import table_proposals
 from .models import (
-    DOC_PROFILE_CHOICES, ClauseDecision, IngestStatus, PolicyClause, PolicyDoc,
-    PolicyFolder, RuleNode,
+    DOC_PROFILE_CHOICES, ClauseDecision, ClauseKind, ClausePriority, IngestStatus,
+    PolicyClause, PolicyDoc, PolicyFolder, PolicyTableProposal, RuleNode,
+    TableProposalStatus,
 )
 from .scope import normalize_scope
 from .serializers import PolicyDocSerializer
@@ -63,6 +65,52 @@ def _folder_doc(doc: PolicyDoc) -> dict:
     }
 
 
+def _proposal_row(p: PolicyTableProposal) -> dict:
+    """별표 후보 1행. **표 원문(`rawMarkdown`)을 함께 내린다** — 승인하는 사람이 대조할
+    근거가 없으면 AI가 적어준 값을 그대로 누르게 되고, 그러면 승인 단계가 형식이 된다."""
+    return {
+        "id": p.pk,
+        "sourceLabel": p.source_label,
+        "citation": p.citation,
+        "pageStart": p.page_start,
+        "pageEnd": p.page_end,
+        "rawMarkdown": p.raw_markdown,
+        "key": p.key,
+        "title": p.title,
+        "keyAxes": p.key_axes,
+        "payload": p.payload,
+        "strictKeys": p.strict_keys,
+        "effectiveDate": p.effective_date,
+        "confidence": round(p.confidence, 2),
+        "notes": p.notes,
+        "status": p.status,
+        "reviewNote": p.review_note,
+        "reviewedBy": getattr(p.reviewed_by, "first_name", "") or getattr(p.reviewed_by, "username", ""),
+        "reviewedAt": p.reviewed_at,
+        "approvedTableId": p.approved_table_id,
+        # 지금 승인하면 걸릴 문제들 — 누르기 **전에** 보여준다.
+        "problems": table_proposals.validate(p) if p.status == TableProposalStatus.PENDING else [],
+        # 승인 시 생길 판정 변수(`ctx.policy.<이름>`). 무엇이 늘어나는지 알고 누르게 한다.
+        "policyVar": f"policy.{p.key.strip().removesuffix('_table')}" if p.key.strip() else "",
+    }
+
+
+def _axis_options() -> list[dict]:
+    """축으로 쓸 수 있는 **사실 경로**. `policy.*`와 감사 섹션은 뺀다.
+
+    `policy.*`는 그 자체가 별표에서 나온 값이라 다른 별표의 축이 될 수 없고, `tables`·
+    `conflicts`·`meta`는 감사용이라 룰도 별표도 참조하지 않는다.
+    """
+    from .eval_context import schema_catalog
+
+    skip = {"policy", "tables", "conflicts", "meta"}
+    return [
+        {"path": f["path"], "type": f["type"], "desc": f["desc"], "section": sec["title"]}
+        for sec in schema_catalog()["sections"] if sec["section"] not in skip
+        for f in sec["fields"]
+    ]
+
+
 def _clause_row(clause: PolicyClause, links: list[dict]) -> dict:
     return {
         "id": clause.pk,
@@ -74,6 +122,12 @@ def _clause_row(clause: PolicyClause, links: list[dict]) -> dict:
         "pageEnd": clause.page_end,
         # LINKED / SKIPPED / NEEDS_REVIEW — 저장하지 않고 계산한 값이다.
         "ruleStatus": clause.rule_status(len(links)),
+        # AI 분류(제안). 사람의 결정(`decision`)과 **다른 축**이라 따로 내보낸다 —
+        # 한 필드로 합치면 화면이 "AI가 제외로 봤다"와 "사람이 제외로 정했다"를 못 가른다.
+        "triageKind": clause.triage_kind,
+        "triagePriority": clause.triage_priority,
+        "triageReason": clause.triage_reason,
+        "triageSummary": clause.triage_summary,
         "linkedRules": links,
         "decision": clause.decision,
         "decisionReason": clause.decision_reason,
@@ -365,6 +419,135 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
             for n in clause.linked_nodes()
         ]))
 
+    @action(detail=True, methods=["post"], url_path=r"clauses/(?P<clause_id>\d+)/generate-rule")
+    def clause_generate_rule(self, request, pk=None, clause_id=None):
+        """POST — 이 조항 하나를 근거로 룰 그래프 DRAFT를 만든다.
+
+        **AI가 `SKIP`으로 분류한 조항에서도 부를 수 있다.** 분류는 제안이지 차단이 아니다 —
+        모델이 못 알아본 규칙을 사람이 보고 만들 수 있어야 하고, 그 통로가 없으면 분류가
+        틀린 순간 그 조항은 영영 룰이 되지 못한다.
+
+        질의를 여기서 만든다(화면이 아니라): 조 라벨·제목·본문 앞부분을 이어 붙이면 그
+        조항 자체가 검색 상위로 올라온다. 화면이 만들면 같은 조항이 화면마다 다른 질의로
+        검색된다.
+        """
+        doc = self.get_object()
+        clause = doc.clauses.filter(pk=clause_id).first()
+        if clause is None:
+            return Response({"detail": "조항을 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+
+        # ⚠️ `normalize_scope("")`는 **`GLOBAL`을 돌려준다**. 정규화한 뒤에 비었는지
+        #    보면 분류를 안 고른 요청이 조용히 전역 게이트 룰을 만든다 — 게이트는 모든
+        #    정산을 먼저 통과하는 자리라 가장 위험한 기본값이다. 원문으로 먼저 판단한다.
+        raw_scope = str(request.data.get("scope") or doc.rule_scope or "").strip()
+        if not raw_scope:
+            return Response(
+                {"detail": "대상 비용분류를 지정해주세요 — 이 문서에는 지정된 분류가 없습니다."},
+                status=http.HTTP_400_BAD_REQUEST,
+            )
+        scope = normalize_scope(raw_scope)
+
+        query = " ".join(filter(None, [
+            clause.article_label, clause.article_title, clause.body[:300],
+        ])).strip()
+        payload = {
+            "scope": scope,
+            "query": query,
+            "name": f"{doc.title} {clause.article_label} 초안",
+        }
+        url = f"{settings.AI_BASE_URL}/agent/rule-v0/generate"
+        try:
+            resp = httpx.post(url, json=payload, timeout=httpx.Timeout(300.0, connect=5.0))
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": f"AI 서비스에 연결하지 못했습니다 — {type(exc).__name__}: {exc}"},
+                status=503,
+            )
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {"detail": resp.text[:2000]}
+        return Response(body, status=resp.status_code)
+
+    @action(detail=True, methods=["get"], url_path="table-proposals")
+    def table_proposals(self, request, pk=None):
+        """문서에서 뽑은 별표 후보 + **축으로 쓸 수 있는 사실 목록**.
+
+        축 목록을 함께 내리는 이유: 화면이 자유 입력을 받으면 오타가 그대로 저장되고,
+        그 표는 에러 없이 항상 기본값으로 떨어진다(승인 검사가 막긴 하지만, 고를 수 있는
+        것을 보여주는 편이 고치라고 되돌려보내는 것보다 낫다).
+        """
+        doc = self.get_object()
+        rows = [_proposal_row(p) for p in doc.table_proposals.all()]
+        return Response({"proposals": rows, "axisOptions": _axis_options()})
+
+    # POST인 이유: 이 뷰셋은 `http_method_names`에서 PATCH/PUT을 **의도적으로** 뺐다
+    #  (문서는 제자리 수정 대상이 아니다). 새 엔드포인트 하나를 위해 그 제약을 넓히면
+    #  문서 자체에도 PATCH가 열린다 — 좁은 쪽에 맞춘다.
+    @action(detail=True, methods=["post"],
+            url_path=r"table-proposals/(?P<proposal_id>\d+)")
+    def table_proposal_detail(self, request, pk=None, proposal_id=None):
+        """제안 수정 — 승인 전에 사람이 고친다(키·제목·축·표 내용·시행일).
+
+        이미 처리된(승인·반려) 제안은 고칠 수 없다. 승인된 값은 `PolicyTable`에 복제돼
+        판정에 쓰이고 있으므로, 여기서 고쳐도 그쪽엔 반영되지 않는다 — 고쳐진 것처럼
+        보이는 편이 안 고쳐지는 것보다 나쁘다. 값을 바꾸려면 개정(새 시행일)으로 간다.
+        """
+        doc = self.get_object()
+        proposal = doc.table_proposals.filter(pk=proposal_id).first()
+        if proposal is None:
+            return Response({"detail": "제안을 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+        if proposal.status != TableProposalStatus.PENDING:
+            return Response(
+                {"detail": f"이미 처리된 제안입니다({proposal.get_status_display()}) — "
+                           "값을 바꾸려면 개정(새 시행일)으로 등록하세요."},
+                status=http.HTTP_400_BAD_REQUEST,
+            )
+
+        data = request.data
+        for field, key in (("key", "key"), ("title", "title")):
+            if key in data:
+                setattr(proposal, field, str(data.get(key) or "").strip())
+        if "keyAxes" in data:
+            axes = data.get("keyAxes") or []
+            proposal.key_axes = [str(a).strip() for a in axes if str(a).strip()]
+        if "payload" in data:
+            proposal.payload = data.get("payload") or {}
+        if "strictKeys" in data:
+            proposal.strict_keys = bool(data.get("strictKeys"))
+        if "effectiveDate" in data:
+            proposal.effective_date = data.get("effectiveDate") or None
+        proposal.save()
+        return Response(_proposal_row(proposal))
+
+    @action(detail=True, methods=["post"],
+            url_path=r"table-proposals/(?P<proposal_id>\d+)/decision")
+    def table_proposal_decision(self, request, pk=None, proposal_id=None):
+        """`{action: "APPROVE"|"REJECT", note}` — 승인하면 `PolicyTable` 행이 생긴다.
+
+        승인 검사(축·키·구조·시행일)를 통과하지 못하면 **400과 사유 전부**를 돌려준다.
+        하나씩 알려주면 고치고 누르고를 반복하게 된다.
+        """
+        doc = self.get_object()
+        proposal = doc.table_proposals.filter(pk=proposal_id).first()
+        if proposal is None:
+            return Response({"detail": "제안을 찾을 수 없습니다."}, status=http.HTTP_404_NOT_FOUND)
+
+        verb = str(request.data.get("action") or "").upper()
+        note = str(request.data.get("note") or "")
+        try:
+            if verb == "APPROVE":
+                table_proposals.approve(proposal, actor=request.user, note=note)
+            elif verb == "REJECT":
+                table_proposals.reject(proposal, actor=request.user, note=note)
+            else:
+                return Response({"detail": "action은 APPROVE 또는 REJECT여야 합니다."},
+                                status=http.HTTP_400_BAD_REQUEST)
+        except table_proposals.ProposalError as exc:
+            return Response({"detail": str(exc)}, status=http.HTTP_400_BAD_REQUEST)
+        proposal.refresh_from_db()
+        return Response(_proposal_row(proposal))
+
     @action(detail=True, methods=["post"], url_path="move")
     def move(self, request, pk=None):
         """문서를 폴더로 옮긴다. `folderId`가 null이면 미분류로."""
@@ -421,7 +604,12 @@ class IngestCallbackView(APIView):
 
         if state == IngestStatus.DONE:
             _replace_clauses(doc, request.data.get("clauses") or [])
-        return Response({"ok": True, "status": doc.status, "clauses": doc.clauses.count()})
+            _replace_table_proposals(doc, request.data.get("tableProposals") or [])
+        return Response({
+            "ok": True, "status": doc.status,
+            "clauses": doc.clauses.count(),
+            "tableProposals": doc.table_proposals.count(),
+        })
 
 
 @transaction.atomic
@@ -437,6 +625,7 @@ def _replace_clauses(doc: PolicyDoc, rows: list[dict]) -> None:
         c.article_label: (c.decision, c.decision_reason, c.decided_by_id, c.decided_at)
         for c in doc.clauses.exclude(decision="")
     }
+    empty = ("", "", None, None)
     doc.clauses.all().delete()
     PolicyClause.objects.bulk_create([
         PolicyClause(
@@ -450,10 +639,17 @@ def _replace_clauses(doc: PolicyDoc, rows: list[dict]) -> None:
             page_start=int(row.get("pageStart") or 0),
             page_end=int(row.get("pageEnd") or 0),
             chunk_ids=row.get("chunkIds") or [],
-            decision=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[0],
-            decision_reason=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[1],
-            decided_by_id=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[2],
-            decided_at=kept.get(str(row.get("articleLabel") or ""), ("", "", None, None))[3],
+            # AI 분류는 매 적재마다 새로 온다(사람의 결정과 달리 이월하지 않는다) —
+            # 문서가 바뀌었는데 옛 분류를 물려주면 그게 곧 틀린 제안이 된다.
+            triage_kind=_choice(row.get("triageKind"), ClauseKind),
+            triage_priority=_choice(row.get("triagePriority"), ClausePriority),
+            triage_reason=str(row.get("triageReason") or "")[:2000],
+            triage_summary=str(row.get("triageSummary") or "")[:300],
+            triaged_at=timezone.now() if row.get("triageKind") else None,
+            decision=kept.get(str(row.get("articleLabel") or ""), empty)[0],
+            decision_reason=kept.get(str(row.get("articleLabel") or ""), empty)[1],
+            decided_by_id=kept.get(str(row.get("articleLabel") or ""), empty)[2],
+            decided_at=kept.get(str(row.get("articleLabel") or ""), empty)[3],
         )
         for index, row in enumerate(rows)
         if row.get("articleLabel")
@@ -524,3 +720,49 @@ def _case_row(case) -> dict:
         "indexed": bool(case.indexed_at),
         "indexError": case.index_error,
     }
+
+
+def _choice(raw, choices_cls) -> str:
+    """모르는 값은 조용히 버린다 — LLM이 없는 코드를 내도 적재가 깨지면 안 된다."""
+    value = str(raw or "").strip().upper()
+    return value if value in set(choices_cls.values) else ""
+
+
+@transaction.atomic
+def _replace_table_proposals(doc: PolicyDoc, rows: list[dict]) -> None:
+    """별표 후보를 새 적재 결과로 교체하되 **사람이 이미 처리한 것은 건드리지 않는다**.
+
+    승인된 제안을 지우면 `PolicyTable`에 남은 실물과의 연결(무엇을 보고 승인했나)이
+    끊긴다. 반려한 제안을 지우면 재색인 때마다 같은 표가 승인 대기로 되살아나 담당자가
+    같은 판단을 반복한다 — 조항 결정을 이월하는 것과 같은 이유다.
+
+    같은 표인지는 `source_chunk_id`로 본다. 청크 id는 문서 해시+블록 순번이라 같은 문서를
+    다시 넣으면 같은 값이 나온다(재색인이 멱등 upsert인 것과 같은 근거).
+    """
+    handled = set(
+        doc.table_proposals.exclude(status=TableProposalStatus.PENDING)
+        .values_list("source_chunk_id", flat=True)
+    )
+    doc.table_proposals.filter(status=TableProposalStatus.PENDING).delete()
+
+    PolicyTableProposal.objects.bulk_create([
+        PolicyTableProposal(
+            doc=doc,
+            source_chunk_id=str(row.get("chunkId") or "")[:64],
+            source_label=str(row.get("label") or "")[:100],
+            citation=str(row.get("citation") or "")[:300],
+            page_start=int(row.get("pageStart") or 0),
+            page_end=int(row.get("pageEnd") or 0),
+            raw_markdown=str(row.get("rawMarkdown") or ""),
+            key=str(row.get("key") or "")[:64],
+            title=str(row.get("title") or "")[:200],
+            key_axes=row.get("keyAxes") or [],
+            payload=row.get("payload") or {},
+            strict_keys=bool(row.get("strictKeys")),
+            effective_date=row.get("effectiveDate") or doc.effective_date,
+            confidence=float(row.get("confidence") or 0.0),
+            notes=str(row.get("notes") or "")[:2000],
+        )
+        for row in rows
+        if str(row.get("chunkId") or "") not in handled
+    ])

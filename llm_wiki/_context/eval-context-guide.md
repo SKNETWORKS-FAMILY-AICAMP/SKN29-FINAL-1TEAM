@@ -7,7 +7,9 @@
 > `policy-domain.md`(규정 임계값) · `eval-context-sourcing.md`(필드 출처·다이어트) ·
 > `evidence-extraction-agent.md`(첨부 추출) · `rule-engine-design.md`(엔진 설계 원안)
 >
-> 최종 갱신: 2026-08-11 · 스키마 v4 (46 필드)
+> 최종 갱신: 2026-08-22 · **스키마 v5 (47 필드)**
+> ⚠️ §8 필드 카탈로그 표는 아직 v4 기준이다 — v5 차이(`user.position` → `user.job_title` +
+> `job_title_rank`)는 §8 상단 주석에 적혀 있고, **어긋나면 코드가 이긴다**.
 
 ---
 ---
@@ -383,6 +385,7 @@ Scenario("62만원·사전승인 없음 → 보완요청 (기준 500,000)",
 | v1 | 최초 카탈로그(101 필드) | 규정 명세서 기준 이상 집합 |
 | v2 | `policy.gift_type` 제거, 누락 임계값 6종 승격, **필드명 상수 제거**(`biz_days_over_7`·`*_3m`) | `policy-domain.md` §4 |
 | v3 | **다이어트 101 → 46.** 판정 필드·조합 가능 필드·원천 없는 필드 제거. `tables` 동적화 | `eval-context-sourcing.md` §12 |
+| **v5** | `user.position`(직급) → **`user.job_title`(직책)** + `job_title_rank` 신설. 규정이 한도·결재권을 **직책** 기준으로 못박고 직급과 무관하다고 적는다(「직급체계」§1.1·별표1 각주). 직급은 SoR에 남지만 판정에 올리지 않는다 | `eval_context.py` §75 주석 |
 | **v4** | `evidence.purpose_missing` → **`expense_purpose_missing`**, **`conflicts` 섹션 신설** | 본 문서 §9.1 |
 
 **과거 스냅샷은 소급 수정하지 않는다.** `rule_hits.eval_context_schema_version`으로 구분해 읽는다.
