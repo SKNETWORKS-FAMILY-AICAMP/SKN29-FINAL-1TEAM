@@ -4,7 +4,7 @@
 > 이 문서는 "규정에 적힌 숫자(한도·기준액)를 어디에 어떤 모양으로 저장하고, 룰 엔진이 그걸 어떻게
 > 읽는가"의 단일 캐논이다. 구현 순서는 `_context/policy-domain-plan.md`.
 >
-> 최종 갱신: 2026-08-10
+> 최종 갱신: 2026-08-23 (§3 원안 코드블록에 현행 대조 추가 — 축의 SoT는 `PolicyTable.key_axes`)
 
 ---
 
@@ -83,14 +83,28 @@ class PolicyTable(models.Model):
 
 ## 3. 해소 규약 — `RESOLVERS`
 
+> ⚠️ **아래는 설계 원안이다.** 현행 구조는 §3.1~3.3에 있다 — 요약하면 두 가지가 달라졌다:
+> ① `RESOLVERS`는 **이름 매핑만** 한다(`{필드: 표key}`). **축은 `PolicyTable.key_axes`(DB 행)가 SoT**다.
+> ② `user.position`(직급) 축은 EvalContext v5에서 **`user.job_title`(직책)** 으로 교체됐다 —
+> 규정이 한도를 직책 기준으로 못박고 직급과 무관하다고 적는다.
+
 ```python
-# domain/policies/context_builder.py — 코드 상수로 유지(리뷰 대상, 로직 인접)
+# 【현행】 domain/policies/context_builder.py — 이름 override만. 축은 여기 없다.
+RESOLVERS: dict[str, str] = {
+  "preapproval_threshold":   "pre_approval_threshold_table",
+  "position_daily_limit":    "daily_limit_table",
+  "position_monthly_limit":  "monthly_limit_table",
+  "kickback_limit":          "kickback_limit_table",
+  "lodging_limit":           "lodging_limit_table",
+  ...
+}
+# 축은 적재된 표가 갖는다 — pre_approval_threshold_table.key_axes == ["user.job_title"]
+```
+
+```python
+# 【원안, 폐기】 축까지 코드 상수로 들고 있던 시절
 RESOLVERS = {
   "preapproval_threshold":  ("pre_approval_threshold_table", ["user.position"]),
-  "position_daily_limit":   ("daily_limit_table",            ["user.position"]),
-  "position_monthly_limit": ("monthly_limit_table",          ["user.position"]),
-  "kickback_limit":         ("kickback_limit_table",         ["category.item_type"]),
-  "lodging_limit":          ("lodging_limit_table",          ["trip.trip_type", "trip.region_grade"]),
   ...
 }
 ```

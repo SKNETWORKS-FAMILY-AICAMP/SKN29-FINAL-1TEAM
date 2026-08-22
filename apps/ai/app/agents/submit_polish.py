@@ -41,8 +41,14 @@ logger = logging.getLogger(__name__)
 
 MODEL = "gpt-4o-mini"
 
-#: 이보다 짧으면 문체를 다듬어도 감사 기록으로 쓸 수 없다(공백 제거 기준).
-MIN_PURPOSE_CHARS = 6
+#: 이보다 짧으면 **LLM을 부를 가치도 없는 조각**이다(공백 제거 기준). 「회식」·「출장」처럼
+#  단어 하나만 남은 경우를 걸러낸다.
+#
+#  ⚠️ 이 선은 「정보가 충분한가」를 재는 것이 **아니다.** 처음에 6자로 뒀다가 「팀 점심 식대」
+#  (5자)·「거래처 접대」(5자)·「야근 간식」(4자) 같은 **실제로 쓰이는 목적**이 통째로 걸려
+#  다듬기 경로에 못 들어갔다(회귀가 잡았다). 정보 충분성은 모델의 `insufficient`이 판단하고
+#  안내로 나간다 — 여기서는 다듬을 문장 자체가 없는 경우만 막는다.
+MIN_PURPOSE_CHARS = 4
 #: 길이가 이 배수를 넘게 늘면 "다듬기"가 아니다. 짧은 원문의 과민반응을 막으려고
 #: 절대 증가폭(_MIN_GROWTH_CHARS)도 함께 넘어야 걸린다.
 MAX_GROWTH_RATIO = 2.0
@@ -150,8 +156,8 @@ def polish(purpose: str, context_hint: str = "") -> dict[str, Any]:
     stripped = re.sub(r"\s", "", original)
 
     if len(stripped) < MIN_PURPOSE_CHARS:
-        #  다듬을 것이 없다. **대신 채워 넣지 않는다** — 목적은 사람이 쓰는 것이고,
-        #  여기서 지어내면 그 문장이 감사 기록이 된다.
+        #  다듬을 문장 자체가 없다(단어 하나). **대신 채워 넣지 않는다** — 목적은 사람이
+        #  쓰는 것이고, 여기서 지어내면 그 문장이 감사 기록이 된다.
         return {
             "applied": False,
             "original": original,
