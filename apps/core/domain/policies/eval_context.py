@@ -70,6 +70,10 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
             "boolean",
             "실사용자가 기록됐는가. 개인 배정 카드는 항상 true, 팀·공용은 본인이 등록해야 true.",
         ),
+        "actual_user_is_spender": _F(
+            "boolean",
+            "카드를 실제로 쓴 사람과 정산을 올린 사람이 같은가. 실사용자 미기록이면 null(모름).",
+        ),
     },
     # dept 제거 — 부서명 자체를 비교하는 룰은 없다. 재무회계 여부만 불린으로 남긴다.
     #  v5: `position`(직급) → **`job_title`(직책)으로 교체**. 규정 원문이 "결재 권한 및
@@ -87,7 +91,12 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
             "integer", "직책 서열. 클수록 상위. 「부서장 이상」을 이름 비교 없이 표현할 때 쓴다.",
         ),
         "finance_dept_is_spender": _F("boolean", "지출자가 재무회계 소속인가."),
-        "is_working_hours": _F("boolean", "근무시간 내 결제인가."),
+        "is_working_hours": _F("boolean", "근무시간 내 결제인가(평일 09~18시)."),
+        # 조직 축. v3에서 뺐던 `dept`와 다르다 — 그때는 "부서명을 비교하는 룰이 없다"가
+        #  근거였는데, 별표 축(본부별 한도)으로는 실제로 쓰인다. 이름 비교가 아니라
+        #  **룩업 키**가 용도다.
+        "team": _F("string", "지출자의 소속 팀 이름."),
+        "bu": _F("string", "지출자의 소속 본부 이름."),
     },
     # merchant_grade 제거(원천 없음). forbidden은 금지업종 별표 선해소 불린.
     "merchant": {
@@ -95,6 +104,11 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
             "string", "가맹점 업종. 밝히지 못하면 null로 남는다(`기타`로 채우지 않는다).", "vocab.industry",
         ),
         "merchant_info_resolved": _F("boolean", "업종 조회에 성공했는가."),
+        "industry_confidence": _F(
+            "number",
+            "업종 판정 신뢰도 0~1. 조회에 성공해도 확신이 낮을 수 있다 — `merchant_info_resolved`"
+            "만 보면 「확실한 업종」과 「가까스로 찍은 업종」이 같아 보인다.",
+        ),
         "forbidden": _F("boolean", "금지업종 별표에 걸리는가(별표 선해소값). 업종 미상이면 null."),
     },
     # 세부유형 3종 제거. item_type은 청탁금지 한도 룩업 키라 유지.
@@ -113,6 +127,13 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "expense_purpose_missing": _F(
             "boolean", "지출 목적이 비어 있는가. **역극성 필드** — true가 문제 상황이다.",
         ),
+        # 종류별로 나눈 이유: `has_supporting_evidence` 하나로는 "참석자 명단이 필요한
+        #  지출인데 명단이 있는가"를 물을 수 없다. 규정이 요구하는 증빙은 종류가 정해져
+        #  있고(회의록·명단·출장계획서·계약서), DSL은 목록 포함을 표현하지 못한다.
+        "has_meeting_minutes": _F("boolean", "회의록이 첨부됐는가."),
+        "has_participant_list": _F("boolean", "참석자 명단이 첨부됐는가."),
+        "has_trip_plan": _F("boolean", "출장계획서가 첨부됐는가."),
+        "has_contract": _F("boolean", "계약서·견적서가 첨부됐는가."),
     },
     "approval": {
         "pre_approval_obtained": _F("boolean", "사전승인을 받았는가."),
@@ -138,10 +159,13 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
     },
     # 집계 윈도우는 조립기 파라미터지 DSL 비교 대상이 아니다 → ctx에서 제외.
     # 승인/지연사유 집계 2종은 원천(승인 모델·사유 판정) 부재로 제거.
+    #  ⚠️ 집계 주체는 **카드가 아니라 사람**(실사용자, 없으면 지출자)이다. 비교 대상인
+    #     `policy.position_*_limit`이 직책 축이라 사람 기준이어야 뜻이 맞고, 한 사람이
+    #     개인·공용 카드를 섞어 쓰면 카드 기준 합계는 한도와 무관한 숫자가 된다.
     "history": {
-        "same_vendor_count": _F("integer", "집계 기간 내 같은 가맹점 결제 횟수."),
-        "daily_cumulative_amount": _F("number", "같은 날 누적 결제액(원)."),
-        "monthly_cumulative_amount": _F("number", "같은 달 누적 결제액(원)."),
+        "same_vendor_count": _F("integer", "집계 기간 내 같은 가맹점 결제 횟수(본인 기준)."),
+        "daily_cumulative_amount": _F("number", "같은 날 본인의 누적 결제액(원). 이 건을 포함한다."),
+        "monthly_cumulative_amount": _F("number", "같은 달 본인의 누적 결제액(원). 이 건을 포함한다."),
     },
     # 별표 선해소 스칼라 8종 — 비교 대상이 남아 있는 것만.
     #  ⚠️ `position_*` 접두는 역사적 이름이다. 축은 **직책**(`user.job_title`)이지

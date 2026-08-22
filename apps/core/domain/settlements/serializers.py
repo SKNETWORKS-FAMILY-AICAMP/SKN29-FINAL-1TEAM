@@ -114,6 +114,9 @@ class SettlementSerializer(serializers.ModelSerializer):
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
             "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError", "events",
+            # 판정 입력 컬럼. 화면이 되읽어야 수정이 유지된다 — 안 내려주면 모달이 매번
+            # 빈 칸으로 열려 "적었는데 사라졌다"가 된다(`null`=모름 계약도 함께 깨진다).
+            "headcount",
         ]
         read_only_fields = ["status"]  # 상태 전이는 서비스(services.py)를 통해서만
 

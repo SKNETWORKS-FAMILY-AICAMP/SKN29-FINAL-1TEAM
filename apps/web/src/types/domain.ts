@@ -158,6 +158,11 @@ export interface Settlement {
   claimPending?: boolean
   teamId?: number | null
   purpose?: string // 지출 목적/사유
+  /**
+   * 참석 인원. **`null`=모름 / `0`=확인했더니 없음** — 두 값의 뜻이 다르다.
+   * 이 값이 없으면 1인당 환산액이 만들어지지 않아 1인당 한도 룰이 미해소로 강등된다.
+   */
+  headcount?: number | null
   time?: string
   dept?: string
   category?: Category

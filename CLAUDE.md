@@ -65,10 +65,10 @@ daily_scrum/  주차별 진행 보고
 | 룰 그래프(트리) 도메인 | ✅ | scope별 버전·DRAFT 복제/원복·DSL 쉽게보기·검증 시뮬레이션·승인 흐름·롤백. 구조 시각화는 플로우차트(순환 감지) |
 | 룰 엔진 판정 | ✅ | 게이트 우선(GLOBAL→scope) · 그래프당 `rule_hits` 1행 · **엔진은 최종반려를 만들지 않는다**(REJECT여도 상태는 RETURNED) · 제출이 판정을 이어 돌린다. → [[rule-engine]] |
 | 네임드 플래그 | ✅ | 2계층(닫힌 `SystemFlag` / 열린 `RuleFlag`). **불변식: 플래그는 상태머신을 움직이지 않는다.** `code`는 데이터 계약. → [[rule-flags]] |
-| EvalContext | ✅ v5 (47필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. → [[eval-context-guide]] · [[eval-context-sourcing]] |
+| EvalContext | ✅ v5 (55필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. 2026-08-22 실측 감사로 조립 5종 보강 + 사실 8종 신설(팀·본부·실사용자 일치·첨부 종류별·업종 신뢰도). → [[eval-context-sourcing]] §15 |
 | 규정 임계값(policy) | ✅ 동적화 완료 | 저장층 `PolicyTable`(자유 JSON+`key_axes`) → 소비층 `ctx.policy.*`. **적재된 표에서 파생**(코드 상수 아님), `RESOLVERS`는 이름 override로만. 축 정합 검사(`check_table_axes`, DB 행 대조). → [[policy-domain]] §3 |
 | 기본 게이트(DEFAULT GATE) | ✅ | 제품 기본 제공은 **이것 하나**. 기본 `REVIEW`+사유, `PASS`는 화이트리스트, `RETURN`/`REJECT` 안 냄. → [[default-gate]] |
-| 판정 입력(사실) 조립 | 🚧 부분 | `policy.*`는 전부 해소. 사실은 SoR·첨부 추출에서 오는데 아직 결측이 남아 REVIEW 강등이 있다. → [[eval-context-sourcing]] |
+| 판정 입력(사실) 조립 | 🚧 대부분 해소 | 이력 집계·영업일·근무시간을 채워 「룰이 참조하는데 미조립」이 4→1로 줄었다(남은 1은 `trip.*`, 첨부 추출은 되나 **화면 입력칸이 없다**). `finance_dept_is_spender`는 `Team.is_finance` 필요. → [[eval-context-sourcing]] §15 |
 
 ### 3.3 AI Agent
 
@@ -105,7 +105,7 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | 화면·흐름 불변식 | ✅ 정리 완료 | 이상 건 정의 · 결정 버튼 세트 · 일괄승인 금지 · 사유를 받는 기준 · 저장 vs 파생 · 데이터 스코프 · 상태 기록 · 빈 자리 처리. **새 화면·버튼 만들기 전에 읽는다** → [[settlement-ui-rules]] |
-| S-01 내 지출 | ✅ 실 연동 | 내역 불러오기(ERP 수집, 멱등) · 신규 등록은 **저장 먼저 → 비전 → 초안**([[draft-agent-v2]]) · 상세 수정 PATCH · 전표 보기 |
+| S-01 내 지출 | ✅ 실 연동 | 내역 불러오기(ERP 수집, 멱등) · 신규 등록은 **저장 먼저 → 비전 → 초안**([[draft-agent-v2]]) · 상세 수정 PATCH · 전표 보기 · **참석 인원 입력칸**(빈칸=모름 / 0=해당없음 — 없던 탓에 1인당 한도 룰이 전건 미해소였다) |
 | S-02 팀 취합·통계 | ✅ 실 연동 | 이상 건 = RETURN/REJECT 둘뿐. 예산은 한도만 DB·사용액은 집계 |
 | S-03 검토 워크스페이스 | ✅ 실 연동 | 이상탐지·RAG 검증·EvalContext 스냅샷·룰 판정 패널·결정 모달. Risk Review 진행 상태 표시 |
 | S-04 룰 콘솔 | ✅ 실 연동 | 3개 탭 전 구간(초안 편집·시뮬레이션·Active 승인/롤백·작성 대화) |
@@ -125,9 +125,11 @@ daily_scrum/  주차별 진행 보고
 
 1. **별표 적재 경로 확장** — `PolicyTable`에 행을 넣는 실사용 경로가 문서 승인 흐름으로 열렸으나, 축 제안 정확도·개정 재현은 실데이터 검증 전. 축 매핑 **자동 확정은 금지**(스키마에 없는 축이 조용히 와일드카드로 떨어진다)
 2. **RAG 운영 적재 마무리** — 청킹·임베딩 전략은 평가 완료, 실 코퍼스 전량 upsert만 남음
-3. **`classify_merchant` Risk Review 연동** — Draft만 연결돼 있다
-4. **`anomaly.pkl` 재학습** — `feature_contribs` 실값 확보 + sklearn 버전 고정
-5. **Draft Agent 정리** — 폼 기반 옛 경로(`/agent/draft`) 제거, AI-LAB 정산 모드 탭
+3. **출장 입력칸 3개** — `trip.*`는 첨부 추출(TRIP_PLAN)이 이미 뽑는데 화면 입력이 없어 0%다
+4. **`merchant.forbidden` 정리** — 59% 채워지는데 참조 0. 게이트가 리터럴로 직접 비교해 선해소 목적이 사라졌다 — 게이트를 고치거나 선해소를 빼거나 정해야 한다
+5. **`classify_merchant` Risk Review 연동** — Draft만 연결돼 있다
+6. **`anomaly.pkl` 재학습** — `feature_contribs` 실값 확보 + sklearn 버전 고정
+7. **Draft Agent 정리** — 폼 기반 옛 경로(`/agent/draft`) 제거, AI-LAB 정산 모드 탭
 
 ---
 
