@@ -128,6 +128,14 @@ _SYSTEM_PROMPT = """당신은 법인카드 정산 규정을 실행 가능한 룰
    - in 연산자는 right_kind="string_list", right_string_list에 값 목록을 넣으세요.
      예: category.ai in [식대,기업업무추진비]
    - not이 필요하면 negate:true로 표시하세요(연산자를 감쌉니다).
+   - **「값을 모른다」와 「값이 없다/아니다」는 다른 사실입니다.** 예를 들어 사전승인 여부는
+     `false`(확인했고 안 받았다)와 「모름」(아무도 적지 않았다)이 다릅니다.
+     · 「받지 않았다」 → op:"==", right_bool:false
+     · 「적혀 있지 않다·확인할 수 없다」 → op:"is_null" (단항 — right_* 는 전부 null)
+     · 「값이 있다」 → op:"is_null" + negate:true
+     헷갈리면 `==`/`!=` 쪽을 쓰세요. 다른 모든 비교는 값을 모르면 **자동으로 걸리지 않고**
+     시스템이 그 건을 「판단에 필요한 정보 없음」으로 사람에게 넘깁니다 — 모르는 경우를
+     따로 처리하지 않아도 됩니다. `is_null`은 **모름 자체를 사유로 삼고 싶을 때만** 쓰세요.
    - 산술 연산 금지. 필요한 계산값은 이미 컨텍스트에 선계산되어 있다고 가정하세요.
 
 2. var 경로(left_path/right_var_path)·연산자·판정값·플래그·임계값 변수는 모두 아래
@@ -159,7 +167,10 @@ _CONDITION_NODE_SCHEMA = {
     "properties": {
         "kind": {"type": "string", "enum": ["comparison", "group"]},
         "left_path": {"type": ["string", "null"]},
-        "op": {"type": ["string", "null"], "enum": ["==", "!=", ">", ">=", "<", "<=", "in", None]},
+        # `is_null`은 **단항**이다 — right_* 를 전부 null로 두고 left_path만 채운다.
+        #  「모름」과 「없음」은 다른 사실이라 이 연산자 없이는 「값을 안 적었다」를 표현할 수 없다.
+        "op": {"type": ["string", "null"],
+               "enum": ["==", "!=", ">", ">=", "<", "<=", "in", "is_null", None]},
         "negate": {"type": "boolean"},
         "right_kind": {"type": ["string", "null"], "enum": ["var", "number", "string", "boolean", "string_list", None]},
         "right_var_path": {"type": ["string", "null"]},
@@ -410,6 +421,11 @@ def _build_condition(node: dict) -> dict:
         return {node["combinator"]: children}
 
     left = {"var": node["left_path"]}
+    if node["op"] == "is_null":
+        # 우변이 없다. 모델이 right_*를 채워 보내도 무시한다 — 단항이라 쓸 자리가 없다.
+        result = {"is_null": left}
+        return {"not": result} if node["negate"] else result
+
     kind = node["right_kind"]
     if kind == "var":
         right = {"var": node["right_var_path"]}
