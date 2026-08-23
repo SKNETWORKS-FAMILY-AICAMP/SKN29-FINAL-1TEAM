@@ -1,18 +1,31 @@
 // S-09 법인카드 관리 — 회계. 팀/개인 배정 카드 현황 + 배정 변경·회수/정지,
 // 회수 필요 카드 별도 조치 큐.
 //
-// 실 API 연동(`/api/cards/`). **화면은 판정을 하지 않는다** — 사용액도, "회수가 필요한가"도
-// 서버가 계산해 내려준 값을 그대로 쓴다. 여기서 다시 계산하면 임계값 사본이 두 벌 생기고
-// 곧 서로 다른 말을 한다(이전 목데이터 시절엔 그 판정이 아예 화면 상수였다).
+// 카드 목록은 실 API 연동(`/api/cards/`). **화면은 판정을 하지 않는다** — 사용액도, "회수가
+// 필요한가"도 서버가 계산해 내려준 값을 그대로 쓴다. 여기서 다시 계산하면 임계값 사본이 두 벌
+// 생기고 곧 서로 다른 말을 한다(이전 목데이터 시절엔 그 판정이 아예 화면 상수였다).
+//
+// ⚠️ 예외 하나: **「회수/중지 필요」 조치 큐(`AttentionView`)는 시연용 목업이다.** 분실신고·
+// 휴직·장기미사용은 그 사실을 담는 자리가 도메인에 없어 서버가 낼 수 없다. 화면에 그렇다고
+// 밝히고, 거기서 누른 회수는 서버로 나가지 않는다. 자세한 건 아래 AttentionView 주석.
+import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, RefreshCw, Search } from 'lucide-react'
+import {
+  AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CircleCheckBig, FlaskConical,
+  Moon, RefreshCw, Repeat, Search, ShieldAlert, UserMinus,
+} from 'lucide-react'
 import { won } from '../lib/format'
 import { AssignCardModal } from '../components/cards/AssignCardModal'
 import { RecallCardModal } from '../components/cards/RecallCardModal'
+import { KpiCard } from '../components/ui/KpiCard'
 import {
-  assignCard, fetchCardAttention, fetchCards, stopCard,
-  type AttentionGroupData, type CardOption, type CorpCard,
+  assignCard, fetchCards, stopCard,
+  type CardOption, type CorpCard,
 } from '../api/cardService'
+import {
+  ATTENTION_MOCK, ATTENTION_MOCK_TOTAL, REASON_META, REASON_ORDER, SEVERITY_META,
+  type AttentionMockCard, type AttentionReason,
+} from '../data/cardAttentionMock'
 
 export function CardManagement() {
   const [view, setView] = useState<'list' | 'attention'>('list')
@@ -66,7 +79,10 @@ export function CardManagement() {
     })
   }, [cards, search, typeFilter, teamFilter, statusFilter])
 
-  const attentionCount = useMemo(() => cards.filter((c) => c.attention).length, [cards])
+  //  「회수/중지 필요」 화면은 지금 **시연용 목업**이다(→ `data/cardAttentionMock.ts` 서두).
+  //  그래서 배지 숫자도 그 목업 건수를 쓴다 — 실 API 건수를 띄우고 목업 목록을 열면
+  //  버튼과 화면이 다른 수를 말한다.
+  const attentionCount = ATTENTION_MOCK_TOTAL
 
   const confirmAssign = async (target: { mode: 'TEAM' | 'PERSONAL'; teamId?: number; userId?: number; reason: string }) => {
     if (!assigning) return
@@ -96,18 +112,7 @@ export function CardManagement() {
     }
   }
 
-  if (view === 'attention') {
-    return (
-      <AttentionView
-        onBack={() => setView('list')}
-        onRecall={setRecalling}
-        recalling={recalling}
-        onConfirmRecall={confirmRecall}
-        onCloseRecall={() => setRecalling(null)}
-        pending={pending}
-      />
-    )
-  }
+  if (view === 'attention') return <AttentionView onBack={() => setView('list')} />
 
   return (
     <>
@@ -268,113 +273,221 @@ export function CardManagement() {
   )
 }
 
-/** 회수/중지 필요 카드 — 서버가 사유별로 묶어 내려준 그대로 보여준다. */
-function AttentionView({
-  onBack, onRecall, recalling, onConfirmRecall, onCloseRecall, pending,
-}: {
-  onBack: () => void
-  onRecall: (card: CorpCard) => void
-  recalling: CorpCard | null
-  onConfirmRecall: (reason: string, detail: string) => void
-  onCloseRecall: () => void
-  pending: boolean
-}) {
-  const [groups, setGroups] = useState<AttentionGroupData[]>([])
-  const [total, setTotal] = useState(0)
-  const [rule, setRule] = useState<{ windowDays: number; minCount: number } | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetchCardAttention()
-        setGroups(res.groups)
-        setTotal(res.total)
-        setRule(res.anomalyRule)
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [recalling])
+/* ── 회수/중지 필요 카드 ──────────────────────────────────────────────
+ *
+ *  ⚠️ **시연용 목업이다.** 여기 뜨는 9건은 `data/cardAttentionMock.ts`의 상수이고 서버에
+ *  묻지 않는다 — 분실신고·휴직·장기미사용은 그 사실을 담는 자리가 도메인에 아직 없어서
+ *  실 API가 낼 수 없는 사유다(내는 건 퇴사·반복 이상사용 둘뿐).
+ *
+ *  그래서 두 가지를 지킨다:
+ *   ① 화면 상단에 「시연용 예시 데이터」라고 밝힌다. 회수는 되돌릴 수 없는 결정이라
+ *      근거가 가짜인 줄 모르고 누르는 상황을 만들면 안 된다.
+ *   ② 회수 확정이 서버로 나가지 않는다. 화면 안에서만 '조치 완료'로 바뀐다
+ *      (실제로 `POST /api/cards/{id}/stop/`을 부르면 존재하지 않는 id로 404가 난다).
+ *  실 사실이 도메인에 들어오면 목업 파일째 걷어내고 서버 응답을 그대로 그린다.
+ */
+const REASON_ICON: Record<AttentionReason, typeof UserMinus> = {
+  RETIRED_OWNER: UserMinus,
+  LOST_REPORTED: ShieldAlert,
+  REPEAT_ANOMALY: Repeat,
+  LEAVE_OF_ABSENCE: CalendarClock,
+  DORMANT: Moon,
+}
+
+/** 사유 색을 CSS로 넘기는 통로 — `.attn-*`는 이 두 변수만 읽는다(색 정본은 REASON_META). */
+const toneVars = (reason: AttentionReason): CSSProperties =>
+  ({ '--attn-tone': REASON_META[reason].tone, '--attn-bg': REASON_META[reason].bg } as CSSProperties)
+
+function AttentionView({ onBack }: { onBack: () => void }) {
+  const [filter, setFilter] = useState<AttentionReason | 'ALL'>('ALL')
+  //  조치한 건은 목록에서 지우지 않고 사유를 들고 남긴다 — 방금 무엇을 처리했는지가
+  //  보여야 하고, 시연 중 되돌아와도 흐름이 이어진다.
+  const [done, setDone] = useState<Record<number, string>>({})
+  const [recalling, setRecalling] = useState<AttentionMockCard | null>(null)
+
+  const counts = useMemo(() => {
+    const map = {} as Record<AttentionReason, number>
+    for (const r of REASON_ORDER) map[r] = 0
+    for (const c of ATTENTION_MOCK) if (!done[c.id]) map[c.reason] += 1
+    return map
+  }, [done])
+
+  const remaining = ATTENTION_MOCK.filter((c) => !done[c.id])
+  const urgent = remaining.filter((c) => c.severity === 'URGENT').length
+  const watch = remaining.filter((c) => c.severity === 'WATCH').length
+  const list = filter === 'ALL' ? ATTENTION_MOCK : ATTENTION_MOCK.filter((c) => c.reason === filter)
+
+  const confirmRecall = (reason: string, detail: string) => {
+    if (!recalling) return
+    setDone((prev) => ({ ...prev, [recalling.id]: detail.trim() ? `${reason} — ${detail.trim()}` : reason }))
+    setRecalling(null)
+  }
 
   return (
-    <div className="page-inner">
-      <button className="btn sm" style={{ marginBottom: 16 }} onClick={onBack}>
-        <ArrowLeft size={13} /> 카드 관리로 돌아가기
-      </button>
-      <div className="page-head">
-        <h1>회수/중지 필요 카드</h1>
-        <div className="sub">퇴사자 또는 반복 이상사용이 감지된 카드입니다. 확인 후 조치해주세요.</div>
+    <>
+      <div className="hero-band" style={{ paddingBottom: 24 }}>
+        <button className="btn sm" style={{ marginBottom: 14 }} onClick={onBack}>
+          <ArrowLeft size={13} /> 카드 관리로 돌아가기
+        </button>
+        <div className="page-head" style={{ marginBottom: 0 }}>
+          <h1 className="row" style={{ gap: 10, alignItems: 'center' }}>
+            회수/중지 필요 카드
+            <span className="tag" style={{ background: 'var(--tone-purple-bg)', color: 'var(--tone-purple)', borderColor: 'transparent', fontWeight: 700 }}>
+              <FlaskConical size={12} /> 시연용 예시 데이터
+            </span>
+          </h1>
+          <div className="sub">
+            퇴사·분실신고·반복 이상사용 등 카드를 계속 두면 안 되는 사유가 잡힌 건입니다.
+            사유와 근거를 확인한 뒤 회수 여부를 결정하세요.
+          </div>
+        </div>
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <KpiCard flat label="조치 필요" value={remaining.length} unit="건" />
+          <KpiCard flat warn={urgent > 0} label="즉시 조치" value={urgent} unit="건" />
+          <KpiCard flat label="확인 필요" value={watch} unit="건" />
+          <KpiCard flat label="조치 완료" value={Object.keys(done).length} unit="건" />
+        </div>
       </div>
 
-      <div className="note" style={{
-        display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 24,
-        background: total > 0 ? 'var(--tone-amber-bg)' : 'var(--surface-2)',
-        border: total > 0 ? '1px solid #ead9ad' : '1px solid var(--border)',
-      }}>
-        <AlertTriangle size={18} color={total > 0 ? 'var(--tone-amber)' : 'var(--muted)'} style={{ flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <div style={{ fontWeight: 700 }}>
-            {loading ? '확인 중…' : total > 0 ? `현재 ${total}건의 카드가 조치가 필요합니다` : '조치가 필요한 카드가 없습니다'}
-          </div>
-          {/* 판정 기준을 화면에 그대로 적는다 — 근거를 숨기면 회수 결정을 내리는 사람이 판단할 수 없다. */}
-          {rule && (
+      <div className="page-inner">
+        <div className="note" style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 20,
+          background: 'var(--tone-purple-bg)', border: '1px dashed var(--tone-purple)', color: 'var(--text)',
+        }}>
+          <FlaskConical size={16} color="var(--tone-purple)" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 2 }}>화면 시연용 예시 데이터입니다</div>
+            {/* 무엇이 가짜인지 정확히 적는다 — "일부 목업"으로 뭉개면 어느 줄이 진짜인지 아무도 모른다. */}
             <div className="text-meta">
-              퇴사 처리된 사용자의 개인카드 · 최근 {rule.windowDays}일 내 동일 가맹점 {rule.minCount}회 이상 결제
+              분실신고·휴직·장기미사용은 아직 시스템이 수집하지 않는 사실이라, 조치 흐름을 보여주기 위한
+              예시로 채워 두었습니다. 여기서 누른 회수/정지는 실제 카드에 반영되지 않습니다.
+            </div>
+          </div>
+        </div>
+
+        {/* 사유별 필터 — 큐가 길어지면 "지금 볼 것"부터 좁힌다. */}
+        <div className="attn-filters">
+          <button
+            className={`attn-filter${filter === 'ALL' ? ' active' : ''}`}
+            style={{ '--attn-tone': 'var(--primary)', '--attn-bg': 'var(--primary-soft)' } as CSSProperties}
+            onClick={() => setFilter('ALL')}
+          >
+            <span className="ico"><AlertTriangle size={16} /></span>
+            <span className="txt">
+              <div className="n">{remaining.length}</div>
+              <div className="l">전체</div>
+            </span>
+          </button>
+          {REASON_ORDER.map((r) => {
+            const Icon = REASON_ICON[r]
+            return (
+              <button
+                key={r}
+                className={`attn-filter${filter === r ? ' active' : ''}`}
+                style={toneVars(r)}
+                onClick={() => setFilter(filter === r ? 'ALL' : r)}
+                title={REASON_META[r].desc}
+              >
+                <span className="ico"><Icon size={16} /></span>
+                <span className="txt">
+                  <div className="n">{counts[r]}</div>
+                  <div className="l">{REASON_META[r].label}</div>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {filter !== 'ALL' && (
+          <div className="text-meta" style={{ marginBottom: 12 }}>{REASON_META[filter].desc}</div>
+        )}
+
+        <div className="attn-list">
+          {list.map((c) => {
+            const Icon = REASON_ICON[c.reason]
+            const sev = SEVERITY_META[c.severity]
+            const doneReason = done[c.id]
+            return (
+              <div key={c.id} className={`attn-row${doneReason ? ' done' : ''}`} style={toneVars(c.reason)}>
+                <span className="ico"><Icon size={19} /></span>
+                <div className="attn-body">
+                  <div className="attn-title">
+                    {/* 카드 미니어처 — 목록 어디서나 같은 모양으로 '카드'를 가리킨다. */}
+                    <span style={{ position: 'relative', width: 24, height: 18, borderRadius: 4, background: 'var(--sidebar-bg)', flexShrink: 0 }}>
+                      <span style={{ position: 'absolute', left: 3, top: 4, width: 8, height: 6, borderRadius: 2, background: 'var(--accent-amber)' }} />
+                    </span>
+                    <span className="attn-no">{c.number}</span>
+                    <span className="tag">{c.typeLabel}</span>
+                    <span className="badge" style={{ color: REASON_META[c.reason].tone, background: REASON_META[c.reason].bg }}>
+                      {REASON_META[c.reason].label}
+                    </span>
+                    {doneReason
+                      ? <span className="badge" style={{ color: 'var(--tone-green)', background: 'var(--tone-green-bg)' }}><CircleCheckBig size={11} /> 조치 완료</span>
+                      : <span className="badge" style={{ color: sev.tone, background: sev.bg }}>{sev.label}</span>}
+                  </div>
+                  <div className="attn-sub">{c.name} · {c.assignee} · {c.team}</div>
+                  <div className="attn-note">{c.note}</div>
+                  <div className="attn-facts">
+                    <span>{c.dateLabel}<b>{c.date}</b></span>
+                    <span>경과<b>{c.elapsedDays}일</b></span>
+                    <span>최근 사용<b>{c.lastUsedAt} · {won(c.lastUsedAmount)}</b></span>
+                    <span>이번 달 사용액<b>{won(c.monthUsage)}</b></span>
+                    <span>한도<b>{won(c.limit)}</b></span>
+                  </div>
+                  {doneReason ? (
+                    <div className="attn-reco" style={{ borderStyle: 'solid', borderColor: '#bfe6d1', background: 'var(--tone-green-bg)' }}>
+                      처리 사유 <b>{doneReason}</b>
+                    </div>
+                  ) : (
+                    <div className="attn-reco">권장 조치 <b>{c.recommend}</b></div>
+                  )}
+                </div>
+                <div className="attn-actions">
+                  <button
+                    className="btn sm"
+                    style={doneReason ? undefined : { borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}
+                    onClick={() => setRecalling(c)}
+                    disabled={!!doneReason}
+                  >
+                    {doneReason ? '처리됨' : '회수/정지'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          {list.length === 0 && (
+            <div className="card" style={{ padding: 32, textAlign: 'center' }} >
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>이 사유로 조치할 카드가 없습니다</div>
+              <div className="text-meta">다른 사유를 선택하거나 전체를 확인하세요.</div>
             </div>
           )}
         </div>
-      </div>
 
-      {groups.map((g) => (
-        <div key={g.reason} className="card" style={{ marginBottom: 16 }}>
-          <div className="card-head"><h3>{g.label}</h3><span className="text-meta">{g.cards.length}건</span></div>
-          <table className="table">
-            <thead>
-              <tr><th>카드</th><th>배정 대상</th><th>확인 사항</th><th></th></tr>
-            </thead>
-            <tbody>
-              {g.cards.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.number || c.name}</td>
-                  <td>{c.assignee}</td>
-                  <td>
-                    {c.attention?.note}
-                    <div className="text-meta">
-                      {c.attention?.dateLabel}: {c.attention?.date || '-'}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      <button
-                        className="btn sm"
-                        style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}
-                        onClick={() => onRecall(c)}
-                        disabled={pending}
-                      >
-                        회수/정지
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="text-meta" style={{ marginTop: 14 }}>
+          실제 운영에서는 회수 확정 시 카드가 즉시 사용 정지되고 사유가 함께 기록됩니다.
         </div>
-      ))}
-
-      <div className="text-meta" style={{ marginTop: 8 }}>회수 확정 시 카드가 즉시 사용 정지되고 사유가 함께 기록됩니다.</div>
+      </div>
 
       {recalling && (
         <RecallCardModal
-          number={recalling.number || recalling.name}
+          number={`${recalling.number} · ${recalling.name}`}
           assignee={recalling.assignee}
-          statusLabel={recalling.statusLabel}
-          defaultReason={recalling.attention?.label}
-          onClose={onCloseRecall}
-          onConfirm={onConfirmRecall}
+          statusLabel={SEVERITY_META[recalling.severity].label}
+          defaultReason={RECALL_REASON_OF[recalling.reason]}
+          onClose={() => setRecalling(null)}
+          onConfirm={confirmRecall}
         />
       )}
-    </div>
+    </>
   )
+}
+
+/** 모달 사유 선택지(`RecallCardModal`의 REASONS)와 **같은 문자열**이어야 기본 선택이 먹는다. */
+const RECALL_REASON_OF: Record<AttentionReason, string> = {
+  RETIRED_OWNER: '퇴사 처리',
+  LOST_REPORTED: '분실·도난 신고',
+  REPEAT_ANOMALY: '반복 이상사용 감지',
+  LEAVE_OF_ABSENCE: '휴직·장기 파견',
+  DORMANT: '장기 미사용',
 }

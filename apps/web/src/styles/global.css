@@ -834,3 +834,56 @@ textarea:focus-visible, [tabindex]:focus-visible {
    클릭해도 상세가 열리지 않으므로 커서도 기본으로 둔다. */
 .row-pending { background: var(--tone-amber-bg); cursor: default; }
 .row-pending:hover { background: var(--tone-amber-bg); }
+
+/* ── S-09 회수/중지 필요 카드 ──────────────────
+   테이블 대신 카드형 목록을 쓴다: 한 건마다 사유·근거일·경과일·최근 사용이 함께 읽혀야
+   회수 여부를 그 자리에서 판단할 수 있는데, 열로 늘리면 가로 스크롤이 생긴다.
+   색은 --attn-tone / --attn-bg 두 변수로만 받는다(사유별 색을 CSS에 복제하지 않는다 —
+   정본은 cardAttentionMock.ts의 REASON_META 하나다). */
+
+/* 사유별 필터 타일 */
+.attn-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-4); }
+.attn-filter {
+  display: flex; align-items: center; gap: 10px; padding: 11px 13px; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  font: inherit; color: var(--text); cursor: pointer;
+  transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), background-color 150ms cubic-bezier(0.23,1,0.32,1), transform 100ms cubic-bezier(0.23,1,0.32,1);
+}
+.attn-filter:hover { border-color: var(--attn-tone, var(--border-strong)); transform: translateY(-1px); }
+.attn-filter.active { border-color: var(--attn-tone, var(--primary)); background: var(--attn-bg, var(--primary-soft)); box-shadow: inset 0 0 0 1px var(--attn-tone, var(--primary)); }
+.attn-filter .ico { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: var(--attn-bg, var(--surface-2)); color: var(--attn-tone, var(--muted)); }
+.attn-filter .txt { min-width: 0; line-height: 1.25; }
+.attn-filter .n { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--attn-tone, var(--text)); }
+.attn-filter .l { font-size: var(--text-caption); font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 조치 큐 한 건 */
+.attn-list { display: grid; gap: 10px; }
+.attn-row {
+  position: relative; display: flex; gap: 14px; align-items: flex-start; overflow: hidden;
+  padding: 15px 18px 15px 21px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), box-shadow 150ms cubic-bezier(0.23,1,0.32,1), transform 100ms cubic-bezier(0.23,1,0.32,1);
+}
+.attn-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--attn-tone, var(--border-strong)); }
+.attn-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.attn-row .ico { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; background: var(--attn-bg, var(--surface-2)); color: var(--attn-tone, var(--muted)); }
+.attn-body { flex: 1; min-width: 0; }
+.attn-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attn-no { font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.attn-sub { margin-top: 3px; font-size: var(--text-caption); color: var(--muted); }
+.attn-note { margin-top: 9px; font-size: 12.5px; line-height: 1.5; }
+/* 근거 묶음 — 라벨/값 쌍을 한 줄에 흘리되 좁아지면 접힌다. */
+.attn-facts { display: flex; flex-wrap: wrap; gap: 4px var(--space-4); margin-top: 9px; font-size: 11.5px; color: var(--muted); }
+.attn-facts b { margin-left: 5px; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.attn-reco { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px dashed var(--border-strong); font-size: 11.5px; color: var(--muted); }
+.attn-reco b { color: var(--text); font-weight: 700; }
+.attn-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+/* 조치를 마친 건은 지우지 않고 흐리게 남긴다 — 방금 무엇을 처리했는지가 보여야 한다. */
+.attn-row.done { opacity: 0.55; background: var(--surface-2); }
+.attn-row.done::before { background: var(--tone-green); }
+.attn-row.done:hover { transform: none; box-shadow: none; }
+
+@media (max-width: 720px) {
+  .attn-row { flex-wrap: wrap; }
+  .attn-actions { flex-direction: row; width: 100%; justify-content: flex-end; }
+}

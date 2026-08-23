@@ -3,7 +3,12 @@ import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 
-const REASONS = ['퇴사 처리', '반복 이상사용 감지', '한도 초과', '부정사용 의심', '기타']
+//  조치 큐가 기본 선택으로 넘기는 사유(`RECALL_REASON_OF`)가 **이 목록 안에 있어야** 한다 —
+//  없는 값을 select에 넣으면 아무것도 안 고른 것처럼 빈칸으로 뜬다.
+const REASONS = [
+  '퇴사 처리', '분실·도난 신고', '반복 이상사용 감지', '휴직·장기 파견',
+  '장기 미사용', '한도 초과', '부정사용 의심', '기타',
+]
 
 export function RecallCardModal({
   number,

@@ -61,6 +61,13 @@ export async function fetchCards(): Promise<CardListResult> {
   }
 }
 
+/**
+ * 회수/중지 필요 카드 — **지금 화면은 이걸 부르지 않는다.**
+ *
+ * S-09의 조치 큐가 시연용 목업(`data/cardAttentionMock.ts`)으로 대체돼 있다: 실 API가 내는
+ * 사유는 퇴사·반복 이상사용 둘뿐이고 분실신고·휴직·장기미사용은 그 사실을 담는 자리가
+ * 도메인에 아직 없다. 엔드포인트는 그대로 살아 있으니 목업을 걷어낼 때 이 함수로 돌아온다.
+ */
 export async function fetchCardAttention(): Promise<{
   total: number
   groups: AttentionGroupData[]
