@@ -192,6 +192,13 @@ class SettlementViewSet(viewsets.ModelViewSet):
             merchant_industry=industry_label, merchant_industry_code=industry_code,
             purpose=d.get("purpose", ""), submitted_by=actor,
             team=getattr(actor, "team", None), status="DRAFT",
+            #  **등록하는 행위 자체가 「내가 썼다」는 기록**이다. 지어내는 게 아니라 방금
+            #  일어난 사실이라(로그인한 본인이 자기 지출을 올렸다) 여기서 채운다 —
+            #  「내역 불러오기」(`erp_import`)가 팀·공용카드를 비워 두는 것과 정반대 상황이다.
+            #  그쪽은 카드사 원장에서 긁어와 **주인을 모르는** 건이라 `claim()`으로 사람이
+            #  해소해야 하지만, 이쪽은 그 해소가 등록 시점에 이미 끝나 있다.
+            #  안 채우면 팀·공용카드 건이 전부 `ACTUAL_USER_REQUIRED`로 걸려 자동 통과에서 빠진다.
+            actual_user=actor, actual_user_recorded=bool(actor),
         )
 
         #  같은 파일을 두 자리에 건다. 역할이 다르다:

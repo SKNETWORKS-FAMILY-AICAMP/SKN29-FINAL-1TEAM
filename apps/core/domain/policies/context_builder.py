@@ -501,9 +501,19 @@ def collect_from_settlement(merger: FactMerger, settlement) -> None:
 
     # ── 실사용자 == 지출자인가. 미기록이면 `None`(모름) — `False`로 두면 "다른 사람이
     #    썼다"로 읽힌다.
+    #
+    #    **개인카드는 `card.actual_user_recorded`와 같은 규칙으로 보정한다.** 예전엔 이
+    #    필드만 보정을 안 받아서, 개인카드인데 `actual_user`가 안 채워진 건이
+    #    `recorded=True` / `is_spender=None`으로 **서로 다른 말을 하고** 있었다(실측
+    #    2026-08-24). 개인카드는 남의 것을 붙일 수 없으므로(`_resolve_card`가 서버에서
+    #    본인 범위를 확인한다) 소유자가 곧 지출자다.
     actual = settlement.actual_user_id
-    sor("card.actual_user_is_spender",
-        (actual == settlement.submitted_by_id) if actual is not None else None)
+    if actual is not None:
+        sor("card.actual_user_is_spender", actual == settlement.submitted_by_id)
+    elif card is not None and card.card_type not in SHARED_CARD_TYPES:
+        sor("card.actual_user_is_spender", True)
+    else:
+        sor("card.actual_user_is_spender", None)
 
     # ── 첨부 종류별 유무. 목록이 아니라 종류마다 불린인 이유는 DSL이 목록 포함을
     #    표현하지 못하기 때문이다(`in`의 좌변은 스칼라).
