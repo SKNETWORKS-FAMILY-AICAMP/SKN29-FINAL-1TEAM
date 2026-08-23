@@ -9,7 +9,9 @@ from typing import Any
 MAX_DEPTH = 32
 LOGIC_OPERATORS = {"and", "or", "not"}
 COMPARE_OPERATORS = {"==", "!=", ">", ">=", "<", "<=", "in"}
-OPERATORS = LOGIC_OPERATORS | COMPARE_OPERATORS | {"var"}
+#: 모름(None)을 참으로 만들 수 있는 **유일한** 연산자. 아래 `_evaluate` 주석 참조.
+NULL_TEST = "is_null"
+OPERATORS = LOGIC_OPERATORS | COMPARE_OPERATORS | {"var", NULL_TEST}
 
 
 class DSLValidationError(ValueError):
@@ -35,7 +37,7 @@ def _validate(expr: Any, depth: int) -> None:
         if not isinstance(args, str) or not args or any(not part for part in args.split(".")):
             raise DSLValidationError("var에는 유효한 dot-path 문자열이 필요합니다.")
         return
-    if operator == "not":
+    if operator in ("not", NULL_TEST):
         _validate(args, depth + 1)
         return
     if not isinstance(args, list):
@@ -47,9 +49,11 @@ def _validate(expr: Any, depth: int) -> None:
         raise DSLValidationError(f"{operator}에는 정확히 두 인자가 필요합니다.")
     if operator == "in" and (
         not isinstance(args[1], list)
-        or any(item is not None and not isinstance(item, (bool, int, float, str)) for item in args[1])
+        or any(not isinstance(item, (bool, int, float, str)) for item in args[1])
     ):
-        raise DSLValidationError("in의 우변은 리터럴 리스트여야 합니다.")
+        # `null`을 허용하면 조용히 아무것도 안 맞는다(좌변 None에서 먼저 끊긴다) —
+        # "왜 안 걸리지"를 만드는 자리라 문법에서 막는다. 모름 판정은 `is_null`로.
+        raise DSLValidationError("in의 우변은 null이 아닌 리터럴 리스트여야 합니다.")
     for arg in args:
         _validate(arg, depth + 1)
 
@@ -77,6 +81,36 @@ def extract_vars(expr: Any) -> set[str]:
 
     visit(expr)
     return found
+
+
+def guarded_vars(expr: Any) -> set[str]:
+    """조건식이 참조하는 경로 중 **미해소 가드가 봐야 할 것**만 추출한다.
+
+    `is_null`이 감싼 경로는 뺀다 — 거기서는 `None`이 「판단할 수 없음」이 아니라 **묻고 있는
+    값 자체**라, 가드가 강등하면 그 룰은 영영 참이 될 수 없다(연산자만 넣고 가드를 그대로 두면
+    `is_null`은 아무 뜻이 없다).
+
+    **같은 경로가 `is_null` 밖에도 나오면 가드를 유지한다.** 한 노드가
+    `is_null(x) or x > 5`처럼 쓰면 뒤쪽 비교는 여전히 x를 알아야 뜻이 있다 — 애매하면
+    안전한 쪽(강등)으로 붙인다.
+    """
+    validate_expr(expr)
+    outside: set[str] = set()
+
+    def visit(value: Any, *, under_null: bool) -> None:
+        if isinstance(value, Mapping):
+            operator, args = next(iter(value.items()))
+            if operator == "var":
+                if not under_null:
+                    outside.add(args)
+            else:
+                visit(args, under_null=under_null or operator == NULL_TEST)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item, under_null=under_null)
+
+    visit(expr, under_null=False)
+    return outside
 
 
 def resolve_path(ctx: Mapping[str, Any], path: str) -> Any:
@@ -110,22 +144,29 @@ def _evaluate(expr: Any, ctx: Mapping[str, Any]) -> Any:
         return all(bool(_evaluate(arg, ctx)) for arg in args)
     if operator == "or":
         return any(bool(_evaluate(arg, ctx)) for arg in args)
+    if operator == NULL_TEST:
+        return _evaluate(args, ctx) is None
     if operator == "not":
-        return not bool(_evaluate(args, ctx))
+        # 모름의 부정도 참이 아니다. `not(x)`가 모름을 참으로 만들면 「확인 안 함」이
+        # 「없음」으로 판정된다(실측: T-21이 증빙 미확인 건에 EVIDENCE_MISSING을 달았다).
+        value = _evaluate(args, ctx)
+        return False if value is None else not bool(value)
 
     left = _evaluate(args[0], ctx)
     right = _evaluate(args[1], ctx)
+    # **모름은 어느 방향으로도 참을 만들지 않는다.** 비교에 None이 하나라도 끼면 False다
+    # — 연산자마다 다르게 굴면(예전 `!=`는 모를 때 참이었다) 그 예외를 룰 작성자와 LLM이
+    # 매번 기억해야 하고, 틀리는 방향이 「조용한 위반 판정」이 된다. 모름을 묻고 싶으면
+    # `is_null`을 쓴다 — 이름이 곧 뜻이라 읽는 사람이 되짚을 필요가 없다.
+    if left is None or right is None:
+        return False
     if operator == "==":
-        if left is None or right is None:
-            return left is right
         return _same_comparable_type(left, right) and left == right
     if operator == "!=":
-        if left is None or right is None:
-            return left is not right
         return _same_comparable_type(left, right) and left != right
     if operator == "in":
-        return False if left is None else left in right
-    if left is None or right is None or not _same_comparable_type(left, right):
+        return left in right
+    if not _same_comparable_type(left, right):
         return False
     try:
         if operator == ">":

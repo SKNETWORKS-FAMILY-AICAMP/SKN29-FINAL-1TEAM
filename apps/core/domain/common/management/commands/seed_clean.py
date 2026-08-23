@@ -197,7 +197,9 @@ def default_gate_spec() -> dict:
         ),
         _flag_node(
             "n_category", "비용분류 미기재",
-            {"==": [{"var": "category.value"}, None]},
+            # 「모름」을 묻는 유일한 방법. `== null`은 v6 의미 통일로 항상 거짓이 됐다
+            #  (모름은 어느 방향으로도 참을 만들지 않는다).
+            {"is_null": {"var": "category.value"}},
             "CATEGORY_MISSING", 5, severity="MEDIUM",
             description="비용분류가 확정되지 않아 적용할 과목 룰을 정할 수 없는 건",
             when="비용분류(식대·출장·접대 등)가 확정되지 않았을 때",
@@ -239,7 +241,8 @@ def default_gate_spec() -> dict:
             {"and": [
                 {"==": [{"var": "evidence.has_valid_receipt"}, True]},
                 {"==": [{"var": "evidence.expense_purpose_missing"}, False]},
-                {"!=": [{"var": "category.value"}, None]},
+                # "분류가 있는가" — `!= null`이 예전 관용구였으나 v6에서 항상 거짓이 됐다.
+                {"not": {"is_null": {"var": "category.value"}}},
                 {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
                 {"not": {"in": [{"var": "merchant.merchant_type"}, LEGAL_RISK_MERCHANT_TYPES]}},
                 {"<": [{"var": "tx.amount"}, AUTO_PASS_MAX_AMOUNT]},

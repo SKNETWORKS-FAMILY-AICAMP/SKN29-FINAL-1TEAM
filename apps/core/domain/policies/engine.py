@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .flags import SystemFlag
-from .dsl import DSLValidationError, evaluate, extract_vars, resolve_path, validate_expr
+from .dsl import DSLValidationError, evaluate, guarded_vars, resolve_path, validate_expr
 
 
 DECISIONS = {"PASS", "REJECT", "REVIEW", "RETURN"}
@@ -115,14 +115,19 @@ def validate_graph(graph: dict[str, Any]) -> None:
 
 
 def referenced_vars_by_node(nodes: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
-    """노드별로 조건식이 참조하는 **모든** EvalContext 경로를 미리 뽑아둔다.
+    """노드별로 **미해소 가드가 봐야 할** EvalContext 경로를 미리 뽑아둔다.
 
     순회 중 재파싱을 피하려고 미리 계산한다. 조건이 리터럴뿐인 노드는 목록에 없다.
+
+    `extract_vars`(전부)가 아니라 `guarded_vars`(`is_null` 밖에 나온 것만)를 쓴다 —
+    `is_null(x)`에서 `x`의 `None`은 판단을 막는 결측이 아니라 **묻고 있는 값**이다.
+    ACTIVE 전환 게이트(`validate_graph_vars`)는 여전히 `extract_vars` 전부를 보므로,
+    면제된 경로도 스키마에 있어야 하는 건 그대로다.
     """
     out: dict[str, tuple[str, ...]] = {}
     for key, node in nodes.items():
         try:
-            refs = extract_vars(node.get("condition", {}))
+            refs = guarded_vars(node.get("condition", {}))
         except DSLValidationError:
             continue
         if refs:

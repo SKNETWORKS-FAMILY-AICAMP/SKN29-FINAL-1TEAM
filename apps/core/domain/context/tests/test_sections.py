@@ -29,7 +29,10 @@ class SectionBuildTests(TestCase):
     def test_dsl_문법은_엔진이_실제로_쓰는_연산자다(self):
         """프롬프트가 말하는 연산자와 검증기가 허용하는 연산자가 갈리면 안 된다."""
         d = sections.build_section("dsl.grammar")["data"]
-        advertised = set(d["logic_operators"]) | set(d["compare_operators"]) | {d["value_operator"]}
+        advertised = (
+            set(d["logic_operators"]) | set(d["compare_operators"])
+            | {d["value_operator"], d["null_test"]}
+        )
         self.assertEqual(advertised, dsl.OPERATORS)
         self.assertEqual(d["max_depth"], dsl.MAX_DEPTH)
 
