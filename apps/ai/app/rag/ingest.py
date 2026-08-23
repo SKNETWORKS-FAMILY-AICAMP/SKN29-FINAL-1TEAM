@@ -201,7 +201,7 @@ def ingest_pdf(
     #  되돌리지 않으려면 마지막이어야 한다). 예외는 triage 안에서 이미 삼켜진다.
     triage_result = triage.run(
         chunks=chunks, clauses=clauses, collection=collection,
-        axis_options=triage.axis_options(),
+        axis_options=triage.axis_options(), fact_options=triage.fact_paths(),
     )
     for row in clauses:
         row.update(triage_result.clauses.get(row["articleLabel"], {}))
