@@ -43,13 +43,13 @@ TARGETS: dict[str, dict[str, str]] = {
         "approval.pre_approval_obtained": "사전승인을 실제로 받았는가(결재 완료·승인 도장/서명 확인). 반려·미결이면 false",
     },
     "MEETING_MINUTES": {
-        "participants.participant_count": "참석자 총 인원수",
-        "participants.external_participant_count": "외부(사외) 참석 인원수. 전원 내부면 0",
+        "participants.verified_participant_count": "참석자 총 인원수",
+        "participants.verified_external_count": "외부(사외) 참석 인원수. 전원 내부면 0",
         "participants.has_kickback_law_target": "공직자·언론인·교직원 등 청탁금지법 대상이 포함됐는가",
     },
     "PARTICIPANT_LIST": {
-        "participants.participant_count": "명단에 오른 총 인원수",
-        "participants.external_participant_count": "외부(사외) 인원수. 전원 내부면 0",
+        "participants.verified_participant_count": "명단에 오른 총 인원수",
+        "participants.verified_external_count": "외부(사외) 인원수. 전원 내부면 0",
         "participants.has_kickback_law_target": "공직자·언론인·교직원 등 청탁금지법 대상이 포함됐는가",
     },
     "TRIP_PLAN": {

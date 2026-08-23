@@ -204,8 +204,12 @@ E_PREAPPROVAL = node(
 )
 E_KICKBACK = node(
     "E-003", "청탁금지법 대상자 참석 · 한도 초과",
+    # 1인당 금액은 **문서로 확인된 인원** 기준이다(신고값 아님) — 법정 한도 판정이라
+    #  본인이 적은 인원으로 나누면 인원을 부풀리는 것만으로 한도를 피할 수 있다.
+    #  명단이 없으면 `verified_per_person_amount`가 null이라 판정이 검토로 넘어간다(의도).
     {"and": [{"==": [{"var": "participants.has_kickback_law_target"}, True]},
-             {">": [{"var": "tx.per_person_amount"}, {"var": "policy.kickback_limit"}]}]},
+             {">": [{"var": "tx.verified_per_person_amount"},
+                    {"var": "policy.kickback_limit"}]}]},
     "REVIEW", "공직자 등 청탁금지법 대상자가 참석했고 1인당 금액이 법정 한도를 넘은 건입니다.", 2,
     clause=f"{REG} 제12조③ · 청탁금지법 제8조", severity="CRITICAL", flag="KICKBACK_LAW_RISK",
     note="법률 리스크가 있어 자동 처리하지 않고 반드시 사람이 판단합니다.",

@@ -197,18 +197,21 @@ class AttachmentExtractionTests(TestCase):
             extracted=extracted, extracted_at=timezone.now(), **kwargs,
         )
 
-    def test_extracted_facts_land_in_context(self):
+    def test_extracted_facts_land_in_verified_field(self):
+        """인원 추출값은 **확인 필드**로 간다 — 신고 필드와 다투지 않는다."""
         self._attach("MEETING_MINUTES", {"participants.participant_count": 4})
         ctx, _ = build_rule_context(settlement=self.settlement)
-        self.assertEqual(ctx["participants"]["participant_count"], 4)
+        self.assertEqual(ctx["participants"]["verified_participant_count"], 4)
+        self.assertIsNone(ctx["participants"]["participant_count"])
 
-    def test_user_input_beats_extraction(self):
-        """사람이 확정한 컬럼값이 추출값을 이긴다."""
+    def test_reported_and_verified_coexist(self):
+        """예전엔 입력이 추출을 이겨 하나만 남았다 — 그래서 룰이 출처를 물을 수 없었다."""
         self._attach("MEETING_MINUTES", {"participants.participant_count": 4})
         self.settlement.headcount = 6
         self.settlement.save(update_fields=["headcount"])
         ctx, _ = build_rule_context(settlement=self.settlement)
         self.assertEqual(ctx["participants"]["participant_count"], 6)
+        self.assertEqual(ctx["participants"]["verified_participant_count"], 4)
 
     def test_empty_column_does_not_erase_extraction(self):
         """컬럼이 비어 있어도(모름) 추출값을 지우지 않는다."""

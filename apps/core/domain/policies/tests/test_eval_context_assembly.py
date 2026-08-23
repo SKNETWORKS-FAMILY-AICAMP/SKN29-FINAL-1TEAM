@@ -182,19 +182,27 @@ CASES = [
 
     # ── 첨부 문서 추출 (증빙자료 추출 Agent가 채우는 자리)
     Case(
-        "회의록에서 참석자 추출 → 컬럼이 비어 있어도 사실이 채워진다",
+        # 판독기가 옛 경로로 뽑아 저장해 둔 첨부도 확인 필드로 접힌다(`EXTRACT_PATH_REMAP`)
+        # — 재판독 없이 살아나야 지금까지 읽어둔 명단이 사라지지 않는다.
+        "회의록에서 참석자 추출 → **확인** 필드로 들어간다(신고 필드가 아니다)",
         Given(headcount=None,
               attachments=(("MEETING_MINUTES",
                             {"participants.participant_count": 6,
                              "participants.external_participant_count": 2}, True),)),
-        expect={"participants.participant_count": 6,
-                "participants.external_participant_count": 2},
+        expect={"participants.verified_participant_count": 6,
+                "participants.verified_external_count": 2,
+                "participants.participant_count": None},
     ),
     Case(
-        "화면 입력이 추출값을 이긴다 (사람이 확정한 값 우선)",
-        Given(headcount=9,
+        # 예전엔 같은 경로를 놓고 겨뤄 입력이 이겼고, 그래서 룰이 "이게 확인된 인원인가"를
+        # 물을 수 없었다. 이제 **둘 다 남는다** — 어느 쪽을 쓸지는 룰이 정한다.
+        "신고와 확인이 나란히 남는다 — 더 이상 다투지 않는다",
+        Given(amount=900_000, headcount=9,
               attachments=(("MEETING_MINUTES", {"participants.participant_count": 6}, True),)),
-        expect={"participants.participant_count": 9},
+        expect={"participants.participant_count": 9,
+                "participants.verified_participant_count": 6,
+                "tx.per_person_amount": 100_000,
+                "tx.verified_per_person_amount": 150_000},
     ),
     Case(
         "사전승인 문서 추출 → 승인 여부가 채워진다",
@@ -206,7 +214,7 @@ CASES = [
         "추출 미완료(PENDING) 첨부는 반영하지 않는다",
         Given(headcount=None,
               attachments=(("MEETING_MINUTES", {"participants.participant_count": 6}, False),)),
-        expect={"participants.participant_count": None},
+        expect={"participants.verified_participant_count": None},
     ),
     Case(
         "출장계획서 추출 — 스키마 밖 경로(flight_class)는 조용히 버린다",
@@ -270,42 +278,48 @@ CONFLICT_CASES = [
     Case(
         "회의록 4명 vs 참석자명단 6명 — 동순위 불일치는 '모름'으로 남는다",
         Given(headcount=None, attachments=(
-            ("MEETING_MINUTES", {"participants.participant_count": 4}, True),
-            ("PARTICIPANT_LIST", {"participants.participant_count": 6}, True),
+            ("MEETING_MINUTES", {"participants.verified_participant_count": 4}, True),
+            ("PARTICIPANT_LIST", {"participants.verified_participant_count": 6}, True),
         )),
         expect={
-            "participants.participant_count": None,
-            "conflicts.participants.participant_count.resolution": "dropped_as_unknown",
+            "participants.verified_participant_count": None,
+            "conflicts.participants.verified_participant_count.resolution": "dropped_as_unknown",
         },
     ),
     Case(
         "두 문서가 같은 값이면 충돌이 아니다",
         Given(headcount=None, attachments=(
-            ("MEETING_MINUTES", {"participants.participant_count": 4}, True),
-            ("PARTICIPANT_LIST", {"participants.participant_count": 4}, True),
+            ("MEETING_MINUTES", {"participants.verified_participant_count": 4}, True),
+            ("PARTICIPANT_LIST", {"participants.verified_participant_count": 4}, True),
         )),
-        expect={"participants.participant_count": 4,
-                "conflicts.participants.participant_count": None},
+        expect={"participants.verified_participant_count": 4,
+                "conflicts.participants.verified_participant_count": None},
     ),
     Case(
-        "사용자 입력이 추출값과 다르면 — 입력이 이기고 불일치는 기록된다",
+        # 인원은 이제 서로 다른 필드라 충돌 자체가 없다. 순위 규칙은 **같은 필드**를 두고
+        # 겨루는 값들(영수증 금액 vs 카드 전표 등)에 그대로 남아 있다 — 아래 금액 케이스 참조.
+        "신고 9명 · 문서 4명 — 충돌로 기록되지 않는다(다른 사실이므로)",
         Given(headcount=9, attachments=(
             ("MEETING_MINUTES", {"participants.participant_count": 4}, True),
         )),
         expect={
             "participants.participant_count": 9,
-            "conflicts.participants.participant_count.kept": 9,
-            "conflicts.participants.participant_count.resolution": "input_wins",
+            "participants.verified_participant_count": 4,
+            "conflicts.participants.participant_count": None,
         },
     ),
     Case(
-        "사용자가 두 문서의 충돌을 해소한다 — 상위 순위가 오면 되살아난다",
+        # **사람이 적었다고 명단이 확인된 것은 아니다.** 예전엔 입력이 문서 충돌을 덮어
+        # 확인값이 되살아났는데, 그건 「확인됨」의 뜻을 흐린다. 이제 확인값은 여전히 모름이라
+        # 그걸 요구하는 룰은 검토로 간다.
+        "사용자가 적어도 문서 충돌은 해소되지 않는다",
         Given(headcount=7, attachments=(
             ("MEETING_MINUTES", {"participants.participant_count": 4}, True),
             ("PARTICIPANT_LIST", {"participants.participant_count": 6}, True),
         )),
         expect={"participants.participant_count": 7,
-                "conflicts.participants.participant_count.resolution": "input_wins"},
+                "participants.verified_participant_count": None,
+                "conflicts.participants.verified_participant_count.resolution": "dropped_as_unknown"},
     ),
     Case(
         "영수증 추출 금액이 카드 전표와 다르면 — 원장이 이기고 불일치를 남긴다",
@@ -317,17 +331,22 @@ CONFLICT_CASES = [
                 "conflicts.tx.amount.resolution": "sor_wins"},
     ),
     Case(
-        "1인당 금액은 합쳐진 인원으로 계산한다 — 추출 인원만 있어도 파생된다",
+        # 신고와 확인은 **서로 다른 사실**이라 섞이지 않는다 — 추출 인원만 있으면
+        # 확인 기준 1인당만 나오고, 신고 기준은 비어 있다(사람이 아무것도 안 적었으니까).
+        "문서 인원은 확인 기준으로만 파생된다 — 신고 기준은 비어 있다",
         Given(amount=400_000, headcount=None, attachments=(
-            ("MEETING_MINUTES", {"participants.participant_count": 5}, True),
+            ("MEETING_MINUTES", {"participants.verified_participant_count": 5}, True),
         )),
-        expect={"participants.participant_count": 5, "tx.per_person_amount": 80_000},
+        expect={"participants.verified_participant_count": 5,
+                "participants.participant_count": None,
+                "tx.verified_per_person_amount": 80_000,
+                "tx.per_person_amount": None},
     ),
     Case(
         "인원이 충돌해 '모름'이면 1인당 금액도 계산하지 않는다",
         Given(amount=400_000, headcount=None, attachments=(
-            ("MEETING_MINUTES", {"participants.participant_count": 4}, True),
-            ("PARTICIPANT_LIST", {"participants.participant_count": 5}, True),
+            ("MEETING_MINUTES", {"participants.verified_participant_count": 4}, True),
+            ("PARTICIPANT_LIST", {"participants.verified_participant_count": 5}, True),
         )),
         expect={"participants.participant_count": None, "tx.per_person_amount": None},
     ),

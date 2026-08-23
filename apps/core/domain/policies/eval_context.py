@@ -80,7 +80,16 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
     # 거래 사실 — day_of_week/is_holiday는 derived.is_weekend로 갈음, service_charge_ratio 제외
     "tx": {
         "amount": _F("number", "건당 결제 총액(원)."),
-        "per_person_amount": _F("number", "1인당 환산액(원) = 총액 ÷ 참석 인원. 인원을 모르면 null."),
+        "per_person_amount": _F(
+            "number",
+            "1인당 환산액(원) = 총액 ÷ **신고** 인원. 인원을 모르면 null. 신고값 기반이라 "
+            "승인이 느슨한 지출에 쓴다.",
+        ),
+        "verified_per_person_amount": _F(
+            "number",
+            "1인당 환산액(원) = 총액 ÷ **문서로 확인된** 인원. 청탁금지 한도처럼 정확한 "
+            "인원이 필요한 판정은 이 값을 쓴다 — 확인된 명단이 없으면 null이라 검토로 간다.",
+        ),
         "payment_time": _F("time", "결제 시각 `HH:MM`(24시간제)."),
         "payment_method": _F("string", "결제 수단(현재는 법인카드 고정)."),
     },
@@ -164,11 +173,26 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "pre_approval_obtained": _F("boolean", "사전승인을 받았는가."),
     },
     # 참석자 상세 5종 + kickback_law_category(item_type과 중복) 제거.
+    #  ⚠️ **신고값과 확인값을 같은 경로에서 다투게 두지 않는다**(2026-08-23).
+    #     예전엔 화면 입력과 첨부 추출이 `participant_count` 하나를 놓고 순위로 겨뤘고,
+    #     사람이 적은 값이 늘 이겼다 — 그래서 룰은 "이 인원이 문서로 확인된 것인가"를
+    #     **물을 방법이 없었다**. 정확도 요구가 다른 두 판정(식대 1인당 vs 청탁금지 1인당)이
+    #     같은 사실을 쓰게 되는 것이 문제의 핵심이었다.
+    #     이제 출처가 곧 필드다: 신고값은 화면 입력만, 확인값은 첨부 추출만 채운다.
     "participants": {
         "participant_count": _F(
-            "integer", "참석 인원. `0`은 「명단이 없다」, `null`은 「모른다」 — 다른 뜻이다.",
+            "integer",
+            "**본인 신고** 참석 인원(화면 입력). 문서로 확인된 값이 아니다 — 승인이 느슨한 "
+            "지출(식대·복리후생 등)에만 쓰고, 정확도가 필요하면 `verified_participant_count`를 "
+            "쓴다. `0`은 「명단이 없다」, `null`은 「모른다」 — 다른 뜻이다.",
         ),
-        "external_participant_count": _F("integer", "외부(사외) 참석 인원."),
+        "verified_participant_count": _F(
+            "integer",
+            "**문서로 확인된** 참석 인원(회의록·참석자명단 추출). 첨부가 없거나 판독 신뢰도가 "
+            "낮으면 null이다 — 그때 이 값을 참조한 룰은 판정이 검토로 넘어간다(그게 의도다).",
+        ),
+        "external_participant_count": _F("integer", "**본인 신고** 외부(사외) 참석 인원."),
+        "verified_external_count": _F("integer", "**문서로 확인된** 외부(사외) 참석 인원."),
         "has_kickback_law_target": _F("boolean", "청탁금지법 대상자가 참석했는가."),
     },
     # 출장 도메인 미구현 — 숙박 한도 판정에 필요한 3개만 남긴다(별표 축 2 + 비교 대상 1).
