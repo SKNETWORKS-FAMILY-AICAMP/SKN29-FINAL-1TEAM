@@ -256,6 +256,27 @@ export interface ImportResult {
 }
 
 /** S-03 검토 대상: 이상탐지(1차) + RAG 내규검증(2차) 결과 결합 */
+/** 2차 위험 검토 보고서 — 미리보기(summary) + 자세히(highlights/findings/advisories). */
+export interface RiskReportEvidence {
+  kind: 'policy' | 'case'
+  ref: string
+  label: string
+  quote: string
+}
+export interface RiskReportFinding {
+  claim: string
+  reasoning: string
+  /** 비어 있으면 근거 없는 판단 — 서버가 이미 걸렀지만 화면도 그 사실을 표시한다. */
+  evidence: RiskReportEvidence[]
+}
+export interface RiskReport {
+  summary: string
+  recommendation: 'APPROVE' | 'SUPPLEMENT' | 'REJECT'
+  highlights: string[]
+  findings: RiskReportFinding[]
+  advisories: string[]
+}
+
 export interface ReviewItem extends Settlement {
   anomalyScore: number // 0~1 (비지도 이상탐지)
   /**
@@ -266,6 +287,10 @@ export interface ReviewItem extends Settlement {
   riskTier: 'HIGH' | 'MEDIUM' | 'LOW' | ''
   featureContribs: { feature: string; weight: number }[]
   ragRefs: { title: string; source: string; kind?: 'policy' | 'case'; excerpt?: string; relevance?: number }[]
+  /** 2차 구조화 보고서. 없으면 옛 건(마크다운 `ragReport`)이거나 아직 안 돈 건이다. */
+  riskReport?: RiskReport | null
+  /** low = 심층 검증 미수행(일반 거래 구간) / fast / heavy. */
+  riskTierPath?: string
   /** RAG 내규 검증 보고서(마크다운). 비면 요약 문장으로 대체 렌더링한다. */
   ragReport?: string
   /**

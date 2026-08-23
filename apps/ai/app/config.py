@@ -22,5 +22,19 @@ class Settings(BaseSettings):
     # 로컬 모델 레지스트리 경로
     model_dir: str = "/app/var/models"
 
+    # ── LLM 모델 2종 — **이름은 여기서만 정한다** (`app/llm.py`가 유일한 소비처) ──
+    #  호출부는 모델 이름 대신 **역할**("fast"/"heavy")로 부른다. 이름을 각 Agent가 들고
+    #  있으면 모델을 바꿀 때 전부 고쳐야 하고, 실제로 그렇게 흩어져 있었다(6곳 하드코딩).
+    #
+    #  fast   빠른-효율성. 표시용 변환·문체 다듬기·분류처럼 지연이 사용자에게 보이는 자리.
+    #  heavy  무거운 추론. 결과가 판단으로 쓰이는 자리(위험 검토 보고서·룰 생성).
+    #         ⚠️ 커스텀 `temperature`를 지원하지 않는다(기본 1만 허용, 다른 값은 400) —
+    #            그 차이는 `app/llm.py`가 흡수하므로 호출부는 신경 쓰지 않는다.
+    llm_fast_model: str = "gpt-4o-mini"
+    llm_heavy_model: str = "gpt-5-mini"
+    #  실측(2026-08-18, rule_agent_v0): minimal/low ~23초 · medium 41초. 품질 차이는
+    #  뚜렷하지 않아 low를 기본으로 둔다.
+    llm_heavy_reasoning_effort: str = "low"
+
 
 settings = Settings()

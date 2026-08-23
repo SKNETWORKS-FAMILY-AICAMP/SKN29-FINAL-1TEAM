@@ -35,6 +35,14 @@ class RiskReview(models.Model):
     # 2차 RAG 검증 LLM 구조화 출력 원본(violation_verdict/review_reasons/recommendation/
     # citations/similar_cases 전체) — 기존 reasons(1차 feature contribs 전용)와 분리해서 보존한다.
     stage2_verdict = models.JSONField(default=dict, blank=True)
+    #: 담당자가 읽는 **구조화 보고서**(summary/recommendation/highlights/findings/advisories).
+    #  `rag_report`(마크다운 TextField)는 시드 하이라이트 전용으로 남는다 — 실 운영 경로는
+    #  한 번도 채운 적이 없고, 마크다운 한 덩어리로는 화면이 미리보기/자세히를 못 가른다.
+    report = models.JSONField(default=dict, blank=True)
+    #: 어느 등급 경로로 돌았나(low = LLM 미사용 / fast / heavy)와 실제 사용 모델.
+    #  안 남기면 나중에 어느 결과가 어느 모델의 것인지 알 수 없다(모델 비교의 전제).
+    tier_path = models.CharField(max_length=10, blank=True)
+    model_name = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

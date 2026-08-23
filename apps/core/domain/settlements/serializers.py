@@ -73,6 +73,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     # 없으면 모델 미배치 건이 화면에서 「이상 신호 낮음」으로 읽힌다.
     anomalyStatus = serializers.SerializerMethodField()
     anomalyNote = serializers.SerializerMethodField()
+    # 2차 구조화 보고서(미리보기 summary + 자세히 highlights/findings/advisories).
+    riskReport = serializers.SerializerMethodField()
+    # 어느 등급 경로·모델로 돌았나 — 화면이 "심층 검증을 안 한 건"을 구분해 말할 수 있어야 한다.
+    riskTierPath = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
@@ -115,6 +119,7 @@ class SettlementSerializer(serializers.ModelSerializer):
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
             "anomalyScore", "riskTier", "anomalyStatus", "anomalyNote",
+            "riskReport", "riskTierPath",
             "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
@@ -185,6 +190,14 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_anomalyNote(self, obj):
         r = self._risk(obj)
         return (r.stage1_note if r else "") or ""
+
+    def get_riskReport(self, obj):
+        r = self._risk(obj)
+        return (r.report if r else None) or None
+
+    def get_riskTierPath(self, obj):
+        r = self._risk(obj)
+        return (r.tier_path if r else "") or ""
 
     def get_aiRecommendation(self, obj):
         r = self._risk(obj)

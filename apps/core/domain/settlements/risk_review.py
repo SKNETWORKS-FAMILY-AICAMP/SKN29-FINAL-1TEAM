@@ -112,6 +112,9 @@ def run(settlement) -> RiskReview | None:
         ai_recommendation=RECOMMENDATION_MAP.get(stage2.get("recommendation", ""), ""),
         # LLM 원본 출력은 따로 보존한다 — 기존 `reasons` 계약을 깨지 않기 위해 분리했다.
         stage2_verdict=stage2,
+        report=stage2.get("report") or {},
+        tier_path=str(stage2.get("tier_path") or "")[:10],
+        model_name=str(stage2.get("model") or "")[:64],
     )
     Settlement.objects.filter(pk=settlement.pk).update(
         risk_review_state=RiskReviewState.DONE, risk_review_error="",

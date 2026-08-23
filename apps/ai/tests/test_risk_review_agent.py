@@ -220,3 +220,117 @@ def test_정상_채점이면_status가_ok(monkeypatch):
     out = agent._stage1(1)
     assert out["status"] == agent.STAGE1_OK
     assert out["risk_tier"] == "HIGH"
+
+
+# ══════════════════════════════════════════════════════════════════
+#  등급 분기 + 보고서 (상/중/하)
+# ══════════════════════════════════════════════════════════════════
+
+_CLASSIFICATION = {
+    "violation_verdict": "VIOLATION",
+    "review_reasons": ["1인당 한도 초과"],
+    "citations": [{"doc": "회식 운영규정", "article": "제14조①",
+                   "chunk_id": "c-1", "quote_summary": "1인당 5만원을 초과할 수 없다"}],
+    "similar_cases": [{"case_id": "K-9", "outcome": "REJECT", "relevance": "동일 한도 초과 건"}],
+}
+_SUMMARY = {"tx_id": 1, "merchant": "이자카야 정", "amount": 198000,
+            "category": "회식", "purpose": "팀 회식 2차"}
+
+
+def test_LOW는_LLM을_부르지_않는다(monkeypatch):
+    """【하】 등급 — 비용·지연 0. 고정 문구라 지어낼 여지도 없다."""
+    def _boom(*a, **kw):
+        raise AssertionError("LOW 등급에서 LLM을 부르면 안 된다")
+
+    monkeypatch.setattr(agent.llm, "chat", _boom)
+    out = agent._stage2(_SUMMARY, {"risk_tier": "LOW", "status": agent.STAGE1_OK,
+                                   "anomaly_score": 0.001})
+    assert out["tier_path"] == "low"
+    assert out["recommendation"] == "APPROVE"
+    #  **「검사해보니 문제없음」이 아니라 「검사하지 않음」**이라고 말해야 한다.
+    assert "수행하지 않았습니다" in out["report"]["summary"]
+    assert any("직접 확인" in a for a in out["report"]["advisories"])
+
+
+def test_등급이_모델을_고른다(monkeypatch):
+    """MEDIUM=fast / HIGH=heavy — 위험이 높을수록 비싼 모델."""
+    seen = []
+    monkeypatch.setattr(agent, "_classify",
+                        lambda s, st, profile: seen.append(profile) or _CLASSIFICATION)
+    monkeypatch.setattr(agent, "_build_report",
+                        lambda s, st, c, profile: {"summary": "", "recommendation": "SUPPLEMENT",
+                                                   "highlights": [], "findings": [], "advisories": []})
+    for tier, expected in (("MEDIUM", "fast"), ("HIGH", "heavy")):
+        agent._stage2(_SUMMARY, {"risk_tier": tier, "status": agent.STAGE1_OK, "anomaly_score": 0.02})
+    assert seen == ["fast", "heavy"]
+
+
+def test_등급을_못_쟀으면_heavy로_보낸다(monkeypatch):
+    """못 잰 것을 LOW로 접으면 「검사해보니 일반 거래」가 된다 — 실제로는 검사를 못 한 것."""
+    seen = []
+    monkeypatch.setattr(agent, "_classify",
+                        lambda s, st, profile: seen.append(profile) or _CLASSIFICATION)
+    monkeypatch.setattr(agent, "_build_report",
+                        lambda s, st, c, profile: {"summary": "", "recommendation": "SUPPLEMENT",
+                                                   "highlights": [], "findings": [], "advisories": []})
+    agent._stage2(_SUMMARY, {"risk_tier": "", "status": agent.STAGE1_NO_MODEL, "anomaly_score": 0.0})
+    assert seen == ["heavy"]
+
+
+# ── 보고서 서버 검증 ──
+
+def _report(**over):
+    base = dict(summary="요약", recommendation="SUPPLEMENT", highlights=["23:40 결제"],
+                findings=[], advisories=[])
+    base.update(over)
+    return agent.RiskReport(**base)
+
+
+def _finding(ref, claim="1인당 한도를 넘었습니다"):
+    return agent.ReportFinding(
+        claim=claim, reasoning="참석 4명에 19.8만원",
+        evidence=[agent.ReportEvidence(kind="policy", ref=ref, label="위조된 라벨", quote="위조된 인용")],
+    )
+
+
+def test_지어낸_근거_id는_버린다():
+    _, index = agent._evidence_pool(_CLASSIFICATION)
+    out = agent._validate_report(_report(findings=[_finding("없는-id")]), _CLASSIFICATION, index)
+    #  근거가 전멸한 finding은 판단이 아니라 참고 사항으로 강등된다.
+    assert out["findings"][0]["evidence"] == []
+    assert any("근거 조항을 확인하지 못해" in a for a in out["advisories"])
+
+
+def test_라벨과_인용은_서버_원본으로_덮는다():
+    """모델이 옮겨 적다 바꿔도 화면에는 실제 검색 결과가 떠야 한다."""
+    _, index = agent._evidence_pool(_CLASSIFICATION)
+    out = agent._validate_report(_report(findings=[_finding("c-1")]), _CLASSIFICATION, index)
+    ev = out["findings"][0]["evidence"][0]
+    assert ev["label"] == "「회식 운영규정」제14조①"
+    assert ev["quote"] == "1인당 5만원을 초과할 수 없다"
+
+
+def test_판단보류인데_승인이면_보완요청으로_정정한다():
+    """배너는 「판단 보류」인데 본문이 승인을 권하면 서로 다른 말을 한다."""
+    cls = {**_CLASSIFICATION, "violation_verdict": "INSUFFICIENT_INFO"}
+    _, index = agent._evidence_pool(cls)
+    out = agent._validate_report(_report(recommendation="APPROVE"), cls, index)
+    assert out["recommendation"] == "SUPPLEMENT"
+
+
+def test_finding이_비면_최소_한_줄을_만든다():
+    """빈 목록은 화면에서 「검증 안 함」과 구분되지 않는다."""
+    _, index = agent._evidence_pool(_CLASSIFICATION)
+    out = agent._validate_report(_report(findings=[]), _CLASSIFICATION, index)
+    assert len(out["findings"]) == 1
+
+
+def test_보고서_LLM이_죽어도_분류_결과를_버리지_않는다(monkeypatch):
+    """①분류는 근거 검색까지 마쳐 비용을 이미 지불했다."""
+    def _boom(*a, **kw):
+        raise RuntimeError("openai 500")
+
+    monkeypatch.setattr(agent.llm, "parse", _boom)
+    out = agent._build_report(_SUMMARY, {"anomaly_score": 0.02}, _CLASSIFICATION, "heavy")
+    assert out["recommendation"] == "SUPPLEMENT"      # 결정론적 폴백
+    assert "1인당 한도 초과" in out["findings"][0]["claim"]

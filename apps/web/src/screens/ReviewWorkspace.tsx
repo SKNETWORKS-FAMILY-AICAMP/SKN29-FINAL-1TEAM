@@ -9,6 +9,7 @@ import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
 import { anomalyScored, AnomalyUnavailableNotice, RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
+import { RiskReportView } from '../components/settlement/RiskReportView'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -620,13 +621,18 @@ export function ReviewWorkspace() {
                         아직 돌지도 않은 판단을 이미 난 것처럼 보여줬다. */}
                     {sel.riskReviewState !== 'DONE' ? (
                       <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />
+                    ) : sel.riskReport ? (
+                      <RiskReportView report={sel.riskReport} tierPath={sel.riskTierPath} />
                     ) : sel.ragReport ? (
+                      /* 옛 건(시드 하이라이트) — 마크다운 보고서를 그대로 그린다. */
                       <Markdown source={sel.ragReport} />
                     ) : (
-                      <p style={{ margin: '0 0 12px' }}>
-                        {sel.ragRefs.length === 0
-                          ? '이상 신호가 낮아 내규 위반 소지가 크지 않습니다. 관련 근거 없이 승인 권장합니다.'
-                          : `이상탐지로 선별된 건으로, 관련 내규·유사사례를 대조한 결과 "${sel.anomalyReasons.join(', ')}" 사유로 ${recoLabel(sel.aiRecommendation).text}을(를) 권장합니다.`}
+                      /*  **사실과 다른 문장을 쓰지 않는다.** 예전엔 `ragRefs.length === 0`을 보고
+                          "이상 신호가 낮아 내규 위반 소지가 크지 않습니다"를 띄웠는데, 그건
+                          「검색 결과가 0건」이지 「이상 신호가 낮다」가 아니다 — Chroma가 비었거나
+                          검색이 실패해도 같은 문장이 떴다. */
+                      <p className="text-meta" style={{ margin: '0 0 12px' }}>
+                        내규 검증 보고서가 없습니다. 검토 사유와 근거를 직접 확인해 주세요.
                       </p>
                     )}
                     {sel.ragRefs.length > 0 && (

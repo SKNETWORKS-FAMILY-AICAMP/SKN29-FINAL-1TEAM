@@ -78,6 +78,7 @@ llm_wiki/
 | `merchant-industry-vocabulary.md` | 가맹점 업종 어휘 정본 15종 — 코드/라벨 분리, 미확정 처리 |
 | `notifications.md` | 알림 11종 — 자격 조건, 수신자(Capability 기준), 묶기, 「화면에 있으면 화면이 접는다」 |
 | `settlement-ui-rules.md` | **정산 화면·흐름 불변식** — 새 화면·버튼 만들기 전에 읽는다 |
+| `risk-review-agent-v2.md` | Risk Review 등급 분기(하=LLM 0회 / 중=fast / 상=heavy) + 구조화 보고서, LLM 프로파일 어댑터(`app/llm.py`), 서버측 근거 대조 |
 | `draft-agent-v2.md` | Draft Agent — 사실 주입 + 엔진 dry-run 판정 미리보기 |
 | `evidence-extraction-agent.md` | 증빙 추출 — 관측 계약(부재 확인 ≠ 미관측), 종류별 추출 대상 |
 | `decision-case-data.md` | 결정 사례 적재 — 「다르게 판단한 것」만, 본문은 스냅샷 |

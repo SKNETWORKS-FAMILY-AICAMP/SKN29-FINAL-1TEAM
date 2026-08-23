@@ -41,6 +41,7 @@ from app.clients import core_client
 from app.config import settings
 from app.mcp import tools
 from app.ml.registry import get_active_model
+from app import llm
 from app.rag.retrieval import build_query, facts_nl
 
 # 4629076 이후 main에서 병합된 리트리벌 품질 개선(2026-08-19, c605e99/21ffe4f)을 이 v1
@@ -101,9 +102,47 @@ class Classification(BaseModel):
 
 
 class ActionDecision(BaseModel):
-    """②액션 단계 산출물 — 분류 결과를 입력받아 권장 처리만 결정."""
+    """②액션 단계 산출물 — 분류 결과를 입력받아 권장 처리만 결정.
+
+    ⚠️ `RiskReport`로 대체됐다. 결정론적 폴백(`_fallback_report`)이 같은 필드를 채우는 데
+    쓰이므로 남겨 둔다.
+    """
     recommendation: Literal["APPROVE", "SUPPLEMENT", "REJECT"]
     rationale: str
+
+
+# ── ②보고서: 담당자가 읽는 산출물 ──────────────────────────────────────
+#
+#  **마크다운 한 덩어리로 받지 않는다.** 화면이 미리보기(요약)와 자세히(특징·근거·안내)를
+#  갈라야 하는데 텍스트 블록이면 못 자른다. 그리고 근거는 이미 `citations`로 구조화돼
+#  있어서, 본문에 또 쓰면 같은 사실이 두 곳에서 관리된다.
+
+class ReportEvidence(BaseModel):
+    """판단을 뒷받침하는 근거 하나. `ref`는 **실제 검색 결과의 id**여야 한다."""
+    kind: Literal["policy", "case"]
+    ref: str          # chunk_id 또는 case_id — 서버가 검색 결과와 대조해 검증한다
+    label: str        # "법인카드 사용규정 제11조②" 처럼 사람이 읽는 출처
+    quote: str        # 실제 발췌. 지어낸 인용을 막기 위해 반드시 원문에서 가져온다
+
+
+class ReportFinding(BaseModel):
+    """근거와 판단을 **한 덩어리로** 묶는다.
+
+    지금까지 `citations`(근거)와 `review_reasons`(사유)가 별개 배열이라, 어느 조항이 어느
+    판단을 뒷받침하는지 담당자가 되짚을 수 없었다.
+    """
+    claim: str            # 무엇이 문제인가 / 문제없다고 본 근거는 무엇인가
+    reasoning: str        # 왜 그렇게 판단했나(사실 → 규정 적용)
+    evidence: list[ReportEvidence]
+
+
+class RiskReport(BaseModel):
+    """검토 화면이 그대로 그리는 보고서."""
+    summary: str                                          # 미리보기 — 2문장 이내
+    recommendation: Literal["APPROVE", "SUPPLEMENT", "REJECT"]
+    highlights: list[str]                                 # ① 눈여겨볼 특징(거래 사실에서만)
+    findings: list[ReportFinding]                         # ② 근거 + 판단 이유
+    advisories: list[str]                                 # ③ 담당자가 추가로 고려할 것
 
 
 # ── ①분류: MCP 툴콜링 프롬프트 ─────────────────────────────────────────
@@ -321,7 +360,7 @@ def _build_classify_prompt(
     )
 
 
-def _classify(summary: dict, stage1: dict) -> dict:
+def _classify(summary: dict, stage1: dict, profile: str = "fast") -> dict:
     """①분류: MCP 툴콜링 멀티턴 루프. `submit_classification` 호출 시 그 인자를 결과로 반환.
 
     Rule Agent(§1 항목1)와 같은 이유로 **초기 검색 1회분을 파이썬이 먼저 실행**해 대화
@@ -360,13 +399,13 @@ def _classify(summary: dict, stage1: dict) -> dict:
     tool_specs = [_SEARCH_POLICY_TOOL, _SEARCH_CASES_TOOL, _SUBMIT_CLASSIFICATION_TOOL]
 
     for _ in range(MAX_TOOL_TURNS):
-        resp = _get_client().chat.completions.create(
-            model=MODEL,
-            temperature=0.2,
-            timeout=30,
+        resp = llm.chat(
+            profile,
+            messages=messages,
+            timeout=60,          # heavy 프로파일은 추론 시간이 붙는다(실측 ~23초/호출)
+            temperature=0.2,     # heavy면 어댑터가 떨어뜨린다(커스텀 온도 미지원)
             tools=tool_specs,
             tool_choice="auto",
-            messages=messages,
         )
         msg = resp.choices[0].message
         tool_calls = msg.tool_calls or []
@@ -461,6 +500,185 @@ _ACTION_FALLBACK = {
     "VIOLATION": "SUPPLEMENT",
     "INSUFFICIENT_INFO": "SUPPLEMENT",
 }
+
+
+_REPORT_SYSTEM_PROMPT = """당신은 법인카드 정산 위험 검토 보고서를 쓰는 담당자입니다.
+1차 이상탐지와 2차 내규 검증이 이미 끝났고, 그 결과를 **회계 담당자가 읽고 결정할 수 있는
+보고서**로 옮기는 것이 당신의 일입니다.
+
+반드시 지켜야 할 규칙:
+1. **주어진 사실과 근거 밖의 내용을 쓰지 마세요.** 거래 사실에 없는 참석 인원·거래처명·
+   장소를 추측해 넣으면 안 됩니다. 모르면 쓰지 않습니다.
+2. **모든 finding에는 근거(evidence)를 답니다.** 근거를 댈 수 없는 지적은 finding이 아니라
+   advisories(담당자가 확인해 볼 것)에 넣으세요. 근거 없는 판단은 판단이 아닙니다.
+3. **evidence.ref는 주어진 근거 목록의 id를 그대로** 쓰세요. 지어내면 서버가 버립니다.
+   evidence.quote는 주어진 발췌에서 가져오고, 없는 문장을 만들지 마세요.
+4. **위반이 없다고 판단해도 finding을 하나 씁니다** — 무엇을 대조해 문제없다고 보았는지가
+   판단의 내용입니다. 빈 목록은 "검증하지 않았다"로 읽힙니다.
+5. highlights는 **이 거래에서 눈여겨볼 사실**입니다(결제 시각·금액·업종·1인당 금액 등).
+   판단이 아니라 사실만, 각 항목 한 줄로. 특이한 점이 없으면 빈 배열로 두세요.
+6. advisories는 **담당자가 추가로 확인·고려할 것**입니다. 시스템이 확인할 수 없어 사람이
+   봐야 하는 것(참석자 명단 대조, 사전승인 문서 확인 등)을 씁니다.
+7. summary는 **2문장 이내**입니다. 무엇이 문제이고(또는 문제없고) 무엇을 권하는지.
+8. 내부 필드명(evidence.has_valid_receipt 같은 것)·플래그 코드를 본문에 노출하지 마세요.
+   담당자가 쓰는 일상어로 씁니다.
+9. 판단 보류(INSUFFICIENT_INFO)면 승인(APPROVE)을 권하지 마세요 — 근거가 부족한 것이지
+   문제가 없는 것이 아닙니다."""
+
+_REPORT_USER_PROMPT_TEMPLATE = """[2차 내규 검증 결과]
+위반 판정: {violation_verdict}
+검토 사유: {review_reasons}
+
+[1차 이상탐지]
+anomaly_score: {anomaly_score} (등급 {risk_tier}) {anomaly_note}
+
+[검토 대상 거래]
+가맹점: {merchant}
+금액: {amount}원
+분류: {category}
+지출 목적: {purpose}
+거래 사실: {facts}
+
+[사용 가능한 근거 — evidence.ref는 여기 있는 id만 쓰세요]
+{evidence_pool}
+
+위 내용으로 보고서를 작성하세요."""
+
+
+def _evidence_pool(classification: dict) -> tuple[str, dict[str, dict]]:
+    """모델에게 보여줄 근거 목록 + 서버가 대조할 색인.
+
+    색인이 있어야 모델이 지어낸 `ref`를 걸러낼 수 있다(Draft Agent가 플래그 코드를
+    목록 밖이면 버리는 것과 같은 장치).
+    """
+    index: dict[str, dict] = {}
+    lines: list[str] = []
+    for c in classification.get("citations") or []:
+        ref = str(c.get("chunk_id") or "").strip()
+        label = f"「{c.get('doc', '')}」{c.get('article', '')}".strip()
+        if not ref:
+            continue
+        index[ref] = {"kind": "policy", "label": label, "quote": c.get("quote_summary", "")}
+        lines.append(f"- [policy] id={ref} · {label} · {c.get('quote_summary', '')}")
+    for sc in classification.get("similar_cases") or []:
+        ref = str(sc.get("case_id") or "").strip()
+        if not ref:
+            continue
+        label = f"사례 {ref} ({sc.get('outcome', '')})"
+        index[ref] = {"kind": "case", "label": label, "quote": sc.get("relevance", "")}
+        lines.append(f"- [case] id={ref} · {label} · {sc.get('relevance', '')}")
+    return ("\n".join(lines) or "(없음)", index)
+
+
+def _validate_report(report: RiskReport, classification: dict, index: dict[str, dict]) -> dict:
+    """**모델 출력을 그대로 믿지 않는다.** 서버가 대조·강등한다.
+
+    ① `ref`가 실제 근거 목록에 없으면 그 evidence를 버린다(지어낸 인용).
+    ② 근거가 하나도 안 남은 finding은 **advisories로 강등**한다 — "근거는 없지만 확인해
+       보세요"는 유효한 안내지만, 판단으로 제시되면 안 된다.
+    ③ 판단 보류인데 승인을 권하면 보완요청으로 정정한다(배너와 본문이 다른 말을 하면 안 된다).
+    ④ finding이 하나도 없으면 화면에서 「검증 안 함」과 구분되지 않으므로 최소 한 줄을 만든다.
+    """
+    verdict = classification.get("violation_verdict", "")
+    findings: list[dict] = []
+    advisories = list(report.advisories)
+    dropped_refs: list[str] = []
+
+    for finding in report.findings:
+        evidence = []
+        for e in finding.evidence:
+            known = index.get(e.ref)
+            if known is None:
+                dropped_refs.append(e.ref)
+                continue
+            #  라벨·인용은 **서버가 가진 원본**으로 덮는다 — 모델이 옮겨 적다 바꿔도
+            #  화면에는 실제 검색 결과가 뜬다.
+            evidence.append({"kind": known["kind"], "ref": e.ref,
+                             "label": known["label"], "quote": known["quote"] or e.quote})
+        if evidence:
+            findings.append({"claim": finding.claim, "reasoning": finding.reasoning,
+                             "evidence": evidence})
+        else:
+            advisories.append(f"{finding.claim} (근거 조항을 확인하지 못해 참고 사항으로 남깁니다)")
+
+    if dropped_refs:
+        logger.info("보고서에서 알 수 없는 근거 id를 버렸다: %s", sorted(set(dropped_refs)))
+
+    recommendation = report.recommendation
+    if verdict == "INSUFFICIENT_INFO" and recommendation == "APPROVE":
+        logger.info("판단 보류인데 승인 권고 — 보완요청으로 정정한다")
+        recommendation = "SUPPLEMENT"
+
+    if not findings:
+        findings = [{
+            "claim": "근거 조항과 연결된 판단을 만들지 못했습니다.",
+            "reasoning": "검색된 규정·사례로는 이 거래를 판단할 근거를 찾지 못했습니다. "
+                         "아래 참고 사항과 거래 내역을 직접 확인해 주세요.",
+            "evidence": [],
+        }]
+
+    return {
+        "summary": report.summary,
+        "recommendation": recommendation,
+        "highlights": list(report.highlights),
+        "findings": findings,
+        "advisories": advisories,
+    }
+
+
+def _fallback_report(classification: dict, reason: str) -> dict:
+    """보고서 LLM이 실패했을 때 — **이미 확보한 분류 결과를 버리지 않는다.**
+
+    ①분류는 근거 검색까지 마쳐 비용을 이미 지불했다. 여기서 예외를 올리면 그게 통째로
+    사라지고 Django엔 `RiskReview` 행이 안 남는다(검토자 화면엔 「AI가 아무것도 안 했다」).
+    """
+    verdict = classification.get("violation_verdict", "")
+    reasons = classification.get("review_reasons") or []
+    return {
+        "summary": f"보고서를 생성하지 못했습니다 — {reason}. 아래 검토 사유와 근거를 직접 확인해 주세요.",
+        "recommendation": _ACTION_FALLBACK.get(verdict, "SUPPLEMENT"),
+        "highlights": [],
+        "findings": [{
+            "claim": "; ".join(reasons) if reasons else "내규 검증 결과를 요약하지 못했습니다.",
+            "reasoning": "보고서 작성 단계가 실패해 검증 결과만 그대로 옮깁니다.",
+            "evidence": [],
+        }],
+        "advisories": ["AI 보고서 없이 사람이 직접 검토해야 하는 건입니다."],
+    }
+
+
+def _build_report(summary: dict, stage1: dict, classification: dict, profile: str) -> dict:
+    """②보고서: 분류 결과 + 거래 사실 → 담당자가 읽는 산출물. 단일 호출."""
+    pool, index = _evidence_pool(classification)
+    note = f"— {stage1['note']}" if stage1.get("note") else ""
+    user_prompt = _REPORT_USER_PROMPT_TEMPLATE.format(
+        violation_verdict=classification.get("violation_verdict", ""),
+        review_reasons="; ".join(classification.get("review_reasons") or []) or "(없음)",
+        anomaly_score=f"{stage1.get('anomaly_score', 0.0):.3f}",
+        risk_tier=stage1.get("risk_tier") or "미측정",
+        anomaly_note=note,
+        merchant=summary["merchant"],
+        amount=summary["amount"],
+        category=summary["category"],
+        purpose=summary.get("purpose") or "(미기재)",
+        facts=facts_nl(summary) or "(없음)",
+        evidence_pool=pool,
+    )
+    try:
+        report, _ = llm.parse(
+            profile,
+            model=RiskReport,
+            schema_name="risk_report",
+            messages=[
+                {"role": "system", "content": _REPORT_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            timeout=90,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("보고서 생성 실패(profile=%s): %s — 분류 결과로 폴백", profile, exc)
+        return _fallback_report(classification, f"{type(exc).__name__}")
+    return _validate_report(report, classification, index)
 
 
 def _decide_action(classification: dict) -> dict:
@@ -565,16 +783,78 @@ def _stage1(tx_id: int) -> dict:
         )
 
 
+#: 1차 등급 → 2차 처리. **위험이 높을수록 비싼 모델**을 쓴다.
+#   LOW     심층 검증을 하지 않는다(LLM 0회). 고정 안내 + 승인 추천.
+#   MEDIUM  fast  프로파일로 심층 검증
+#   HIGH    heavy 프로파일로 심층 검증
+#   미측정  heavy — **못 잰 것을 싸게 넘기지 않는다.** 모델이 없어 등급이 없는 건을 LOW로
+#           접으면 「검사해보니 일반 거래」가 되는데, 실제로는 검사를 못 한 것이다.
+_TIER_PROFILE = {"HIGH": "heavy", "MEDIUM": "fast"}
+
+LOW_TIER_SUMMARY = (
+    "일반 거래로 분류되어 승인을 추천합니다. "
+    "이상탐지에서 특이 신호가 발견되지 않아 내규 심층 검증은 수행하지 않았습니다."
+)
+LOW_TIER_ADVISORY = (
+    "규정 대조를 거치지 않은 건입니다 — 필요하면 직접 확인하거나 심층 검토를 요청해 주세요."
+)
+
+
+def _low_tier_report(stage1: dict) -> dict:
+    """【하】 등급 — **LLM을 부르지 않는다.**
+
+    고정 문구라 지어낼 여지가 없고 비용·지연이 0이다. 중요한 건 문구가
+    「검사해보니 문제없음」이 아니라 **「검사하지 않음」**이라고 말하는 것이다
+    (`RulePassedNotice`와 같은 규율 — 검사 안 한 것과 통과는 다르다).
+    """
+    return {
+        "violation_verdict": "NO_VIOLATION",
+        "review_reasons": [],
+        "recommendation": "APPROVE",
+        "citations": [],
+        "similar_cases": [],
+        "tier_path": "low",
+        "model": "",
+        "report": {
+            "summary": LOW_TIER_SUMMARY,
+            "recommendation": "APPROVE",
+            "highlights": [],
+            "findings": [{
+                "claim": "이상탐지에서 특이 신호가 발견되지 않았습니다.",
+                "reasoning": f"위험 점수 {stage1.get('anomaly_score', 0.0):.3f}로 "
+                             "일반 거래 구간에 속해 내규 심층 검증 대상이 아닙니다.",
+                "evidence": [],
+            }],
+            "advisories": [LOW_TIER_ADVISORY],
+        },
+    }
+
+
 def _stage2(summary: dict, stage1: dict) -> dict:
-    """2차 RAG 내규 검증 — ①분류(MCP 툴콜링) → ②액션(권장 처리). 반환 shape은 v0과 동일."""
-    classification = _classify(summary, stage1)
-    action = _decide_action(classification)
+    """2차 — 등급에 따라 갈린다. 반환 shape은 기존 5개 필드 + `report`(확장만)."""
+    tier = stage1.get("risk_tier") or ""
+    scored = stage1.get("status", STAGE1_OK) == STAGE1_OK
+
+    if scored and tier == "LOW":
+        return _low_tier_report(stage1)
+
+    #  등급이 없으면(미측정) heavy로 — 위 `_TIER_PROFILE` 주석 참조.
+    profile = _TIER_PROFILE.get(tier, "heavy")
+    logger.info("2차 심층 검증 시작 (tier=%s scored=%s profile=%s model=%s)",
+                tier or "미측정", scored, profile, llm.model_of(profile))
+
+    classification = _classify(summary, stage1, profile)
+    report = _build_report(summary, stage1, classification, profile)
     return {
         "violation_verdict": classification["violation_verdict"],
         "review_reasons": classification["review_reasons"],
-        "recommendation": action["recommendation"],
+        #  권장 처리의 정본은 **보고서**다 — 담당자가 읽는 문장과 다른 값이 저장되면 안 된다.
+        "recommendation": report["recommendation"],
         "citations": classification["citations"],
         "similar_cases": classification["similar_cases"],
+        "tier_path": profile,
+        "model": llm.model_of(profile),
+        "report": report,
     }
 
 

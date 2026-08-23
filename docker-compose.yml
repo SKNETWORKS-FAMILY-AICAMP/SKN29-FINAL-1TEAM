@@ -79,6 +79,11 @@ services:
       CHROMA_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      # LLM 모델 2종 — 이름은 여기서만 정한다(`app/config.py` → `app/llm.py`).
+      #  fast  빠른-효율성 / heavy 무거운 추론(커스텀 temperature 미지원, reasoning_effort 사용)
+      LLM_FAST_MODEL: ${LLM_FAST_MODEL:-gpt-4o-mini}
+      LLM_HEAVY_MODEL: ${LLM_HEAVY_MODEL:-gpt-5-mini}
+      LLM_HEAVY_REASONING_EFFORT: ${LLM_HEAVY_REASONING_EFFORT:-low}
       # core에 쓰기(룰 DRAFT 저장·적재 결과 회신)를 할 때 쓰는 서비스 계정. **core와 같은 값.**
       AI_SERVICE_USER: ${AI_SERVICE_USER:-${RULE_AGENT_SERVICE_USER:-rule-agent}}
       AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD:-${RULE_AGENT_SERVICE_PASSWORD:-}}

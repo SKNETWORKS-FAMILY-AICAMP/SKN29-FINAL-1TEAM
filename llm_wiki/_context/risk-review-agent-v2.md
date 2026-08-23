@@ -1,0 +1,128 @@
+# Risk Review Agent v2 — 등급 분기 + 구조화 보고서
+
+_최종 갱신: 2026-08-23 · 상태: 구현 완료_
+
+관련: [[risk-review-agent-v1-implementation]] · [[settlement-ui-rules]] · [[decision-case-data]] · [[draft-agent-v2]]
+
+---
+
+## 1. v1이 안고 있던 문제
+
+| # | 문제 | 결과 |
+|---|---|---|
+| 1 | **모든 IN_REVIEW 건이 같은 비용을 썼다** | 일반 거래도 툴콜링 루프(최대 6턴)를 돌았다 |
+| 2 | **보고서가 실 운영에서 항상 비어 있었다** | `rag_report`(마크다운)를 `risk_review.run()`이 저장하지 않는다 — `seed.py`에서만 채운다 |
+| 3 | 그래서 화면이 **사실과 다른 폴백 문장**을 띄웠다 | `ragRefs.length === 0` → "이상 신호가 낮아 내규 위반 소지가 크지 않습니다". 그건 **「검색 결과 0건」**이지 「이상 신호가 낮다」가 아니다 — Chroma가 비었거나 검색이 실패해도 같은 문장이 떴다 |
+| 4 | **근거와 사유가 따로 놀았다** | `citations`(근거)와 `review_reasons`(사유)가 별개 배열이라 어느 조항이 어느 판단을 뒷받침하는지 되짚을 수 없었다 |
+| 5 | 모델 이름이 6곳에 하드코딩 | 모델을 바꾸려면 전부 고쳐야 했다 |
+
+## 2. 등급 분기
+
+```
+stage1(이상탐지)
+  ├ LOW (채점됨)     ──► 【하】 LLM 0회. 결정론적 고정 안내 + APPROVE
+  ├ MEDIUM           ──► 【중】 fast  프로파일 심층 검증
+  ├ HIGH             ──► 【상】 heavy 프로파일 심층 검증
+  └ 미측정(no_model·error) ──► 【상】 heavy
+```
+
+**미측정을 LOW로 접지 않는다.** 모델이 없어 등급이 없는 건을 「일반 거래」로 처리하면
+**검사를 못 한 것이 검사해보니 안전한 것**이 된다. 기본 게이트가 「모르는 것을 통과로 접지
+않는다」로 방향을 뒤집은 것과 같은 판단이다([[default-gate]] §1).
+
+**【하】는 LLM을 부르지 않는다.** 비용·지연 0이고 고정 문구라 지어낼 여지가 없다. 문구의
+핵심은 「검사해보니 문제없음」이 **아니라** 「검사하지 않음」이라고 말하는 것이다:
+
+> 일반 거래로 분류되어 승인을 추천합니다. 이상탐지에서 특이 신호가 발견되지 않아
+> 내규 심층 검증은 수행하지 않았습니다.
+> *규정 대조를 거치지 않은 건입니다 — 필요하면 직접 확인하거나 심층 검토를 요청해 주세요.*
+
+## 3. LLM 프로파일 — `app/llm.py`
+
+모델 이름은 **`app/config.py` 한 곳**에서만 정하고, 호출부는 **역할**로 부른다.
+
+```python
+llm.chat("fast",  messages=..., temperature=0.2, ...)
+llm.chat("heavy", messages=..., ...)      # temperature를 줘도 어댑터가 떨어뜨린다
+```
+
+| | fast | heavy |
+|---|---|---|
+| env | `LLM_FAST_MODEL` (`gpt-4o-mini`) | `LLM_HEAVY_MODEL` (`gpt-5-mini`) |
+| `temperature` | 전달 | **전달 안 함** — 커스텀 값에 400 (기본 1만 허용) |
+| `reasoning_effort` | 없음 | `LLM_HEAVY_REASONING_EFFORT` (`low`) |
+
+`rule_agent_v0`가 2026-08-18부터 같은 규칙을 세 호출부에 **각자 주석으로** 달고 있었다 —
+그 규칙이 흩어져 있으면 새 모델을 끼울 때 같은 실수가 반복된다. 이 어댑터가 그걸 흡수한다.
+
+**구조화 출력은 `create()` + 명시적 json_schema를 쓴다.** `beta.chat.completions.parse()`가
+heavy 계열에서 되는지 이 저장소에 실측 기록이 없다 — 검증된 경로만 쓴다(`llm.parse()`가
+pydantic 모델에서 스키마를 뽑아 strict 요건까지 채운다).
+
+## 4. 보고서 — 마크다운이 아니라 구조화 출력
+
+```python
+class RiskReport:
+    summary: str                      # 미리보기(2문장 이내)
+    recommendation: APPROVE|SUPPLEMENT|REJECT
+    highlights: list[str]             # ① 눈여겨볼 특징 (거래 사실에서만)
+    findings: list[Finding]           # ② 근거 + 판단 이유
+    advisories: list[str]             # ③ 담당자 추가 고려사항
+
+class Finding:
+    claim: str                        # 무엇이 문제인가
+    reasoning: str                    # 왜 그렇게 판단했나
+    evidence: list[Evidence]          # ← 근거를 판단과 **한 덩어리로** 묶는다
+```
+
+마크다운 한 덩어리로 받지 않는 이유: ① 화면이 미리보기/자세히를 못 자른다 ② 근거가 본문과
+`citations` 양쪽에 이중으로 존재한다.
+
+## 5. 서버가 모델 출력을 대조한다 (`_validate_report`)
+
+프롬프트 지시만으로는 부족하다 — Draft Agent가 플래그 코드를 목록 밖이면 버리는 것과 같은 장치.
+
+| 검증 | 왜 |
+|---|---|
+| `evidence.ref`가 실제 검색 결과에 없으면 **버린다** | 지어낸 인용 차단 |
+| `label`·`quote`를 **서버 원본으로 덮는다** | 모델이 옮겨 적다 바꿔도 화면엔 실제 검색 결과가 뜬다 |
+| 근거가 전멸한 finding은 **advisories로 강등** | 「근거는 없지만 확인해 보세요」는 유효한 안내지만 **판단으로 제시되면 안 된다** |
+| `INSUFFICIENT_INFO`인데 `APPROVE`면 **`SUPPLEMENT`로 정정** | 배너는 「판단 보류」인데 본문이 승인을 권하면 서로 다른 말을 한다 |
+| `findings`가 비면 **최소 한 줄을 만든다** | 빈 목록은 화면에서 「검증 안 함」과 구분되지 않는다 |
+
+**보고서 LLM이 실패해도 분류 결과를 버리지 않는다**(`_fallback_report`) — ①분류는 근거
+검색까지 마쳐 비용을 이미 지불했고, 여기서 예외를 올리면 Django에 `RiskReview` 행이 아예
+안 남아 검토자 화면엔 「AI가 아무것도 안 했다」만 남는다.
+
+## 6. 프롬프트 규칙 9가지
+
+`_REPORT_SYSTEM_PROMPT`에 명시. 요지만:
+
+- 주어진 사실·근거 밖의 내용 금지(참석 인원·거래처명 추측 금지)
+- **모든 finding에 근거를 단다** — 못 달면 advisories로
+- `ref`는 주어진 목록의 id만, `quote`는 주어진 발췌에서만
+- **위반이 없어도 finding을 쓴다** — 무엇을 대조해 문제없다고 보았는지가 판단의 내용이다
+- `highlights`는 판단이 아니라 **사실**만
+- 내부 필드명(`evidence.has_valid_receipt`)·플래그 코드 노출 금지
+- 판단 보류면 승인을 권하지 않는다
+
+## 7. 저장·화면
+
+| 무엇 | 어디 |
+|---|---|
+| 보고서 | `RiskReview.report`(JSON) — `rag_report`(마크다운)는 **시드 하이라이트 전용**으로 남는다 |
+| 경로·모델 기록 | `RiskReview.tier_path`(low/fast/heavy) · `model_name` — 안 남기면 어느 결과가 어느 모델인지 모른다(모델 비교의 전제) |
+| 직렬화 | `riskReport` · `riskTierPath` |
+| 화면 | `RiskReportView.tsx` — 미리보기(요약+추천 배지) / 자세히(특징·근거·안내) |
+
+화면 폴백도 고쳤다 — 보고서가 없으면 **「보고서가 없습니다. 직접 확인해 주세요」**라고
+말한다(없는 판단을 지어내지 않는다).
+
+## 8. 남은 것
+
+- **모델 비교 정답셋이 없다.** `query_builder` docstring이 `stage2_검토용_실데이터_30건.csv`를
+  언급하는데 파일이 저장소에 없다. 정답셋 없이 「어느 모델이 낫다」를 말할 수 없다.
+- **AI-LAB 비교 탭 미착수** — 같은 정산을 두 프로파일로 돌려 나란히 보는 자리.
+- **타임아웃**: heavy는 실측 ~23초/호출 + 툴콜링 루프(최대 6턴). `risk_review.TIMEOUT`이
+  60초라 HIGH 건이 걸릴 수 있다 — 실사용 관찰 후 조정.
+- 전 저장소 모델 상수 정리(Draft·Polish·decision_reason·merchant 4곳)는 이번 범위 밖.
