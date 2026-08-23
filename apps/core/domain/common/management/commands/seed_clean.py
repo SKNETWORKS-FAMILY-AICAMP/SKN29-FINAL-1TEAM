@@ -42,9 +42,19 @@
 ## 참조 필드를 고른 기준 (중요)
 
 엔진은 **참조한 경로가 `None`이면 판정 전체를 REVIEW로 강등**한다(`engine._finalize`).
-그래서 조립기가 **항상 값을 채우는 필드**만 썼다. 예를 들어 `card.actual_user_recorded`는
-공용카드일 때 `Settlement.actual_user_recorded`(null 허용, None=모름)를 그대로 받아 대개
-None이라, 그걸 참조하면 공용카드 건이 전부 REVIEW로 떨어진다 - 그래서 뺐다.
+그래서 조립기가 **항상 값을 채우는 필드**만 쓴다.
+
+예외가 하나 있다 - `card.actual_user_recorded`. 공용·팀 카드일 때 `Settlement`의 null 허용
+컬럼을 그대로 받아 **대개 None**이다(=모름). 이걸 그냥 `== False`로 물으면 두 가지가 동시에
+어긋난다:
+
+  · 모르는 건이 `ACTUAL_USER_REQUIRED`(실사용자 미등록) 대신 `UNRESOLVED_FACT:...`
+    (판정 정보 부족)를 받는다 - 검토자에게 훨씬 덜 쓸모 있는 사유다.
+  · `confidence`가 0으로 떨어진다.
+
+그래서 **`is_null`로 먼저 갈라** 모르는 건을 전용 사유 노드로 보낸다(업종 미확정과 같은
+수법). `is_null` 안에서만 참조된 경로는 미해소 가드에서 면제되므로(`dsl.guarded_vars`)
+강등이 일어나지 않고, `== False` 노드에는 **값을 아는 건만** 도달해 가드가 발동할 일이 없다.
 """
 from django.core.management.base import BaseCommand
 from django.db import transaction as db_tx
@@ -126,12 +136,13 @@ def default_gate_spec() -> dict:
       ③ 비용분류가 **사람이 확정한 값**으로 채워져 있다
       ④ 가맹점 업종을 확인했고, 법령·세법 위험 업종이 아니다
       ⑤ 금액이 상한(`AUTO_PASS_MAX_AMOUNT`) 미만이다
-      ⑥ (엔진 가드) 참조한 사실 중 **모르는 값이 하나도 없다** — 공용카드 실사용자
-         미등록처럼 `None`인 사실이 있으면 자동 통과되지 않는다
+      ⑥ 실사용자가 확인돼 있다 — 개인카드는 소유자가 곧 사용자라 늘 성립하고,
+         팀·공용 카드는 **누가 썼는지 기록됐을 때만** 성립한다
 
-    ⑥은 룰로 적지 않았다. 엔진의 미해소 가드가 이미 그 일을 한다(`engine._finalize`):
-    순회 중 참조한 경로에 `None`이 있으면 판정을 REVIEW로 낮춘다. 같은 규칙을 두 곳에
-    적으면 한쪽이 곧 뒤처진다.
+    ⑥은 예전에 엔진의 미해소 가드에 맡겨져 있었다(참조 경로에 `None`이 있으면 REVIEW로
+    강등). 그런데 가드는 **모르는 값**만 잡는다 — `actual_user_recorded=False`(기록하지
+    않았다고 명시된 건)는 가드에 걸리지 않아 `ACTUAL_USER_REQUIRED` 사유가 붙은 채로
+    **그대로 자동 통과했다**(실측). 화이트리스트에 명시해 막는다.
 
     ## 사유 플래그 (판정하지 않고 표시만)
 
@@ -139,12 +150,18 @@ def default_gate_spec() -> dict:
     금지업종·업종미확정·증빙누락·목적누락·분류미기재·실사용자미등록·고액. 사유마다 단말로
     끊으면 첫 번째 하나만 남는다.
 
-    ## 업종을 모르는 건은 왜 분기로 우회하나
+    ## 모르는 값(None)은 왜 분기로 우회하나 — 업종·실사용자 둘 다
 
     미해소 가드는 **노드가 참조한** 경로의 `None`을 본다(조건이 매치되는지와 무관하다).
-    금지업종 노드가 `merchant.merchant_type`을 참조하는데 업종 미확정 건이 그 노드에
-    도달하면 `UNRESOLVED_FACT`가 붙는다 — 사유로는 `MERCHANT_UNRESOLVED`가 더 정확하다.
-    그래서 `n_industry_known`이 갈라서, 모르는 건은 전용 사유 노드로 보낸다.
+    그래서 값을 모를 수 있는 사실을 그냥 비교하면, 그 건은 구체적인 사유 대신
+    `UNRESOLVED_FACT:<경로>`(판정 정보 부족)를 받고 confidence가 0이 된다. 검토자에게는
+    "업종을 모른다"·"누가 썼는지 모른다"가 훨씬 쓸모 있는 사유다.
+
+      · **업종** — `n_industry_known`이 `merchant_info_resolved`로 갈라, 모르는 건은
+        `MERCHANT_UNRESOLVED` 전용 노드로 보낸다(금지업종 노드에 도달시키지 않는다).
+      · **실사용자** — `n_actual_user_unknown`이 `is_null`로 갈라, 모르는 건은 거기서
+        사유를 받고 `== False` 노드를 건너뛴다. `is_null` 안에서만 참조된 경로는 가드에서
+        면제되므로(`dsl.guarded_vars`) 강등이 없다.
 
     ## 넣지 않은 것
 
@@ -206,9 +223,20 @@ def default_gate_spec() -> dict:
             then="분류가 비었다는 사유를 달아 검토로 넘깁니다",
         ),
         _flag_node(
+            "n_actual_user_unknown", "실사용자 확인 안 됨",
+            # `is_null` 안에서만 참조한다 — 미해소 가드 면제(위 docstring §모르는 값).
+            #  매치되면 `== False` 노드를 건너뛴다(사유는 여기서 이미 붙었고, 그 노드는
+            #  값을 아는 건만 봐야 가드가 발동하지 않는다).
+            {"is_null": {"var": "card.actual_user_recorded"}},
+            "ACTUAL_USER_REQUIRED", 6, severity="MEDIUM",
+            description="팀·공용 카드 결제인데 실사용자 기록 여부 자체가 확인되지 않은 건",
+            when="팀·공용 카드 결제인데 실사용자를 적었는지조차 알 수 없을 때",
+            then="누가 썼는지 확인되지 않았다는 사유를 달아 검토로 넘깁니다",
+        ),
+        _flag_node(
             "n_actual_user", "실사용자 미등록",
             {"==": [{"var": "card.actual_user_recorded"}, False]},
-            "ACTUAL_USER_REQUIRED", 6, severity="MEDIUM",
+            "ACTUAL_USER_REQUIRED", 7, severity="MEDIUM",
             description="팀·공용 카드 결제인데 실제로 쓴 사람이 기록되지 않은 건",
             when="팀·공용 카드 결제의 실사용자가 등록되지 않았을 때",
             then="누가 썼는지 모른다는 사유를 달아 검토로 넘깁니다",
@@ -216,22 +244,26 @@ def default_gate_spec() -> dict:
         _flag_node(
             "n_high_amount", "고액 지출",
             {">=": [{"var": "tx.amount"}, AUTO_PASS_MAX_AMOUNT]},
-            "HIGH_AMOUNT", 7, severity="LOW",
+            "HIGH_AMOUNT", 8, severity="LOW",
             description="자동 통과 상한을 넘어 사람이 확인해야 하는 금액대",
             when="결제 금액이 자동 통과 상한 이상일 때",
             then="금액이 커서 사람이 봐야 한다는 사유를 달아 검토로 넘깁니다",
         ),
         node(
             "n_autopass_gate", "자동 통과 검사 가능 여부",
-            # 업종을 모르는 건은 자동 통과 자체가 불가능하다(요건 ④). 그런데 `n_auto_pass`가
-            # `merchant.merchant_type`을 참조하므로, 업종 미확정 건이 그 노드에 **도달만 해도**
-            # 미해소 가드가 `UNRESOLVED_FACT`를 붙인다 — 이미 `MERCHANT_UNRESOLVED`로 더
-            # 정확히 표시한 사유라 중복이다. 그래서 도달하기 전에 갈라 보낸다.
-            {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
-            "PASS_THROUGH", "업종을 확인한 건만 자동 통과 요건 검사로 보내는 분기", 8,
+            # 업종·실사용자를 모르는 건은 자동 통과 자체가 불가능하다(요건 ④·⑥). 그런데
+            # `n_auto_pass`가 두 경로를 다 참조하므로, 모르는 건이 그 노드에 **도달만 해도**
+            # 미해소 가드가 `UNRESOLVED_FACT`를 붙인다 — 이미 `MERCHANT_UNRESOLVED`·
+            # `ACTUAL_USER_REQUIRED`로 더 정확히 표시한 사유라 중복이다. 도달 전에 갈라 보낸다.
+            #  실사용자 쪽은 `is_null` 안에서만 참조해 이 노드 자체는 가드에 걸리지 않는다.
+            {"and": [
+                {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
+                {"not": {"is_null": {"var": "card.actual_user_recorded"}}},
+            ]},
+            "PASS_THROUGH", "업종·실사용자를 확인한 건만 자동 통과 요건 검사로 보내는 분기", 9,
             severity="INFO", flag="",
             when="자동 통과 요건을 따져볼 수 있는 건인지 보는 갈림길입니다",
-            then="업종을 확인한 건만 요건 검사로 보내고, 나머지는 바로 검토로 넘깁니다",
+            then="업종과 실사용자를 확인한 건만 요건 검사로 보내고, 나머지는 바로 검토로 넘깁니다",
         ),
         node(
             "n_auto_pass", "자동 통과 요건",
@@ -245,17 +277,20 @@ def default_gate_spec() -> dict:
                 {"not": {"is_null": {"var": "category.value"}}},
                 {"==": [{"var": "merchant.merchant_info_resolved"}, True]},
                 {"not": {"in": [{"var": "merchant.merchant_type"}, LEGAL_RISK_MERCHANT_TYPES]}},
+                # 요건 ⑥. 가드에 맡겨 두면 **명시적 `False`**(기록 안 했다고 적힌 건)가
+                #  그대로 통과한다 — 가드는 `None`(모름)만 잡기 때문이다.
+                {"==": [{"var": "card.actual_user_recorded"}, True]},
                 {"<": [{"var": "tx.amount"}, AUTO_PASS_MAX_AMOUNT]},
             ]},
-            "PASS", "기록이 완결됐고 위험 신호가 없어 승인 대기로 바로 보내는 건", 9,
+            "PASS", "기록이 완결됐고 위험 신호가 없어 승인 대기로 바로 보내는 건", 10,
             severity="INFO", flag="",
             when="증빙·목적·분류가 모두 채워져 있고, 업종을 확인했으며 위험 업종이 아니고, "
-                 "금액이 자동 통과 상한 미만일 때",
+                 "실사용자가 확인됐으며, 금액이 자동 통과 상한 미만일 때",
             then="사람이 따로 볼 것이 없다고 보고 승인 대기로 바로 넘깁니다",
         ),
         node(
             "_GATE_REVIEW", "회계 검토 필요",
-            True, "REVIEW", "자동 통과 요건을 다 채우지 못해 사람이 확인해야 하는 건", 10,
+            True, "REVIEW", "자동 통과 요건을 다 채우지 못해 사람이 확인해야 하는 건", 11,
             severity="INFO", flag="",
             when="자동 통과 요건을 하나라도 채우지 못했을 때",
             then="위에 붙은 사유와 함께 회계 담당자 검토로 넘깁니다",
@@ -269,7 +304,10 @@ def default_gate_spec() -> dict:
         *branch("n_industry_unresolved", match_to="n_evidence", no_match_to="n_evidence"),
         *branch("n_evidence", match_to="n_purpose", no_match_to="n_purpose"),
         *branch("n_purpose", match_to="n_category", no_match_to="n_category"),
-        *branch("n_category", match_to="n_actual_user", no_match_to="n_actual_user"),
+        *branch("n_category", match_to="n_actual_user_unknown", no_match_to="n_actual_user_unknown"),
+        #  모름(MATCH)은 사유를 이미 받았으니 `== False` 노드를 건너뛴다 — 그 노드가
+        #  `None`을 값 비교로 만지면 미해소 가드가 발동해 사유가 뭉개진다.
+        *branch("n_actual_user_unknown", match_to="n_high_amount", no_match_to="n_actual_user"),
         *branch("n_actual_user", match_to="n_high_amount", no_match_to="n_high_amount"),
         *branch("n_high_amount", match_to="n_autopass_gate", no_match_to="n_autopass_gate"),
         *branch("n_autopass_gate", match_to="n_auto_pass", no_match_to="_GATE_REVIEW"),
@@ -295,6 +333,10 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="지울 건수만 출력하고 멈춘다")
 
     def handle(self, *args, **options):
+        #  `call_command(..., verbosity=0)`으로 불릴 때 조용해야 한다 — 다른 시드·테스트가
+        #  이 커맨드를 안에서 부르므로, 안 지키면 그쪽 출력이 이 시드의 안내문에 묻힌다.
+        quiet = int(options.get("verbosity", 1)) == 0
+        self.verbosity = 0 if quiet else 1
         counts = {m.__name__: m.objects.count() for m in WIPE_MODELS}
         counts["User(비슈퍼유저)"] = User.objects.filter(is_superuser=False).count()
         counts["Team"] = Team.objects.count()
@@ -319,6 +361,8 @@ class Command(BaseCommand):
             graph = self._default_gate()
 
         deleted = sum(counts.values())
+        if quiet:
+            return
         self.stdout.write(self.style.SUCCESS(
             f"초기화 완료 - 기존 {deleted}건 삭제\n"
             f"  사용자 {User.objects.filter(is_superuser=False).count()}명 / 팀 {Team.objects.count()}개 / "
@@ -416,22 +460,56 @@ class Command(BaseCommand):
         # ai(FastAPI)가 core에 쓰기를 할 때 쓰는 서비스 계정. 비밀번호가 비어 있으면
         # 룰 생성·규정 적재가 401로 실패하므로 조용히 넘기지 않고 경고한다.
         _, _, password_set = ensure_service_account()
-        if not password_set:
+        if not password_set and self.verbosity:
             self.stdout.write(self.style.WARNING(
                 f"[경고] 서비스 계정 `{SERVICE_USERNAME}` 비밀번호 미설정(AI_SERVICE_PASSWORD) - "
                 "AI 룰 생성·규정 적재가 401로 실패한다."
             ))
 
-        # 카드가 없으면 신규 지출 등록에서 카드를 고를 수 없어 시연이 막힌다.
-        # **거래·정산은 만들지 않는다** — 지출은 시연하는 사람이 직접 등록하는 게 이 시드의 목적이다.
-        Card.objects.create(name="법인카드(개인)", card_type=CardType.PERSONAL, limit_amount=1_500_000)
-        Card.objects.create(name="법인카드(팀)", card_type=CardType.TEAM, limit_amount=5_000_000)
-        Card.objects.create(name="법인카드(공용)", card_type=CardType.SHARED, limit_amount=4_000_000)
+        self._cards(teams, {u.username: u for u in User.objects.filter(is_superuser=False)})
+
+    def _cards(self, teams: dict[str, Team], users: dict[str, User]) -> None:
+        """법인카드 마스터 — **사람·팀에 실제로 배정해서** 만든다.
+
+        카드 발급·배정은 규정이 아니라 **회사가 이미 갖고 있는 사실**이라, 갓 설치한 상태에도
+        있어야 한다(정책 판단만 없는 게 이 시드의 규율이다). 카드가 없으면 신규 지출 등록에서
+        카드를 고를 수 없어 시연이 첫 화면에서 막힌다.
+
+        **주인 없는 카드를 두지 않는다.** 예전엔 `개인/팀/공용/후정산` 네 장을 owner·team 없이
+        만들었는데, `/api/cards/mine/`이 "팀도 주인도 없는 카드 = 회사 공용 수단"으로 취급해
+        **개인카드가 전 직원에게 선택지로 뜨고**, 조립기는 개인카드라는 이유로
+        `card.actual_user_recorded=True`를 무조건 채웠다 — 누가 썼는지 아무도 모르는데
+        판정은 "실사용자 확인됨"이 된다.
+
+        공용카드는 **팀에 붙여** 한 장 둔다. 실사용자 미등록(`ACTUAL_USER_REQUIRED`) 사유는
+        팀·공용 카드에서만 나오므로, 없으면 게이트의 그 갈래를 시연할 수 없다.
+
+        **거래·정산은 만들지 않는다** — 지출은 시연하는 사람이 직접 등록하는 게 이 시드의 목적이다.
+        """
+        for i, (username, team_key) in enumerate([
+            ("kim", "sales"), ("lead", "sales"), ("acc", "fin"), ("acclead", "fin"), ("exec", "fin"),
+        ]):
+            user = users.get(username)
+            if user is None:
+                continue
+            Card.objects.create(
+                card_type=CardType.PERSONAL, name=f"{user.first_name} 개인카드",
+                number_masked=f"**** {1001 + i}", owner=user, team=teams[team_key],
+                limit_amount=3_000_000 if user.job_title and user.job_title.name != "비직책자(공용카드)" else 1_500_000,
+            )
+
+        for i, (key, team) in enumerate(teams.items()):
+            Card.objects.create(card_type=CardType.TEAM, name=f"{team.name} 팀카드",
+                                number_masked=f"**** {5001 + i}", team=team, limit_amount=5_000_000)
+        # 공용카드 1장 — 팀·공용 카드에서만 나오는 사유(실사용자 미등록)를 시연하려면 필요하다.
+        Card.objects.create(card_type=CardType.SHARED, name=f"{teams['sales'].name} 공용카드",
+                            number_masked="**** 7700", team=teams["sales"], limit_amount=4_000_000)
         #  개인카드로 결제하고 회사가 나중에 정산해 주는 수단. 법인카드가 없거나 못 쓰는
         #  자리(해외·소액·긴급)에서 실제로 쓰이므로 **선택지에 있어야 한다** — 없으면
         #  사용자가 엉뚱한 카드를 골라 카드 귀속이 사실과 어긋난다.
         #  주인·팀이 없어 `/api/cards/mine/`에서 전 직원에게 보인다(회사 공용 수단).
-        Card.objects.create(name="개인카드 후정산", card_type=CardType.POST_PAID, limit_amount=2_000_000)
+        Card.objects.create(name="개인카드 후정산", card_type=CardType.POST_PAID,
+                            number_masked="후정산", limit_amount=2_000_000)
 
     # ── 기본 게이트 ───────────────────────────────────────────
     def _default_gate(self) -> RuleGraph:

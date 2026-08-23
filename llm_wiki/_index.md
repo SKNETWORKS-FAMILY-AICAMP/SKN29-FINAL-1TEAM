@@ -72,7 +72,7 @@ llm_wiki/
 | `eval-context-guide.md` | **EvalContext 읽는 법(사람용 안내서).** 판정이 어떻게 이뤄지는지 한 문서로 — 새로 합류하면 여기부터 |
 | `rule-engine.md` | 룰엔진 캐논 — DSL·게이트/과목별 그래프·실행 워크스루·결정→상태 매핑 |
 | `rule-flags.md` | 판정 사유 코드 2계층. **불변식: 플래그는 상태머신을 움직이지 않는다** |
-| `default-gate.md` | 기본 게이트 설계 — 방향(기본 REVIEW+사유), `PASS_THROUGH` 체인, 미해소 가드 우회, `seed`/`seed_clean` 차이 |
+| `default-gate.md` | 기본 게이트 설계 — 방향(기본 REVIEW+사유), `PASS_THROUGH` 체인, 미해소 가드 우회(§4·실측 결함 2건 §4.1), 시드 3종(`seed_clean`/`seed_adopted`/`seed`) 차이 §6 |
 | `policy-domain.md` | 규정 임계값 2층 구조 + `ctx.policy.*` 동적화(§3) + 축 정합 검사 |
 | `category-vocabulary.md` | 비용분류 어휘 정본 — 서버 단일 창구, `기타` ≠ 미기재 |
 | `merchant-industry-vocabulary.md` | 가맹점 업종 어휘 정본 15종 — 코드/라벨 분리, 미확정 처리 |

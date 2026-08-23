@@ -1,6 +1,6 @@
 # 기본 게이트(DEFAULT GATE) 설계
 
-_최종 갱신: 2026-08-22 · 상태: 구현 완료 (`seed_clean`)_
+_최종 갱신: 2026-08-24 · 상태: 구현 완료 (`seed_clean`)_
 
 > **제품이 미리 준비해 제공하는 룰은 `DEFAULT GATE` 하나뿐**이다. 카테고리별 세부 룰은
 > 고객이 자사 규정 문서를 올리면 Rule Agent가 만든다. 이 문서는 그 하나가 어떻게 생겼고
@@ -60,10 +60,26 @@ PG사 결제 여부도 뺐다: 판정에 쓸 사실이 없다(`tx.payment_method
 | 분기 노드 | 하는 일 |
 |---|---|
 | `n_industry_known` | 업종 확인 여부만 보고 **확인된 건만** 금지업종 노드로 보낸다 |
-| `n_autopass_gate` | 자동통과 노드도 업종 아는 건만 — 안 그러면 업종 미확정 건에 `UNRESOLVED_FACT:merchant.merchant_type`가 붙어 이미 더 정확한 `MERCHANT_UNRESOLVED`와 중복된다 |
+| `n_actual_user_unknown` | `is_null`로 갈라 **모르는 건은 거기서 사유를 받고** `== False` 노드를 건너뛴다 |
+| `n_autopass_gate` | 자동통과 노드에는 업종·실사용자를 **아는 건만** 보낸다 — 안 그러면 미확정 건에 `UNRESOLVED_FACT:...`가 붙어 이미 더 정확한 `MERCHANT_UNRESOLVED`·`ACTUAL_USER_REQUIRED`와 중복된다 |
 
-**참조 필드는 조립기가 항상 채우는 것만** 고른다. 공용카드 실사용자 미등록(`None`)은 룰로 막지
-않고 **엔진 가드에 맡긴다** — 같은 규칙을 두 곳에 적으면 한쪽이 뒤처진다.
+**참조 필드는 조립기가 항상 채우는 것만** 고른다. 예외는 `card.actual_user_recorded` 하나인데
+(공용·팀 카드에선 대개 `None`), `is_null` 안에서만 참조하면 가드가 면제되므로
+(`dsl.guarded_vars`) 분기로 우회할 수 있다.
+
+### 4.1 실측 결함 2건 (2026-08-24 정합 점검)
+
+게이트를 EvalContext 매트릭스로 돌려 본 결과 실사용자 갈래에서 둘이 나왔다. 둘 다
+`n_actual_user`가 `card.actual_user_recorded`를 **값 비교로** 만지던 데서 왔다.
+
+| 증상 | 원인 | 조치 |
+|---|---|---|
+| 실사용자 `False`(기록 안 했다고 명시)인 공용카드 건이 `ACTUAL_USER_REQUIRED` 사유가 붙은 채 **`PASS`** | 요건 ⑥을 미해소 가드에 맡겨 뒀는데, 가드는 **`None`(모름)만** 잡는다 | 자동 통과 화이트리스트(`n_auto_pass`)에 `actual_user_recorded == True`를 **명시** |
+| 실사용자 `None`인 건의 사유가 `UNRESOLVED_FACT:card.actual_user_recorded`(판정 정보 부족) + `confidence 0.0` | 값 비교 노드가 그 경로를 참조 → 가드 발동 | `n_actual_user_unknown`(`is_null`)로 선분기 — 업종 미확정과 같은 수법 |
+
+**교훈**: 미해소 가드는 「모름」의 안전망이지 **요건의 대역이 아니다.** 자동 통과에 필요한
+조건은 화이트리스트에 적는다 — 가드에 기대면 「아니오」라고 명시된 값이 그대로 통과한다.
+회귀는 `domain/policies/tests/test_seed_clean.py::DefaultGateJudgementTests`에 있다.
 
 ## 5. 승인대기 건은 Risk Review를 안 거친다
 
@@ -72,12 +88,20 @@ PG사 결제 여부도 뺐다: 판정에 쓸 사실이 없다(`tx.payment_method
 — 「룰 판정으로 통과된 건 — 이상탐지·RAG 검증을 거치지 않았습니다」 + 판정 경로
 ([[settlement-ui-rules]] §2).
 
-## 6. `seed` vs `seed_clean`
+## 6. 시드 3종 — 무엇을 보여줄 것인가로 고른다
 
-| | 목적 |
-|---|---|
-| `seed` | 시연 데이터 한가득(정산 87건·룰 4계열·규정 하이라이트). 화면을 채워 보여줄 때 |
-| `seed_clean` | **막 설치한 회사** 상태(사용자·팀·카드 + `DEFAULT GATE` 1개, 정산·규정문서·과목별 룰 0건). 규정 업로드 → 룰 생성 흐름을 처음부터 시연할 때 |
+| | 목적 | 룰 상태 |
+|---|---|---|
+| `seed_clean` | **막 설치한 회사**(사용자·팀·카드 + `DEFAULT GATE` 1개, 정산·규정문서·과목별 룰 0건). 규정 업로드 → 룰 생성 흐름을 처음부터 시연할 때 | DEFAULT GATE만 ACTIVE |
+| `seed_adopted` | **3개월째 굴러가는 회사**(직전 3개월 정산 ~185건이 실제 전이를 타고 흘러간 상태). 통계·예산·전표·검토 이력이 차 있어야 하는 화면 | 회사 규정 반영 4계열 ACTIVE, DEFAULT GATE는 ARCHIVED |
+| `seed` | 화면별 상태를 **골고루** 흩어 놓은 옛 시연 데이터(이번 달 안에 전 상태 배치) | 4계열 ACTIVE |
 
-로그인 계정은 동일(kim/lead/acc/acclead/exec, pass1234). `seed_clean`은 기존 데이터를 지우므로
-`--dry-run`으로 먼저 확인한다. 팀 예산은 **한도만** 넣는다(사용액은 집계라 정산 0건이면 자연히 0).
+로그인 계정은 셋 다 동일(kim/lead/acc/acclead/exec, pass1234 — `seed_adopted`는 팀원
+`emp1`~`emp10`을 더 만든다). 셋 다 기존 데이터를 지우므로 `--dry-run`으로 먼저 확인한다.
+
+**`seed_adopted`에는 DEFAULT GATE가 ACTIVE로 없다.** `seed_rules`의 GLOBAL v3가 같은 scope를
+차지하면서 `_upsert`가 물러나게 하기 때문인데, 그게 시나리오 그대로다 — 제품 기본값으로
+시작해 회사 규정 반영본으로 개정된 회사. 게이트 자체를 보려면 `seed_clean`을 쓴다.
+
+팀 예산은 `seed_clean`이 **한도만** 넣고(사용액은 집계라 정산 0건이면 자연히 0),
+`seed_adopted`는 그 달 실제 사용액에서 목표 소진율로 역산한다(내역이 바뀌어도 비율 유지).

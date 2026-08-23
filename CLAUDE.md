@@ -44,7 +44,7 @@ daily_scrum/  주차별 진행 보고
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-23_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-24_
 
 > **읽는 법**: 여기는 "지금 무엇이 되고 무엇이 안 되는가"만 적는다. **왜 그렇게 했는지·실측
 > 수치·과거 결함의 서사는 `_context/` 캐논**에 있고 여기서는 가리키기만 한다(§4 규약).
@@ -69,7 +69,7 @@ daily_scrum/  주차별 진행 보고
 | 네임드 플래그 | ✅ | 2계층(닫힌 `SystemFlag` / 열린 `RuleFlag`). **불변식: 플래그는 상태머신을 움직이지 않는다.** `code`는 데이터 계약. → [[rule-flags]] |
 | EvalContext | ✅ v6 (51필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. **파생 불린 4건 제거·상수는 룰에 허용**(§2). → [[eval-context-sourcing]] §15~16 |
 | 규정 임계값(policy) | ✅ 동적화 완료 | 저장층 `PolicyTable`(자유 JSON+`key_axes`) → 소비층 `ctx.policy.*`. **적재된 표에서 파생**(코드 상수 아님), `RESOLVERS`는 이름 override로만. 축 정합 검사(`check_table_axes`, DB 행 대조). → [[policy-domain]] §3 |
-| 기본 게이트(DEFAULT GATE) | ✅ | 제품 기본 제공은 **이것 하나**. 기본 `REVIEW`+사유, `PASS`는 화이트리스트, `RETURN`/`REJECT` 안 냄. → [[default-gate]] |
+| 기본 게이트(DEFAULT GATE) | ✅ 정합 점검 완료 | 제품 기본 제공은 **이것 하나**. 기본 `REVIEW`+사유, `PASS`는 화이트리스트, `RETURN`/`REJECT` 안 냄. **자동 통과 요건은 가드에 맡기지 않고 화이트리스트에 적는다**(맡겼더니 실사용자 `False` 건이 통과했다). → [[default-gate]] §4.1 |
 | 판정 입력(사실) 조립 | 🚧 대부분 해소 | 이력 집계·영업일·근무시간을 채워 「룰이 참조하는데 미조립」이 4→1로 줄었다(남은 1은 `trip.*`, 첨부 추출은 되나 **화면 입력칸이 없다**). `finance_dept_is_spender`는 `Team.is_finance` 필요. → [[eval-context-sourcing]] §15 |
 
 ### 3.3 AI Agent
@@ -120,8 +120,9 @@ daily_scrum/  주차별 진행 보고
 
 | 영역 | 상태 | 비고 |
 |---|---|---|
-| `seed` (시연용) | ✅ | 룰 4계열·정산 87건·검토 30건·RAG 하이라이트 3건. 거래일자는 이번 달 안에 배치. 회식 시연 3건은 **실제 `services.judge()`** 로 판정 |
-| `seed_clean` (신규 설치) | ✅ | 사용자·팀·카드 + `DEFAULT GATE` 1개. 팀 예산은 한도만. → [[default-gate]] §6 |
+| `seed_clean` (초기 적용) | ✅ | 막 설치한 회사 — 사용자·팀 + **사람·팀에 배정된 카드 10장** + `DEFAULT GATE` 1개. 팀 예산은 한도만. → [[default-gate]] §6 |
+| `seed_adopted` (적용 완료) | ✅ | 3개월째 굴러가는 회사 — 직전 3개월 정산 ~185건이 **실제 전이를 타고** 흘러간 상태(전표 168·자동처리율 ~89%·평균 검토 ~27분). 시각은 결제일로 되돌리고, 종결 건 알림은 지운다 |
+| `seed` (화면별 시연) | ✅ | 룰 4계열·정산 87건·검토 30건·RAG 하이라이트 3건. 거래일자는 이번 달 안에 배치. 회식 시연 3건은 **실제 `services.judge()`** 로 판정 |
 | 로그 | ✅ | `logs/core.log`·`logs/ai.log` (5MB×3 로테이션, git 미추적). 디버깅은 여기부터 |
 
 ### 3.7 다음 후보
@@ -205,13 +206,17 @@ docker compose exec ai python -m app.rag.embedding.index --peek                 
 docker compose exec core python manage.py migrate
 docker compose exec core python manage.py createsuperuser
 
-# 시드 — 목적이 정반대인 둘 중 하나를 고른다
-#   seed        시연 데이터 한가득(정산 87건·룰 4계열·규정 하이라이트). 화면을 채워 보여줄 때
-#   seed_clean  **막 설치한 회사** 상태(사용자 + DEFAULT GATE 1개만). 규정 업로드→룰 생성
-#               흐름을 처음부터 시연할 때. 기존 데이터를 지우므로 --dry-run으로 먼저 확인.
-docker compose exec core python manage.py seed --fresh
+# 시드 — 무엇을 보여줄 것인가로 고른다. 셋 다 기존 데이터를 지운다(--dry-run 먼저).
+#   seed_clean    **초기 적용**: 막 설치한 회사(사용자·카드 + DEFAULT GATE 1개, 정산 0건).
+#                 규정 업로드 → 룰 생성 흐름을 처음부터 시연할 때.
+#   seed_adopted  **적용 완료**: 3개월째 굴러가는 회사(직전 3개월 정산 ~185건이 실제 전이를
+#                 타고 흘러간 상태). 통계·예산·전표·검토 이력이 차 있어야 하는 화면용.
+#                 판정을 손으로 박지 않으므로, 룰이 바뀌면 끝에 기대 불일치를 경고로 낸다.
+#   seed          화면별 상태를 골고루 흩어 놓은 옛 시연 데이터(이번 달 안에 전 상태 배치).
 docker compose exec core python manage.py seed_clean --dry-run
 docker compose exec core python manage.py seed_clean
+docker compose exec core python manage.py seed_adopted
+docker compose exec core python manage.py seed --fresh
 
 # AI 서비스 계정 (ai → core 쓰기: 룰 DRAFT 저장·규정 적재 회신) — .env의 AI_SERVICE_PASSWORD 선행
 #   **Agent별로 나누지 않은 계정 하나.** capability는 `rule_view` 뿐.

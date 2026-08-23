@@ -33,6 +33,13 @@ TIMEOUT = 60.0
 # FastAPI 2차 검증의 권고 → 회계 결정 코드. SUPPLEMENT는 우리 도메인에서 '보완요청'이다.
 RECOMMENDATION_MAP = {"APPROVE": "APPROVE", "SUPPLEMENT": "RETURN", "REJECT": "REJECT"}
 
+#: 자동 예약 스위치. **한 번에 수백 건을 판정하는 경로**(시드·대량 재판정)가 AI를 그만큼
+#  호출하지 않도록 끈다 — 건당 최대 60초에 토큰까지 든다. 끄면 예약만 건너뛰고 판정·상태
+#  전이는 그대로다(`risk_review_state`도 손대지 않는다 — "돌고 있다"고 거짓말하지 않는다).
+#  운영 기본값은 켬. 끄는 쪽은 반드시 try/finally로 되돌린다.
+#  (`engine.DEMOTE_ON_UNRESOLVED_POLICY`와 같은 성격의 모듈 스위치다.)
+AUTO_SCHEDULE = True
+
 
 def schedule(settlement) -> None:
     """`IN_REVIEW`로 끝난 판정에 한해, 커밋 후 Risk Review를 돌리도록 예약한다.
@@ -44,7 +51,7 @@ def schedule(settlement) -> None:
     테스트(`TestCase`)에서는 트랜잭션이 롤백되므로 콜백이 자동으로 뜨지 않는다 —
     검증하려면 `captureOnCommitCallbacks(execute=True)`를 쓴다.
     """
-    if settlement.status != S.IN_REVIEW:
+    if settlement.status != S.IN_REVIEW or not AUTO_SCHEDULE:
         return
     settlement.risk_review_state = RiskReviewState.RUNNING
     settlement.risk_review_error = ""

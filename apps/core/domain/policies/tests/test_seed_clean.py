@@ -28,9 +28,13 @@ from domain.accounts.models import User
 
 
 def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", ai_suggested=False,
-                amount="120000", category="접대"):
-    """게이트가 보는 사실을 조합해 정산 1건을 만든다."""
-    card = Card.objects.filter(card_type="PERSONAL").first()
+                amount="120000", category="접대", card_type="PERSONAL", actual_user_recorded=None):
+    """게이트가 보는 사실을 조합해 정산 1건을 만든다.
+
+    `actual_user_recorded`는 **팀·공용 카드에서만** 판정에 들어간다(개인카드는 소유자가 곧
+    사용자라 조립기가 `True`로 접는다 — `context_builder.collect_from_settlement`).
+    """
+    card = Card.objects.filter(card_type=card_type).first()
     tx = Transaction.objects.create(
         card=card, merchant="강남한식당", amount=Decimal(amount), ts=timezone.now(),
     )
@@ -39,6 +43,7 @@ def _settlement(*, receipt=True, purpose="거래처 접대", industry="한식", 
     return Settlement.objects.create(
         transaction=tx, category=category, status=S.SUBMITTED,
         purpose=purpose, merchant_industry=industry, ai_suggested=ai_suggested,
+        actual_user_recorded=actual_user_recorded,
     )
 
 
@@ -167,6 +172,47 @@ class DefaultGateJudgementTests(TestCase):
     def test_고액_사유(self):
         result = orchestrator.judge(_settlement(amount="1000000"), record=False)
         self.assertIn("HIGH_AMOUNT", result.flags)
+
+    # ── 팀·공용 카드 실사용자 (2026-08-23 정합 점검에서 나온 결함 2건의 회귀) ──────
+
+    def test_실사용자_미등록은_자동_통과하지_않는다(self):
+        """**실측 결함**: 사유(`ACTUAL_USER_REQUIRED`)가 붙은 채로 `PASS`가 나왔다.
+
+        미해소 가드에 맡겨 뒀던 요건이라 `None`(모름)은 막혔지만 **명시적 `False`**
+        (기록하지 않았다고 적힌 건)는 아무도 안 봤다 — 누가 썼는지 모르는 공용카드 결제가
+        자동으로 승인 대기까지 갔다. 자동 통과 화이트리스트에 명시해 막는다.
+        """
+        result = orchestrator.judge(
+            _settlement(card_type="SHARED", actual_user_recorded=False), record=False)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertIn("ACTUAL_USER_REQUIRED", result.flags)
+
+    def test_실사용자_모름은_전용_사유로_표시된다(self):
+        """**실측 결함**: `UNRESOLVED_FACT:card.actual_user_recorded` + confidence 0이 나왔다.
+
+        업종 미확정과 같은 처리를 해야 한다 — 검토자에게 "판정 정보 부족"보다
+        "실사용자 미등록"이 훨씬 쓸모 있다. `is_null` 분기로 우회해 가드를 피한다.
+        """
+        result = orchestrator.judge(
+            _settlement(card_type="SHARED", actual_user_recorded=None), record=False)
+        self.assertEqual(result.decision, "REVIEW")
+        self.assertIn("ACTUAL_USER_REQUIRED", result.flags)
+        self.assertNotIn("UNRESOLVED_FACT:card.actual_user_recorded", result.flags)
+        # 미해소 강등이면 엔진이 confidence를 0으로 떨어뜨린다 — 그 흔적이 없어야 한다.
+        self.assertEqual([r.result.confidence for r in result.runs], [1.0])
+
+    def test_실사용자_기록된_공용카드는_통과한다(self):
+        """막는 게 목적이 아니다 — 기록이 있으면 개인카드와 똑같이 자동 통과해야 한다."""
+        result = orchestrator.judge(
+            _settlement(card_type="SHARED", actual_user_recorded=True), record=False)
+        self.assertEqual(result.decision, "PASS")
+
+    def test_개인카드는_실사용자를_묻지_않는다(self):
+        """소유자가 곧 사용자라 조립기가 `True`로 접는다 — 여기서 물으면 전건이 걸린다."""
+        result = orchestrator.judge(
+            _settlement(card_type="PERSONAL", actual_user_recorded=None), record=False)
+        self.assertEqual(result.decision, "PASS")
+        self.assertNotIn("ACTUAL_USER_REQUIRED", result.flags)
 
     # ── 결정 규약 ─────────────────────────────────────────────────────
 
