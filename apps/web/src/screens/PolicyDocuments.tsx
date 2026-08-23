@@ -242,7 +242,7 @@ export function PolicyDocuments() {
           </div>
           {/* 문서명·유형·폴더·비용분류는 업로드 모달에서 함께 고른다 — 올린 뒤 다시 손볼 일이 없게. */}
           <button className="btn primary" disabled={busy} onClick={() => setUploadOpen(true)}>
-            <Upload size={14} /> {busy ? '처리 중…' : '+ 문서 업로드'}
+            <Upload size={14} /> {busy ? '처리 중…' : '문서 업로드'}
           </button>
         </div>
 

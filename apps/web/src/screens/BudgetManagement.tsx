@@ -218,35 +218,41 @@ export function BudgetManagement() {
                 </div>
               </div>
               <div className="card-body">
-                <div className="gov-sub-title">자주 남는 항목</div>
-                <table className="table gov-pattern-table">
-                  <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 잔여</th><th className="num">누적</th></tr></thead>
-                  <tbody>
-                    {OFTEN_SURPLUS.map((row) => (
-                      <tr key={row.category}>
-                        <td><b>{row.category}</b></td>
-                        <td className="num">{row.months}/6</td>
-                        <td className="num" style={{ color: 'var(--tone-green)', fontWeight: 700 }}>+{row.avgGap}%</td>
-                        <td className="num text-meta">{manwon(row.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="budget-pattern-subgrid">
+                  <div>
+                    <div className="gov-sub-title">자주 남는 항목</div>
+                    <table className="table gov-pattern-table">
+                      <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 잔여</th><th className="num">누적</th></tr></thead>
+                      <tbody>
+                        {OFTEN_SURPLUS.map((row) => (
+                          <tr key={row.category}>
+                            <td><b>{row.category}</b></td>
+                            <td className="num">{row.months}/6</td>
+                            <td className="num" style={{ color: 'var(--tone-green)', fontWeight: 700 }}>+{row.avgGap}%</td>
+                            <td className="num text-meta">{manwon(row.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                <div className="gov-sub-title" style={{ marginTop: 16 }}>자주 부족한 항목</div>
-                <table className="table gov-pattern-table">
-                  <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 초과</th><th className="num">누적</th></tr></thead>
-                  <tbody>
-                    {OFTEN_SHORT.map((row) => (
-                      <tr key={row.category}>
-                        <td><b>{row.category}</b></td>
-                        <td className="num">{row.months}/6</td>
-                        <td className="num" style={{ color: 'var(--tone-red)', fontWeight: 700 }}>{row.avgGap}%</td>
-                        <td className="num text-meta">{manwon(Math.abs(row.amount))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <div>
+                    <div className="gov-sub-title">자주 부족한 항목</div>
+                    <table className="table gov-pattern-table">
+                      <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 초과</th><th className="num">누적</th></tr></thead>
+                      <tbody>
+                        {OFTEN_SHORT.map((row) => (
+                          <tr key={row.category}>
+                            <td><b>{row.category}</b></td>
+                            <td className="num">{row.months}/6</td>
+                            <td className="num" style={{ color: 'var(--tone-red)', fontWeight: 700 }}>{row.avgGap}%</td>
+                            <td className="num text-meta">{manwon(Math.abs(row.amount))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -268,7 +274,7 @@ export function BudgetManagement() {
           <button className="btn sm" disabled>권한 요청</button>
         </div>
 
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>카테고리별 예산 현황</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>계정과목별 예산 현황</div>
         <div className="text-meta" style={{ marginBottom: 8 }}>{team.name} 예산</div>
         <div className="card" style={{ marginBottom: 24 }}>
           <table className="table">
