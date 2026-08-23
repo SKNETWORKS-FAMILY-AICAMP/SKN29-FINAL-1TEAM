@@ -150,9 +150,13 @@ export const endpoints = {
   // POST다 — PolicyDocViewSet이 PATCH/PUT을 의도적으로 막아 두었다(문서는 제자리 수정 대상이 아님).
   updatePolicyTableProposal: (docId: string, id: number, patch: Record<string, unknown>) =>
     api.post(`/policy-docs/${docId}/table-proposals/${id}/`, patch),
+  // 승인은 **화면이 고친 값과 함께** 보낸다 — 따로 저장하지 않고 누르면 서버가 옛 값으로
+  // 검사해 400이 나는데, 화면에는 고친 값이 보여서 왜 막혔는지 알 수 없다.
   decidePolicyTableProposal: (
     docId: string, id: number, action: 'APPROVE' | 'REJECT', note?: string,
-  ) => api.post(`/policy-docs/${docId}/table-proposals/${id}/decision/`, { action, note }),
+    patch?: Record<string, unknown>,
+  ) => api.post(`/policy-docs/${docId}/table-proposals/${id}/decision/`,
+    { ...(patch || {}), action, note }),
   // Rule 버전 관리
   ruleVersions: (ruleId: string) => api.get(`/rules/${ruleId}/versions/`),
 

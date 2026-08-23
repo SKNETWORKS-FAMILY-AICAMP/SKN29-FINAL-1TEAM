@@ -40,11 +40,11 @@ daily_scrum/  주차별 진행 보고
 - **AI는 판정을 예측하지 않는다**: 「지금 제출하면 보완요청될까」는 결정론적 엔진이 이미 답을 갖고 있다(`orchestrator.judge(record=False)`). 룰 그래프를 프롬프트에 주고 순회를 흉내내게 하면 틀리고, 틀려도 티가 안 나며, 사용자에겐 "AI가 통과라 했는데 반려됨"이 된다. **엔진이 결정하고 모델은 사람 말로 옮긴다**(`narrate.py`·MCP `run_rule_engine`과 같은 분업). 모델이 낼 수 없어야 하는 값은 지시가 아니라 **출력 스키마에서 뺀다**. → `_context/draft-agent-v2.md`
 - **인가 = 기능 단위(Capability) RBAC**: 역할이 아니라 6개 Capability(`team_aggregate`·`accounting_review`·`rule_view`·`rule_activate`·`governance_view`·`ai_lab`)로 판정. **유효능력 = 역할 기본값 ∪ 개인 추가부여(`users.extra_capabilities`)** — 예: `acc`=회계+룰열람+팀취합, `acclead`=회계+룰열람+룰활성. 룰콘솔은 열람(`rule_view`)/활성(`rule_activate`) 분리. DRF `HasCapability` 파생 권한으로 백엔드 강제, `/api/me`에 `capabilities` 노출, 프론트는 `useCan()`로 게이트. **Django admin에서 사용자별 `extra_capabilities` 체크박스 부여**. (기술 §3.1a)
 - **EvalContext는 파생 불린을 두지 않고, 룰 조건에 상수를 허용한다**(v6) — 심야 22시 같은 기준을 조립기에 박으면 회사마다 다른 값을 바꾸려고 재배포해야 하고, 그 상수는 룰 콘솔에도 판정 스냅샷에도 안 보인다. 그래프가 `tx.payment_time >= "22:00"`으로 직접 비교한다(내규 개정은 잦지 않고 룰은 Rule Agent가 관리한다). **예외 셋만 조립기가 접는다** — ① null 여부(미해소 가드가 값 평가 전에 강등해 `x == null`을 룰로 못 쓴다) ② 별표 선해소(DSL에 룩업 연산자 없음 — 표로 개정되는 값은 그대로 별표다) ③ 산술·날짜(DSL에 연산자·요일 함수 없음). 남기는 불린은 **왜 예외인지를 필드 설명에 적는다**. → [[eval-context-sourcing]] §16
-- **DSL에서 모름(null)은 어느 방향으로도 참을 만들지 않는다**(v6) — 비교·`in`·`not` 전부 거짓이고 `is_null`만이 예외다. 예전엔 연산자마다 달라(`!=`·`not(var)`가 모를 때 참) **틀리는 방향이 「조용한 위반 판정」**이었다(실측: T-21이 증빙 미확인 건에 「증빙 없음」 사유를 달았다). `is_null`이 감싼 경로는 **미해소 가드에서 면제**되지만(`dsl.guarded_vars`) 밖에도 나오면 유지하고, ACTIVE 전환 게이트는 그대로 전부 검사한다. **생성 툴 `op` enum이 닫혀 있어 LLM은 못 쓴다** — 가드가 면제된 채 미입력을 위반으로 단정하는 걸 막기 위해 사람 전용으로 둔다. → [[eval-context-sourcing]] §17
+- **DSL에서 모름(null)은 어느 방향으로도 참을 만들지 않는다**(v6) — 비교·`in`·`not` 전부 거짓이고 `is_null`만이 예외다. 예전엔 연산자마다 달라(`!=`·`not(var)`가 모를 때 참) **틀리는 방향이 「조용한 위반 판정」**이었다(실측: T-21이 증빙 미확인 건에 「증빙 없음」 사유를 달았다). `is_null`이 감싼 경로는 **미해소 가드에서 면제**되지만(`dsl.guarded_vars`) 밖에도 나오면 유지하고, ACTIVE 전환 게이트는 그대로 전부 검사한다. **Rule Agent도 쓸 수 있다** — 처음엔 「가드 면제 + 미입력을 위반으로 단정」이 걱정돼 막으려 했으나, Agent가 만드는 노드는 `REJECT/RETURN/REVIEW`만 낼 수 있어(둘 다 사람에게 간다) 「모름을 근거로 통과」가 구조적으로 불가능하다. → [[eval-context-sourcing]] §17
 
 ---
 
-## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-22_
+## 3. 상태 보드 (Status Board) — _최종 갱신: 2026-08-23_
 
 > **읽는 법**: 여기는 "지금 무엇이 되고 무엇이 안 되는가"만 적는다. **왜 그렇게 했는지·실측
 > 수치·과거 결함의 서사는 `_context/` 캐논**에 있고 여기서는 가리키기만 한다(§4 규약).
@@ -97,7 +97,7 @@ daily_scrum/  주차별 진행 보고
 | 검색 재선별(LLM rerank) | ✅ | `rerank(query, hits, top_n)` — **「관련 없음」과 「호출 실패」를 구분**(실패는 원본 top_n으로 fail-open, 안 그러면 하류가 "근거가 원래 없었다"로 오인). Risk Review 2차는 항상 켠다. 회귀 7건 |
 | 문서 업로드 → 적재 | ✅ | 업로드 → `PolicyDoc(PENDING)` → 백그라운드 파싱·청킹·임베딩·Chroma upsert → 룰 트리거 → 콜백. **한계**: ai 재시작 시 진행 중 작업 유실 → 「재색인」으로 복구. → [[rag-ingestion]] |
 | 적재 → 룰 자동 생성 | ✅ | 업로드 시 고른 scope 1개만. scope 미지정=`SKIPPED_NO_SCOPE`, 재색인=`SKIPPED_REINDEX`. 트리거 실패가 적재를 실패시키지 않는다 |
-| 문서 분류(triage) + 별표 승인 | ✅ | 조항 분류(kind·priority)는 **제안이지 차단이 아니다**(SKIP에서도 룰 생성 가능). 별표 후보는 `PolicyTableProposal` **별도 모델**(한 테이블에 섞으면 미승인 임계값이 조용히 판정에 든다). 승인이 강제하는 건 **축뿐**(스키마에 없으면 거부). 개정은 INSERT. → [[document-triage]] |
+| 문서 분류(triage) + 별표 승인 | ✅ | 분류는 **제안이지 차단이 아니다**(SKIP에서도 룰 생성 가능). 우선순위는 조항 단건이 아니라 **문서 단위 선별**로 정한다(단건만 보면 전 조항이 「확인 필요」로 나왔다) — AUTO 상한·최소 1건은 코드가 강제. 별표 후보는 **별도 모델**이고 승인이 강제하는 건 **축뿐**, 개정은 INSERT. → [[document-triage]] |
 | docling 모킹 스위치 | ✅ | `DOCLING_MOCK=1`이면 파싱만 덤프로 대체. **진짜 위험은 켠 걸 잊는 것** → WARNING 로그·노란 배너·`dump:` doc_id·이름 불일치 시 폴백 없이 실패 |
 | 결정 사례(case_history) | ✅ 기틀 | **「다르게 판단한 것」만** 적재(일치 건까지 넣으면 봐야 할 예외가 밀린다). 본문은 스냅샷. **남음**: 골든/실사례 메타 구분·마스킹 정책·사례 목록 화면. → [[decision-case-data]] |
 | Chroma 운영 적재 | 🚧 | 화면 업로드 경로는 동작. CLI 재적재는 `app.rag.embedding.index`(§6) |

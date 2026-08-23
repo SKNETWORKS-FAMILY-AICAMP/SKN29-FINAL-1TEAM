@@ -182,10 +182,12 @@ export function PolicyDocuments() {
       await loadClauses(selectedId)
     }, '별표 수정을 저장하지 못했습니다.')
 
-  const decideProposal = (id: number, action: 'APPROVE' | 'REJECT', note: string) =>
+  const decideProposal = (
+    id: number, action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>,
+  ) =>
     withBusy(async () => {
       if (!selectedId) return
-      await endpoints.decidePolicyTableProposal(selectedId, id, action, note)
+      await endpoints.decidePolicyTableProposal(selectedId, id, action, note, patch)
       await loadClauses(selectedId)
     }, '별표 결정을 저장하지 못했습니다.')
 
@@ -394,7 +396,8 @@ export function PolicyDocuments() {
                       axisOptions={axisOptions}
                       busy={busy}
                       onSave={(patch) => void saveProposal(proposal.id, patch)}
-                      onDecide={(action, note) => void decideProposal(proposal.id, action, note)}
+                      onDecide={(action, note, patch) =>
+                        void decideProposal(proposal.id, action, note, patch)}
                     />
                   ))}
                 </>
