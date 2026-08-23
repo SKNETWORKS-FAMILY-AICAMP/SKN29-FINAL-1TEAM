@@ -1,4 +1,4 @@
-"""Risk Review ①분류 프롬프트 조립 회귀 — `agents/risk_review_agent.py`.
+"""Risk Review ①분류 프롬프트 조립 회귀 — `agents/agent.py`.
 
 두 가지를 검증한다(둘 다 네트워크 호출 없이, 순수 함수만):
 
@@ -144,9 +144,12 @@ def test_stage1_failure_degrades_to_stub_instead_of_killing_stage2():
     with patch.object(agent.tools, "get_tx_features", side_effect=RuntimeError("tx-features 500")):
         out = _stage1(tx_id=1)
 
-    assert out["risk_tier"] == "LOW"
+    #  **등급을 채우지 않는다.** 예전엔 `LOW`를 돌려줬는데, 화면이 그걸 「이상 신호 낮음」
+    #  으로 읽어 못 잰 건이 「검사해보니 안전한 건」으로 둔갑했다.
+    assert out["risk_tier"] == ""
+    assert out["status"] == agent.STAGE1_ERROR
     assert out["anomaly_score"] == 0.0
-    assert "stage1 실패" in out["note"]  # 조용히 0점으로 위장하지 않고 사유를 남긴다
+    assert out["note"]  # 조용히 0점으로 위장하지 않고 사유를 남긴다
 
 
 def test_safe_search_returns_empty_on_backend_failure():
@@ -178,3 +181,42 @@ def test_risk_tier_boundaries_are_inclusive_at_the_threshold():
     assert _risk_tier(agent.RISK_TIER_MEDIUM_THRESHOLD) == "MEDIUM"
     assert _risk_tier(agent.RISK_TIER_MEDIUM_THRESHOLD - 1e-9) == "LOW"
     assert _risk_tier(-0.05) == "LOW"
+
+# ── 모델이 없을 때: **stub이 아니라 「못 쟀다」로 내려간다** ────────────────────
+#
+#  예전엔 `risk_tier="LOW"`를 돌려줬다. 화면은 그걸 「이상 신호 낮음」으로 읽으므로,
+#  모델이 없어서 못 잰 건이 **검사해보니 안전한 건**으로 둔갑했다.
+
+def test_모델이_없으면_등급을_비운다(monkeypatch):
+    monkeypatch.setattr(agent, "get_active_model", lambda: None)
+    monkeypatch.setattr(agent.tools, "get_tx_features",
+                        lambda tx_id: {"feature_vector": [0.0]})
+    out = agent._stage1(1)
+    assert out["status"] == agent.STAGE1_NO_MODEL
+    assert out["risk_tier"] == "", "LOW로 채우면 「안전한 건」으로 읽힌다"
+    assert out["anomaly_score"] == 0.0
+    assert "모델" in out["note"]
+
+
+def test_피처_조립이_실패해도_등급을_비운다(monkeypatch):
+    def _boom(tx_id):
+        raise RuntimeError("core down")
+
+    monkeypatch.setattr(agent.tools, "get_tx_features", _boom)
+    out = agent._stage1(1)
+    assert out["status"] == agent.STAGE1_ERROR
+    assert out["risk_tier"] == ""
+
+
+def test_정상_채점이면_status가_ok(monkeypatch):
+    class _Model:
+        fitted = True
+
+    monkeypatch.setattr(agent, "get_active_model", lambda: _Model())
+    monkeypatch.setattr(agent.tools, "get_tx_features",
+                        lambda tx_id: {"feature_vector": [0.0]})
+    monkeypatch.setattr(agent.tools, "ml_infer",
+                        lambda vec: {"anomaly_score": 0.02, "is_outlier": True, "contribs": []})
+    out = agent._stage1(1)
+    assert out["status"] == agent.STAGE1_OK
+    assert out["risk_tier"] == "HIGH"

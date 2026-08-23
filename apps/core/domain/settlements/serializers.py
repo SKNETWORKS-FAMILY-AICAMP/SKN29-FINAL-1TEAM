@@ -69,6 +69,10 @@ class SettlementSerializer(serializers.ModelSerializer):
     anomalyScore = serializers.SerializerMethodField()
     # 1차 이상탐지 점수의 3단계 등급. Agent가 아직 안 돈 건은 `''`(없는 판단을 지어내지 않는다).
     riskTier = serializers.SerializerMethodField()
+    # 1차가 **실제로 채점했는가**(ok/no_model/error). 점수 0과 「못 쟀다」를 가르는 축이다 —
+    # 없으면 모델 미배치 건이 화면에서 「이상 신호 낮음」으로 읽힌다.
+    anomalyStatus = serializers.SerializerMethodField()
+    anomalyNote = serializers.SerializerMethodField()
     aiRecommendation = serializers.SerializerMethodField()
     aiConfidence = serializers.SerializerMethodField()
     featureContribs = serializers.SerializerMethodField()
@@ -110,7 +114,8 @@ class SettlementSerializer(serializers.ModelSerializer):
             "id", "date", "time", "merchant", "amount", "cardType", "cardId", "cardName",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
             "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
-            "anomalyScore", "riskTier", "aiRecommendation", "aiConfidence",
+            "anomalyScore", "riskTier", "anomalyStatus", "anomalyNote",
+            "aiRecommendation", "aiConfidence",
             "featureContribs", "ragRefs", "ragReport", "anomalyReasons", "violationVerdict",
             "evalContext", "ruleDecision", "ruleFlags", "ruleFlagInfo", "ruleJudgedAt",
             "ruleHits", "riskReviewed", "riskReviewState", "riskReviewError", "events",
@@ -168,6 +173,18 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_riskTier(self, obj):
         r = self._risk(obj)
         return r.risk_tier if r else ""
+
+    def get_anomalyStatus(self, obj):
+        r = self._risk(obj)
+        if r is None:
+            return ""
+        #  옛 행(이 축이 생기기 전)은 status가 비어 있다 — 그때는 못 잰 경우도 `LOW`로
+        #  저장됐으므로 소급 판정하지 않고 `ok`로 본다(없는 사실을 지어내지 않는다).
+        return r.stage1_status or "ok"
+
+    def get_anomalyNote(self, obj):
+        r = self._risk(obj)
+        return (r.stage1_note if r else "") or ""
 
     def get_aiRecommendation(self, obj):
         r = self._risk(obj)

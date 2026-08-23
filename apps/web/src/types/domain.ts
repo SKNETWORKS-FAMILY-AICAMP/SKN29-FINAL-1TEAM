@@ -202,6 +202,14 @@ export interface Settlement {
    * 구분하지 않으면 검토 중인 건에 "룰 판정으로 통과된 건입니다"가 뜬다(실제로 겪었다).
    */
   riskReviewState?: RiskReviewState
+  /**
+   * 1차 이상탐지가 **실제로 채점했는가**. `riskReviewState`(호출 단위)와 다른 축이다 —
+   * 호출은 `DONE`인데 1차만 못 돌 건이 실재한다(모델 미배치·경로 어긋남).
+   * `ok`가 아니면 `anomalyScore`의 0은 **점수가 아니라 「못 쐄다」**는 뜻이다.
+   */
+  anomalyStatus?: 'ok' | 'no_model' | 'error' | ''
+  /** 못 쐄 이유(사람이 읽는 문장). 화면이 점수 자리에 대신 띄운다. */
+  anomalyNote?: string
   riskReviewError?: string
 }
 

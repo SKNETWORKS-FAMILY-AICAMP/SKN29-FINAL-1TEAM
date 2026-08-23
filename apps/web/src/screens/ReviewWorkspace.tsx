@@ -7,7 +7,7 @@ import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
-import { RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
+import { anomalyScored, AnomalyUnavailableNotice, RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
@@ -351,8 +351,12 @@ export function ReviewWorkspace() {
               {listed.map((i) => {
                 // 점수가 없는 세 상황(미실시·검토 중·실패)을 뭉개지 않는다 — 0으로 그리면
                 // "이상 없음"으로 읽혀, 아무도 안 본 건이 검토된 것처럼 보인다.
-                const scoreLabel = riskScoreLabel(i.riskReviewState, i.anomalyScore)
-                const score = i.riskReviewState === 'DONE' ? Math.round(i.anomalyScore * 100) : null
+                //  「못 잰 것」도 점수 없음에 포함된다 — 모델이 없어 0으로 저장된 건을
+                //  0점으로 그리면 정렬에서도 「가장 안전한 건」으로 올라온다.
+                const scored = anomalyScored(i)
+                const scoreLabel = riskScoreLabel(i.riskReviewState, i.anomalyScore, scored)
+                const score = i.riskReviewState === 'DONE' && scored
+                  ? Math.round(i.anomalyScore * 100) : null
                 const reco = recoLabel(i.aiRecommendation)
                 return (
                   <li
@@ -375,7 +379,7 @@ export function ReviewWorkspace() {
                     <span
                       className="risk-score"
                       style={{ color: score === null ? 'var(--muted)' : riskColor(score) }}
-                      title={riskScoreTitle(i.riskReviewState)}
+                      title={riskScoreTitle(i.riskReviewState, i)}
                     >
                       {scoreLabel}
                     </span>
@@ -553,14 +557,27 @@ export function ReviewWorkspace() {
                     <RiskScoreBadge item={sel} />
                   </div>
                   <div className="card-body">
-                    {sel.riskReviewState === 'DONE' ? (
+                    {sel.riskReviewState === 'DONE' && !anomalyScored(sel) ? (
+                      /*  호출은 성공했는데 1차만 못 돌 건 — 「측정 못 함」을 명시한다.
+                          비어 있는 기여도 목록만 그리면 「이상 신호가 없다」로 읽힐다. */
+                      <AnomalyUnavailableNotice item={sel} />
+                    ) : sel.riskReviewState === 'DONE' ? (
                       <>
                         <div className="text-meta" style={{ marginBottom: 8 }}>Feature 기여도 (이상 신호 유발 요인)</div>
-                        <div className="stack">
-                          {sel.featureContribs.map((f) => (
-                            <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
-                          ))}
-                        </div>
+                        {sel.featureContribs.length === 0 ? (
+                          /*  점수는 났는데 기여도가 비었다 — 배포된 모델에 학습 분포 통계
+                              (`feature_stats`)가 없으면 상시 빈 배열이다. 빈 자리를 그대로
+                              두면 「튀 피처가 없다」로 읽힌다. */
+                          <div className="text-meta">
+                            기여도 정보가 없는 모델입니다 — 점수는 유효하지만 어느 항목이 튀었는지는 알 수 없습니다.
+                          </div>
+                        ) : (
+                          <div className="stack">
+                            {sel.featureContribs.map((f) => (
+                              <LabeledBar key={f.feature} label={f.feature} value={f.weight} labelWidth={160} color="var(--tone-purple)" />
+                            ))}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <RiskReviewStatusBody item={sel} onRetry={() => void retryRiskReview(sel.id)} retrying={busy} />

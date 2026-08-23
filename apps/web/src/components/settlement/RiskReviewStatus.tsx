@@ -8,24 +8,65 @@
 //   RUNNING      예약돼 **돌고 있다**(최대 60초) → 기다리는 중임을 명시하고 폴링한다
 //   FAILED       돌았는데 결과를 못 받았다 → **오지 않을 결과를 기다리게 두지 않는다**
 //   DONE         결과가 있다 → 호출부가 실제 결과를 그린다
+//
+// **`DONE` 안에도 「못 잰 경우」가 있다.** 호출은 성공했는데 1차 이상탐지만 못 돈 건이
+// 실재한다(모델 미배치·경로 어긋남). 그때 서버는 `anomalyStatus`를 `no_model`/`error`로
+// 주고 점수 0·등급 빈 문자열을 보낸다 — 화면은 **0.00을 그리지 않는다.** 0을 그리면
+// 「검사해보니 안전」으로 읽히는데, 실제로는 검사를 못 한 것이다.
 import { AlertTriangle, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
 import type { RiskReviewState, Settlement } from '../../types/domain'
 import { RulePassedNotice } from './RulePassedNotice'
 
+/** 1차 이상탐지가 실제로 채점했는가. 빈 값·`ok`가 아니면 점수를 믿을 수 없다. */
+export function anomalyScored(item: Pick<Settlement, 'anomalyStatus'>): boolean {
+  const status = item.anomalyStatus
+  return !status || status === 'ok'
+}
+
 /** 목록 위험도 셀 표기 — 점수가 없을 때 무엇을 보여줄지. */
-export function riskScoreLabel(state: RiskReviewState | undefined, score: number): string {
-  if (state === 'DONE') return String(Math.round(score * 100))
+export function riskScoreLabel(
+  state: RiskReviewState | undefined, score: number, scored = true,
+): string {
+  if (state === 'DONE') return scored ? String(Math.round(score * 100)) : '-'
   if (state === 'RUNNING') return '…'
   return '-'
 }
 
-export function riskScoreTitle(state: RiskReviewState | undefined): string | undefined {
+export function riskScoreTitle(
+  state: RiskReviewState | undefined, item?: Pick<Settlement, 'anomalyStatus' | 'anomalyNote'>,
+): string | undefined {
+  //  못 잰 이유가 있으면 그걸 먼저 보여준다 — 「-」만 있으면 왜인지 알 수 없다.
+  if (state === 'DONE' && item && !anomalyScored(item)) {
+    return item.anomalyNote || '이상탐지가 실행되지 않아 위험 점수가 없습니다'
+  }
   switch (state) {
     case 'RUNNING': return 'AI 위험 검토가 진행 중입니다'
     case 'FAILED': return 'AI 위험 검토가 실패했습니다 — 재실행이 필요합니다'
     case 'NOT_STARTED': return '룰 판정으로 통과돼 위험 검토를 거치지 않은 건입니다'
     default: return undefined
   }
+}
+
+/**
+ * ①이상탐지 카드 자리 — **결과는 왔는데 1차만 못 돈** 건의 본문.
+ * 2차 RAG 검증은 정상적으로 돌았으므로 그 사실도 함께 말한다.
+ */
+export function AnomalyUnavailableNotice({ item }: { item: Settlement }) {
+  return (
+    <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+      <AlertTriangle size={18} color="var(--tone-amber)" style={{ flexShrink: 0, marginTop: 2 }} />
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>이상탐지 점수를 계산하지 못했습니다</div>
+        <div className="text-meta" style={{ marginTop: 4 }}>
+          {item.anomalyNote || '학습된 이상탐지 모델이 없습니다.'}
+        </div>
+        <div className="text-meta" style={{ marginTop: 6 }}>
+          <b>점수 0이 아니라 「측정 못 함」입니다</b> — 이상 신호가 낮다는 뜻이 아닙니다.
+          아래 ② 내규 검증 결과와 룰 판정으로 검토해 주세요.
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -92,6 +133,14 @@ export function RiskReviewStatusBody({
 export function RiskScoreBadge({ item }: { item: Settlement & { anomalyScore: number } }) {
   const state = item.riskReviewState ?? 'NOT_STARTED'
   if (state === 'DONE') {
+    //  결과는 왔는데 1차만 못 돈 건 — `0.00`을 그리면 「이상 없음」으로 읽힌다.
+    if (!anomalyScored(item)) {
+      return (
+        <span className="tag caution" title={item.anomalyNote || undefined}>
+          <AlertTriangle size={11} /> anomaly 측정 안 됨
+        </span>
+      )
+    }
     return (
       <span className="tag" style={{ color: 'var(--tone-purple)', background: 'var(--tone-purple-bg)' }}>
         anomaly {item.anomalyScore.toFixed(2)}

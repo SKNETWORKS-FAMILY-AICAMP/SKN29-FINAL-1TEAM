@@ -86,6 +86,10 @@ def run(settlement) -> RiskReview | None:
         # 1차 등급(HIGH/MEDIUM/LOW). AI가 판정 시점 임계값으로 매긴 값을 그대로 보존한다 —
         # 예전엔 이 값을 여기서 읽지 않아, AI가 계산해 응답에 실어 보내도 조용히 버려졌다.
         risk_tier=stage1.get("risk_tier", ""),
+        #  **채점했는지 여부를 그대로 보존한다.** 옛 응답(status 없음)은 점수가 있으면
+        #  정상 채점으로 본다 — 그때는 못 잰 경우도 LOW로 왔으므로 소급 판정은 하지 않는다.
+        stage1_status=stage1.get("status", ""),
+        stage1_note=str(stage1.get("note") or "")[:300],
         # `reasons`는 1차 feature 기여도(프론트 기존 계약), `anomaly_reasons`는 2차 검토 사유.
         reasons=stage1.get("contribs", []),
         anomaly_reasons=stage2.get("review_reasons", []),

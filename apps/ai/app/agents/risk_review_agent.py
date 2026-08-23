@@ -502,8 +502,37 @@ def _decide_action(classification: dict) -> dict:
     return parsed.model_dump()
 
 
+#: 1차 이상탐지의 결과 상태. **점수 0과 "점수를 못 냈다"를 가르는 축**이다.
+#   ok        정상 채점
+#   no_model  학습된 모델이 없다(경로 어긋남·미배치)
+#   error     피처 조립·추론 실패
+STAGE1_OK, STAGE1_NO_MODEL, STAGE1_ERROR = "ok", "no_model", "error"
+
+
+def _stage1_unavailable(status: str, message: str) -> dict:
+    """채점하지 못했다 — **판정처럼 보이는 값을 채우지 않는다.**
+
+    예전엔 `risk_tier="LOW"`를 돌려줬다. 화면은 그걸 「이상 신호 낮음」으로 읽으므로,
+    모델이 없어서 못 잰 건이 **검사해보니 안전한 건**으로 둔갑했다. 등급은 빈 문자열로
+    둔다 — 저장소에 이미 `riskTier: '' = 판단 없음` 계약이 있다(`ReviewItem`).
+
+    `anomaly_score`는 0.0을 유지하되(필드 타입이 float다) `status`가 그 0이 점수가 아님을
+    말한다. 화면은 `status`를 보고 `-`로 그린다.
+    """
+    return {
+        "anomaly_score": 0.0,
+        "is_outlier": False,
+        "contribs": [],
+        "risk_tier": "",
+        "status": status,
+        "note": message,
+    }
+
+
 def _stage1(tx_id: int) -> dict:
-    """1차 이상탐지: get_tx_features → ml_infer → risk_tier. 모델 미학습이면 stub 그대로 통과.
+    """1차 이상탐지: get_tx_features → ml_infer → risk_tier.
+
+    모델이 없거나 실패하면 **채점하지 않았다는 사실을 명시해** 돌려준다(`_stage1_unavailable`).
 
     **실패해도 예외를 올리지 않는다.** 여기서 터지면 2차 RAG 내규검증까지 같이 죽는데, 2차는
     1차 결과 없이도 (근거 검색만으로) 충분히 돌아간다 — 실제로 현재 배포 모델은 contribs가
@@ -516,19 +545,24 @@ def _stage1(tx_id: int) -> dict:
         features = tools.get_tx_features(tx_id)
         model = get_active_model()
         if not model or not model.fitted:
-            return {
-                "anomaly_score": 0.0, "is_outlier": False, "contribs": [],
-                "risk_tier": "LOW", "note": "no trained model (stub)",
-            }
+            #  **조용히 넘어가지 않는다.** 로그가 없으면 "모델을 넣었는데 왜 점수가 0인가"를
+            #  추적할 수 없다(경로가 어긋나 못 찾고 있어도 화면엔 정상처럼 보인다).
+            #  찾던 경로는 레지스트리가 찍는다.
+            logger.warning("stage1(이상탐지) 미실행 — 학습된 모델이 없다(tx=%s)", tx_id)
+            return _stage1_unavailable(
+                STAGE1_NO_MODEL,
+                "학습된 이상탐지 모델이 없어 위험 점수를 계산하지 못했습니다.",
+            )
         result = tools.ml_infer(features["feature_vector"])
         result["risk_tier"] = _risk_tier(result.get("anomaly_score", 0.0))
+        result["status"] = STAGE1_OK
         return result
     except Exception as exc:  # noqa: BLE001  # Django 미기동·형상 불일치·모델 로드 실패 전부
         logger.warning("stage1(이상탐지) 실패(tx=%s): %s — 2차 검증만 진행", tx_id, exc)
-        return {
-            "anomaly_score": 0.0, "is_outlier": False, "contribs": [],
-            "risk_tier": "LOW", "note": f"stage1 실패({type(exc).__name__}) — 이상탐지 결과 없음",
-        }
+        return _stage1_unavailable(
+            STAGE1_ERROR,
+            f"이상탐지 실행에 실패해 위험 점수를 계산하지 못했습니다 ({type(exc).__name__}).",
+        )
 
 
 def _stage2(summary: dict, stage1: dict) -> dict:
@@ -551,10 +585,10 @@ def run(settlement_id: int) -> dict:
         logger.warning("get_settlement_summary(%s) 실패: %s", settlement_id, exc)
         return {
             "settlement_id": settlement_id,
-            "stage1_anomaly": {
-                "anomaly_score": 0.0, "is_outlier": False, "contribs": [],
-                "risk_tier": "LOW", "note": "stub",
-            },
+            "stage1_anomaly": _stage1_unavailable(
+                STAGE1_ERROR,
+                f"정산 정보를 읽지 못해 이상탐지를 실행하지 못했습니다 ({type(exc).__name__}).",
+            ),
             "stage2_rag_review": {
                 "violation_verdict": "INSUFFICIENT_INFO",
                 "review_reasons": [f"정산 조회 실패: {type(exc).__name__}"],

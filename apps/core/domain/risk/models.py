@@ -17,6 +17,14 @@ class RiskReview(models.Model):
     # 있고, 그때 과거 판정의 등급까지 소급해 바뀌면 감사 기록이 흔들린다(`rule_hits.eval_context`
     # 스냅샷과 같은 이유). 재판정(`/judge/`)하면 새 임계값으로 다시 매겨진다.
     risk_tier = models.CharField(max_length=10, blank=True)
+    #: 1차 이상탐지가 **실제로 채점했는가**. `Settlement.risk_review_state`(호출 단위 성공/실패)와
+    #  다른 축이다 — 호출은 성공했는데 1차만 못 돈 경우가 실재한다(모델 미배치·경로 어긋남).
+    #  이 축이 없던 동안 그런 건이 `anomaly_score=0.0` + `risk_tier="LOW"`로 저장돼
+    #  화면에서 **「검사해보니 안전한 건」으로 둔갑**했다.
+    #  값: ok | no_model | error (빈 문자열 = 옛 행)
+    stage1_status = models.CharField(max_length=16, blank=True)
+    #: 못 채점한 이유(사람이 읽는 문장). 화면이 점수 자리에 대신 띄운다.
+    stage1_note = models.CharField(max_length=300, blank=True)
     reasons = models.JSONField(default=list, blank=True)    # 피처 기여도 [{feature, weight}]
     anomaly_reasons = models.JSONField(default=list, blank=True)  # 요약 사유 문구(리스트)
     rag_refs = models.JSONField(default=list, blank=True)   # 2차 RAG 근거(출처·조문·발췌 포함)
