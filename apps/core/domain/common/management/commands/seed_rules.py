@@ -449,7 +449,10 @@ TEST_NODES = [
                "사전승인이 필요한데 승인 기록이 없는 건입니다.", 3, severity="HIGH", flag="PRE_APPROVAL_MISSING",
                when="미리 승인을 받아야 하는 지출인데 승인 기록이 없을 때",
                then="쓴 사람에게 보완을 요청합니다. 승인 내역을 첨부하면 다시 판정합니다."),
-    _test_node("T-21", "적격증빙 누락", {"not": {"var": "evidence.has_valid_receipt"}}, "RETURN",
+    # 「없음」을 묻는 것이므로 `== False`로 **명시**한다. `not(var)`는 v6 이전엔 모름까지
+    #  참으로 만들어 확인 안 한 건에 EVIDENCE_MISSING을 달았다(지금은 False로 안 걸린다).
+    _test_node("T-21", "적격증빙 누락",
+               {"==": [{"var": "evidence.has_valid_receipt"}, False]}, "RETURN",
                "적격증빙이 첨부되지 않은 건입니다. 두 갈래에서 함께 도달하는 수렴 노드입니다.", 4,
                severity="HIGH", flag="EVIDENCE_MISSING",
                when="세금계산서·카드전표 같은 정식 증빙이 첨부되지 않았을 때",
