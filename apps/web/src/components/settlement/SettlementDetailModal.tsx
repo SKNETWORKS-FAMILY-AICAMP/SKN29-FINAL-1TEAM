@@ -831,7 +831,7 @@ export function SettlementDetailModal({
               </div>
               <div className="field">
                 <label>
-                  참석 인원
+                  참석 인원 <span className="text-meta" style={{ fontWeight: 400 }}>(신고)</span>
                   <span className="text-meta" style={{ marginLeft: 6, fontWeight: 400 }}>
                     비워두면 「모름」 · 0은 「해당 없음」
                   </span>
@@ -846,6 +846,13 @@ export function SettlementDetailModal({
                     1인당 {Math.floor(numOnly(amountText) / Number(headcount)).toLocaleString()}원으로 판정됩니다
                   </div>
                 )}
+                {/* 신고값이 어디까지 쓰이는지 적는다 — 안 적으면 "인원을 적었으니 됐다"고
+                    믿고 명단을 안 올린다. 청탁금지 같은 판정은 문서 확인값만 본다. */}
+                <div className="text-meta" style={{ marginTop: 4 }}>
+                  본인이 적은 값이라 식대·복리후생처럼 승인이 느슨한 지출에 쓰입니다.
+                  청탁금지 한도처럼 정확한 인원이 필요한 판정은 <b>참석자 명단·회의록</b>을
+                  첨부해야 확인값으로 계산됩니다.
+                </div>
               </div>
               <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>
                 <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" disabled={readOnly} />

@@ -422,12 +422,26 @@ class FactMerger:
 # `Attachment.extracted`에 그대로 남아 S-03에서 "저신뢰라 반영 안 됨"으로 보여줄 수 있다.
 ATTACHMENT_CONFIDENCE_THRESHOLD = 0.6
 
+#: 추출값이 들어갈 자리 — **신고 필드가 아니라 확인 필드**다.
+#
+#  판독기(`app/vision/document.py`)는 새 경로로 뽑지만, 이미 저장된 `Attachment.extracted`는
+#  옛 경로를 들고 있다. 여기서 접어 주면 재판독 없이도 과거 첨부가 확인값으로 살아난다 —
+#  안 그러면 지금까지 읽어둔 명단이 전부 없는 것이 된다.
+EXTRACT_PATH_REMAP = {
+    "participants.participant_count": "participants.verified_participant_count",
+    "participants.external_participant_count": "participants.verified_external_count",
+}
+
 
 def collect_from_attachments(merger: FactMerger, settlement) -> None:
     """첨부 문서에서 추출된 사실을 제안한다(`RANK_EXTRACT`).
 
     **문서끼리도 충돌한다.** 회의록은 4명, 참석자명단은 6명일 수 있다. 예전에는 나중 값이
     조용히 이겼지만, 지금은 동순위 불일치라 어느 쪽도 쓰지 않고 충돌로 기록한다(→ REVIEW).
+
+    **인원은 신고 필드가 아니라 확인 필드로 간다**(`EXTRACT_PATH_REMAP`). 예전엔 화면 입력과
+    같은 경로를 놓고 순위로 겨뤄 사람이 적은 값이 늘 이겼고, 그래서 룰이 "이 인원이 문서로
+    확인된 것인가"를 물을 수 없었다. 이제 둘은 **서로 다른 사실**이라 다투지 않는다.
     """
     ordered = settlement.attachments.filter(extraction_status="DONE").order_by("extracted_at", "id")
     for attachment in ordered:
@@ -436,7 +450,7 @@ def collect_from_attachments(merger: FactMerger, settlement) -> None:
         for path, value in (attachment.extracted or {}).items():
             if confidence.get(path, 1.0) < ATTACHMENT_CONFIDENCE_THRESHOLD:
                 continue
-            merger.offer(path, value, RANK_EXTRACT, origin)
+            merger.offer(EXTRACT_PATH_REMAP.get(path, path), value, RANK_EXTRACT, origin)
 
 
 def collect_from_settlement(merger: FactMerger, settlement) -> None:
@@ -608,8 +622,19 @@ def derive_after_merge(merger: FactMerger) -> None:
 
     `tx.per_person_amount`를 정산 컬럼에서 미리 계산하면, 인원이 첨부에서만 온 경우
     `None`으로 덮어써 추출값을 지운다(이전 구현의 결함). 여기서 합쳐진 인원으로 계산한다.
+
+    **신고 기준과 확인 기준을 따로 만든다.** 하나로 두면 룰이 "이 1인당 금액이 확인된
+    명단으로 계산된 것인가"를 물을 수 없다 — 청탁금지 한도처럼 정확한 인원이 필요한 판정과
+    식대처럼 느슨한 판정이 같은 숫자를 쓰게 된다.
     """
     amount = merger.resolved("tx.amount")
-    count = merger.resolved("participants.participant_count")
-    if amount is not None and count:
-        merger.offer("tx.per_person_amount", int(amount) // int(count), RANK_SOR, "derived")
+    if amount is None:
+        return
+    for count_path, out_path in (
+        ("participants.participant_count", "tx.per_person_amount"),
+        ("participants.verified_participant_count", "tx.verified_per_person_amount"),
+    ):
+        count = merger.resolved(count_path)
+        # `0`(명단 없음)으로는 나눌 수 없다 — 값을 만들지 않고 비워 둔다(모름).
+        if count:
+            merger.offer(out_path, int(amount) // int(count), RANK_SOR, "derived")

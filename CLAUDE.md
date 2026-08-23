@@ -67,7 +67,7 @@ daily_scrum/  주차별 진행 보고
 | 룰 그래프(트리) 도메인 | ✅ | scope별 버전·DRAFT 복제/원복·DSL 쉽게보기·검증 시뮬레이션·승인 흐름·롤백. 구조 시각화는 플로우차트(순환 감지) |
 | 룰 엔진 판정 | ✅ | 게이트 우선(GLOBAL→scope) · 그래프당 `rule_hits` 1행 · **엔진은 최종반려를 만들지 않는다**(REJECT여도 상태는 RETURNED) · 제출이 판정을 이어 돌린다. → [[rule-engine]] |
 | 네임드 플래그 | ✅ | 2계층(닫힌 `SystemFlag` / 열린 `RuleFlag`). **불변식: 플래그는 상태머신을 움직이지 않는다.** `code`는 데이터 계약. → [[rule-flags]] |
-| EvalContext | ✅ v6 (51필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. **파생 불린 4건 제거·상수는 룰에 허용**(§2). → [[eval-context-sourcing]] §15~16 |
+| EvalContext | ✅ v6 (54필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. 파생 불린 4건 제거·상수는 룰에 허용(§2). **참석 인원은 신고(화면)와 확인(문서 추출)을 다른 필드로 가른다** — 정확도 요구가 다른 판정이 같은 사실을 쓰면 안 된다. → [[eval-context-sourcing]] §15~18 |
 | 규정 임계값(policy) | ✅ 동적화 완료 | 저장층 `PolicyTable`(자유 JSON+`key_axes`) → 소비층 `ctx.policy.*`. **적재된 표에서 파생**(코드 상수 아님), `RESOLVERS`는 이름 override로만. 축 정합 검사(`check_table_axes`, DB 행 대조). → [[policy-domain]] §3 |
 | 기본 게이트(DEFAULT GATE) | ✅ | 제품 기본 제공은 **이것 하나**. 기본 `REVIEW`+사유, `PASS`는 화이트리스트, `RETURN`/`REJECT` 안 냄. → [[default-gate]] |
 | 판정 입력(사실) 조립 | 🚧 대부분 해소 | 이력 집계·영업일·근무시간을 채워 「룰이 참조하는데 미조립」이 4→1로 줄었다(남은 1은 `trip.*`, 첨부 추출은 되나 **화면 입력칸이 없다**). `finance_dept_is_spender`는 `Team.is_finance` 필요. → [[eval-context-sourcing]] §15 |

@@ -169,6 +169,11 @@ ENTERTAIN_OK = {
     **LIMITS,
     "tx__amount": 120_000,
     "tx__per_person_amount": 30_000,
+    # 청탁금지(E-003)는 **문서로 확인된 인원** 기준으로 판정한다 — 신고값으로 나누면
+    #  인원을 부풀리는 것만으로 법정 한도를 피할 수 있다. 명단이 없으면 이 값이 null이라
+    #  판정이 검토로 넘어간다(그 자체가 의도된 동작).
+    "tx__verified_per_person_amount": 30_000,
+    "participants__verified_participant_count": 4,
     "evidence__has_valid_receipt": True,
     "approval__pre_approval_obtained": True,
     "participants__has_kickback_law_target": False,
@@ -208,15 +213,28 @@ class EntertainGraphTests(GraphScenarioMixin, SimpleTestCase):
             decision="PASS", flags=[], path=ENTERTAIN_PATH,
         ),
         Scenario(
-            "청탁금지 대상자 참석 + 1인당 5만원 → 검토 (법정 한도 30,000)",
+            "청탁금지 대상자 참석 + 확인 1인당 5만원 → 검토 (법정 한도 30,000)",
             facts={**ENTERTAIN_OK, "participants__has_kickback_law_target": True,
-                   "tx__per_person_amount": 50_000},
+                   "tx__verified_per_person_amount": 50_000},
             decision="REVIEW", flags=["KICKBACK_LAW_RISK"], path=["E-001", "E-002", "E-003"],
         ),
         Scenario(
-            "청탁금지 대상자 참석이어도 1인당 3만원 이하면 걸리지 않는다",
+            # 신고 인원만으로는 법정 한도를 판정하지 않는다 — 명단이 없으면 사람이 본다.
+            "청탁금지 대상자 참석 + 확인 명단 없음 → 판정 불가로 검토",
             facts={**ENTERTAIN_OK, "participants__has_kickback_law_target": True,
-                   "tx__per_person_amount": 25_000},
+                   "tx__verified_per_person_amount": None,
+                   "participants__verified_participant_count": None},
+            # 조건은 **안 걸린다**(모름이 참을 만들지 않으므로) — 그래서 그래프는 끝까지
+            #  가고 종단은 PASS다. 최종 판정만 가드가 REVIEW로 덮는다. 이 구분이 중요하다:
+            #  「위반으로 걸렸다」가 아니라 「판단할 수 없어 사람에게 보낸다」이다.
+            decision="REVIEW",
+            flags=["UNRESOLVED_FACT:tx.verified_per_person_amount"],
+            path=ENTERTAIN_PATH,
+        ),
+        Scenario(
+            "청탁금지 대상자 참석이어도 확인 1인당 3만원 이하면 걸리지 않는다",
+            facts={**ENTERTAIN_OK, "participants__has_kickback_law_target": True,
+                   "tx__verified_per_person_amount": 25_000},
             decision="PASS", flags=[], path=ENTERTAIN_PATH,
         ),
         Scenario(
