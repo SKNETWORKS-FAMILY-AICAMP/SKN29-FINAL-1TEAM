@@ -246,7 +246,6 @@ export function MyExpenses() {
                     <td>
                       <span className="tag" style={{ color: `var(--tone-${categoryTone(e.category || e.aiCategory)})`, background: `var(--tone-${categoryTone(e.category || e.aiCategory)}-bg)`, borderColor: 'transparent' }}>
                         {(e.category || e.aiCategory) || '선택 필요'}
-                        {e.aiSuggested && (e.category || e.aiCategory) ? ' · AI' : ''}
                       </span>
                     </td>
                     <td>

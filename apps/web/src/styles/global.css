@@ -211,11 +211,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .scope-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sidebar-text-muted); }
 .scope-chip .sw { width: 13px; height: 13px; border-radius: 4px; background: #b9bce0; flex-shrink: 0; }
 
-.page { padding: var(--space-6); max-width: 1280px; width: 100%; margin: 0 auto; }
-/* 히어로 배너를 쓰는 화면(S-01·S-02)은 배너가 사이드바 바로 옆부터 화면 끝까지 블리드되고,
-   그 아래 본문만 기존 1280px 중앙 컬럼을 유지한다(시안 실측). */
+/* 전 화면 동일 폭 정책 — 검토 워크스페이스·RULE 콘솔·AI LAB과 같은 전폭 레이아웃으로 통일. */
+.page { padding: var(--space-6); max-width: none; width: 100%; margin: 0 auto; }
+/* 히어로 배너를 쓰는 화면(S-01·S-02)은 배너가 사이드바 바로 옆부터 화면 끝까지 블리드된다. */
 .page:has(.hero-band) { max-width: none; padding: 0; }
-.page-inner { max-width: 1280px; width: 100%; margin: 0 auto; padding: var(--space-6); }
+.page-inner { max-width: none; width: 100%; margin: 0 auto; padding: var(--space-6); }
 .page-head { margin-bottom: var(--space-4); }
 .page-head h1 { font-size: var(--text-h1); }
 .page-head .sub { color: var(--muted); font-size: var(--text-body); margin-top: var(--space-1); }
@@ -266,13 +266,13 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .split { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-4); align-items: start; }
 
-/* ── S-03 검토 워크스페이스 : 작업 화면이라 전폭 사용(글로벌 .page 1280px 상한을 이 화면에서만 해제) ── */
-.page:has(.review-ws) { max-width: none; overflow-x: auto; }
+/* ── S-03 검토 워크스페이스 : 작업 화면이라 가로 스크롤 허용 ── */
+.page:has(.review-ws) { overflow-x: auto; }
 /* Review List는 고정, 선택 건 상세만 남는 폭에 따라 확장 */
 .review-ws .split { grid-template-columns: 360px minmax(720px, 1fr); min-width: 1100px; }
 
-/* ── S-04 Rule 콘솔 : 작업 화면 전폭 + 초안 그래프 트리 ── */
-.page:has(.rule-console-full) { max-width: none; overflow-x: auto; }
+/* ── S-04 Rule 콘솔 : 초안 그래프 트리라 가로 스크롤 허용 ── */
+.page:has(.rule-console-full) { overflow-x: auto; }
 .rule-draft-grid { display: grid; grid-template-columns: 420px minmax(480px, 1.3fr) minmax(380px, 1fr); min-width: 1300px; gap: var(--space-4); align-items: start; }
 .rule-console-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 .rule-console-tabs .btn { border-color: transparent; background: transparent; box-shadow: none; }
@@ -346,6 +346,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .md-quote { margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--border-strong); background: var(--surface-2); color: var(--muted); font-size: var(--text-meta); border-radius: 0 var(--radius-control) var(--radius-control) 0; }
 .md-hr { margin: 14px 0; border: 0; border-top: 1px solid var(--border); }
 .md-code { padding: 1px 5px; border-radius: var(--radius-chip); background: var(--surface-2); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.md-table-wrap { margin: 10px 0; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-control); }
+.md-table { font-size: var(--text-meta); }
+.md-table th, .md-table td { white-space: normal; }
 /* 신규 룰 모달 옵션 카드 */
 .newrule-opt { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); cursor: pointer; }
 .newrule-opt.active { border-color: var(--primary); background: var(--primary-soft); }
@@ -471,11 +474,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .filter-bar select, .filter-bar input {
   padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); font-size: var(--text-body);
 }
-.filter-bar .search-box {
+.search-box {
   display: flex; align-items: center; gap: 6px; padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--muted);
 }
-.filter-bar .search-box input { border: none; padding: 0; font-size: var(--text-body); outline: none; background: transparent; }
+.search-box input { border: none; padding: 0; font-size: var(--text-body); outline: none; background: transparent; }
 
 /* ── 파이프라인(S-03) ─────────────────────── */
 .pipeline { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-meta); font-weight: 600; }
@@ -708,6 +711,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* 예산 산정 지표 — 팀별 소진율 막대 | 자주 남는/부족한 항목 */
 .budget-pattern-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: var(--space-5); align-items: start; }
 @media (max-width: 1100px) { .budget-pattern-grid { grid-template-columns: 1fr; } }
+/* 자주 남는 항목 | 자주 부족한 항목 — 나란히 배치 */
+.budget-pattern-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+@media (max-width: 720px) { .budget-pattern-subgrid { grid-template-columns: 1fr; } }
 .gov-sub-title { font-size: var(--text-meta); font-weight: 700; color: var(--text); margin-bottom: var(--space-2); }
 .gov-pattern-table { font-size: var(--text-meta); }
 .gov-pattern-table th { font-size: var(--text-caption); }
@@ -724,7 +730,6 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* ── AI-LAB (관리자 실험 화면) ─────────────────────────────
    원본(프롬프트·JSON·청크 본문)을 잘라내지 않고 보여주는 게 목적이라, 폭을 넓게 쓰고
    긴 텍스트는 스크롤 블록 안에 가둔다. 톤은 나머지 화면과 같은 border-only. */
-.page:has(.ai-lab-full) { max-width: none; }
 .ai-lab-full .lab-split { display: grid; grid-template-columns: minmax(380px, 460px) minmax(520px, 1fr); gap: var(--space-4); align-items: start; }
 
 /* 상단 환경 상태 스트립 */
