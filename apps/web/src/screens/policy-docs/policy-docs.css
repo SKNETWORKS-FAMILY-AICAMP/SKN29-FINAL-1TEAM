@@ -287,6 +287,49 @@
 
 .pd-decide p { margin: 0 0 10px; font-size: 12px; }
 
+/* ── 별표 판정 임계값 승인 폼(표 key·이름·축·내용·시행일) ─────── */
+.pd-field { margin-top: 14px; }
+
+.pd-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pd-field input,
+.pd-field select {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.pd-field input:disabled,
+.pd-field select:disabled { background: var(--surface-muted); color: var(--muted); }
+
+.pd-field .text-meta { margin-top: 4px; }
+
+/* AxisPicker — 축 select는 폭이 좁아도 되고, 옆 삭제 버튼과 한 줄에 나란히 */
+.pd-field select { width: auto; flex: 1; min-width: 0; }
+
+.pd-json {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  resize: vertical;
+}
+
+.pd-json:disabled { color: var(--muted); }
+
 .pd-skipform {
   margin-top: 12px;
   padding: 12px;
