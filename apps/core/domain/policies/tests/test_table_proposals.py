@@ -20,6 +20,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 
 from domain.accounts.models import Capability
 from domain.policies import table_proposals
@@ -171,6 +172,14 @@ class ReindexTests(ProposalBase):
         _replace_clauses(self.doc, [{"articleLabel": "제9조"}])
         self.assertEqual(self.doc.clauses.get().triage_kind, "")
 
+    def test_시행일이_없으면_적재일로_채운다(self):
+        """시행일이 비면 **승인 자체가 막힌다**. 업로드가 문서 시행일을 받지 않아 실제로
+        전건이 그 상태였다 — 빈 채로 두면 화면에도 「고칠 것이 있다」가 안 보인다."""
+        _replace_table_proposals(self.doc, [
+            {"chunkId": "c9", "key": "new_table", "label": "별표9", "payload": {"value": 1}},
+        ])
+        self.assertEqual(self.doc.table_proposals.get().effective_date, timezone.localdate())
+
     def test_모르는_분류값은_버리고_적재는_계속된다(self):
         _replace_clauses(self.doc, [
             {"articleLabel": "제1조", "triageKind": "WHATEVER", "triagePriority": "P9"},
@@ -217,6 +226,32 @@ class ApiTests(ProposalBase):
         detail = res.json()["detail"]
         self.assertIn("표기 규칙", detail)
         self.assertIn("user.position", detail)
+
+    def test_승인이_화면에서_고친_값을_함께_받는다(self):
+        """따로 저장하지 않고 승인을 누르면 서버가 옛 값으로 검사해 400이 난다 — 화면에는
+        고친 값이 그대로 보이므로 왜 막혔는지 알 수 없는 자리가 된다."""
+        p = make_proposal(self.doc, key_axes=["user.position"], effective_date=None)
+        res = self.client.post(
+            f"/api/policy-docs/{self.doc.pk}/table-proposals/{p.pk}/decision/",
+            {"action": "APPROVE", "keyAxes": ["user.job_title"], "effectiveDate": "2026-01-01"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200, res.json())
+        table = PolicyTable.objects.get(key="welfare_limit_table")
+        self.assertEqual(table.key_axes, ["user.job_title"])
+        self.assertEqual(table.effective_date, EFF)
+
+    def test_반려는_고친_값을_반영하지_않는다(self):
+        """반려는 값을 쓰지 않는다 — 손대면 「무엇을 보고 반려했나」가 흐려진다."""
+        p = make_proposal(self.doc)
+        res = self.client.post(
+            f"/api/policy-docs/{self.doc.pk}/table-proposals/{p.pk}/decision/",
+            {"action": "REJECT", "note": "서식이라 임계값 없음", "title": "바꿔치기"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        p.refresh_from_db()
+        self.assertEqual(p.title, "복리후생비 한도")
 
     def test_처리된_제안은_수정할_수_없다(self):
         p = make_proposal(self.doc)

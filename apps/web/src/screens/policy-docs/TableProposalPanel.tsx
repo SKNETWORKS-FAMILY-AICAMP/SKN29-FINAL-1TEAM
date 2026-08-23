@@ -82,12 +82,17 @@ function AxisPicker({ axes, options, onChange, disabled }: {
   )
 }
 
+/** 시행일이 비어 있으면 승인이 막힌다(서버 검사). 업로드 화면이 문서 시행일을 받지 않아
+ *  실제로 전건이 그 상태였다 — 빈칸으로 두면 「고칠 것이 있다」는 사실조차 안 보이므로
+ *  오늘로 채워 두고 사람이 고치게 한다. */
+const TODAY = new Date().toISOString().slice(0, 10)
+
 export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecide }: {
   proposal: PolicyTableProposal
   axisOptions: AxisOption[]
   busy: boolean
   onSave: (patch: Record<string, unknown>) => void
-  onDecide: (action: 'APPROVE' | 'REJECT', note: string) => void
+  onDecide: (action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>) => void
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState({
@@ -96,7 +101,7 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
     keyAxes: proposal.keyAxes,
     payload: proposal.payload,
     strictKeys: proposal.strictKeys,
-    effectiveDate: proposal.effectiveDate ?? '',
+    effectiveDate: proposal.effectiveDate || TODAY,
   })
   const [note, setNote] = useState('')
   const [rejecting, setRejecting] = useState(false)
@@ -200,8 +205,10 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
               <button className="btn" disabled={busy} onClick={() => onSave({ ...draft, effectiveDate: draft.effectiveDate || null })}>
                 수정 저장
               </button>
+              {/* 고친 값을 결정과 함께 보낸다 — 수정 저장을 잊어도 승인이 막히지 않는다. */}
               <button className="btn primary" disabled={busy}
-                      onClick={() => onDecide('APPROVE', note)}>
+                      onClick={() => onDecide('APPROVE', note,
+                        { ...draft, effectiveDate: draft.effectiveDate || null })}>
                 <Check size={11} /> 승인하고 판정에 반영
               </button>
               <button className="btn" disabled={busy} onClick={() => setRejecting(true)}>이 표는 임계값이 아님</button>

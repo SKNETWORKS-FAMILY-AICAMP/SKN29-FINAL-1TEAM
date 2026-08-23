@@ -97,6 +97,34 @@ def _proposal_row(p: PolicyTableProposal) -> dict:
     }
 
 
+def _apply_proposal_patch(proposal: PolicyTableProposal, data) -> None:
+    """사람이 고친 값을 제안에 반영한다 — 수정 저장과 승인이 **같은 함수**를 쓴다.
+
+    둘이 갈라져 있으면 "고친 값으로 승인"과 "저장된 값으로 승인"이 생기고, 화면은 전자를
+    보여주는데 서버는 후자를 검사한다. 온 키만 건드린다(빠진 키는 지우는 게 아니다).
+    """
+    fields = []
+    for field, key in (("key", "key"), ("title", "title")):
+        if key in data:
+            setattr(proposal, field, str(data.get(key) or "").strip())
+            fields.append(field)
+    if "keyAxes" in data:
+        axes = data.get("keyAxes") or []
+        proposal.key_axes = [str(a).strip() for a in axes if str(a).strip()]
+        fields.append("key_axes")
+    if "payload" in data:
+        proposal.payload = data.get("payload") or {}
+        fields.append("payload")
+    if "strictKeys" in data:
+        proposal.strict_keys = bool(data.get("strictKeys"))
+        fields.append("strict_keys")
+    if "effectiveDate" in data:
+        proposal.effective_date = data.get("effectiveDate") or None
+        fields.append("effective_date")
+    if fields:
+        proposal.save(update_fields=[*fields, "updated_at"])
+
+
 def _axis_options() -> list[dict]:
     """축으로 쓸 수 있는 **사실 경로**. `policy.*`와 감사 섹션은 뺀다.
 
@@ -506,29 +534,17 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
                 status=http.HTTP_400_BAD_REQUEST,
             )
 
-        data = request.data
-        for field, key in (("key", "key"), ("title", "title")):
-            if key in data:
-                setattr(proposal, field, str(data.get(key) or "").strip())
-        if "keyAxes" in data:
-            axes = data.get("keyAxes") or []
-            proposal.key_axes = [str(a).strip() for a in axes if str(a).strip()]
-        if "payload" in data:
-            proposal.payload = data.get("payload") or {}
-        if "strictKeys" in data:
-            proposal.strict_keys = bool(data.get("strictKeys"))
-        if "effectiveDate" in data:
-            proposal.effective_date = data.get("effectiveDate") or None
-        proposal.save()
+        _apply_proposal_patch(proposal, request.data)
         return Response(_proposal_row(proposal))
 
     @action(detail=True, methods=["post"],
             url_path=r"table-proposals/(?P<proposal_id>\d+)/decision")
     def table_proposal_decision(self, request, pk=None, proposal_id=None):
-        """`{action: "APPROVE"|"REJECT", note}` — 승인하면 `PolicyTable` 행이 생긴다.
+        """`{action: "APPROVE"|"REJECT", note, …수정값}` — 승인하면 `PolicyTable` 행이 생긴다.
 
-        승인 검사(축·키·구조·시행일)를 통과하지 못하면 **400과 사유 전부**를 돌려준다.
-        하나씩 알려주면 고치고 누르고를 반복하게 된다.
+        승인 요청은 화면이 고친 값(키·축·표 내용·시행일)을 함께 실어 보낼 수 있고, 있으면
+        **검사 전에 반영**한다. 승인 검사(축·키·구조·시행일)를 통과하지 못하면 **400과 사유
+        전부**를 돌려준다 — 하나씩 알려주면 고치고 누르고를 반복하게 된다.
         """
         doc = self.get_object()
         proposal = doc.table_proposals.filter(pk=proposal_id).first()
@@ -537,6 +553,11 @@ class PolicyDocViewSet(viewsets.ModelViewSet):
 
         verb = str(request.data.get("action") or "").upper()
         note = str(request.data.get("note") or "")
+        # 화면이 고친 값을 **결정과 함께** 받는다. 따로 저장하게 두면 축·시행일을 고치고
+        # 승인을 눌렀는데 서버는 옛 값으로 검사해 400이 난다 — 화면에는 고친 값이 그대로
+        # 보이므로 왜 막혔는지 알 수 없는, 되돌아 나올 길 없는 자리가 된다.
+        if verb == "APPROVE" and proposal.status == TableProposalStatus.PENDING:
+            _apply_proposal_patch(proposal, request.data)
         try:
             if verb == "APPROVE":
                 table_proposals.approve(proposal, actor=request.user, note=note)
@@ -770,7 +791,12 @@ def _replace_table_proposals(doc: PolicyDoc, rows: list[dict]) -> None:
             key_axes=row.get("keyAxes") or [],
             payload=row.get("payload") or {},
             strict_keys=bool(row.get("strictKeys")),
-            effective_date=row.get("effectiveDate") or doc.effective_date,
+            # 시행일이 없으면 **승인 자체가 막힌다**(`table_proposals.validate`). 업로드
+            # 화면이 문서 시행일을 받지 않아 실제로 전건이 그 상태였다 — 적재일로 채우고
+            # 사람이 승인 화면에서 고치게 한다(빈칸이면 고칠 것이 있다는 것조차 안 보인다).
+            effective_date=(
+                row.get("effectiveDate") or doc.effective_date or timezone.localdate()
+            ),
             confidence=float(row.get("confidence") or 0.0),
             notes=str(row.get("notes") or "")[:2000],
         )

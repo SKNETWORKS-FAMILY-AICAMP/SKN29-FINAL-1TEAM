@@ -81,7 +81,10 @@ def _payload_problems(payload: dict, axes: list[str]) -> list[str]:
     problems: list[str] = []
     if not axes:
         if "value" not in payload:
-            problems.append('축이 없는 표는 `{"value": <숫자>}` 형태여야 합니다.')
+            problems.append(
+                '축이 없는 표는 `{"value": <숫자>}` 형태여야 합니다 — 표가 행·열로 값을'
+                ' 고른다면 값을 바꾸지 말고 **축을 먼저 고르세요**.'
+            )
         elif isinstance(payload.get("value"), (dict, list)):
             problems.append("축이 없는 표의 값은 스칼라여야 합니다.")
         return problems
