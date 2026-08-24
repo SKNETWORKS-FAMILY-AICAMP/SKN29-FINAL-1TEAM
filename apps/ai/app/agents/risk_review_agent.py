@@ -42,6 +42,7 @@ from app.config import settings
 from app.mcp import tools
 from app.ml.registry import get_active_model
 from app import llm
+from app.agents.review_notables import notables
 from app.rag.retrieval import build_query, facts_nl
 
 # 4629076 이후 main에서 병합된 리트리벌 품질 개선(2026-08-19, c605e99/21ffe4f)을 이 v1
@@ -184,7 +185,7 @@ _CLASSIFY_USER_PROMPT_TEMPLATE = """[1차 이상탐지 결과]
 anomaly_score: {anomaly_score:.3f} (risk_tier: {risk_tier})
 튀는 피처(근사 기여도): {contribs}
 
-[검토 대상 거래]
+[검토 대상 거래 — 담당자 화면에 이미 보이는 것]
 가맹점: {merchant}
 금액: {amount}원
 분류: {category}
@@ -521,10 +522,21 @@ _REPORT_SYSTEM_PROMPT = """당신은 법인카드 정산 위험 검토 보고서
    evidence.quote는 주어진 발췌에서 가져오고, 없는 문장을 만들지 마세요.
 4. **위반이 없다고 판단해도 finding을 하나 씁니다** — 무엇을 대조해 문제없다고 보았는지가
    판단의 내용입니다. 빈 목록은 "검증하지 않았다"로 읽힙니다.
-5. highlights는 **이 거래에서 눈여겨볼 사실**입니다(결제 시각·금액·업종·1인당 금액 등).
-   판단이 아니라 사실만, 각 항목 한 줄로. 특이한 점이 없으면 빈 배열로 두세요.
+5. highlights는 **담당자가 화면만 봐서는 알 수 없는 것**을 씁니다. 가맹점·금액·결제
+   시각·분류는 검토 목록에 이미 떠 있으니 되풀이하지 마세요 — 그건 도움이 아니라 소음입니다.
+   눈여겨볼 것은 이런 종류입니다:
+   · **과거와의 관계** — 같은 가맹점 반복, 일·월 누적액이 한도에 근접
+   · **값의 출처와 신뢰도** — 인원이 본인 신고인지 문서로 확인된 것인지, 업종 판정이 확실한지
+   · **어긋난 짝** — 신고 인원과 문서 인원이 다름, 실사용자와 지출자가 다름
+   · **판단하지 못한 것** — 무엇을 몰라서 자동 판정이 보류됐는지
+   아래 [눈여겨볼 사실] 목록이 그 후보입니다. **그 목록에 있는 것만** 쓰고, 담당자가 바로
+   행동할 수 있게 한 줄씩 풀어 쓰세요(숫자는 근거이므로 그대로 옮깁니다).
+   목록이 비어 있으면 highlights도 빈 배열로 두세요 — 채우려고 화면에 있는 사실을 옮겨
+   적으면 담당자는 다음부터 이 칸을 안 읽습니다.
 6. advisories는 **담당자가 추가로 확인·고려할 것**입니다. 시스템이 확인할 수 없어 사람이
    봐야 하는 것(참석자 명단 대조, 사전승인 문서 확인 등)을 씁니다.
+   highlights가 「무엇이 보이는가」라면 advisories는 「그래서 무엇을 해봐야 하는가」입니다 —
+   같은 내용을 두 칸에 나눠 적지 마세요.
 7. summary는 **2문장 이내**입니다. 무엇이 문제이고(또는 문제없고) 무엇을 권하는지.
 8. 내부 필드명(evidence.has_valid_receipt 같은 것)·플래그 코드를 본문에 노출하지 마세요.
    담당자가 쓰는 일상어로 씁니다.
@@ -544,6 +556,9 @@ anomaly_score: {anomaly_score} (등급 {risk_tier}) {anomaly_note}
 분류: {category}
 지출 목적: {purpose}
 거래 사실: {facts}
+
+[눈여겨볼 사실 — 화면에 없는 것. highlights는 여기서만 고릅니다]
+{notables}
 
 [사용 가능한 근거 — evidence.ref는 여기 있는 id만 쓰세요]
 {evidence_pool}
@@ -656,6 +671,7 @@ def _fallback_report(classification: dict, reason: str) -> dict:
 def _build_report(summary: dict, stage1: dict, classification: dict, profile: str) -> dict:
     """②보고서: 분류 결과 + 거래 사실 → 담당자가 읽는 산출물. 단일 호출."""
     pool, index = _evidence_pool(classification)
+    notable_facts = notables(summary.get("evalContext") or {}, summary.get("ruleFlags") or [])
     note = f"— {stage1['note']}" if stage1.get("note") else ""
     user_prompt = _REPORT_USER_PROMPT_TEMPLATE.format(
         violation_verdict=classification.get("violation_verdict", ""),
@@ -668,6 +684,9 @@ def _build_report(summary: dict, stage1: dict, classification: dict, profile: st
         category=summary["category"],
         purpose=summary.get("purpose") or "(미기재)",
         facts=facts_nl(summary) or "(없음)",
+        #  무엇이 눈여겨볼 만한지는 **코드가** 고른다 — 54개 경로를 그대로 던지면 모델이
+        #  아무거나 고르고, 대개 화면에 이미 있는 금액·시각을 고른다(`review_notables`).
+        notables="\n".join(f"- {n}" for n in notable_facts) or "(없음)",
         evidence_pool=pool,
     )
     try:

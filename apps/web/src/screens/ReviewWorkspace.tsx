@@ -10,6 +10,7 @@ import { LabeledBar } from '../components/ui/MiniChart'
 import { anomalyScored, AnomalyUnavailableNotice, RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { RiskReportView } from '../components/settlement/RiskReportView'
+import { RuleJudgementPanel } from '../components/settlement/RuleJudgementPanel'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -489,6 +490,14 @@ export function ReviewWorkspace() {
                     )}
                   </div>
                 </div>
+
+                {/* 룰 엔진 판정 — 사유 플래그·실행 경로. 지출증빙 상세(S-01)와 **같은
+                    컴포넌트**를 쓴다: 지출자와 검토자가 같은 사유를 다른 문장으로 보면
+                    "왜 걸렸는지"를 두고 서로 다른 이야기를 하게 된다.
+
+                    fact.json **위**에 둔다 — 입력값(무엇을 넣었나)보다 결과(그래서 어떻게
+                    판정됐나)가 검토자가 먼저 볼 것이다. */}
+                <RuleJudgementPanel item={sel} />
 
                 {/* fact.json — 접이식. 판정 시점 EvalContext 스냅샷이 있으면 그 원본을 보여준다 */}
                 <div className="card">

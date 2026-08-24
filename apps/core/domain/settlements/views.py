@@ -29,6 +29,7 @@ from . import (
     risk_review, services, submit_prep,
 )
 from . import budget as budget_agg
+from domain.policies import flags as flags_mod
 from .attachments import Attachment, AttachmentKind
 from .models import Category, Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
@@ -759,6 +760,23 @@ class SettlementDraftContextView(APIView):
         return Response(draft_context.build(s))
 
 
+def _describe_flags(flags: list[str]) -> list[dict]:
+    """사유 코드 → 표시 정보. 라벨 사전은 한 번만 만든다(코드마다 다시 만들면 N배가 된다)."""
+    labels = flags_mod.label_map()
+    return [flags_mod.describe(f, labels) for f in flags]
+
+
+def _latest_eval_context(settlement) -> dict:
+    """가장 최근 판정의 EvalContext 스냅샷. 없으면 빈 dict.
+
+    직렬화기(`SettlementSerializer.get_evalContext`)와 같은 규약 — 보완요청 후 재제출되면
+    `rule_hits`가 쌓이므로 **첫 행이 아니라 마지막**을 본다(옛 스냅샷을 보여주면 이미
+    고쳐진 값으로 판단하게 된다).
+    """
+    latest = max(settlement.rule_hits.all(), key=lambda hit: hit.pk, default=None)
+    return (latest.eval_context or {}) if latest else {}
+
+
 class SettlementSummaryView(APIView):
     """GET /api/internal/settlement-summary/<settlement_id>/ — Risk Review 2차 검증 진입점(Django 내부 read API).
 
@@ -791,6 +809,13 @@ class SettlementSummaryView(APIView):
             "kickbackTarget": s.kickback_target,
             "isSecondaryVenue": s.is_secondary_venue,
             "includesAlcohol": s.includes_alcohol,
+            #  판정 스냅샷과 사유 플래그 — 보고서가 「사람이 눈으로 못 보는 것」을 짚으려면
+            #  화면 입력 6종만으로는 안 된다. 이력 집계·신고/확인 인원 차이·미해소 사실
+            #  같은 건 EvalContext에만 있고, 그게 정확히 검토자가 놓치는 자리다.
+            #  **판정 시점 스냅샷**을 준다(지금 값이 아니라) — 보고서는 그때의 판단을 설명한다.
+            "evalContext": _latest_eval_context(s),
+            "ruleDecision": (s.rule_judgement or {}).get("decision") or "",
+            "ruleFlags": _describe_flags((s.rule_judgement or {}).get("flags") or []),
         })
 
 
