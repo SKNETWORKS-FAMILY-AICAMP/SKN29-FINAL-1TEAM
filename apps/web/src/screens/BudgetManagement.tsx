@@ -6,21 +6,18 @@
 // 팀 총한도 = 과목 한도 합 / 과목 사용 합 = 총 사용액). "전체" 탭은 이 팀별 응답을
 // 화면에서 합산한 것이지 서버가 별도로 계산해 주지 않는다.
 //
-// 계정과목별 지출 추세(13개월)·자주 남는/부족한 항목(6개월)은 **목업**이다 — 과거 달
-// TeamBudget·Settlement가 seed에 없어(이번 달치만 생성) 실 API로는 채울 값이 없다.
-// 백엔드 다개월 이력 연동은 별도 작업이라, 지금은 화면 구조·시각화만 시안대로 맞춘다
-// (`data/budgetTrendMock.ts`). 팀별로 쪼갤 데이터가 없어 이 두 섹션은 "전체" 탭에서만
-// 보이고, 팀 탭을 눌러도 숫자가 바뀌지 않는다 — 바뀌는 것처럼 보이면 실제로 그 팀의
-// 값이라고 오해하게 된다.
+// 계정과목별 지출 추세·과부족 패턴도 **실 API**다(`/api/team-budget/trend/`).
+// 목업이던 시절의 전제("과거 달 데이터가 seed에 없다")는 `seed_adopted`가 직전 3개월을
+// 실제 전이로 만들면서 깨졌다.
+//
+// **「0원」과 「데이터 없음」을 구분한다** — 서버가 정산이 한 건도 없는 달을 `null`로 준다.
+// 0으로 채우면 이력이 3개월뿐인데도 13개월 그래프가 그려지고, 사람은 앞의 0을 "지출이
+// 없었다"로, 그 다음을 "급증"으로 읽는다. 팀 탭을 누르면 그 팀의 추세를 다시 받는다.
 import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { won, pct } from '../lib/format'
 import { endpoints } from '../api/client'
 import { Sparkline, DeltaText } from '../components/ui/GovCharts'
-import {
-  CATEGORY_ORDER, CATEGORY_SPEND, GOV_MONTHS, IDX_NOW, IDX_PREV_MONTH,
-  OFTEN_SHORT, OFTEN_SURPLUS, monthTotal,
-} from '../data/budgetTrendMock'
 
 interface BudgetCategory { label: string; limit: number; used: number }
 interface TeamBudgetRow {
@@ -31,6 +28,25 @@ interface TeamBudgetRow {
   categories: BudgetCategory[]
   unbudgeted: Record<string, number>
   unbudgetedUsed: number
+}
+
+/** 과부족 패턴 한 줄. `months/windowMonths` = 같은 방향으로 치우친 개월 / 한도가 있던 개월. */
+interface PatternRow {
+  category: string
+  months: number
+  windowMonths: number
+  avgGapPct: number
+  amount: number
+}
+interface TrendData {
+  months: string[]
+  categories: string[]
+  /** 정산이 한 건도 없는 달은 `null` — 0원과 다른 뜻이다. */
+  spend: Record<string, (number | null)[]>
+  totals: (number | null)[]
+  dataMonths: string[]
+  window: number
+  pattern: { surplus: PatternRow[]; short: PatternRow[] }
 }
 
 type Tone = 'NORMAL' | 'CAUTION' | 'OVER'
@@ -75,6 +91,7 @@ export function BudgetManagement() {
   const [teams, setTeams] = useState<TeamBudgetRow[]>([])
   const [month, setMonth] = useState('')
   const [selected, setSelected] = useState<number>(ALL)
+  const [trend, setTrend] = useState<TrendData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -93,6 +110,23 @@ export function BudgetManagement() {
   }
 
   useEffect(() => { void load() }, [])
+
+  //  추세는 탭(전체/팀)이 바뀌면 다시 받는다 — 팀별로 쪼갤 데이터가 없어 "전체"에 고정
+  //  했던 건 목업 시절의 제약이다. **추세를 못 받아도 예산 표는 그대로 보여준다**(따로
+  //  잡는 이유): 부가 섹션 하나가 실패해서 화면 전체가 비면 담당자가 할 일을 못 한다.
+  useEffect(() => {
+    let alive = true
+    const params = selected === ALL ? undefined : selected
+    void (async () => {
+      try {
+        const { data } = await endpoints.budgetTrend(params)
+        if (alive) setTrend(data)
+      } catch {
+        if (alive) setTrend(null)
+      }
+    })()
+    return () => { alive = false }
+  }, [selected])
 
   const allScope = useMemo(() => mergeTeams(teams), [teams])
   const team = selected === ALL ? allScope : (teams.find((t) => t.id === selected) ?? allScope)
@@ -114,19 +148,50 @@ export function BudgetManagement() {
   )
   const maxBurnRate = Math.max(100, ...teamBurnRates.map((t) => t.rate ?? 0))
 
-  // 계정과목별 지출 추세(13개월, 목업) — 전월 대비 고정(시안에 YOY 토글 없음).
-  const trendRows = useMemo(() => CATEGORY_ORDER.map((cat) => {
-    const series = CATEGORY_SPEND[cat]
-    const now = series[IDX_NOW]
-    const base = series[IDX_PREV_MONTH]
-    const diff = now - base
-    return { category: cat, series, now, base, diff, rate: base ? (diff / base) * 100 : 0 }
-  }), [])
-  const totalNow = monthTotal(IDX_NOW)
-  const totalBase = monthTotal(IDX_PREV_MONTH)
+  //  계정과목별 지출 추세 — 전월 대비(시안에 YOY 토글 없음). 금액은 서버가 **원** 단위로
+  //  주고 표시만 만원으로 접는다(화면에서 단위를 바꿔 저장하면 합계가 어긋난다).
+  //
+  //  비교 기준은 「배열의 끝에서 두 번째」가 아니라 **데이터가 있는 마지막 두 달**이다.
+  //  이력이 3개월이면 앞 10칸이 `null`인데, 인덱스로 잡으면 전월이 null이 되어 증감이
+  //  전부 0%로 나온다.
+  const trendRows = useMemo(() => {
+    if (!trend) return []
+    const withData = trend.months
+      .map((m, i) => ({ m, i }))
+      .filter(({ m }) => trend.dataMonths.includes(m))
+    if (!withData.length) return []
+    const nowIdx = withData[withData.length - 1].i
+    const baseIdx = withData.length > 1 ? withData[withData.length - 2].i : nowIdx
+    return trend.categories.map((cat) => {
+      const series = trend.spend[cat] ?? []
+      const now = series[nowIdx] ?? 0
+      const base = series[baseIdx] ?? 0
+      const diff = now - base
+      return {
+        category: cat,
+        //  Sparkline은 숫자만 받는다 — 데이터 없는 달은 그리지 않고 잘라낸다.
+        series: withData.map(({ i }) => series[i] ?? 0),
+        now, base, diff, rate: base ? (diff / base) * 100 : 0,
+      }
+    })
+  }, [trend])
+
+  const totalSeries = useMemo(() => {
+    if (!trend) return [] as number[]
+    return trend.months
+      .map((m, i) => ({ m, v: trend.totals[i] }))
+      .filter(({ m }) => trend.dataMonths.includes(m))
+      .map(({ v }) => v ?? 0)
+  }, [trend])
+
+  const totalNow = totalSeries.length ? totalSeries[totalSeries.length - 1] : 0
+  const totalBase = totalSeries.length > 1 ? totalSeries[totalSeries.length - 2] : 0
   const totalDiff = totalNow - totalBase
   const totalRate = totalBase ? (totalDiff / totalBase) * 100 : 0
   const topMover = [...trendRows].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0]
+  //  이력이 몇 달인지 화면에 적는다 — 13개월 틀에 3개월만 차 있으면 사람은 그 사실을
+  //  모르고 "예년보다 늘었다"를 읽는다.
+  const historyMonths = trend?.dataMonths.length ?? 0
 
   return (
     <>
@@ -179,7 +244,8 @@ export function BudgetManagement() {
           </div>
         </div>
 
-        {/* 팀별 소진율 · 자주 남는/부족한 항목 — "전체" 탭 전용(팀 하나로는 비교·빈도 집계가 의미 없다) */}
+        {/* 팀별 소진율은 "전체" 탭 전용(팀 하나로는 비교가 의미 없다). 과부족 패턴은 실
+            데이터가 생겨 팀별로도 뜻이 있지만, 소진율 비교와 한 카드에 묶여 있어 같이 둔다. */}
         {selected === ALL && (
           <div className="budget-pattern-grid" style={{ marginTop: 16 }}>
             <div className="card">
@@ -214,7 +280,10 @@ export function BudgetManagement() {
               <div className="card-head">
                 <div>
                   <h3>예산 산정 지표</h3>
-                  <div className="text-meta">같은 항목이 매달 남거나 모자라면 집행이 아니라 <b>한도 산정</b>의 문제입니다 (최근 6개월 · 예시)</div>
+                  <div className="text-meta">
+                    같은 항목이 매달 남거나 모자라면 집행이 아니라 <b>한도 산정</b>의 문제입니다
+                    {trend ? ` · 최근 ${trend.window}개월 중 이력 ${historyMonths}개월` : ''}
+                  </div>
                 </div>
               </div>
               <div className="card-body">
@@ -224,14 +293,19 @@ export function BudgetManagement() {
                     <table className="table gov-pattern-table">
                       <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 잔여</th><th className="num">누적</th></tr></thead>
                       <tbody>
-                        {OFTEN_SURPLUS.map((row) => (
+                        {(trend?.pattern.surplus ?? []).map((row) => (
                           <tr key={row.category}>
                             <td><b>{row.category}</b></td>
-                            <td className="num">{row.months}/6</td>
-                            <td className="num" style={{ color: 'var(--tone-green)', fontWeight: 700 }}>+{row.avgGap}%</td>
-                            <td className="num text-meta">{manwon(row.amount)}</td>
+                            {/* 분모는 6이 아니라 **한도가 있던 개월**이다 — 예산 행이 없는
+                                달을 세면 "6개월 중 2개월"이 실제보다 낮게 보인다. */}
+                            <td className="num">{row.months}/{row.windowMonths}</td>
+                            <td className="num" style={{ color: 'var(--tone-green)', fontWeight: 700 }}>+{row.avgGapPct}%</td>
+                            <td className="num text-meta">{manwon(row.amount / 10000)}</td>
                           </tr>
                         ))}
+                        {trend && trend.pattern.surplus.length === 0 && (
+                          <tr><td colSpan={4} className="text-meta">한도가 남는 항목이 없습니다</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -241,14 +315,17 @@ export function BudgetManagement() {
                     <table className="table gov-pattern-table">
                       <thead><tr><th>항목</th><th className="num">해당 개월</th><th className="num">평균 초과</th><th className="num">누적</th></tr></thead>
                       <tbody>
-                        {OFTEN_SHORT.map((row) => (
+                        {(trend?.pattern.short ?? []).map((row) => (
                           <tr key={row.category}>
                             <td><b>{row.category}</b></td>
-                            <td className="num">{row.months}/6</td>
-                            <td className="num" style={{ color: 'var(--tone-red)', fontWeight: 700 }}>{row.avgGap}%</td>
-                            <td className="num text-meta">{manwon(Math.abs(row.amount))}</td>
+                            <td className="num">{row.months}/{row.windowMonths}</td>
+                            <td className="num" style={{ color: 'var(--tone-red)', fontWeight: 700 }}>{row.avgGapPct}%</td>
+                            <td className="num text-meta">{manwon(Math.abs(row.amount) / 10000)}</td>
                           </tr>
                         ))}
+                        {trend && trend.pattern.short.length === 0 && (
+                          <tr><td colSpan={4} className="text-meta">한도를 넘긴 항목이 없습니다</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -317,9 +394,14 @@ export function BudgetManagement() {
           </table>
         </div>
 
-        {/* 계정과목별 지출 추세(13개월, 목업) — 팀 탭과 무관하게 항상 회사 전체 기준(위 주석 참조) */}
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>계정과목별 지출 추세</div>
-        <div className="text-meta" style={{ marginBottom: 8 }}>13개월 추이 · 전월 대비 증감 (단위 만원) · 예시 데이터</div>
+        {/* 계정과목별 지출 추세 — 실 데이터. 팀 탭을 따라간다(`selected`가 바뀌면 다시 받는다). */}
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+          계정과목별 지출 추세{selected !== ALL ? ` · ${team.name}` : ''}
+        </div>
+        <div className="text-meta" style={{ marginBottom: 8 }}>
+          {/* 「13개월」이라 적어두고 3개월만 차 있으면 사람은 그걸 모른다 — 실제 이력을 적는다. */}
+          이력 {historyMonths}개월 · 전월 대비 증감 (단위 만원)
+        </div>
         <div className="card">
           <table className="table gov-trend-table">
             <thead>
@@ -333,24 +415,35 @@ export function BudgetManagement() {
               </tr>
             </thead>
             <tbody>
+              {trendRows.length === 0 && (
+                <tr><td colSpan={6} className="text-meta">
+                  {trend ? '집계할 지출 이력이 없습니다' : '지출 추세를 불러오지 못했습니다'}
+                </td></tr>
+              )}
               {trendRows.map((row) => (
                 <tr key={row.category}>
                   <td><b>{row.category}</b></td>
                   <td><Sparkline data={row.series} color="var(--primary)" width={100} height={26} /></td>
-                  <td className="num">{row.now.toLocaleString()}</td>
-                  <td className="num text-meta">{row.base.toLocaleString()}</td>
+                  <td className="num">{Math.round(row.now / 10000).toLocaleString()}</td>
+                  <td className="num text-meta">{Math.round(row.base / 10000).toLocaleString()}</td>
                   <td><DeltaText value={row.rate} higherIsBetter={false} /></td>
-                  <td className="text-meta">{trendNote(row.diff, row.rate)}</td>
+                  {/* trendNote는 **만원** 단위를 받는다 — 원 단위를 그대로 넘기면
+                      "4,720,000만원 늘었습니다"가 된다. */}
+                  <td className="text-meta">{trendNote(row.diff / 10000, row.rate)}</td>
                 </tr>
               ))}
               <tr className="gov-total-row">
                 <td><b>합계</b></td>
-                <td><Sparkline data={GOV_MONTHS.map((_, i) => monthTotal(i))} color="var(--text)" width={100} height={26} /></td>
-                <td className="num"><b>{totalNow.toLocaleString()}</b></td>
-                <td className="num text-meta">{totalBase.toLocaleString()}</td>
+                <td><Sparkline data={totalSeries} color="var(--text)" width={100} height={26} /></td>
+                <td className="num"><b>{Math.round(totalNow / 10000).toLocaleString()}</b></td>
+                <td className="num text-meta">{Math.round(totalBase / 10000).toLocaleString()}</td>
                 <td><DeltaText value={totalRate} higherIsBetter={false} /></td>
                 <td className="text-meta">
-                  {totalDiff >= 0 ? '증가분' : '감소분'}의 대부분이 <b>{topMover.category}</b>({manwon(Math.abs(topMover.diff))})에서 나왔습니다.
+                  {/* 이력이 한 달뿐이거나 추세 조회가 실패하면 topMover가 없다 — 문장을
+                      지어내지 않고 비운다. */}
+                  {topMover && totalBase > 0
+                    ? <>{totalDiff >= 0 ? '증가분' : '감소분'}의 대부분이 <b>{topMover.category}</b>({manwon(Math.abs(topMover.diff) / 10000)})에서 나왔습니다.</>
+                    : '비교할 이전 달 이력이 없습니다'}
                 </td>
               </tr>
             </tbody>
