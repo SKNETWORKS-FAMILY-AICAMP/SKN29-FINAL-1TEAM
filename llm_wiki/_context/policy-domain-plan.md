@@ -74,7 +74,7 @@
 |---|---|
 | 변경 A | `PolicyTable` 모델 신설(`key`·`title`·`key_axes`·`payload`·`source_doc`·`source_clause`·`effective_date`·`superseded_date`) + 마이그레이션 |
 | 변경 B | `Policy` 모델 **폐기** (참조 0이므로 제거 마이그레이션만) |
-| 변경 C | 시드: 별표 5종(`pre_approval_threshold`·`daily_limit`·`monthly_limit`·`kickback_limit`·`lodging_limit`) + 신규 임계값 6종을 `PolicyTable` 행으로 적재. 값 출처는 `TIGER-REG-2026-003` 별표 |
+| 변경 C | 시드: 별표 5종(`pre_approval_threshold`·`daily_limit`·`monthly_limit`·`kickback_limit`·`lodging_limit`) + 신규 임계값 6종을 `PolicyTable` 행으로 적재. 값 출처는 「법인카드 사용 규정」 별표 |
 | 변경 D | Django admin에 `PolicyTable` 등록(회계 담당자가 값 확인·개정 가능하게) |
 | 파일 | `policies/models.py`, `policies/migrations/00xx_*`, `policies/admin.py`, `common/management/commands/seed_policy_tables.py`(신규) |
 | 주의 | 개정은 **UPDATE 아닌 INSERT**(신규 `effective_date` 행 + 구행 `superseded_date`). 시드도 이 규약을 따른다 |

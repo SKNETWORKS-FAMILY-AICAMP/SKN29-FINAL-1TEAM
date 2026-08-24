@@ -66,7 +66,7 @@ class PolicyTable(models.Model):
     key_axes        = JSONField([])      # ['trip.trip_type','trip.region_grade'] — 룩업 축 선언
     payload         = JSONField({})      # {"국내":{"A":120000,"B":90000}, "해외":{...}}
     source_doc      = FK(PolicyDoc, null=True)      # ← PDF 파싱 파이프라인 연결점
-    source_clause   = CharField(200)     # 'TIGER-REG-2026-003 별표2'
+    source_clause   = CharField(200)     # '법인카드 사용 규정 별표2'
     effective_date  = DateField()        # 시점 조회(개정 이력)
     superseded_date = DateField(null=True)
 ```

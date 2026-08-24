@@ -93,7 +93,7 @@ export const reviewItems: ReviewItem[] = [
       { feature: '유사 반려사례 존재', weight: 0.28 },
     ],
     ragRefs: [
-      { title: '접대비 건당 한도 50만원 초과 시 사전결재 필요', source: 'TIGER-REG-2026-003 §12조 2항', kind: 'policy' },
+      { title: '접대비 건당 한도 50만원 초과 시 사전결재 필요', source: '법인카드 사용 규정 §12조 2항', kind: 'policy' },
     ],
     aiRecommendation: 'RETURN', aiConfidence: 0.64,
     anomalyReasons: ['건당한도 근접·유사사례 있음'],
@@ -109,7 +109,7 @@ export const reviewItems: ReviewItem[] = [
       { feature: '한도 임계값 바로 아래', weight: 0.22 },
     ],
     ragRefs: [
-      { title: '분할결제 의심 시 원거래 통합 검토', source: 'TIGER-REG-2026-003 §8조', kind: 'policy' },
+      { title: '분할결제 의심 시 원거래 통합 검토', source: '법인카드 사용 규정 §8조', kind: 'policy' },
     ],
     aiRecommendation: 'RETURN', aiConfidence: 0.55,
     anomalyReasons: ['가맹점 반복·소액 다건'],

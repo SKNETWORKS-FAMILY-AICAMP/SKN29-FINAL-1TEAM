@@ -166,7 +166,7 @@ def _policy_hints(category: str, amount: int, has_receipt: bool, headcount: int)
                       + ("한도 초과" if per_person > limit else "한도 이내"),
         })
     if category == "접대":
-        hints.append({"level": "info", "clause": "TIGER-REG-2026-003 제11조④",
+        hints.append({"level": "info", "clause": "법인카드 사용 규정 제11조④",
                       "text": "접대성 지출은 참석자 명단·목적이 함께 기록돼야 업무관련성을 인정받습니다.",
                       "status": "참석자 정보를 사유에 포함했는지 확인해주세요."})
     return hints

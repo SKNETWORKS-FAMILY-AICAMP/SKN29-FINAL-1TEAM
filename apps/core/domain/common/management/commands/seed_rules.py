@@ -36,7 +36,7 @@ from domain.policies.models import (
     RuleRouting,
 )
 
-REG = "TIGER-REG-2026-003"
+REG = "법인카드 사용 규정"
 
 
 # ── 공용 헬퍼 ────────────────────────────────────────────────────
