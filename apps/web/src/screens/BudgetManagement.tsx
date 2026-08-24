@@ -161,17 +161,20 @@ export function BudgetManagement() {
       .filter(({ m }) => trend.dataMonths.includes(m))
     if (!withData.length) return []
     const nowIdx = withData[withData.length - 1].i
-    const baseIdx = withData.length > 1 ? withData[withData.length - 2].i : nowIdx
+    //  이력이 한 달뿐이면 **비교할 전월이 없다**. 자기 자신을 기준으로 두면 "전월에도 같은
+    //  금액을 썼다"로 보이고 증감률이 0%로 찍힌다 — 없는 것을 0으로 채우지 않는다.
+    const baseIdx = withData.length > 1 ? withData[withData.length - 2].i : null
     return trend.categories.map((cat) => {
       const series = trend.spend[cat] ?? []
       const now = series[nowIdx] ?? 0
-      const base = series[baseIdx] ?? 0
-      const diff = now - base
+      const base = baseIdx === null ? null : (series[baseIdx] ?? 0)
+      const diff = base === null ? null : now - base
       return {
         category: cat,
         //  Sparkline은 숫자만 받는다 — 데이터 없는 달은 그리지 않고 잘라낸다.
         series: withData.map(({ i }) => series[i] ?? 0),
-        now, base, diff, rate: base ? (diff / base) * 100 : 0,
+        now, base, diff,
+        rate: base ? ((now - base) / base) * 100 : null,
       }
     })
   }, [trend])
@@ -185,10 +188,12 @@ export function BudgetManagement() {
   }, [trend])
 
   const totalNow = totalSeries.length ? totalSeries[totalSeries.length - 1] : 0
-  const totalBase = totalSeries.length > 1 ? totalSeries[totalSeries.length - 2] : 0
-  const totalDiff = totalNow - totalBase
-  const totalRate = totalBase ? (totalDiff / totalBase) * 100 : 0
-  const topMover = [...trendRows].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0]
+  const totalBase = totalSeries.length > 1 ? totalSeries[totalSeries.length - 2] : null
+  const totalDiff = totalBase === null ? null : totalNow - totalBase
+  const totalRate = totalBase ? ((totalNow - totalBase) / totalBase) * 100 : null
+  const topMover = [...trendRows]
+    .filter((r) => r.diff !== null)
+    .sort((a, b) => Math.abs(b.diff!) - Math.abs(a.diff!))[0]
   //  이력이 몇 달인지 화면에 적는다 — 13개월 틀에 3개월만 차 있으면 사람은 그 사실을
   //  모르고 "예년보다 늘었다"를 읽는다.
   const historyMonths = trend?.dataMonths.length ?? 0
@@ -407,7 +412,8 @@ export function BudgetManagement() {
             <thead>
               <tr>
                 <th style={{ width: 88 }}>계정과목</th>
-                <th style={{ width: 110 }}>13개월 추이</th>
+                {/* 「13개월」로 고정해 두면 이력이 3개월이어도 그렇게 읽힌다 — 실제 값을 쓴다. */}
+                <th style={{ width: 110 }}>{historyMonths || ''}개월 추이</th>
                 <th className="num" style={{ width: 92 }}>이번 달</th>
                 <th className="num" style={{ width: 92 }}>전월</th>
                 <th style={{ width: 120 }}>전월대비 증감률</th>
@@ -425,25 +431,35 @@ export function BudgetManagement() {
                   <td><b>{row.category}</b></td>
                   <td><Sparkline data={row.series} color="var(--primary)" width={100} height={26} /></td>
                   <td className="num">{Math.round(row.now / 10000).toLocaleString()}</td>
-                  <td className="num text-meta">{Math.round(row.base / 10000).toLocaleString()}</td>
-                  <td><DeltaText value={row.rate} higherIsBetter={false} /></td>
+                  <td className="num text-meta">
+                    {row.base === null ? '—' : Math.round(row.base / 10000).toLocaleString()}
+                  </td>
+                  <td>{row.rate === null ? <span className="text-meta">—</span>
+                       : <DeltaText value={row.rate} higherIsBetter={false} />}</td>
                   {/* trendNote는 **만원** 단위를 받는다 — 원 단위를 그대로 넘기면
                       "4,720,000만원 늘었습니다"가 된다. */}
-                  <td className="text-meta">{trendNote(row.diff / 10000, row.rate)}</td>
+                  <td className="text-meta">
+                    {row.diff === null || row.rate === null
+                      ? '비교할 전월 이력이 없습니다'
+                      : trendNote(row.diff / 10000, row.rate)}
+                  </td>
                 </tr>
               ))}
               <tr className="gov-total-row">
                 <td><b>합계</b></td>
                 <td><Sparkline data={totalSeries} color="var(--text)" width={100} height={26} /></td>
                 <td className="num"><b>{Math.round(totalNow / 10000).toLocaleString()}</b></td>
-                <td className="num text-meta">{Math.round(totalBase / 10000).toLocaleString()}</td>
-                <td><DeltaText value={totalRate} higherIsBetter={false} /></td>
+                <td className="num text-meta">
+                  {totalBase === null ? '—' : Math.round(totalBase / 10000).toLocaleString()}
+                </td>
+                <td>{totalRate === null ? <span className="text-meta">—</span>
+                     : <DeltaText value={totalRate} higherIsBetter={false} />}</td>
                 <td className="text-meta">
                   {/* 이력이 한 달뿐이거나 추세 조회가 실패하면 topMover가 없다 — 문장을
                       지어내지 않고 비운다. */}
-                  {topMover && totalBase > 0
-                    ? <>{totalDiff >= 0 ? '증가분' : '감소분'}의 대부분이 <b>{topMover.category}</b>({manwon(Math.abs(topMover.diff) / 10000)})에서 나왔습니다.</>
-                    : '비교할 이전 달 이력이 없습니다'}
+                  {topMover && totalBase && totalDiff !== null
+                    ? <>{totalDiff >= 0 ? '증가분' : '감소분'}의 대부분이 <b>{topMover.category}</b>({manwon(Math.abs(topMover.diff!) / 10000)})에서 나왔습니다.</>
+                    : '비교할 전월 이력이 없습니다'}
                 </td>
               </tr>
             </tbody>
