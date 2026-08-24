@@ -40,9 +40,16 @@ MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
 # 본인이 직접 지울 수 있는 상태 — 아직 팀·회계로 넘어가기 전 단계만.
 DELETABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED"}
-# 수정 가능한 상태 — 회계 검토가 시작되기 전까지. 팀 취합 중과 보완요청 받은 건은
-#  고쳐서 다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
-EDITABLE_STATUSES = {"DRAFT", "TEAM_COLLECTING", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
+#  수정 가능한 상태 — **내 손을 떠나기 전까지**. 보완요청(팀·회계)을 받은 건은 고쳐서
+#  다시 올려야 하므로 포함한다(고칠 수 없으면 보완요청이 의미가 없다).
+#
+#  `TEAM_COLLECTING`은 **뺀다.** 팀에 올린 순간 그 건은 팀장이 취합·판단하는 대상이 되고,
+#  팀장이 보고 있는 값이 뒤에서 바뀌면 취합의 근거가 사라진다. 고칠 일이 있으면 팀장이
+#  보완요청(`TEAM_RETURNED`)으로 돌려보내는 것이 정규 경로다.
+#
+#  ⚠️ 이 집합은 `prepare_submit`의 관문이기도 하다 — 다듬기가 `purpose`를 **저장**하기
+#  때문이다(`submit_prep.prepare`). 잠긴 건을 AI가 고쳐 쓰면 잠금이 잠금이 아니다.
+EDITABLE_STATUSES = {"DRAFT", "TEAM_RETURNED", "TEAM_REJECTED", "RETURNED"}
 
 
 def _invalid_category(*values):
@@ -237,7 +244,13 @@ class SettlementViewSet(viewsets.ModelViewSet):
         settlement = self.get_object()
         if settlement.status not in EDITABLE_STATUSES:
             return Response(
-                {"detail": "회계 검토가 시작된 뒤에는 수정할 수 없습니다. 보완요청을 받은 뒤 고쳐주세요."},
+                #  어느 단계에서 잠겼는지 말해 준다 — "수정할 수 없습니다"만 던지면
+                #  사용자는 무엇을 해야 풀리는지 모른다.
+                {"detail": (
+                    "팀에 올린 뒤에는 수정할 수 없습니다. 팀장이 보완요청으로 돌려보내면 고칠 수 있습니다."
+                    if settlement.status == "TEAM_COLLECTING"
+                    else "회계 검토가 시작된 뒤에는 수정할 수 없습니다. 보완요청을 받은 뒤 고쳐주세요."
+                )},
                 status=400,
             )
         actor = _actor(request)

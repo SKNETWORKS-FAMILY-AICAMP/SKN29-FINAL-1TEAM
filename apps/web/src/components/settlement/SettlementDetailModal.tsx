@@ -10,7 +10,7 @@ import {
   Loader2, Receipt, Trash2, Upload, Wand2,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORY_UNSET, STATUS_META,
+  CARD_TYPE_LABEL, CATEGORY_UNSET, EDITABLE_STATUSES, STATUS_META, SUBMITTABLE_STATUSES,
   type CardType, type Category, type Settlement, type SettlementStatus,
 } from '../../types/domain'
 import { useCategories } from '../../lib/categories'
@@ -86,7 +86,23 @@ export function SettlementDetailModal({
   const isOwner = isCreate || !isTeamView || item?.user === user?.name
   // 팀 취합 뷰에서 팀장급이 '남의' 취합중(TEAM_COLLECTING) 건을 처리
   const canTeamDecide = isTeamView && !isOwner && can('team_aggregate') && item?.status === 'TEAM_COLLECTING'
-  const readOnly = !isCreate && !isOwner // 팀 취합 뷰에서 내 건이 아니면 보기만 가능
+  /**
+   * 조회 전용 여부 — **소유권과 상태, 두 축이 모두 통과해야 고칠 수 있다.**
+   *
+   * 예전엔 소유권만 봤다. 그래서 내 지출에서 확정(`CONFIRMED`)·검토중(`IN_REVIEW`) 건을
+   * 열면 입력칸이 전부 활성이고 「제출」 버튼까지 떴다 — 서버가 400으로 막으니 데이터는
+   * 멀쩡했지만, **고칠 수 있는 것처럼 보여주고 눌러야 실패를 알려주는** 화면이었다.
+   */
+  const statusEditable = isCreate || EDITABLE_STATUSES.includes(item!.status)
+  const readOnly = !isCreate && (!isOwner || !statusEditable)
+  //  왜 잠겼는지는 서로 다르다 — 안내 문구도 달라야 한다.
+  const lockNote = !isOwner
+    ? (canTeamDecide
+        ? '조회 전용 화면입니다. 팀 보완요청·팀 반려로 처리하세요.'
+        : '본인이 등록한 건이 아니어 조회만 가능합니다.')
+    : item?.status === 'TEAM_COLLECTING'
+      ? '팀에 올린 뒤라 수정할 수 없습니다. 팀장이 보완요청으로 돌려보내면 고칠 수 있습니다.'
+      : '회계로 넘어간 뒤라 수정할 수 없습니다. 보완요청을 받으면 고칠 수 있습니다.'
 
   // ── 편집 상태(우측 폼) ──
   const [merchant, setMerchant] = useState(item?.merchant ?? '')
@@ -170,7 +186,13 @@ export function SettlementDetailModal({
 
   const evidence: 'OK' | 'MISSING' = receiptUp || extraFiles.length > 0 ? 'OK' : 'MISSING'
   const needsResubmit = isOwner && !canReview && !isCreate && item?.status === 'RETURNED'
-  const isDraft = !isCreate && item?.status === 'DRAFT' // 개인 보유 → 팀 취합으로 '올림' 대상
+  //  「팀에 올림」 대상 — 개인 보유와 **팀 보완요청**(고쳐서 다시 올린다).
+  //  회계 보완요청(`RETURNED → SUBMITTED` 재제출)과 같은 모양이다.
+  const canRaise = !isCreate && ['DRAFT', 'TEAM_RETURNED'].includes(item!.status)
+  const isTeamReturned = !isCreate && item!.status === 'TEAM_RETURNED'
+  //  「제출」은 **서버가 그 전이를 허용하는 상태에서만** 띄운다(`services.ALLOWED`의 거울).
+  //  예전엔 DRAFT가 아닌 모든 소유 건에 떠서, 확정·반려된 건에도 제출 버튼이 있었다.
+  const canSubmit = !isCreate && SUBMITTABLE_STATUSES.includes(item!.status)
   // 삭제는 아직 팀·회계 단계로 넘어가지 않은 건만 (백엔드도 같은 기준으로 막는다)
   const canDelete = !isCreate && ['DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED'].includes(item?.status ?? '')
   // 이상 건(보완요청·반려 판정)은 팀 취합 뷰에서 제출 불가 — 보완요청·반려로만 처리한다.
@@ -350,20 +372,27 @@ export function SettlementDetailModal({
    */
   const persistEdits = async (): Promise<boolean> => {
     if (!workingId || readOnly) return true
+    const payload: Record<string, unknown> = {
+      category,
+      purpose: purpose || '',
+      merchantIndustry: industry || '',
+      merchantIndustryCode: industryCode || '',
+      //  비었으면 `null`(모름)을 명시적으로 보낸다 — 키를 빼면 서버가 옛 값을 유지하므로
+      //  사용자가 지운 것이 반영되지 않는다.
+      headcount: headcount.trim() === '' ? null : Number(headcount),
+    }
+    //  **잠근 필드는 보내지도 않는다.** 화면에서 입력칸만 잠그고 값은 그대로 실어 보낸
+    //  탓에, 원장 수집 건은 아무것도 안 고쳤는데 서버가 400으로 거절했고 「팀에 올림」이
+    //  통째로 막혔다(실측 2026-08-24). 서버는 `key in body`만 보므로, 안 고칠 것은
+    //  키 자체를 빼는 것이 유일하게 맞는 표현이다.
+    if (!fromErp) {
+      payload.merchant = merchant || undefined
+      payload.amount = numOnly(amountText) || undefined
+      payload.date = dateStr
+      payload.cardId = cardId ?? undefined
+    }
     try {
-      await updateSettlement(workingId, {
-        category,
-        purpose: purpose || '',
-        merchantIndustry: industry || '',
-        merchantIndustryCode: industryCode || '',
-        //  비었으면 `null`(모름)을 명시적으로 보낸다 — 키를 빼면 서버가 옛 값을 유지하므로
-        //  사용자가 지운 것이 반영되지 않는다.
-        headcount: headcount.trim() === '' ? null : Number(headcount),
-        merchant: merchant || undefined,
-        amount: numOnly(amountText) || undefined,
-        date: dateStr,
-        cardId: cardId ?? undefined,
-      })
+      await updateSettlement(workingId, payload)
       return true
     } catch (e: unknown) {
       // 저장 실패를 삼키면 "제출했는데 옛 값으로 판정된" 상황이 조용히 재현된다.
@@ -403,6 +432,12 @@ export function SettlementDetailModal({
     if (!workingId) return true
     if (!await persistEdits()) return false
 
+    //  **잠긴 건은 다듬지도 않는다.** 다듬기는 `purpose`를 저장하는 편집이라
+    //  (`submit_prep.prepare`), 서버도 같은 `EDITABLE_STATUSES`로 거절한다. 거절을
+    //  삼키고 넘어가면 "왜 어떤 건만 팝업이 뜨나"가 설명되지 않으므로 여기서 건너뛴다.
+    //  팀 제출(`TEAM_COLLECTING`)의 다듬기·확인은 이미 '올림' 단계에서 끝났다.
+    if (readOnly) { await go(); return true }
+
     const prep = await prepareSubmit(workingId)
     if (prep) {
       //  다듬기가 적용됐으면 서버가 이미 저장했다 — 화면 값도 맞춰 둔다
@@ -422,8 +457,15 @@ export function SettlementDetailModal({
 
   const doRaise = async () => {
     if (!workingId) return
-    const status = await raiseSettlements([workingId])
-    onStatusChange?.(workingId, status)
+    const outcome = await raiseSettlements([workingId])
+    //  **거절을 성공으로 그리지 않는다.** 서버가 전이를 막으면 `skipped`로 돌아오는데,
+    //  예전엔 응답을 보지 않고 「팀 취합중」으로 바꾸고 닫아 버렸다 — 새로고침하면
+    //  원래 상태였다.
+    if (!outcome.raised.includes(workingId)) {
+      setAgentError('팀에 올리지 못했습니다 — 이 상태에서는 올릴 수 없는 건입니다. 목록을 새로고침해 주세요.')
+      return
+    }
+    onStatusChange?.(workingId, 'TEAM_COLLECTING')
     onClose()
   }
 
@@ -576,14 +618,16 @@ export function SettlementDetailModal({
           <button className="btn approve" onClick={approve} disabled={pending}>승인 · 확정(CONFIRMED)</button>
         </>
       ) : isOwner ? (
-        isDraft ? (
+        canRaise ? (
           <>
             {isMineView && (
               <button className="btn reject" onClick={remove} disabled={pending}>
                 <Trash2 size={13} /> 삭제
               </button>
             )}
-            <button className="btn primary" onClick={raise} disabled={pending}>팀에 올림</button>
+            <button className="btn primary" onClick={raise} disabled={pending}>
+              {isTeamReturned ? '보완 후 다시 올림' : '팀에 올림'}
+            </button>
           </>
         ) : (
           <>
@@ -592,14 +636,24 @@ export function SettlementDetailModal({
                 <Trash2 size={13} /> 삭제
               </button>
             )}
-            <button
-              className="btn primary"
-              onClick={submit}
-              disabled={pending || (isTeamView && isAnomaly)}
-              title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
-            >
-              {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
-            </button>
+            {canSubmit ? (
+              <button
+                className="btn primary"
+                onClick={submit}
+                disabled={pending || (isTeamView && isAnomaly)}
+                title={isTeamView && isAnomaly ? '이상 건은 제출할 수 없습니다.' : undefined}
+              >
+                {isTeamView && isAnomaly ? '제출 불가 (이상 건)' : needsResubmit ? '보완 후 재제출' : '제출(SUBMITTED)'}
+              </button>
+            ) : (
+              //  갈 수 없는 전이에 버튼을 두지 않는다 — 누르면 서버가 거절할 뿐이고,
+              //  사용자는 왜 안 되는지 대신 무엇이 잘못됐는지를 묻게 된다.
+              <span className="text-meta row" style={{ gap: 6 }}>
+                <Lock size={12} /> {statusEditable
+                  ? '이 상태에서는 제출할 수 없습니다.'
+                  : lockNote}
+              </span>
+            )}
           </>
         )
       ) : (
@@ -745,14 +799,19 @@ export function SettlementDetailModal({
                   이 화면의 기본 경로는 영수증을 올리면 저장→판독→초안이 저절로 도는 것이고,
                   지시문은 그 위에 얹힌 옛 폼 기반 경로였다. 버튼 하나만 남겨
                   「방금 고친 값으로 다시 써 줘」에만 쓴다. */}
-              {!readOnly && (
+              {/*  남의 건이면 아예 안 보이고, **내 건이 잠긴 것뿐이면 비활성으로 보인다.**
+                  버튼이 사라지면 "원래 없는 기능"으로 읽히지만, 흐려진 버튼과 사유 툴팁은
+                  "지금은 못 쓴다"를 말한다 — 잠긴 이유는 사용자가 풀 수 있는 것이다. */}
+              {isOwner && (
                 <button
                   className="btn sm icon-only ai"
-                  onClick={() => { if (workingId) void runSettlementDraft(workingId) }}
-                  disabled={!workingId || pending || agentPhase !== ''}
-                  title={workingId
-                    ? 'AI로 다시 작성 — 저장된 사실과 증빙 판독 결과로 분류·목적을 채웁니다'
-                    : '영수증을 올려 등록한 뒤 사용할 수 있습니다'}
+                  onClick={() => { if (workingId && !readOnly) void runSettlementDraft(workingId) }}
+                  disabled={readOnly || !workingId || pending || agentPhase !== ''}
+                  title={readOnly
+                    ? lockNote
+                    : workingId
+                      ? 'AI로 다시 작성 — 저장된 사실과 증빙 판독 결과로 분류·목적을 채웁니다'
+                      : '영수증을 올려 등록한 뒤 사용할 수 있습니다'}
                   aria-label="AI로 다시 작성"
                 >
                   {/*  누르는 자리에서 바로 돌아야 한다 — AI 카드는 화면 아래라
@@ -885,9 +944,7 @@ export function SettlementDetailModal({
             judgement={judgement}
             logs={comments}
             readOnly={readOnly}
-            readOnlyNote={canTeamDecide
-              ? '조회 전용 화면입니다. 팀 보완요청·팀 반려로 처리하세요.'
-              : '조회 전용 화면입니다.'}
+            readOnlyNote={lockNote}
           />
         </div>
       </div>

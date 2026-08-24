@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 ALLOWED = {
     S.DRAFT: {S.TEAM_COLLECTING},
     S.TEAM_COLLECTING: {S.TEAM_RETURNED, S.TEAM_REJECTED, S.SUBMITTED},
-    S.TEAM_RETURNED: {S.DRAFT},        # 개인 수정 후 재상신
+    #  **팀 보완요청은 고쳐서 바로 다시 올린다** — 회계 보완요청(`RETURNED → SUBMITTED`)과
+    #  같은 모양이다. 예전엔 `{S.DRAFT}`(개인 보유로 되돌리기)만 열려 있었는데 그 전이를
+    #  부르는 서비스·API가 없어서, 되받은 건은 「팀에 올림」도 「제출」도 200을 주면서
+    #  `skipped`에 담겨 되돌아왔다 — **아무 일도 안 일어나는데 성공처럼 보였다**(실측).
+    S.TEAM_RETURNED: {S.TEAM_COLLECTING},   # 보완 후 다시 올림
     S.TEAM_REJECTED: set(),            # 팀 반려(종료)
     S.SUBMITTED: {S.RPA_JUDGED},
     S.RPA_JUDGED: {S.PENDING_CONFIRM, S.RETURNED, S.IN_REVIEW, S.REJECT},
@@ -67,7 +71,9 @@ def transition(settlement: Settlement, to_state: str, actor=None, reason: str = 
 
 
 def raise_to_team(settlement, actor=None):
-    """DRAFT → TEAM_COLLECTING (개인 '올림'). 1인 팀(영업사원·임원 개인)도 이 단계를 거친다.
+    """DRAFT·TEAM_RETURNED → TEAM_COLLECTING (개인 '올림'·보완 후 재상신).
+
+    1인 팀(영업사원·임원 개인)도 이 단계를 거친다.
 
     **여기서 룰 판정을 돌린다.** 예전엔 회계 제출 뒤에야 돌아서 팀장이 판정 결과를 못 봤고,
     팀 화면은 "30만원 이상이면 이상건" 같은 프론트 하드코딩으로 이상 여부를 흉내내고 있었다.

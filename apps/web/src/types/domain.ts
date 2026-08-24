@@ -66,6 +66,23 @@ export const STATUS_META: Record<SettlementStatus, { label: string; tone: Tone }
   ERP_VOUCHER_DRAFTED: { label: '전표생성', tone: 'teal' },
 }
 
+/**
+ * 사용자가 **값을 고칠 수 있는** 상태 — 서버 `settlements/views.py:EDITABLE_STATUSES`의 거울.
+ *
+ * 정본은 서버다. 여기 두는 이유는 **화면이 고칠 수 없는 칸을 열어두지 않기 위해서**다 —
+ * 예전엔 `readOnly`가 소유권만 봐서, 확정된 건에도 입력칸과 「제출」 버튼이 그대로 떴고
+ * 눌러야 400을 봤다. 화면만 막고 서버를 안 막는 것도, 서버만 막고 화면을 안 막는 것도
+ * 같은 결함의 양면이다.
+ *
+ * 두 곳에 있으므로 **한쪽만 바꾸지 않는다.**
+ */
+export const EDITABLE_STATUSES: readonly SettlementStatus[] = [
+  'DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED', 'RETURNED',
+]
+
+/** 여기서 「제출(SUBMITTED)」로 갈 수 있는 상태 — 서버 `services.ALLOWED`의 거울. */
+export const SUBMITTABLE_STATUSES: readonly SettlementStatus[] = ['TEAM_COLLECTING', 'RETURNED']
+
 // ── 카드 구분(5종) ────────────────────────
 export type CardType = 'PERSONAL' | 'TEAM' | 'SHARED' | 'POST_PAID' | 'PREPAID'
 

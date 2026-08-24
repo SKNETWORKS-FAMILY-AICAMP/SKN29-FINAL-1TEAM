@@ -18,12 +18,18 @@ import { activateOnEnterOrSpace } from '../lib/a11y'
 import { currentMonth, isInMonth, monthLabel } from '../lib/period'
 
 const DONE: SettlementStatus[] = ['CONFIRMED', 'ERP_VOUCHER_DRAFTED']
-const PROCESSING: SettlementStatus[] = ['SUBMITTED', 'RPA_JUDGED', 'PENDING_CONFIRM', 'IN_REVIEW', 'TEAM_COLLECTING', 'TEAM_RETURNED', 'TEAM_REJECTED']
-const SUBMITTABLE: SettlementStatus[] = ['DRAFT'] // 올림 가능 = 작성중(개인 → 팀 취합)
+//  처리중 = **내 손을 떠나 남의 답을 기다리는 것.** 팀 보완요청(`TEAM_RETURNED`)은 여기 없다 —
+//  되받은 순간 다시 내 일이 됐고, 「처리중」에 묻히면 내가 할 일인 줄 모른다.
+const PROCESSING: SettlementStatus[] = ['SUBMITTED', 'RPA_JUDGED', 'PENDING_CONFIRM', 'IN_REVIEW', 'TEAM_COLLECTING', 'TEAM_REJECTED']
+//  보완요청 = **누가 걸었든 내가 고쳐야 하는 것.** 팀장이 건 것(TEAM_RETURNED)과 회계가 건
+//  것(RETURNED)은 되돌아가는 곳만 다르지 사용자가 할 일은 같다.
+const NEEDS_FIX: SettlementStatus[] = ['RETURNED', 'TEAM_RETURNED']
+//  올림 가능 = 작성중 + **팀 보완요청**(고쳐서 다시 올린다 — 회계 보완요청 재제출과 같은 모양).
+const SUBMITTABLE: SettlementStatus[] = ['DRAFT', 'TEAM_RETURNED']
 
 // 메인 화면 우선순위: 보완요청 → 반려 → 작성중 → 처리중 → (완료는 기본 숨김)
 function priorityOf(s: SettlementStatus): number {
-  if (s === 'RETURNED') return 0
+  if (NEEDS_FIX.includes(s)) return 0
   if (s === 'REJECT') return 1
   if (s === 'DRAFT') return 2
   if (DONE.includes(s)) return 9
@@ -65,7 +71,7 @@ export function MyExpenses() {
       total: m.reduce((s, e) => s + e.amount, 0),
       draft: m.filter((e) => e.status === 'DRAFT').length,
       processing: m.filter((e) => PROCESSING.includes(e.status)).length,
-      returned: m.filter((e) => e.status === 'RETURNED').length,
+      returned: m.filter((e) => NEEDS_FIX.includes(e.status)).length,
       rejected: m.filter((e) => e.status === 'REJECT').length,
     }
   }, [expenses, month])
@@ -79,7 +85,9 @@ export function MyExpenses() {
         case 'DONE': return DONE.includes(e.status)
         case 'PROCESSING': return PROCESSING.includes(e.status)
         case 'ALL': return true
-        default: return e.status === view // RETURNED / REJECT / DRAFT
+        //  「보완요청」 탭은 팀·회계 양쪽을 함께 보여준다(위 NEEDS_FIX).
+        case 'RETURNED': return NEEDS_FIX.includes(e.status)
+        default: return e.status === view // REJECT / DRAFT
       }
     })
     if (cardTypeFilter !== 'ALL') l = l.filter((e) => e.cardType === cardTypeFilter)
@@ -127,8 +135,13 @@ export function MyExpenses() {
   const raiseChecked = async () => {
     const ids = [...checked]
     setSubmitting(true)
-    const status = await raiseSettlements(ids) // DRAFT → TEAM_COLLECTING (팀에 올림)
-    ids.forEach((id) => updateStatus(id, status))
+    const outcome = await raiseSettlements(ids) // DRAFT·TEAM_RETURNED → TEAM_COLLECTING
+    //  **넘어간 것만 화면에 반영한다.** 예전엔 전부 「팀 취합중」으로 칠했는데, 서버가
+    //  거절한 건까지 옮겨 놓고는 새로고침하면 되돌아왔다.
+    outcome.raised.forEach((id) => updateStatus(id, 'TEAM_COLLECTING'))
+    if (outcome.skipped.length > 0) {
+      window.alert(`${outcome.skipped.length}건은 지금 상태에서 올릴 수 없어 그대로 두었습니다.`)
+    }
     setChecked(new Set())
     setSubmitting(false)
   }

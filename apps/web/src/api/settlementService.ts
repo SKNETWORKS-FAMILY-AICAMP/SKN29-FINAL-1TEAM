@@ -79,14 +79,29 @@ export async function claimSettlement(id: string): Promise<SettlementStatus> {
   return data.status as SettlementStatus
 }
 
-/** S-01: 개인 '올림'(DRAFT → TEAM_COLLECTING). 팀 취합 단계로 넘긴다(1인 팀도 동일 경로). */
-export async function raiseSettlements(ids: string[]): Promise<SettlementStatus> {
+/** 올림 결과 — **넘어간 것과 거절된 것을 나눠 준다.** */
+export interface RaiseOutcome {
+  raised: string[]
+  /** 전이가 허용되지 않아 **아무 일도 일어나지 않은** 건. */
+  skipped: string[]
+}
+
+/**
+ * S-01: 개인 '올림'(DRAFT·TEAM_RETURNED → TEAM_COLLECTING). 1인 팀도 동일 경로.
+ *
+ * **응답을 읽는다.** 예전엔 `await` 뒤에 `'TEAM_COLLECTING'`을 그대로 돌려줘서, 서버가
+ * `skipped`로 거절한 건도 화면에서는 「팀 취합중」으로 바뀌고 모달이 닫혔다 — 새로고침하면
+ * 원래 상태로 되돌아왔다. 서버가 거절한 것을 화면이 성공으로 그리면 안 된다.
+ */
+export async function raiseSettlements(ids: string[]): Promise<RaiseOutcome> {
   if (USE_MOCK) {
     await mockDelay()
-    return 'TEAM_COLLECTING'
+    return { raised: ids, skipped: [] }
   }
-  await endpoints.raise(ids)
-  return 'TEAM_COLLECTING'
+  const { data } = await endpoints.raise(ids)
+  //  서버는 id를 숫자로 돌려준다 — 화면은 문자열로 다루므로 맞춰 준다.
+  const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : [])
+  return { raised: list(data?.raised), skipped: list(data?.skipped) }
 }
 
 /**

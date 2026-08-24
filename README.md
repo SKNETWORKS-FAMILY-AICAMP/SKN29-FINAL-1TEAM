@@ -63,6 +63,9 @@ docker compose exec core python manage.py seed --fresh
 docker compose exec core python manage.py seed_clean --dry-run   # 지울 건수만 보고 멈춤
 docker compose exec core python manage.py seed_clean
 
+# ── 3개월치 정산 완료이력 상태 ─────────────────────────────────────────
+docker compose exec core python manage.py seed_adopted
+
 # ── 부분 시드 (위 둘이 내부에서 호출하지만 단독 실행도 된다) ──────
 docker compose exec core python manage.py seed_rules [--no-test]   # 룰 그래프만
 docker compose exec core python manage.py seed_policy_tables       # 규정 별표(임계값)만

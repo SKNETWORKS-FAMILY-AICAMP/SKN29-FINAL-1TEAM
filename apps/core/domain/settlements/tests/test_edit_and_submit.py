@@ -11,7 +11,8 @@
   ② `category`는 **사람이 확정한 값**이고 `ai_category`는 건드리지 않는다 —
      제안↔확정을 대조해야 AI 정확도를 잴 수 있다(지도학습 피드백의 원천).
   ③ 저장 후 제출하면 **그 값으로 판정된다**(EvalContext `category.value`).
-  ④ 회계 검토가 시작된 뒤에는 못 고친다. 남의 건도 못 고친다.
+  ④ **내 손을 떠나면 못 고친다** — 팀에 올린 뒤(`TEAM_COLLECTING`)도, 회계 검토가
+     시작된 뒤도. 남의 건도 못 고친다. 다만 **전이는 막지 않는다**(팀 제출은 된다).
   ⑤ 빈 분류로 확정값을 지우지 않는다 — 화면 실수로 확정 분류가 날아가면 안 된다.
 """
 from decimal import Decimal
@@ -134,6 +135,53 @@ class SettlementEditTests(TestCase):
         s = self._imported(status=S.RETURNED)
         r = self.client.patch(f"/api/settlements/{s.id}/", {"purpose": "보완했습니다"}, format="json")
         self.assertEqual(r.status_code, 200)
+
+    def test_팀에_올린_뒤에는_수정할_수_없다(self):
+        """팀장이 보고 있는 값이 뒤에서 바뀌면 취합의 근거가 사라진다."""
+        s = self._imported(status=S.TEAM_COLLECTING, purpose="원래 사유")
+        r = self.client.patch(f"/api/settlements/{s.id}/", {"purpose": "몰래 고침"}, format="json")
+        self.assertEqual(r.status_code, 400)
+        #  어느 단계에서 잠겼는지 말해 줘야 사용자가 푸는 방법을 안다.
+        self.assertIn("팀장이 보완요청", r.json()["detail"])
+        s.refresh_from_db()
+        self.assertEqual(s.purpose, "원래 사유")
+
+    def test_팀에_올린_건은_다듬기도_못_한다(self):
+        """다듬기는 `purpose`를 **저장하는 편집**이다 — 잠긴 건을 AI가 고쳐 쓰면
+        잠금이 잠금이 아니다(`submit_prep.prepare`)."""
+        s = self._imported(status=S.TEAM_COLLECTING)
+        r = self.client.post(f"/api/settlements/{s.id}/prepare-submit/", {}, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_팀_보완요청은_고쳐서_다시_올린다(self):
+        """되받은 건이 다시 팀 취합으로 올라가는가 — 예전엔 `200 skipped`로 조용히 막혔다."""
+        s = self._imported(status=S.TEAM_RETURNED)
+        r = self.client.patch(f"/api/settlements/{s.id}/", {"purpose": "보완했습니다"}, format="json")
+        self.assertEqual(r.status_code, 200)
+        r = self.client.post("/api/settlements/raise/", {"ids": [str(s.id)]}, format="json")
+        self.assertEqual(r.json()["skipped"], [])
+        self.assertEqual([str(i) for i in r.json()["raised"]], [str(s.id)])
+        s.refresh_from_db()
+        self.assertEqual(s.status, S.TEAM_COLLECTING)
+
+    def test_올릴_수_없는_건은_skipped로_돌아온다(self):
+        """**거절을 200 본문에 담아 준다** — 화면이 이걸 읽어야 성공으로 그리지 않는다."""
+        s = self._imported(status=S.CONFIRMED)
+        r = self.client.post("/api/settlements/raise/", {"ids": [str(s.id)]}, format="json")
+        self.assertEqual(r.json()["raised"], [])
+        self.assertEqual([str(i) for i in r.json()["skipped"]], [str(s.id)])
+        s.refresh_from_db()
+        self.assertEqual(s.status, S.CONFIRMED)
+
+    def test_잠겨도_팀_제출은_된다(self):
+        """수정 잠금이 **전이를 막지는 않는다** — 팀 제출은 값을 바꾸지 않는다."""
+        s = self._imported(status=S.TEAM_COLLECTING)
+        r = self.client.post("/api/settlements/submit/", {"ids": [str(s.id)]}, format="json")
+        self.assertEqual(r.status_code, 200)
+        s.refresh_from_db()
+        #  제출 직후 룰 판정이 이어 돌아 도착 상태는 건마다 다르다 — DRAFT/팀 단계가
+        #  아니라는 것만 본다.
+        self.assertNotIn(s.status, {S.DRAFT, S.TEAM_COLLECTING})
 
 
 class EditThenJudgeTests(TestCase):
