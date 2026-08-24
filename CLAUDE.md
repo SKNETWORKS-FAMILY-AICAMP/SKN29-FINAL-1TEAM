@@ -33,7 +33,7 @@ daily_scrum/  주차별 진행 보고
 - **사람 확정 원칙**: 확신 통과 건도 회계 담당자 확정 없이는 CONFIRMED 불가.
 - 영수증은 별도 OCR 없이 **OpenAI 비전**으로 직접 판독. Rule 적용은 결정론적 엔진, LLM은 Rule 생성 단계에서만.
 - **가맹점 업종 = 정본 1곳**: 캐시(TTL 30일) → 카카오 원시조회 → **LLM이 우리 서비스 어휘로 재분류**(카카오 group code는 장소·마케팅 분류라 그대로 안 쓴다). 어휘 정본은 `domain/transactions/industry.py` 15종이고 ai는 미러 — 이 라벨이 곧 판정 사실 `merchant.merchant_type`이라 룰 DSL·금지업종 별표와 **같은 표기**여야 한다. **접히지 않으면 `기타`가 아니라 미확정**(`기타`로 밀면 별표가 "금지 아님"으로 단정한다). 비용분류 **보조 힌트**일 뿐 세무 판단이 아니고, MCC는 post-MVP. → `_context/merchant-industry-vocabulary.md` / 기술 §7-1
-- **룰은 사전 탑재하지 않는다 — 기본 게이트 1개 + 문서에서 생성**: 제품이 미리 준비해 제공하는 것은 **`DEFAULT GATE` 하나**뿐이며, 특정 회사 규정에 종속되지 않는 **범용 default 룰**로 고도화한다. **카테고리별 세부 룰은 고객이 자사 규정 문서를 업로드하면 Rule Agent가 생성**한다(RAG 조항 추출 → 초안 → 시뮬레이션 → ACTIVE 승인). `법인카드_사용규정_기반_RULE_명세서.md`의 58 RULE과 `seed_rules`의 4개 계열 그래프는 **참고용 예시·시연용**이지 기본 제공물이 아니다.
+- **룰은 사전 탑재하지 않는다 — 기본 게이트 1개 + 문서에서 생성**: 제품이 미리 준비해 제공하는 것은 **`DEFAULT GATE` 하나**뿐이며, 특정 회사 규정에 종속되지 않는 **범용 default 룰**로 고도화한다. **카테고리별 세부 룰은 고객이 자사 규정 문서를 업로드하면 Rule Agent가 생성**한다(RAG 조항 추출 → 초안 → 시뮬레이션 → ACTIVE 승인). `docs/RULE_명세서.md`의 76 RULE과 `seed_rules`의 4개 계열 그래프는 **참고용 예시·시연용**이지 기본 제공물이 아니다.
 - **룰 도메인 = 그래프(트리)**: 단건 룰은 `condition+action+next_routings` 노드, 조립된 **룰 그래프(RuleGraph)** 가 최종 상태 도메인. **ACTIVE·버전관리·시뮬레이션·롤백은 그래프 단위**. (기술 §3.1·§4.2 / 요구사항 FR-RB·FR-RV·FR-RA)
 - **룰엔진 = 3단 파이프라인**: ① `build_rule_context(tx_id)`로 **EvalContext(facts 스냅샷)** 조립(모든 I/O·데이터 접근은 여기서만) → ② 그래프 선택(**필수 게이트 GLOBAL → 계정과목별 scope**) → ③ **결정론적 순회**(엔진은 EvalContext만 참조, 외부 I/O 0). 조건은 **JSON-Logic류 DSL**(임의코드 금지). context는 `rule_hits.eval_context`에 스냅샷 저장 → 재현·감사. 상세: `llm_wiki/_context/rule-engine.md`. (기술 §4.2(d) / 요구사항 FR-RA-08~10)
 - **비용분류 어휘 = 서버가 내려준다**: 정본 `settlements.Category` 6종(회식·회의·식대·출장·접대·**기타**), 창구는 `GET /api/meta/categories/` 하나. 화면(`useCategories()`)·ai(`core_client.get_categories()`)가 런타임에 받아 쓰고 **저장 검증은 서버가 한다**(목록 밖 값은 400). **`기타` ≠ 미기재** — `기타`는 "어디에도 안 맞는다"는 확정, `""`는 "아직 못 정했다"(게이트가 `CATEGORY_MISSING`으로 잡는다). → `_context/category-vocabulary.md`
@@ -77,7 +77,7 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | Draft Agent | ✅ v2 | 사실 주입(기본 내역·첨부 추출·EvalContext) + **엔진 dry-run 판정 미리보기**. 판정을 LLM이 예측하지 않는다. 모델이 낼 수 없는 것은 스키마에서 뺀다. → [[draft-agent-v2]] |
-| Rule Agent (생성·대화·검증셋·서술) | ✅ 전 구간 | 규정 문서 → RAG → LLM 노드 → 결정론적 조립 → DRAFT 저장 → 구조검증 → 재시도. 대화형 수정·검증셋 자동생성·시뮬 보고서 서술 포함. → `docs/rule-agent-v0.md` · [[rule-agent-v1-implementation]] |
+| Rule Agent (생성·대화·검증셋·서술) | ✅ 전 구간 | 규정 문서 → RAG → LLM 노드 → 결정론적 조립 → DRAFT 저장 → 구조검증 → 재시도. 대화형 수정·검증셋 자동생성·시뮬 보고서 서술 포함. → `_context/rule-agent-v0.md`(v0 스냅샷) · [[rule-agent-v1-implementation]] |
 | Risk Review Agent | ✅ v2 (등급 분기) | 1차 이상탐지 → **등급이 2차를 가른다**: `LOW`=LLM 0회 고정 안내(「검사 안 함」을 명시) / `MEDIUM`=fast / `HIGH`·미측정=heavy. 2차 산출물은 **구조화 보고서**(요약·특징·근거+판단·추가안내) — 근거 id를 서버가 대조해 지어낸 인용을 버리고, 근거 없는 판단은 참고사항으로 강등한다. → [[risk-review-agent-v2]] |
 | 증빙자료 추출 Agent | ✅ | 업로드가 곧 판독 트리거. 신뢰도 게이트 0.6 미만은 EvalContext에 안 올린다. → [[evidence-extraction-agent]] |
 | 결정 사유 초안 Agent | ✅ | 선택지는 서버 정본, LLM은 문장. ai 없어도 플래그 설명으로 폴백. → [[settlement-ui-rules]] §5 |
@@ -147,8 +147,7 @@ llm_wiki/
 ├── _index.md            ← 컨텍스트 색인/매니페스트 (에이전트가 읽고 갱신하는 진입점)
 ├── docs/                ← 팀이 관리하는 기준 문서 — SoT (권위 범위·버전·상태는 _index.md 표)
 │   ├── 요구사항_명세서.md
-│   ├── 기술명세서.md
-│   ├── 기획_확장안.md
+│   ├── 기술명세서.md      (2026-08-24: 기획_확장안.md 병합 — §12 서비스 기획 보충)
 │   └── RULE_명세서.md    (참고 예시 — 제품 기본 제공은 DEFAULT GATE 1개뿐)
 ├── 화면설계서/           ← 압축해제 .docx (본문 word/document.xml, 추출 레시피는 CLAUDE.local.md)
 ├── figma_mockup/         ← 화면 목업 SVG (참고용, 픽셀 매칭 불필요)

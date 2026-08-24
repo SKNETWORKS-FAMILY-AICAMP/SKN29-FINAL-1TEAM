@@ -26,10 +26,11 @@ llm_wiki/
 | 문서 | 버전 | 권위 범위 | 상태 |
 |---|---|---|---|
 | `docs/요구사항_명세서.md` | v1.0 | 기능/비기능 요구사항(FR-*), 상태머신, Open Issue | 확정 |
-| `docs/기술명세서.md` | v1.0 | 아키텍처·데이터·API·FastMCP Tool·ML/RAG·룰 그래프 | 확정 |
-| `docs/기획_확장안.md` | v1.0 | 제품 기획·3-Agent 플로우·객체 모델·라이프사이클 | 확정 |
+| `docs/기술명세서.md` | v1.0 | 아키텍처·데이터·API·FastMCP Tool·ML/RAG·룰 그래프 + 서비스 기획(§12, 2026-08-24 `기획_확장안.md` 병합: 문제정의·UI 목업·대시보드·카드구분×분류 흐름분기) | 확정 |
 | `docs/RULE_명세서.md` | v1.4 | 규정에서 도출 가능한 58 RULE의 참고 예시 — 필드정의·심각도·우선순위. 제품 기본 제공은 DEFAULT GATE 1개뿐이며 세부 룰은 고객 규정 문서 업로드 시 생성된다 | 확정(참고 자료) |
 | `화면설계서/` | Rev.1 v1.1 | 6개 화면(S-01~06)·역할·상태머신 화면매핑 (압축해제 .docx) | 프론트 구현 기준 |
+
+> **2026-08-24**: `기획_확장안.md`는 §12로 기술명세서에 병합·삭제됐다. `rule-agent-v0.md`·`Risk_Review_Agent_v0_SUMMARY.md`(→`risk-review-agent-v0-summary.md`)는 이미 v1/v2 문서로 대체된 구현 기록이라 `_context/`로 이동했다(§3.2).
 
 세 스펙 문서(요구사항·기술·기획)는 서로 상충 없이 유지한다. 상태머신·룰 도메인·Risk 2단계 등 핵심 결정은 아래 §2에 요약.
 
@@ -89,7 +90,6 @@ llm_wiki/
 | `chunking-strategy.md` | 청킹 — **자르는 단위는 조(條)** |
 | `embedding-strategy.md` | 임베딩 — `3-large @ 1024` 확정 근거, `bge-m3` 격차(재검토 트리거) |
 | `ai-lab.md` | AI-LAB — 운영과 같은 코드를 부르고 근거를 편다 |
-| `../docs/rule-agent-v0.md` | Rule Agent(생성) 구현 캐논 — ⚠️ 이 문서만 `docs/`에 있다(2026-08-14 이동) |
 
 ### 3.2 구현 기록·계획 — 배경이 필요할 때
 
@@ -97,12 +97,14 @@ llm_wiki/
 |---|---|
 | `rule-agent-v1-implementation.md` | Rule Agent v1 구현 기록(근거·코드 위치·검증 결과) |
 | `risk-review-agent-v1-implementation.md` | Risk Review v1 구현 기록 |
+| `rule-agent-v0.md` | Rule Agent(생성) v0 구현 기록 — ⚠️ 대체됨, `rule-agent-v1-implementation.md`가 정본(2026-08-24 `docs/`에서 이동) |
+| `risk-review-agent-v0-summary.md` | Risk Review v0 구현 기록 — ⚠️ 대체됨, `risk-review-agent-v2.md`가 정본(2026-08-24 `docs/`에서 이동, 파일명 kebab-case 통일) |
 | `agent-v1-upgrade-plan.md` | Rule/Risk v1 결정 사항 요약(근거는 위 두 문서) |
 | `rule-agent-v1-ux-upgrade-plan.md` | 룰 콘솔 UX 고도화 계획·구현 |
 | `agent-evaluation-2026-08-21.md` | Agent 실측 평가 기록 |
 | `eval-context-sourcing.md` | EvalContext 필드 출처 등급화(A~D) + v3 다이어트 기록 |
 | `policy-domain-plan.md` | policy 도메인 구현 PLAN + 인수 결과 |
-| `rule-seed-plan.md` | RULE 명세서 → 시드 그래프 추적. ⚠️ 본문의 "회식은 독립 scope" 서술은 무효(2026-08-14 정정) |
+| `rule-seed-plan.md` | ⚠️ 대체됨 — 2026-07-30 시점 계획(GLOBAL 게이트만 구현·엔진 부재 전제). 현재 상태는 CLAUDE.md §3.6·`default-gate.md`·`rule-engine.md`가 정본 |
 | `rule-engine-design.md` | 룰엔진 설계 원안. 현행과 다른 부분은 상단 대조표 참조 — 현재 상태는 `eval-context-guide.md`가 정본 |
 | `case-history-golden-data-note.md` | 골든 사례 데이터 메모 |
 
