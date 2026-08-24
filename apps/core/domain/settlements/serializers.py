@@ -65,6 +65,11 @@ class SettlementSerializer(serializers.ModelSerializer):
     # 팀·공용 카드 결제인데 아직 실사용자가 정해지지 않은 건. 팀원 **전원**에게 보여야
     # 실사용자가 본인 등록을 할 수 있다(주인이 없으니 `user` 기준으로는 아무에게도 안 보인다).
     claimPending = serializers.SerializerMethodField()
+    #: 이 건이 **어디서 왔는가**. 화면이 영수증 요구를 다르게 해야 한다 —
+    #  화면 등록은 영수증 파일이 필수지만(서버가 400), 카드사 원장에서 수집한 건은
+    #  애초에 파일이 없다. 같은 자리에 「영수증을 첨부해 주세요(필수)」를 띄우면
+    #  사용자가 고칠 수 없는 것을 고치라고 요구하는 셈이다.
+    origin = serializers.SerializerMethodField()
     # ── Risk 평탄화 (ReviewItem 셰이프) ──
     anomalyScore = serializers.SerializerMethodField()
     # 1차 이상탐지 점수의 3단계 등급. Agent가 아직 안 돈 건은 `''`(없는 판단을 지어내지 않는다).
@@ -117,7 +122,7 @@ class SettlementSerializer(serializers.ModelSerializer):
         fields = [
             "id", "date", "time", "merchant", "amount", "cardType", "cardId", "cardName",
             "category", "aiCategory", "aiSuggested", "merchantIndustry", "merchantIndustryCode", "purpose",
-            "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending",
+            "evidence", "status", "statusLabel", "user", "dept", "teamId", "claimPending", "origin",
             "anomalyScore", "riskTier", "anomalyStatus", "anomalyNote",
             "riskReport", "riskTierPath",
             "aiRecommendation", "aiConfidence",
@@ -178,6 +183,15 @@ class SettlementSerializer(serializers.ModelSerializer):
     def get_riskTier(self, obj):
         r = self._risk(obj)
         return r.risk_tier if r else ""
+
+    def get_origin(self, obj):
+        """`ERP`(원장 수집) / `UPLOAD`(화면 등록).
+
+        `external_id`가 판별자다 — `erp_import`가 원천 식별자를 넣고 유니크 제약까지 걸어
+        중복 수집을 막는 값이라, 있으면 원장에서 온 건이다.
+        """
+        tx = obj.transaction
+        return "ERP" if (tx and tx.external_id) else "UPLOAD"
 
     def get_anomalyStatus(self, obj):
         r = self._risk(obj)
