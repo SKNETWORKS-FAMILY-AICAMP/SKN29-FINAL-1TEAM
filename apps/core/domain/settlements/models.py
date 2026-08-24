@@ -16,7 +16,11 @@ class Category(models.TextChoices):
     여기서 값을 받아 간다. 값을 늘릴 때 `RuleGraph.ck_rulegraph_scope` CHECK 제약이
     `Category.values`를 참조하므로 **마이그레이션(넓히기)이 함께 필요**하다.
 
-    `OTHER("기타")`는 **사람이 "6개 중 어디에도 안 맞는다"고 확정한 값**이다 —
+    2026-08-24: `SUPPLIES("비품")` 폐기 — 정산 과목을 회식·회의·식대·출장·접대 다섯으로
+    단순화했다. 비품 구매는 「어디에도 안 맞는」 지출이라 `OTHER`가 그 자리를 대신한다
+    (기존 데이터는 `settlements/0015`가 옮긴다).
+
+    `OTHER("기타")`는 **사람이 "나열된 어디에도 안 맞는다"고 확정한 값**이다 —
     「아직 못 정했다」는 `""`(빈 값)이고 둘은 다르다. 미확정을 기타로 밀면 기본 게이트의
     `CATEGORY_MISSING`이 안 걸려서 확인 안 한 건이 확인된 것으로 취급된다
     (가맹점 업종 어휘가 같은 이유로 `기타`와 미확정을 가른다 — `transactions/industry.py`).
@@ -27,7 +31,6 @@ class Category(models.TextChoices):
     MEAL = "식대", "식대"
     TRIP = "출장", "출장"
     ENTERTAIN = "접대", "접대"
-    SUPPLIES = "비품", "비품"
     OTHER = "기타", "기타"
 
 

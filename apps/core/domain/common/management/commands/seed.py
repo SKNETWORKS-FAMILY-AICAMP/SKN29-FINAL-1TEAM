@@ -183,7 +183,7 @@ class Command(BaseCommand):
 
         # 분류 → 지출 세부유형(청탁금지 한도 룩업 키를 겸한다).
         ITEM_TYPE = {C.MEAL: "식사", C.MEETING: "식사", C.ENTERTAIN: "식사",
-                     C.TRIP: "교통", C.SUPPLIES: "소모품", C.GATHERING: "행사성"}
+                     C.TRIP: "교통", C.OTHER: "소모품", C.GATHERING: "행사성"}
 
         # 일시불할부구분코드: 실거래 데이터엔 없는 카드사 원천 필드라 학습 데이터(AI Hub, 148만 건)
         # 관측 분포를 그대로 재현해 랜덤 배정한다(apps/ai `app/ml/features.py` CATEGORY_VALUES와
@@ -231,28 +231,28 @@ class Command(BaseCommand):
         mk(kim, "카카오T", 23400, kim_card, C.TRIP, False, S.DRAFT, "OK", 1, 9, "고객사 방문 이동")
         mk(kim, "GS칼텍스 주유", 70000, kim_card, C.TRIP, False, S.SUBMITTED, "OK", 2, 8, "지방 출장 주유")
         mk(kim, "본죽 역삼점", 12000, kim_card, C.MEAL, True, S.PENDING_CONFIRM, "OK", 3, 12, "야근 식대")
-        mk(kim, "교보문고", 38000, kim_card, C.SUPPLIES, False, S.RETURNED, "OK", 5, 14, "영업 자료 서적")
+        mk(kim, "교보문고", 38000, kim_card, C.OTHER, False, S.RETURNED, "OK", 5, 14, "영업 자료 서적")
         mk(kim, "롯데호텔 커피숍", 46000, kim_card, C.MEETING, True, S.CONFIRMED, "OK", 8, 15, "거래처 상담")
         mk(kim, "대한항공", 210000, postpaid, C.TRIP, True, S.ERP_VOUCHER_DRAFTED, "OK", 12, 7, "부산 출장 항공", "항공")
 
         # ── 박회계(acc) '내 지출' — 회계 담당자 개인 법인카드 지출 전 상태 ──
         mk(acc, "투썸플레이스 을지로", 15400, acc_card, C.MEETING, True, S.DRAFT, "OK", 1, 10, "결산 리뷰 미팅 음료", "카페")
-        mk(acc, "오피스디포", 42000, acc_card, C.SUPPLIES, False, S.DRAFT, "MISSING", 1, 13, "회계 증빙 보관용 파일박스", "사무용품")
+        mk(acc, "오피스디포", 42000, acc_card, C.OTHER, False, S.DRAFT, "MISSING", 1, 13, "회계 증빙 보관용 파일박스", "사무용품")
         mk(acc, "김밥천국 여의도", 9000, acc_card, C.MEAL, True, S.SUBMITTED, "OK", 2, 20, "월말 결산 야근 식대", "음식점")
         mk(acc, "코레일 KTX", 47600, acc_card, C.TRIP, False, S.SUBMITTED, "OK", 3, 8, "세무조사 대응 본사 출장", "철도")
-        mk(acc, "교보문고", 33000, acc_card, C.SUPPLIES, False, S.PENDING_CONFIRM, "OK", 4, 15, "개정세법 실무 서적", "서점")
+        mk(acc, "교보문고", 33000, acc_card, C.OTHER, False, S.PENDING_CONFIRM, "OK", 4, 15, "개정세법 실무 서적", "서점")
         mk(acc, "스타벅스 여의도", 21000, acc_card, C.ENTERTAIN, True, S.RETURNED, "OK", 5, 16, "외부 회계법인 미팅 - 목적 보완 필요", "카페")
         mk(acc, "본죽 여의도", 12800, acc_card, C.MEAL, False, S.CONFIRMED, "OK", 9, 12, "주말 결산 근무 식대", "음식점")
-        mk(acc, "우체국 등기", 8000, acc_card, C.SUPPLIES, False, S.ERP_VOUCHER_DRAFTED, "OK", 13, 11, "회계 원본 증빙 발송", "우편")
-        mk(acc, "이마트 여의도", 64000, fin_team_card, C.SUPPLIES, False, S.TEAM_COLLECTING, "OK", 2, 18, "결산 기간 팀 간식·비품", "마트")
+        mk(acc, "우체국 등기", 8000, acc_card, C.OTHER, False, S.ERP_VOUCHER_DRAFTED, "OK", 13, 11, "회계 원본 증빙 발송", "우편")
+        mk(acc, "이마트 여의도", 64000, fin_team_card, C.OTHER, False, S.TEAM_COLLECTING, "OK", 2, 18, "결산 기간 팀 간식·비품", "마트")
 
         # ── 재무회계팀 지출 내역 — 결산·세무·감사 대응 업무 지출 ──
         fin_expenses = [
-            (acclead, "삼정회계법인", 550000, fin_team_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 6, 14,
+            (acclead, "삼정회계법인", 550000, fin_team_card, C.OTHER, False, S.SUBMITTED, "OK", 6, 14,
              "반기 결산 외부 자문료", "회계법인"),
             (u["오세진"], "김가네 여의도", 78000, fin_team_card, C.MEAL, False, S.TEAM_COLLECTING, "OK", 1, 20,
              "월말 결산 야근 팀 식대", "음식점"),
-            (u["오세진"], "쿠팡", 128000, fin_team_card, C.SUPPLIES, True, S.TEAM_COLLECTING, "MISSING", 2, 11,
+            (u["오세진"], "쿠팡", 128000, fin_team_card, C.OTHER, True, S.TEAM_COLLECTING, "MISSING", 2, 11,
              "전표 보관용 파일·라벨 프린터", "전자상거래"),
             (u["한지민"], "코레일 KTX", 118600, postpaid, C.TRIP, False, S.TEAM_COLLECTING, "OK", 3, 7,
              "지방사업장 재고실사 출장", "철도"),
@@ -260,7 +260,7 @@ class Command(BaseCommand):
              "재고실사 출장 숙박", "숙박"),
             (u["오세진"], "스타벅스 IFC", 34500, fin_shared_card, C.MEETING, True, S.TEAM_RETURNED, "OK", 5, 15,
              "세무 자문 미팅 - 실사용자 미기재로 보완요청", "카페"),
-            (acclead, "회계관리 SaaS", 330000, fin_team_card, C.SUPPLIES, False, S.CONFIRMED, "OK", 20, 10,
+            (acclead, "회계관리 SaaS", 330000, fin_team_card, C.OTHER, False, S.CONFIRMED, "OK", 20, 10,
              "결산 자동화 툴 연간 구독", "소프트웨어"),
             (u["한지민"], "설렁탕집 여의도", 156000, fin_team_card, C.MEAL, False, S.CONFIRMED, "OK", 25, 12,
              "결산 마감 팀 오찬", "음식점"),
@@ -271,12 +271,12 @@ class Command(BaseCommand):
         # ── 영업팀 취합 단계(팀장 뷰) — TEAM_* 상태 다양화 ──
         mk(u["박민수"], "배달의민족", 84000, sales_team_card, C.MEAL, True, S.TEAM_COLLECTING, "OK", 2, 20, "팀 야근 식대")
         mk(u["박민수"], "신라스테이", 450000, postpaid, C.TRIP, True, S.TEAM_COLLECTING, "OK", 3, 21, "지방 출장 숙박")
-        mk(u["정하늘"], "이마트", 51000, sales_team_card, C.SUPPLIES, False, S.TEAM_RETURNED, "OK", 3, 17, "팀 비품 - 사용목적 보완 필요")
+        mk(u["정하늘"], "이마트", 51000, sales_team_card, C.OTHER, False, S.TEAM_RETURNED, "OK", 3, 17, "팀 비품 - 사용목적 보완 필요")
         mk(u["정하늘"], "스타벅스 코엑스", 26000, sales_team_card, C.MEETING, False, S.TEAM_COLLECTING, "OK", 4, 14, "주간 회의 다과")
         mk(u["이도윤"], "한우명가", 298000, shared_card, C.ENTERTAIN, True, S.TEAM_COLLECTING, "OK", 5, 19, "거래처 접대(실사용자 지정 필요)")
         mk(u["이도윤"], "롯데시네마 건대", 132000, shared_card, C.ENTERTAIN, True, S.TEAM_REJECTED, "OK", 6, 18, "접대 성격 불명확 - 팀 반려")
         mk(u["이도윤"], "카카오T", 12600, sales_team_card, C.TRIP, False, S.DRAFT, "OK", 2, 9, "고객사 방문 이동")
-        mk(u["정하늘"], "교보문고", 54000, kim_card, C.SUPPLIES, False, S.SUBMITTED, "OK", 8, 12, "기술서적 구입")
+        mk(u["정하늘"], "교보문고", 54000, kim_card, C.OTHER, False, S.SUBMITTED, "OK", 8, 12, "기술서적 구입")
 
         # ── 영업팀 취합 대기(TEAM_COLLECTING) 다양한 처리 샘플 ──
         # 프론트 S-02의 사람별 필터·분류별 예산·이상건 강조/자동 보완요청 시연용.
@@ -284,13 +284,13 @@ class Command(BaseCommand):
             (u["박민수"], "성수동 커피랩", 27000, sales_team_card, C.MEETING, True, "OK", 1, 10, "거래처 킥오프 미팅", "카페"),
             (u["박민수"], "KTX 서울-부산", 119600, postpaid, C.TRIP, False, "OK", 2, 7, "부산 고객사 방문", "철도"),
             (u["박민수"], "그랜드호텔 레스토랑", 420000, sales_team_card, C.ENTERTAIN, True, "OK", 3, 20, "신규 거래처 접대", "한식"),
-            (u["정하늘"], "오피스디포", 73500, sales_team_card, C.SUPPLIES, False, "OK", 1, 15, "영업 제안서 바인더 및 용지", "사무용품"),
+            (u["정하늘"], "오피스디포", 73500, sales_team_card, C.OTHER, False, "OK", 1, 15, "영업 제안서 바인더 및 용지", "사무용품"),
             (u["정하늘"], "카카오T 블랙", 38600, postpaid, C.TRIP, True, "MISSING", 2, 22, "야간 고객사 미팅 복귀", "운수"),
             (u["정하늘"], "한강파크 푸드코트", 66500, sales_prepaid, C.MEAL, False, "OK", 4, 12, "현장 영업팀 오찬", "음식점"),
-            (u["이도윤"], "렌탈프로 행사장비", 680000, sales_team_card, C.SUPPLIES, True, "MISSING", 1, 16, "제품 시연회 장비 대여", "렌탈"),
-            (u["이도윤"], "공용카드 온라인몰", 158000, sales_shared_card, C.SUPPLIES, True, "OK", 2, 14, "고객 증정용 샘플", "전자상거래"),
+            (u["이도윤"], "렌탈프로 행사장비", 680000, sales_team_card, C.OTHER, True, "MISSING", 1, 16, "제품 시연회 장비 대여", "렌탈"),
+            (u["이도윤"], "공용카드 온라인몰", 158000, sales_shared_card, C.OTHER, True, "OK", 2, 14, "고객 증정용 샘플", "전자상거래"),
             (u["이도윤"], "마티나라운지", 91000, postpaid, C.MEAL, True, "MISSING", 5, 6, "조찬 출장 식사", "음식점"),
-            (kim, "테크노마트", 245000, kim_card, C.SUPPLIES, False, "OK", 3, 13, "시연용 휴대 기기", "전자기기"),
+            (kim, "테크노마트", 245000, kim_card, C.OTHER, False, "OK", 3, 13, "시연용 휴대 기기", "전자기기"),
             (kim, "스타벅스 역삼점", 31500, kim_card, C.MEETING, True, "MISSING", 4, 11, "잠재고객 상담", "카페"),
             (kim, "비즈니스 디너", 298000, sales_team_card, C.ENTERTAIN, False, "OK", 6, 19, "재계약 협의 저녁", "양식"),
         ]
@@ -331,7 +331,7 @@ class Command(BaseCommand):
              R(("공직자 등 참석 시 1인당 법정 한도 적용", "청탁금지법 제8조", "policy"),
                ("기업업무추진비 건당 50만원 초과 사전결재", "TIGER-REG-2026-003 제12조①", "policy")),
              ["청탁금지법 대상 참석·1인당 한도 초과"], "REJECT", 0.88),
-            (u["서지훈"], "롯데백화점 상품권", 300000, sales_team_card, C.SUPPLIES, "OK", 7, 15, "명절 거래처 선물", "백화점",
+            (u["서지훈"], "롯데백화점 상품권", 300000, sales_team_card, C.OTHER, "OK", 7, 15, "명절 거래처 선물", "백화점",
              0.83, F(("유가증권 구매", 0.46), ("사전승인 없음", 0.24)),
              R(("상품권 등 유가증권 구매는 사전 승인 필수", "TIGER-REG-2026-003 제9조③", "policy")),
              ["상품권 구매·사전승인 누락"], "RETURN", 0.8),
@@ -358,7 +358,7 @@ class Command(BaseCommand):
              R(("회식 2차 비용은 원칙적 불인정", "TIGER-REG-2026-003 제14조③", "policy"),
                ("회식비 1인당 5만원 한도", "TIGER-REG-2026-003 제14조①", "policy")),
              ["2차 회식·1인당 한도 초과"], "RETURN", 0.69),
-            (u["김철수"], "AWS 클라우드", 892000, devai_team_card, C.SUPPLIES, "OK", 8, 3, "개발 인프라 월 사용료", "클라우드",
+            (u["김철수"], "AWS 클라우드", 892000, devai_team_card, C.OTHER, "OK", 8, 3, "개발 인프라 월 사용료", "클라우드",
              0.68, F(("월 최고 금액", 0.33), ("심야 자동결제", 0.21), ("전월 대비 증가", 0.14)),
              R(("정기 구독료는 예산 항목 사전 배정 필요", "TIGER-REG-2026-003 제6조", "policy")),
              ["고액 정기결제·전월 대비 증가"], "RETURN", 0.62),
@@ -366,7 +366,7 @@ class Command(BaseCommand):
              0.66, F(("단거리 상위 좌석", 0.34), ("직급 기준 초과", 0.2)),
              R(("6시간 미만 노선 비즈니스석은 직급 예외 확인", "TIGER-REG-2026-003 제17조④", "policy")),
              ["단거리 비즈니스석 이용"], "RETURN", 0.6),
-            (u["서지훈"], "이마트 트레이더스", 236000, sales_shared_card, C.SUPPLIES, "OK", 6, 19, "행사 경품 일괄 구매", "마트",
+            (u["서지훈"], "이마트 트레이더스", 236000, sales_shared_card, C.OTHER, "OK", 6, 19, "행사 경품 일괄 구매", "마트",
              0.63, F(("공용카드 고액 결제", 0.3), ("실사용자 미기재", 0.22)),
              R(("공용카드는 실사용자·목적 기재 필수", "요구사항 §4.1", "policy")),
              ["공용카드 고액·실사용자 미기재"], "RETURN", 0.58),
@@ -378,7 +378,7 @@ class Command(BaseCommand):
              0.58, F(("1인당 한도 근접", 0.27), ("야간 결제", 0.16)),
              R(("야근 식대는 1인 2만원 한도", "TIGER-REG-2026-003 제15조①", "policy")),
              ["야근 식대 한도 근접"], "RETURN", 0.55),
-            (u["한도현"], "무신사", 98000, shared_card, C.SUPPLIES, "OK", 7, 13, "팀 단체 후드티", "의류",
+            (u["한도현"], "무신사", 98000, shared_card, C.OTHER, "OK", 7, 13, "팀 단체 후드티", "의류",
              0.56, F(("업무 관련성 불명확", 0.31), ("공용카드 사용", 0.14)),
              R(("복리후생성 지출은 별도 예산·승인 필요", "TIGER-REG-2026-003 제19조", "policy")),
              ["업무 관련성 불명확"], "RETURN", 0.53),
@@ -386,12 +386,12 @@ class Command(BaseCommand):
              0.54, F(("소액 다건 반복", 0.28), ("동일 가맹점 반복", 0.15)),
              R(("분할결제 의심 시 원거래 통합 검토", "TIGER-REG-2026-003 제8조", "policy")),
              ["소액 다건·동일 가맹점 반복"], "RETURN", 0.51),
-            (u["정하늘"], "쿠팡", 187000, sales_shared_card, C.SUPPLIES, "OK", 10, 10, "사무 비품 대량 구매", "전자상거래",
+            (u["정하늘"], "쿠팡", 187000, sales_shared_card, C.OTHER, "OK", 10, 10, "사무 비품 대량 구매", "전자상거래",
              0.52, F(("분류 신뢰도 낮음", 0.26), ("공용카드 사용", 0.14)),
              R(), ["분류 신뢰도 낮음"], "RETURN", 0.5),
 
             # ── 저위험(~0.5) : 승인 권장 ──
-            (u["김철수"], "쿠팡", 95000, shared_card, C.SUPPLIES, "OK", 4, 11, "개발 장비 소모품", "전자상거래",
+            (u["김철수"], "쿠팡", 95000, shared_card, C.OTHER, "OK", 4, 11, "개발 장비 소모품", "전자상거래",
              0.48, F(("분류 신뢰도 낮음", 0.28)), R(), ["분류 신뢰도 낮음"], "APPROVE", 0.72),
             (u["한지민"], "코레일 KTX", 59800, postpaid, C.TRIP, "OK", 6, 8, "지방사업장 실사 이동", "철도",
              0.44, F(("출장 신청 임박 제출", 0.21)), R(), ["출장 신청 지연"], "APPROVE", 0.76),
@@ -403,17 +403,17 @@ class Command(BaseCommand):
              0.36, F(("금액 편차 경미", 0.15)), R(), ["경미한 금액 편차"], "APPROVE", 0.85),
             (u["이도윤"], "백반집", 42000, sales_team_card, C.MEAL, "OK", 7, 12, "업무 오찬", "음식점",
              0.3, F(("경미한 금액 편차", 0.12)), R(), ["경미한 금액 편차"], "APPROVE", 0.88),
-            (u["서지훈"], "다이소", 18500, sales_team_card, C.SUPPLIES, "OK", 9, 16, "행사 소모품", "생활용품",
+            (u["서지훈"], "다이소", 18500, sales_team_card, C.OTHER, "OK", 9, 16, "행사 소모품", "생활용품",
              0.28, F(("소액 결제", 0.11)), R(), ["특이사항 없음"], "APPROVE", 0.9),
             (u["한도현"], "카카오T", 14300, devai_team_card, C.TRIP, "OK", 5, 18, "협력사 미팅 이동", "운수",
              0.24, F(("소액 결제", 0.1)), R(), ["특이사항 없음"], "APPROVE", 0.91),
             (kim, "투썸플레이스", 21500, kim_card, C.MEETING, "OK", 11, 15, "거래처 상담 음료", "카페",
              0.21, F(("정상 패턴", 0.08)), R(), ["특이사항 없음"], "APPROVE", 0.93),
-            (u["최지우"], "교보문고", 46000, devai_team_card, C.SUPPLIES, "OK", 12, 17, "기술 서적 구입", "서점",
+            (u["최지우"], "교보문고", 46000, devai_team_card, C.OTHER, "OK", 12, 17, "기술 서적 구입", "서점",
              0.18, F(("정상 패턴", 0.07)), R(), ["특이사항 없음"], "APPROVE", 0.94),
             (u["박민수"], "본죽", 11000, sales_team_card, C.MEAL, "OK", 13, 12, "출장 중 점심", "음식점",
              0.15, F(("정상 패턴", 0.06)), R(), ["특이사항 없음"], "APPROVE", 0.95),
-            (u["오세진"], "우체국 등기", 7600, fin_team_card, C.SUPPLIES, "OK", 14, 11, "증빙 원본 발송", "우편",
+            (u["오세진"], "우체국 등기", 7600, fin_team_card, C.OTHER, "OK", 14, 11, "증빙 원본 발송", "우편",
              0.12, F(("정상 패턴", 0.05)), R(), ["특이사항 없음"], "APPROVE", 0.96),
         ]
         review_rows = {}
@@ -444,20 +444,20 @@ class Command(BaseCommand):
              "출장 숙박 - 한도 초과분 소명 필요", "숙박", 0.71,
              F(("1박 숙박 한도 초과", 0.4), ("주말 연박", 0.16)),
              ["숙박 한도 초과"], "RETURN", 0.73),
-            (u["오세진"], "다나와 사무기기", 96000, fin_team_card, C.SUPPLIES, S.RETURNED, "OK", 12, 14,
+            (u["오세진"], "다나와 사무기기", 96000, fin_team_card, C.OTHER, S.RETURNED, "OK", 12, 14,
              "결산용 라벨 프린터 - 사용 목적 보완", "전자상거래", 0.55,
              F(("사용 목적 형식적", 0.29), ("분류 신뢰도 낮음", 0.14)),
              ["사용 목적 불명확"], "RETURN", 0.56),
             (u["한지민"], "SRT 수서-동대구", 84600, postpaid, C.TRIP, S.PENDING_CONFIRM, "OK", 11, 8,
              "지방사업장 재고실사 이동", "철도", 0.34,
              F(("출장 신청 임박 제출", 0.18)), ["출장 신청 지연(경미)"], "APPROVE", 0.82),
-            (u["김철수"], "GitHub Copilot", 42000, devai_team_card, C.SUPPLIES, S.PENDING_CONFIRM, "OK", 10, 9,
+            (u["김철수"], "GitHub Copilot", 42000, devai_team_card, C.OTHER, S.PENDING_CONFIRM, "OK", 10, 9,
              "개발 도구 월 구독", "소프트웨어", 0.27,
              F(("정기 결제", 0.11)), ["특이사항 없음"], "APPROVE", 0.9),
             (u["정하늘"], "미스터피자 코엑스", 78000, sales_team_card, C.MEAL, S.CONFIRMED, "OK", 9, 12,
              "제안 마감 주말 근무 식대", "음식점", 0.41,
              F(("주말 결제", 0.19)), ["주말 결제"], "APPROVE", 0.84),
-            (u["서지훈"], "알파문구", 23400, sales_team_card, C.SUPPLIES, S.CONFIRMED, "OK", 8, 16,
+            (u["서지훈"], "알파문구", 23400, sales_team_card, C.OTHER, S.CONFIRMED, "OK", 8, 16,
              "전시 부스 소모품", "생활용품", 0.19,
              F(("소액 결제", 0.08)), ["특이사항 없음"], "APPROVE", 0.93),
             (u["한도현"], "카카오T 벤티", 28900, devai_team_card, C.TRIP, S.ERP_VOUCHER_DRAFTED, "OK", 7, 18,

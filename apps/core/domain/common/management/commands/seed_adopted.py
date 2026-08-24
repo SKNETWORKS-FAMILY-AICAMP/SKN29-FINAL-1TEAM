@@ -150,12 +150,12 @@ MERCHANTS: dict[str, list[tuple[str, str, str]]] = {
         ("대한항공", "주유/교통", "교통"), ("신라스테이 대전", "숙박", "숙박"),
         ("카카오T", "주유/교통", "교통"), ("GS칼텍스 주유", "주유/교통", "교통"),
     ],
-    C.SUPPLIES: [
+    #  「비품」 과목이 폐기되면서(2026-08-24) 소모품·사무용품 구매가 여기로 왔다 —
+    #  나열된 다섯 과목 어디에도 안 맞는 지출이 모이는 자리다.
+    C.OTHER: [
         ("오피스디포", "문구/사무용품", "소모품"), ("알파문구", "문구/사무용품", "소모품"),
         ("다이소 역삼", "문구/사무용품", "소모품"), ("쿠팡", "기타", "소모품"),
         ("교보문고", "문구/사무용품", "소모품"), ("테크노마트", "전자/가전", "소모품"),
-    ],
-    C.OTHER: [
         ("우체국 등기", "기타", "기타"), ("공영주차장", "주유/교통", "기타"),
     ],
 }
@@ -167,8 +167,7 @@ AMOUNTS: dict[str, tuple[int, int]] = {
     C.GATHERING: (180_000, 520_000),
     C.ENTERTAIN: (120_000, 280_000),
     C.TRIP: (14_000, 240_000),
-    C.SUPPLIES: (9_000, 180_000),
-    C.OTHER: (4_000, 32_000),
+    C.OTHER: (4_000, 180_000),      # 소모품(~18만) ∪ 기타 잡비(4천~) — 폐기된 비품 대역 흡수
 }
 
 PURPOSES: dict[str, list[str]] = {
@@ -177,8 +176,8 @@ PURPOSES: dict[str, list[str]] = {
     C.GATHERING: ["분기 마감 팀 회식", "신규 입사자 환영 회식", "프로젝트 완료 회식"],
     C.ENTERTAIN: ["거래처 계약 협의", "신규 거래처 상담", "재계약 협의 식사"],
     C.TRIP: ["지방사업장 출장", "고객사 방문 이동", "출장 숙박", "본사 회의 참석"],
-    C.SUPPLIES: ["사무 비품 구매", "제안서 인쇄 용지", "개발 장비 소모품", "기술 서적 구입"],
-    C.OTHER: ["증빙 원본 발송", "출장 중 주차"],
+    C.OTHER: ["사무 비품 구매", "제안서 인쇄 용지", "개발 장비 소모품", "기술 서적 구입",
+              "증빙 원본 발송", "출장 중 주차"],
 }
 
 
@@ -395,10 +394,10 @@ class Command(BaseCommand):
         #  쌓이면 그건 적용 완료가 아니라 도입 실패다.
         plan = [
             ("영업팀", C.MEAL, 6), ("영업팀", C.MEETING, 4), ("영업팀", C.TRIP, 5),
-            ("영업팀", C.SUPPLIES, 3), ("영업팀", C.ENTERTAIN, 2), ("영업팀", C.GATHERING, 1),
-            ("AI·개발팀", C.MEAL, 5), ("AI·개발팀", C.MEETING, 4), ("AI·개발팀", C.SUPPLIES, 4),
+            ("영업팀", C.OTHER, 3), ("영업팀", C.ENTERTAIN, 2), ("영업팀", C.GATHERING, 1),
+            ("AI·개발팀", C.MEAL, 5), ("AI·개발팀", C.MEETING, 4), ("AI·개발팀", C.OTHER, 4),
             ("AI·개발팀", C.TRIP, 2), ("AI·개발팀", C.GATHERING, 1),
-            ("재무회계팀", C.MEAL, 4), ("재무회계팀", C.MEETING, 3), ("재무회계팀", C.SUPPLIES, 3),
+            ("재무회계팀", C.MEAL, 4), ("재무회계팀", C.MEETING, 3), ("재무회계팀", C.OTHER, 3),
             ("재무회계팀", C.TRIP, 2), ("재무회계팀", C.OTHER, 2),
         ]
         for team_name, category, count in plan:
@@ -456,10 +455,10 @@ class Command(BaseCommand):
                               anomaly_reasons=["청탁금지법 대상자 참석", "업무 관련성 불명확"]))
             #  진행 중 — 화면이 살아 있으려면 "지금 처리할 것"이 있어야 한다.
             for _ in range(4):
-                rows.append(spend("영업팀", self.rng.choice([C.MEAL, C.MEETING, C.SUPPLIES]),
+                rows.append(spend("영업팀", self.rng.choice([C.MEAL, C.MEETING, C.OTHER]),
                                   outcome="inflight_team", day=self.rng.randint(max(1, last_day - 6), last_day)))
             for _ in range(2):
-                rows.append(spend("AI·개발팀", self.rng.choice([C.MEAL, C.SUPPLIES]),
+                rows.append(spend("AI·개발팀", self.rng.choice([C.MEAL, C.OTHER]),
                                   outcome="inflight_team", day=self.rng.randint(max(1, last_day - 6), last_day)))
             for _ in range(3):
                 rows.append(spend("재무회계팀", self.rng.choice([C.MEAL, C.MEETING, C.TRIP]),

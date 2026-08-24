@@ -95,12 +95,11 @@ export type Category = string
 export const CATEGORY_UNSET = ''
 
 /** mock 모드 전용 폴백 목록(실 모드는 서버 응답을 쓴다). */
-export const CATEGORIES_FALLBACK: Category[] = ['회식', '회의', '식대', '출장', '접대', '비품', '기타']
+export const CATEGORIES_FALLBACK: Category[] = ['회식', '회의', '식대', '출장', '접대', '기타']
 
-/** 비용분류 뱃지 색상 — 시안 실측(식대=amber·비품=gray·출장=purple·접대=red) 기반, 나머지는 준하는 톤. */
+/** 비용분류 뱃지 색상 — 시안 실측(식대=amber·출장=purple·접대=red) 기반, 나머지는 준하는 톤. */
 export const CATEGORY_TONE: Record<string, Tone> = {
   식대: 'amber',
-  비품: 'gray',
   출장: 'purple',
   접대: 'red',
   회식: 'orange',
