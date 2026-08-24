@@ -1,0 +1,5873 @@
+[
+{
+  "model": "policies.rulegraph",
+  "pk": 89,
+  "fields": {
+    "family_key": "9f6ceaad-a0f2-444c-bf16-500d54f71007",
+    "name": "QA_RULE_G01_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "kae_dine_alcohol_per_person_over_80k_no_preapp",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:36",
+      "runId": 217,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 35,
+        "changedCount": 4,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 4,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적으로는 문제가 없으나 자동처리율이 2.5%로 매우 낮고 테스트 케이스가 없어 결과 신뢰도가 부족합니다. 판정 근거 문구(주류 포함·1인당 8만원 초과·사전승인 누락)가 정책과 일치하는지 확인한 뒤 재검토 상태로 운영을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식비 사전승인 기준 금액(30만원 초과 시 사전승인 필요)에 대한 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.7363509500000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.7145731,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.70992392,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.6849718,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.67542922,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.646892,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "전사 회식(금액 무관 CEO 사전승인) 여부를 식별할 수 있는 EvalContext 경로(예: 회식 유형 또는 조직 범위)가 허용 경로 목록에 없어 관련 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 별표1"
+        },
+        {
+          "reason": "거래처 동반 회식(기업업무추진비 분류)에 대해 '정산 거부' 처분을 자동으로 적용하려면 지출 건이 기업업무추진비로 분류되었는지 나타내는 경로가 필요하지만 허용 경로 목록에 해당 정보가 없어 관련 룰을 생성하지 못했습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제6~7항"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:36:21.702Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 90,
+  "fields": {
+    "family_key": "bfb977ac-85d2-488c-8f3d-3c7a9dd51b35",
+    "name": "QA_RULE_G02_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dinner_no_receipt_over_30k",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:37",
+      "runId": 218,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 0,
+        "changedCount": 40,
+        "historyTotal": 40,
+        "nodeCoverage": 0.125,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 1,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 39,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조와 실행 결과에서 경고 요소가 존재하고(노드 커버리지 12.5%, 테스트 없음), 규칙 적용으로 기존에 사람이 보던 1건의 판정이 바뀌었습니다. 따라서 즉시 활성화보다는 위험 변경 건의 근거 확인과 미검증 노드에 대한 테스트 보강 후 재검토를 권합니다.",
+          "cause": [
+            "structure",
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 커버리지 12% — 검증되지 않은 노드가 있습니다",
+          "label": "주의",
+          "level": "warn"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 22시 이후 야간 결제에 대한 승인확인 룰을 생성해줘",
+      "sources": [
+        {
+          "score": 0.70718265,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.6766345,
+          "chunk_id": "dump:출장비_사용규정#c04a010#01",
+          "citation": "출장비_사용규정 제10조 제1~2항"
+        },
+        {
+          "score": 0.63227457,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.6103467300000001,
+          "chunk_id": "dump:회식_운영규정#c03a009#01",
+          "citation": "회식_운영규정 제9조 제1~6항"
+        },
+        {
+          "score": 0.60865963,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.60198212,
+          "chunk_id": "dump:회식_운영규정#c04a010#01",
+          "citation": "회식_운영규정 제10조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "전사 회식(제8조 8호)의 판정에 필요한 '전사(회사 전체) 여부'에 매핑되는 허용된 EvalContext 경로가 제공되지 않았습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "고급 업종(호텔·특급 레스토랑 등) 판정에 필요한 표준화된 merchant.merchant_type 값 목록이 규정 청크에 구체적으로 명시되어 있지 않아 정확한 문자열 매핑을 생성할 수 없습니다. merchant.merchant_type 필드는 허용되나 구체적 분류값은 정책 별표에 의존합니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "출장 중 회식(제8조 7호)을 판정하려면 trip.trip_type의 허용 값이 필요했으나 규정 청크에 값 레이블(예: '출장')이 명시되어 있지 않아 정확한 비교식을 만들 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:37:09.188Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 91,
+  "fields": {
+    "family_key": "86362174-f788-48b2-b3c4-130892d6c5c5",
+    "name": "QA_RULE_G03_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_preapproval_alcohol_per_person_over_80k",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:37",
+      "runId": 219,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 36,
+        "changedCount": 5,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 4,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적으로는 문제가 없지만(노드 8개·깊이 8) 자동처리율이 0.0%이고 채점 가능한 테스트가 없어 실제 판정 영향(위험 변경 1건)을 검토해야 합니다. 위험 사례들의 판정 근거와 자동화 임계값을 확인한 뒤 승인 여부를 결정하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식비 주말·공휴일 결제 시 사후승인 확인이 필요하다는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6598853499999999,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.63354093,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.62705004,
+          "chunk_id": "dump:회식_운영규정#c03a009#01",
+          "citation": "회식_운영규정 제9조 제1~6항"
+        },
+        {
+          "score": 0.6183869799999999,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.6152907599999999,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.6101008,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:37:59.406Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 92,
+  "fields": {
+    "family_key": "c8e5c7f3-e2d8-458a-8349-d2a53a1b4821",
+    "name": "QA_RULE_G04_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "external_participant_missing_evidence_requires_return",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:38",
+      "runId": 220,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 37,
+        "changedCount": 2,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 2,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호해 활성화 기술적 위험은 낮으나, 자동처리율이 2.5%로 매우 낮고 테스트 케이스가 없어 운영상 검토 조건을 조정하거나 판정 근거(예: 외부인 참석 시 증빙 규정)를 확인한 뒤 활성화할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식에 외부인(거래처 등)이 1인 이상 참석하면 기업업무추진비로 재분류하는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.71279228,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.65697503,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.65113533,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.64042646,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.639965,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.63944256,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 1
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:38:41.865Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 93,
+  "fields": {
+    "family_key": "06d54a78-eaf8-4748-b80d-b3cff366ffca",
+    "name": "QA_RULE_G05_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_preapproval_alcohol_per_person_over_limit",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:39",
+      "runId": 221,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 33,
+        "changedCount": 6,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 자동처리율이 매우 낮고(2.5%) 테스트 케이스가 전혀 없어 운영 신뢰도가 낮습니다. 경계값 처리(예: 30만원)와 검토로 빠지는 임계값을 검증한 뒤 재평가를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식비를 호텔이나 특급레스토랑 같은 고급업종에서 결제한 경우에 대한 룰을 생성해줘",
+      "sources": [
+        {
+          "score": 0.6580280700000001,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.6347678299999999,
+          "chunk_id": "dump:회식_운영규정#c04a011#01",
+          "citation": "회식_운영규정 제11조"
+        },
+        {
+          "score": 0.6280218399999999,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.6279829699999999,
+          "chunk_id": "dump:회식_운영규정#c02a005#02",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.6253169199999999,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.6243791599999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 포함된 '호텔·특급 레스토랑 등 고급 업종' 조항을 구현하려면 merchant.merchant_type에 해당하는 구체적 문자열(예: 'hotel','fine_dining') 목록이 필요하지만 제공되지 않았으므로 생성하지 않았습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "출장 중 발생하는 회식(출장지 현지 포함)을 판정하려면 trip.trip_type의 구체적 값(예: 'business_trip') 또는 추가 필드 매핑이 필요하지만 명시된 값이 없어 해당 룰은 생성하지 않았습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "전사 회식(금액 무관, CEO 사전승인 필수)은 '전사' 여부를 판단할 수 있는 허용 경로가 없어 구현하지 않았습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:39:22.056Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 94,
+  "fields": {
+    "family_key": "c0fbbbe4-67d1-45ac-883b-21421e4d9716",
+    "name": "QA_RULE_G06_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "merchant_forbidden_reject",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:40",
+      "runId": 222,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 39,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 38,
+        "changedCount": 1,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 1,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 테스트 케이스가 전혀 없어 결과 검증이 불충분하고 자동처리율이 2.5%로 매우 낮아 운영 이득이 제한적입니다. 핵심 시나리오 테스트 추가와 사람이 하던 결정을 규칙이 대체한 사례의 판정 근거 확인을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 시 주류를 포함해 1인당 식대가 8만원을 초과하는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6746809,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6629324,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.65288967,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6423114,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.59517044,
+          "chunk_id": "dump:회식_운영규정#c02a005#01",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.5903849,
+          "chunk_id": "dump:업무추진비_사용규정#c03a008#01",
+          "citation": "업무추진비_사용규정 제8조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "규정에서 언급한 회식 단위(팀/부서/본부/전사)에 따른 1인당 권장 한도는 입력 컨텍스트에 해당 단위를 식별할 수 있는 경로(category/meeting unit 등)가 제공되지 않으므로 룰로 생성하지 못함",
+          "source_citation": "회식_운영규정 제7조"
+        },
+        {
+          "reason": "고급 업종(호텔·특급 레스토랑 등)에 해당하는지 판정하려면 업종 분류 목록 또는 매핑 값이 필요하지만 제공된 경로에는 해당 매핑이 없어 룰을 생성하지 못함",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "출장 중 발생하는 회식(출장지 현지 포함)을 판정하려면 trip.trip_type의 구체적 값(예: '출장')에 대한 허용 문자열이 필요하지만 정책 청크에 명시된 값이 없어 룰을 생성하지 못함",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "전사 회식(금액 무관, CEO 사전승인 필수)은 회식 단위를 식별할 수 있는 데이터 경로가 없어 룰을 생성하지 못함",
+          "source_citation": "회식_운영규정 제7조"
+        },
+        {
+          "reason": "회식 1건이 2개 이상 가맹점으로 나뉘는 경우 후속 결제를 회식비로 인정하지 않는 규정은 '결제 건 분리' 판정에 필요한 명확한 경로(예: 거래군 내 결제 인덱스 또는 매핑)가 없어 룰로 만들지 못함",
+          "source_citation": "회식_운영규정 제5조"
+        },
+        {
+          "reason": "케이크·축하용 소품 1건당 5만원 이내 허용 규정은 개별 품목 금액을 확인할 수 있는 경로가 없어 룰을 생성하지 못함",
+          "source_citation": "회식_운영규정 제5조"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:40:03.603Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 95,
+  "fields": {
+    "family_key": "5f705891-308a-4f53-9d5b-a84eae007ca1",
+    "name": "QA_RULE_G07_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "merchant_forbidden_reject",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:40",
+      "runId": 223,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 39,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 38,
+        "changedCount": 1,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 1,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 자동처리율이 2.5%로 낮고 테스트 케이스가 전혀 없어 운영 전 재검토가 필요합니다. 특히 사람이 하던 판정을 규칙이 대신한 사례의 판정 근거를 확인한 뒤 승인하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 참석 인원이 카드 사용자 포함 2인 이하인 경우(개인 식사 추정) 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.7175722,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.6534036999999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6393395,
+          "chunk_id": "dump:회식_운영규정#x002#01",
+          "citation": "회식_운영규정 별표2"
+        },
+        {
+          "score": 0.6386407599999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6384341,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.63559258,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:40:38.661Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 96,
+  "fields": {
+    "family_key": "056db1c5-42fd-4a49-af2a-5c2ef7a57fd3",
+    "name": "QA_RULE_G08_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_preapp_amount_over_300k",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:41",
+      "runId": 224,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 36,
+        "changedCount": 5,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 4,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없지만(노드 8개, 깊이 8) 자동처리율이 0.0%이고 규칙 적용으로 기존 판단이 변경된 위험 사례 1건이 있어 즉시 활성화보다는 관련 사례들과 판정 근거를 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 후 노래방·단란주점 등 2차 유흥업소에서 결제한 경우에 대한 반려 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6037680999999999,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5847119700000001,
+          "chunk_id": "dump:회식_운영규정#c02a005#01",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.5746848,
+          "chunk_id": "dump:회식_운영규정#c02a005#02",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.56230527,
+          "chunk_id": "dump:출장비_사용규정#c04a011#01",
+          "citation": "출장비_사용규정 제11조 제1~3항"
+        },
+        {
+          "score": 0.5561388700000001,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.55386275,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 언급된 '전사 회식(금액 무관, 제4조)'을 판정하기 위한 전사 회식 여부를 나타내는 EvalContext 경로가 허용 경로 목록에 없습니다(예: is_company_wide_event). 따라서 이 조항에 대한 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:41:23.051Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 97,
+  "fields": {
+    "family_key": "43a71aef-10cf-4e75-baa0-0ce674da936f",
+    "name": "QA_RULE_G09_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "fe-005-kickback_limit_exceeded",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:42",
+      "runId": 225,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 40,
+        "changedCount": 1,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 자동처리율이 0.0%이고 실제 내역 40건이 모두 REVIEW로 분류되어 운영 도입 전 임계값과 위험 변경 사례를 재검토할 필요가 있습니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식비 명목으로 상품권이나 개인 선물을 구매한 경우 반려 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6035062,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.59938943,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.59545147,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.5898947,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5897581599999999,
+          "chunk_id": "dump:회식_운영규정#c02a005#01",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.5834925200000001,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "회식 단위(팀/부서/본부/전사)에 따른 1인당 권장 한도(제7조 표)를 적용하려면 회식 단위를 나타내는 필드가 필요하지만 EvalContext 허용 경로에 해당 필드가 없어 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제7조"
+        },
+        {
+          "reason": "케이크·축하용 소품(1건당 5만원 이내) 등 항목별 금액 한도를 검증하려면 품목 식별 필드(category.item_type 등) 및 개수 정보가 필요하지만 허용 경로에 해당 상세 정보가 없어 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제5조"
+        },
+        {
+          "reason": "회식이 복수 가맹점(후속 결제)으로 나뉘는 경우 후속 결제 건을 개인 사용으로 추정하는 규칙을 자동화하려면 거래 건 간 연관성 또는 가맹점 카운트 필드가 필요하지만 허용 경로에 해당 항목이 없어 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제5조"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:42:06.848Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 98,
+  "fields": {
+    "family_key": "17d65019-4b22-4787-bc52-334baa032ceb",
+    "name": "QA_RULE_G10_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "alcohol_per_person_limit",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:43",
+      "runId": 226,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 33,
+        "changedCount": 6,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 9,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 테스트 케이스가 전혀 없고 자동처리율이 2.5%로 낮아 곧바로 활성화하기보다는 경계값 처리 기준과 테스트 보강 후 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 9개 · 깊이 9단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 참석자가 전부 가족·지인 등 사적 관계로 추정되는 경우의 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.63637185,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.61302978,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.58197486,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.5797243000000001,
+          "chunk_id": "dump:회식_운영규정#c01a003#01",
+          "citation": "회식_운영규정 제3조"
+        },
+        {
+          "score": 0.5707690000000001,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5596869,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "가족 참석 여부(가족 참석은 원칙적으로 회식비 대상 제외)를 판단할 수 있는 경로가 허용 경로 목록에 없습니다(예: 'participants.is_family' 등의 필드 없음). 따라서 해당 조항에 따른 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제6조 제1~5항"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:43:00.039Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 99,
+  "fields": {
+    "family_key": "a1647f5b-0c77-457a-a8fa-b73115053723",
+    "name": "QA_RULE_G11_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_alcohol_per_person_over_limit_preapproval_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:43",
+      "runId": 227,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 33,
+        "changedCount": 6,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호(nodeCoverage 1.0, 방문 7개)하지만 테스트 케이스가 전혀 없고 자동처리율이 2.5%로 낮아 운영 도입 전 경계값 처리와 판정 근거를 추가 검증할 필요가 있습니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "퇴사한 사람이 회식에 참석했는데 부서장 승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.5875789499999999,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.57441276,
+          "chunk_id": "dump:회식_운영규정#s003#02",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.57419252,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.5629493,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.55071187,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.5472588,
+          "chunk_id": "dump:회식_운영규정#c03a009#01",
+          "citation": "회식_운영규정 제9조 제1~6항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 언급된 '사후승인 3회 이상 고위험 관리'를 룰로 구현하려면 사용자의 최근 3개월 내 사후승인 건수 경로가 필요하지만 허용 경로 목록에 해당 데이터 경로가 없어 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 (제5장 예외 규정)"
+        },
+        {
+          "reason": "승인 라인(팀장 본인이 카드 사용자일 때 대체 승인자 등) 관련 자동차단/검증 룰을 만들려면 결재자 신분(카드 사용자와 승인자 관계) 또는 조직 직급 정보 경로가 필요하나 허용 경로 목록에 해당 항목이 없어 생성하지 않았습니다.",
+          "source_citation": "회식_운영규정 제4조"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:43:36.591Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 100,
+  "fields": {
+    "family_key": "03ab28aa-8531-4352-9618-92885e62c401",
+    "name": "QA_RULE_G12_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_preapproval_external_attendees",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:44",
+      "runId": 228,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 36,
+        "changedCount": 3,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 3,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조상 문제는 없지만 자동처리율이 2.5%로 매우 낮고 테스트 케이스가 전무하므로 운영 전 대표 사례 기반 테스트와 규칙 근거(외부인 참석·주류 초과 등)가 회사 정책과 일치하는지 확인 후 활성화하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 기간 중 발생한 회식에 대한 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.65973306,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.64669234,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.64200646,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.60445303,
+          "chunk_id": "dump:회식_운영규정#c01a001#01",
+          "citation": "회식_운영규정 제1조"
+        },
+        {
+          "score": 0.5960186000000001,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.5943871000000001,
+          "chunk_id": "dump:회식_운영규정#x003#01",
+          "citation": "회식_운영규정 부칙 제1~2항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "긴급 회식(재해·사고 등) 예외: 청크에 '긴급 회식' 취급 규정은 있으나 이를 판단할 수 있는 컨텍스트 변수가 제공되지 않아 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정"
+        },
+        {
+          "reason": "야간 장애 대응(IT운영부 등) 1인당 3만원 완화 예외: 부서·사유(IT운영부 등)를 판별할 수 있는 경로가 제공되지 않아 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정"
+        },
+        {
+          "reason": "사후승인이 3개월 내 3회 이상인 경우 고위험 관리: '3개월 내 사후승인 횟수'를 나타내는 히스토리 변수가 허용 경로에 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정"
+        },
+        {
+          "reason": "전사 회식(항상 사전승인) 판정: 거래 유형이 '전사 회식'인지 식별할 수 있는 필드가 허용 경로에 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 별표1"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:44:12.474Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 101,
+  "fields": {
+    "family_key": "1ee47398-0329-4416-b4bb-1bd2a17dd4ed",
+    "name": "QA_RULE_G13_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_with_external_participant",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:44",
+      "runId": 229,
+      "stats": {
+        "autoRate": 0.025,
+        "autoCount": 1,
+        "riskCount": 38,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 39,
+        "reviewCount": 38,
+        "changedCount": 1,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.025,
+        "prevVersionLabel": "",
+        "riskChangedCount": 0,
+        "intendedChangedCount": 1,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없으나 테스트 케이스가 전혀 없고 실제 이력에서 40건 중 38건이 REVIEW로 귀속되어 자동처리율이 2.5%에 불과하므로 즉시 완전 활성화보다 한차례 재검토하여 REVIEW 임계치와 테스트 보강을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "전사 단위 회식은 금액과 무관하게 CEO 사전승인이 필요하다는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.70154274,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.69428557,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6797846599999999,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.67890066,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.67347562,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.6448573,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "전사 회식 여부(회식 단위가 '전사') 또는 회식 단위를 식별하는 EvalContext 경로가 제공되지 않아 '전사 회식은 금액 무관 사전승인' 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 별표1"
+        },
+        {
+          "reason": "회식 단위별 승인권자·직책 기반 트리거(예: 팀장·부서장 본인 사용 시 상위 승인 필요)는 EvalContext에 회식 단위를 또는 카드 사용자의 조직/직책 관련 동적 비교 경로가 부족하여 룰로 구현할 수 없습니다.",
+          "source_citation": "회식_운영규정 제4조"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:44:43.746Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 102,
+  "fields": {
+    "family_key": "bc96e6e3-a00a-4d3f-97c5-911ba9ccabae",
+    "name": "QA_RULE_G14_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_receipt_required_over_30000",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:45",
+      "runId": 230,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 0,
+        "changedCount": 40,
+        "historyTotal": 40,
+        "nodeCoverage": 0.1111,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 1,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 39,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적으로 도달 불가능한 노드는 없으나 노드 커버리지가 11%로 낮고 테스트 케이스가 없어 실행 검증이 부족합니다. 위험 변경 건이 1건 있어 경계값 처리 근거를 확인한 뒤 재검토를 권장합니다.",
+          "cause": [
+            "structure",
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 커버리지 11% — 검증되지 않은 노드가 있습니다",
+          "label": "주의",
+          "level": "warn"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회식 참석자 명단·목적·장소일시 등 필수 기재사항이 누락된 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.57943118,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.57648522,
+          "chunk_id": "dump:업무추진비_사용규정#c02a007#01",
+          "citation": "업무추진비_사용규정 제7조 제1~3항"
+        },
+        {
+          "score": 0.5745256999999999,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.5743081,
+          "chunk_id": "dump:회식_운영규정#c04a010#01",
+          "citation": "회식_운영규정 제10조"
+        },
+        {
+          "score": 0.57337135,
+          "chunk_id": "dump:회식_운영규정#c04a010#02",
+          "citation": "회식_운영규정 제10조"
+        },
+        {
+          "score": 0.5712126,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "규정에 명시된 '호텔·특급 레스토랑 등 고급 업종'의 merchant.merchant_type 값 매핑(문자열 목록)이 제공되지 않아 해당 조건을 결정할 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "규정의 '출장 중 발생하는 회식'을 판정하기 위한 trip.trip_type의 허용 값(예: 출장 여부를 나타내는 구체적 문자열)이 제공되지 않아 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "규정의 '전사 회식(금액 무관)'을 판정할 수 있는 전사 회식 여부를 나타내는 EvalContext 경로가 제공되지 않아 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:45:47.043Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 103,
+  "fields": {
+    "family_key": "2e97a161-7681-402e-b21a-1cf1d527548b",
+    "name": "QA_RULE_G15_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "external_participant_requires_recording_and_classification",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:46",
+      "runId": 231,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 40,
+        "changedCount": 1,
+        "historyTotal": 40,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 자동처리율이 0%로 운영 영향을 미치고, 기존에 통과되던 1건이 REVIEW로 변경되는 등 규칙 변경 영향이 확인되어 활성화 전 임계값과 위험 사례를 검토할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "동일 회식 건이 2개 이상 가맹점으로 분할 결제된 경우(2차 유흥업소 제외)의 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.65292197,
+          "chunk_id": "dump:회식_운영규정#c02a005#02",
+          "citation": "회식_운영규정 제5조"
+        },
+        {
+          "score": 0.5598064,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5534796,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.5505709599999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.54679823,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.54174298,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크 1에 따른 ‘회식 1건이 2개 이상 가맹점으로 나뉘는 경우 후속 결제 건은 회식비로 인정하지 않는다’ 규정을 평가하려면 거래가 동일 회식에 속하는지(같은 이벤트에서 여러 가맹점 결제 여부)를 나타내는 콘텍스트 경로가 필요합니다. 제공된 허용 경로 목록에 해당 정보(예: event_id, grouped_tx_count, merchant group indicator 등)가 없어 조건을 만들 수 없습니다.",
+          "source_citation": "회식_운영규정 제5조"
+        }
+      ],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:46:39.626Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 104,
+  "fields": {
+    "family_key": "300e949f-358b-49dc-b4a2-8b5ef8a37f1b",
+    "name": "QA_RULE_G16_20260822213554",
+    "scope": "회식",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_evidence_missing_over_threshold",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:47",
+      "runId": 232,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 40,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 40,
+        "reviewCount": 0,
+        "changedCount": 40,
+        "historyTotal": 40,
+        "nodeCoverage": 0.2,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 1,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 39,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 심각한 결함(poor)이 아니지만 노드 커버리지(20%)와 자동처리율(0.0%)이 낮고 위험 변경 1건이 확인되어 바로 활성화하기보다는 위험 사례 근거 확인과 미검증 노드에 대한 테스트 추가 후 재검토를 권합니다.",
+          "cause": [
+            "structure",
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 커버리지 20% — 검증되지 않은 노드가 있습니다",
+          "label": "주의",
+          "level": "warn"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "본부·전사 단위 대규모 회식이 승인권자 1일 한도를 초과할 것으로 예상되는데 개인카드로 결제한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6806063,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6777131599999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.64147526,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.64076233,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6391800000000001,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.62229627,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회식",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:47:25.401Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 105,
+  "fields": {
+    "family_key": "23900957-9c2b-47fb-a6ba-dc572b199425",
+    "name": "QA_RULE_T01_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "overseas_trip_requires_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:48",
+      "runId": 233,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 최근 내역에서 20건 중 5건이 위험 변경으로 발생하고 자동처리율이 0%여서 검토 부담이 큽니다. 활성화 전 위험 변경 사례의 임계값과 예외 규칙을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "모든 해외출장은 금액과 무관하게 부서장 이상 사전승인이 필요하다는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.62750584,
+          "chunk_id": "dump:출장비_사용규정#c02a005#01",
+          "citation": "출장비_사용규정 제5조 제1~2항"
+        },
+        {
+          "score": 0.6151566500000001,
+          "chunk_id": "dump:출장비_사용규정#c02a004#01",
+          "citation": "출장비_사용규정 제4조 제1~3항"
+        },
+        {
+          "score": 0.5987469599999999,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.59276474,
+          "chunk_id": "dump:출장비_사용규정#c01a003#01",
+          "citation": "출장비_사용규정 제3조"
+        },
+        {
+          "score": 0.56981343,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5522875199999999,
+          "chunk_id": "dump:출장비_사용규정#c05a015#01",
+          "citation": "출장비_사용규정 제15조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 '항공권·숙박비를 합산한 총 출장 예산이 500만원을 초과'시 본부장 이상 승인이 필요하나, 합산 예산(항공권+숙박)을 나타내는 허용된 var 경로가 제공되지 않아 해당 룰을 생성할 수 없음.",
+          "source_citation": "출장비_사용규정 제5조 제1~2항"
+        },
+        {
+          "reason": "출장 신청은 최소 3영업일 전 제출하도록 규정되어 있으나 '출장 시작 전 영업일 수'를 나타내는 허용된 var 경로가 없어 해당 룰을 생성할 수 없음.",
+          "source_citation": "출장비_사용규정 제4조 제1~3항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:48:09.283Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 106,
+  "fields": {
+    "family_key": "cd4764fe-3227-4795-9b81-60175c962020",
+    "name": "QA_RULE_T02_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "travel_domestic_lodging_over_limit_no_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:48",
+      "runId": 234,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 4,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실제 내역에서 위험 변경 5건과 자동처리율 0.0%가 확인되어 즉시 활성화보다는 변경 사례와 임계값을 재검토한 뒤 승인 여부를 결정할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 4개 · 깊이 4단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 1박 숙박비가 등급별 상한(국내 15만원, 해외 A등급 25만원 등)을 초과하는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6443104,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.6327029,
+          "chunk_id": "dump:출장비_사용규정#c02a005#01",
+          "citation": "출장비_사용규정 제5조 제1~2항"
+        },
+        {
+          "score": 0.62472105,
+          "chunk_id": "dump:출장비_사용규정#x001#01",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.60956866,
+          "chunk_id": "dump:출장비_사용규정#x002#01",
+          "citation": "출장비_사용규정 별표2"
+        },
+        {
+          "score": 0.60724694,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5926415300000001,
+          "chunk_id": "dump:출장비_사용규정#c03a007#01",
+          "citation": "출장비_사용규정 제7조 제1~2항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "별표1의 ‘부서장 이상 직책자는 상향 사용 가능’ 조항을 자동화하려면 직책별 상향 한도(부서장·본부장·대표 이사 등)와 user.job_title 또는 job_title_rank 간 매핑이 필요하지만 해당 매핑 값이 제공된 허용 경로 목록이나 청크에 명시되어 있지 않아 룰을 생성할 수 없습니다.",
+          "source_citation": "출장비_사용규정 별표1"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:48:56.943Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 107,
+  "fields": {
+    "family_key": "13b565ef-d048-4c76-af2f-1e92972eec9b",
+    "name": "QA_RULE_T03_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_night_meal_must_be_after_work",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:49",
+      "runId": 235,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나(구성 노드 모두 도달됨) 실제 내역 20건이 모두 REVIEW로 처리되고 최근 5건이 위험 변경되어 운영 영향이 크므로, 위험 변경 건들의 근거와 REVIEW 임계값을 검토한 뒤 승인 여부를 결정하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "국내출장 야간식대 청구인데 근무종료시각(기본 18시) 이전 결제인 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.70325488,
+          "chunk_id": "dump:출장비_사용규정#c04a010#01",
+          "citation": "출장비_사용규정 제10조 제1~2항"
+        },
+        {
+          "score": 0.64463866,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5897214399999999,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.5822093500000001,
+          "chunk_id": "dump:회식_운영규정#s002#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.5641234500000001,
+          "chunk_id": "dump:출장비_사용규정#c04a012#01",
+          "citation": "출장비_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.55335075,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:49:35.124Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 108,
+  "fields": {
+    "family_key": "b3b804ac-fae2-4783-b45f-771338768fc4",
+    "name": "QA_RULE_T04_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_forbidden_merchants",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:50",
+      "runId": 236,
+      "stats": {
+        "autoRate": 0.25,
+        "autoCount": 5,
+        "riskCount": 10,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 15,
+        "reviewCount": 9,
+        "changedCount": 7,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.25,
+        "prevVersionLabel": "",
+        "riskChangedCount": 2,
+        "intendedChangedCount": 5,
+        "reversalChangedCount": 1
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 테스트 케이스가 전혀 없고 실제 내역에서 위험 변경 2건·판정 뒤집힘 1건이 발생해 운영 리스크가 존재합니다. 주요 뒤집힌 사례와 위험 변경 사례의 규정 근거를 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 중 유흥업소·카지노·경마 등 사행성 업종에서 결제한 경우 반려 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6925382600000001,
+          "chunk_id": "dump:출장비_사용규정#c04a011#01",
+          "citation": "출장비_사용규정 제11조 제1~3항"
+        },
+        {
+          "score": 0.5805478,
+          "chunk_id": "dump:출장비_사용규정#c05a014#01",
+          "citation": "출장비_사용규정 제14조"
+        },
+        {
+          "score": 0.57956606,
+          "chunk_id": "dump:법인카드_사용규정#c03a009#01",
+          "citation": "법인카드_사용규정 제9조 제1~5항"
+        },
+        {
+          "score": 0.57793486,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.57563007,
+          "chunk_id": "dump:업무추진비_사용규정#c04a012#01",
+          "citation": "업무추진비_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.57497102,
+          "chunk_id": "dump:업무추진비_사용규정#c05a015#01",
+          "citation": "업무추진비_사용규정 제15조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청구서에 포함된 봉사료가 10% 이상인 경우에 대한 규정(엄격 심사 및 소명자료 요청)은 있으나, 봉사료 비율을 나타내는 경로가 허용 경로 목록에 없어 자동화 가능한 룰을 생성할 수 없습니다.",
+          "source_citation": "출장비_사용규정 제11조 제1~3항"
+        },
+        {
+          "reason": "청탁금지법(접대 관련 제재) 언급은 있으나, 이를 자동 판정하기 위한 참가자 구성·금액 기준 등의 정보가 제공되지 않아 규칙을 생성하지 못했습니다.",
+          "source_citation": "업무추진비_사용규정 제15조"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:50:24.576Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 109,
+  "fields": {
+    "family_key": "48b7a74c-ed9e-4165-b069-4759ff9ce7f2",
+    "name": "QA_RULE_T05_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_forbidden_merchant_type",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:51",
+      "runId": 237,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실내역 20건 중 5건이 위험 변경으로 판정되고 자동처리율이 0.0%라 실무 부담과 오탐 위험이 커졌습니다. 위험 변경 사례의 규정 근거와 검토 임계값을 확인한 뒤 승인하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 중 이용업·미용업 등 업무관련성 낮은 업종 결제 시 부서장 승인 없으면 반려 권고하는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.65195733,
+          "chunk_id": "dump:출장비_사용규정#c04a011#01",
+          "citation": "출장비_사용규정 제11조 제1~3항"
+        },
+        {
+          "score": 0.5910458000000001,
+          "chunk_id": "dump:출장비_사용규정#c02a004#01",
+          "citation": "출장비_사용규정 제4조 제1~3항"
+        },
+        {
+          "score": 0.5896352499999999,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.58915204,
+          "chunk_id": "dump:출장비_사용규정#c01a003#01",
+          "citation": "출장비_사용규정 제3조"
+        },
+        {
+          "score": 0.5799802000000001,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.56622505,
+          "chunk_id": "dump:출장비_사용규정#c05a015#01",
+          "citation": "출장비_사용규정 제15조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "조항에서 '봉사료가 10% 이상' 규정은 있으나 지원 데이터 경로 목록에 서비스료 비율을 나타내는 필드가 없어 관련 룰을 생성할 수 없습니다.",
+          "source_citation": "출장비_사용규정 제11조 제1~3항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:51:13.484Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 110,
+  "fields": {
+    "family_key": "0fc2042b-523e-4ce7-97ca-c5a07879637e",
+    "name": "QA_RULE_T06_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "travel_forbidden_merchant_reject",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:52",
+      "runId": 238,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실제 내역에서 20건 중 5건이 위험 변경으로 판정되고 자동처리율이 0.0%이므로 즉시 활성화보다는 위험 변경 사례와 임계값을 검토한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장비 결제 시 봉사료가 10% 이상 포함된 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.60654032,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5906059,
+          "chunk_id": "dump:출장비_사용규정#c04a011#01",
+          "citation": "출장비_사용규정 제11조 제1~3항"
+        },
+        {
+          "score": 0.5845592,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.5822718,
+          "chunk_id": "dump:출장비_사용규정#c03a006#01",
+          "citation": "출장비_사용규정 제6조"
+        },
+        {
+          "score": 0.56866997,
+          "chunk_id": "dump:출장비_사용규정#c05a014#01",
+          "citation": "출장비_사용규정 제14조"
+        },
+        {
+          "score": 0.56835634,
+          "chunk_id": "dump:출장비_사용규정#c01a001#01",
+          "citation": "출장비_사용규정 제1조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "규정에 언급된 '결제 금액 중 봉사료가 100분의 10 이상 포함된 경우'를 평가하려면 거래 내 봉사료 비율이 필요하지만 허용 경로 목록에 해당 필드가 없어 룰 생성 불가.",
+          "source_citation": "출장비_사용규정 제11조 제3항"
+        },
+        {
+          "reason": "별표1의 직책별 '건당 사전승인 기준액'을 적용해 부서장·본부장 상향 사용을 자동 허용하려면 사용자의 직책(직급별 한도) 및 해당 건당 한도 값(예: policy.position_daily_limit 등)을 규정 근거에서 더 명확히 매핑해야 하나, 현재 허용 경로 목록에 관련 직책별 건당 기준(구체 숫자 경로)이 부족하여 생성하지 않음.",
+          "source_citation": "출장비_사용규정 별표1"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:52:06.178Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 111,
+  "fields": {
+    "family_key": "57351134-49e9-426a-b1d2-1a1038293de1",
+    "name": "QA_RULE_T07_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_high_amount_review",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:53",
+      "runId": 239,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없으나 실행 결과에서 기존 처리와 달라진 위험 변경 5건과 자동처리율 0.0%가 운영 리스크와 검토 부담을 유발합니다. 위험 변경 사례들의 임계값·조건을 검토한 뒤 재평가를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 종료일로부터 7영업일 초과해서 정산 등록한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.64132833,
+          "chunk_id": "dump:출장비_사용규정#c05a013#01",
+          "citation": "출장비_사용규정 제13조"
+        },
+        {
+          "score": 0.5910734,
+          "chunk_id": "dump:출장비_사용규정#c04a012#01",
+          "citation": "출장비_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.54989743,
+          "chunk_id": "dump:법인카드_사용규정#c04a012#01",
+          "citation": "법인카드_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.5428564,
+          "chunk_id": "dump:업무추진비_사용규정#c02a007#01",
+          "citation": "업무추진비_사용규정 제7조 제1~3항"
+        },
+        {
+          "score": 0.5298356399999999,
+          "chunk_id": "dump:업무추진비_사용규정#c05a014#01",
+          "citation": "업무추진비_사용규정 제14조"
+        },
+        {
+          "score": 0.5162698,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 '예약 시점과 출장일 사이 기간(통상 2개월 이상)'에 대해 사전승인과 사후확인서를 요구한다고 명시되어 있으나, 룰을 구현하려면 '예약과 출장일 사이 기간' 또는 예약 시점 관련 변수가 필요합니다. 제공된 허용 경로 목록에 해당 기간을 나타낼 수 있는 경로가 없어 조건을 작성할 수 없습니다.",
+          "source_citation": "출장비_사용규정 제12조 제1~3항"
+        },
+        {
+          "reason": "출장 중 청탁금지법 적용대상자 포함 여부에 따른 처리(참석자 관련 검증)는 업무추진비 규정에서 언급되나, 이를 판정하려면 참석자 세부 정보(예: 참가자 명단의 법적 지위)가 필요합니다. 제공된 경로 중에는 관련 판단을 위한 충분한 데이터가 없어 룰을 생성하지 않았습니다.",
+          "source_citation": "업무추진비_사용규정 제7조 제1~3항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:53:00.334Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 112,
+  "fields": {
+    "family_key": "3d903c54-b8ae-40e4-b8a6-0651dd5dde08",
+    "name": "QA_RULE_T08_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_missing_preapproval_requires_explanation",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:53",
+      "runId": 240,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 19,
+        "changedCount": 6,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 1,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 실제 내역에서 5건의 위험 변경이 발생하고 자동처리율이 0.0%여서 검토 부담이 큽니다. 규정 근거와 임계값을 우선 점검한 뒤 재시뮬레이션 후 활성화 여부를 결정할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "항공권·숙박 예약과 출장일 사이 2개월 이상 시차가 있는데 확인서 미제출인 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.638915,
+          "chunk_id": "dump:출장비_사용규정#c04a012#01",
+          "citation": "출장비_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.56289363,
+          "chunk_id": "dump:출장비_사용규정#c02a004#01",
+          "citation": "출장비_사용규정 제4조 제1~3항"
+        },
+        {
+          "score": 0.5367133,
+          "chunk_id": "dump:출장비_사용규정#c04a009#01",
+          "citation": "출장비_사용규정 제9조 제1~3항"
+        },
+        {
+          "score": 0.53233302,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5223097800000001,
+          "chunk_id": "dump:출장비_사용규정#s002#01",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.50420344,
+          "chunk_id": "dump:출장비_사용규정#c01a001#01",
+          "citation": "출장비_사용규정 제1조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:53:54.677Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 113,
+  "fields": {
+    "family_key": "e3f8f1fb-0c2d-4d6c-b8b4-369423b51923",
+    "name": "QA_RULE_T09_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "travel_receipt_over_30000_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:54",
+      "runId": 241,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 17,
+        "changedCount": 7,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 2,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없지만 규칙 적용으로 기존 처리와 달라진 건이 5건 발생하고 자동처리율이 0.0%여서 운영 영향(검토량 증가·위험 변경)이 우려됩니다. 위험 변경 사례의 판정 근거를 확인한 뒤 보완하거나 임계값을 조정해 재검증을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "간편결제로 결제해 원 가맹점 정보 확인이 어려운 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.44186645999999996,
+          "chunk_id": "dump:법인카드_사용규정#c04a011#01",
+          "citation": "법인카드_사용규정 제11조 제1~4항"
+        },
+        {
+          "score": 0.43019116,
+          "chunk_id": "dump:출장비_사용규정#c04a009#01",
+          "citation": "출장비_사용규정 제9조 제1~3항"
+        },
+        {
+          "score": 0.41652703,
+          "chunk_id": "dump:법인카드_사용규정#s002#02",
+          "citation": "법인카드_사용규정"
+        },
+        {
+          "score": 0.41494595999999995,
+          "chunk_id": "dump:회식_운영규정#c04a010#01",
+          "citation": "회식_운영규정 제10조"
+        },
+        {
+          "score": 0.41482955,
+          "chunk_id": "dump:회식_운영규정#c04a010#02",
+          "citation": "회식_운영규정 제10조"
+        },
+        {
+          "score": 0.41208714,
+          "chunk_id": "dump:업무추진비_사용규정#s002#01",
+          "citation": "업무추진비_사용규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:54:34.327Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 114,
+  "fields": {
+    "family_key": "11cb9913-4b3e-499d-a0f2-e57c172ced85",
+    "name": "QA_RULE_T10_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_meal_requires_preapproval_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:55",
+      "runId": 242,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 2,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없으나(구조 등급: good) 실제 내역 20건이 모두 REVIEW로 분류되고 변경 중 5건이 위험 변경으로 확인되어 운영 영향과 과검토 가능성을 줄여야 합니다. 임계값과 위험 변경 사례 근거를 검토한 뒤 보완 후 활성화하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 2개 · 깊이 2단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 중 접대성 식대인데 참석자 인원·소속 기록이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.5729318999999999,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.5658897199999999,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.56133163,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.5577985599999999,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.5438589,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5425291,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 '출장 중 발생하는 회식'을 규정하고 있으나, 트랜잭션이 '출장'에 해당함을 판정할 명확한 boolean 경로(예: tx.is_trip_expense)가 허용 경로 목록에 없어 더 세부적인 규칙(예: 해외출장 vs 국내출장 또는 출장지 현지 회식 구분)을 만들 수 없음. 따라서 '출장' 판정은 trip.trip_type 비공식 비교로 제한하여 간단한 사전승인 누락 노드만 생성함.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:55:12.487Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 115,
+  "fields": {
+    "family_key": "f28ff274-302b-47e4-9e87-e1cdb1adfe37",
+    "name": "QA_RULE_T11_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "domestic_lodging_over_limit_no_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:56",
+      "runId": 243,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 4,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 실제 내역에서 20건 중 5건이 위험 변경으로 판정되고 자동처리율이 0.0%로 운영 부담이 큽니다. 위험 변경 사례의 규정 근거와 임계값을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 4개 · 깊이 4단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "해외출장 항공권이 이코노미 원칙을 위반하거나 프리미엄이코노미 요건(비행 8시간 이상, 본부장 이상)을 충족하지 못한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.5468162999999999,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5322156499999999,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.52527148,
+          "chunk_id": "dump:출장비_사용규정#c03a008#01",
+          "citation": "출장비_사용규정 제8조 제1~3항"
+        },
+        {
+          "score": 0.5224063400000001,
+          "chunk_id": "dump:출장비_사용규정#c01a001#01",
+          "citation": "출장비_사용규정 제1조"
+        },
+        {
+          "score": 0.52222127,
+          "chunk_id": "dump:출장비_사용규정#x002#01",
+          "citation": "출장비_사용규정 별표2"
+        },
+        {
+          "score": 0.51504618,
+          "chunk_id": "dump:출장비_사용규정#c01a003#01",
+          "citation": "출장비_사용규정 제3조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:56:20.683Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 116,
+  "fields": {
+    "family_key": "231bcaea-e146-4433-84d6-90888245d872",
+    "name": "QA_RULE_T12_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "biztrip_overseas_preapproval_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:57",
+      "runId": 244,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실제 내역 20건 중 5건이 위험 변경으로 바뀌어 검토 부담과 오탐 가능성이 있습니다. 임계값과 위험 변경 각 건의 규정 근거를 확인한 뒤 활성화 여부를 결정하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장비가 직책별 사전승인 기준금액(팀장 50만원/부서장 60만원/본부장 80만원/대표이사 100만원)을 초과하는데 승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6959896,
+          "chunk_id": "dump:출장비_사용규정#c02a005#01",
+          "citation": "출장비_사용규정 제5조 제1~2항"
+        },
+        {
+          "score": 0.69090635,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.6581719500000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6246509,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.62351573,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.62339002,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에서 해외출장의 항공권·숙박비 합산 예산이 500만원 초과 시 본부장 이상 승인 필요하나, '항공권 합계'나 '총 출장 예산'을 나타내는 허용된 EvalContext 경로가 없어 해당 규칙을 생성할 수 없습니다.",
+          "source_citation": "출장비_사용규정 제5조 제1~2항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:57:02.394Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 117,
+  "fields": {
+    "family_key": "5b007dae-b6cd-4fea-90ad-be7fc63f42d6",
+    "name": "QA_RULE_T13_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_overseas_missing_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:58",
+      "runId": 245,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 20건 중 5건이 위험 상태로 변경되고 자동처리율이 0.0%여서 운영상 검토 부담과 오탐 증가 우려가 있습니다. 위험 변경 사례 근거와 자동처리 임계값을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "해외출장 항공+숙박 합산 예산이 500만원을 초과하는데 본부장 이상 승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6387394,
+          "chunk_id": "dump:출장비_사용규정#c02a005#01",
+          "citation": "출장비_사용규정 제5조 제1~2항"
+        },
+        {
+          "score": 0.61921263,
+          "chunk_id": "dump:출장비_사용규정#x001#02",
+          "citation": "출장비_사용규정 별표1"
+        },
+        {
+          "score": 0.5794465,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.5658843,
+          "chunk_id": "dump:출장비_사용규정#c02a004#01",
+          "citation": "출장비_사용규정 제4조 제1~3항"
+        },
+        {
+          "score": 0.56027782,
+          "chunk_id": "dump:출장비_사용규정#x002#01",
+          "citation": "출장비_사용규정 별표2"
+        },
+        {
+          "score": 0.55106634,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "규정에는 '항공권·숙박비를 합산한 총 출장 예산이 500만원을 초과하는 해외출장은 본부장 이상 사전승인을 받아야 한다'고 하나, 합산 예산(항공권+숙박) 값을 나타내는 허용 경로가 제공되지 않아 해당 규칙을 결정론적 조건으로 만들 수 없습니다.",
+          "source_citation": "출장비_사용규정 제5조 제1~2항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:58:03.627Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 118,
+  "fields": {
+    "family_key": "c10a5806-3d8c-4b44-89bf-6d44dd9e3572",
+    "name": "QA_RULE_T14_20260822213554",
+    "scope": "출장",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "trip_preapproval_overseas_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:58",
+      "runId": 246,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 20,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 20,
+        "reviewCount": 20,
+        "changedCount": 5,
+        "historyTotal": 20,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 최근 내역에서 20건 중 5건이 위험 변경으로 분류되고 자동처리율이 0.0%여서 즉시 활성화하기보다는 위험 변경 사례와 검토 임계값을 검토한 뒤 승인할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "출장 개시 3영업일 전까지 출장신청서를 제출하지 않은 경우(긴급출장 제외) 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.699071,
+          "chunk_id": "dump:출장비_사용규정#c02a004#01",
+          "citation": "출장비_사용규정 제4조 제1~3항"
+        },
+        {
+          "score": 0.5621401699999999,
+          "chunk_id": "dump:출장비_사용규정#c01a002#01",
+          "citation": "출장비_사용규정 제2조"
+        },
+        {
+          "score": 0.5589077,
+          "chunk_id": "dump:출장비_사용규정#c01a003#01",
+          "citation": "출장비_사용규정 제3조"
+        },
+        {
+          "score": 0.5326689,
+          "chunk_id": "dump:출장비_사용규정#s002#01",
+          "citation": "출장비_사용규정"
+        },
+        {
+          "score": 0.52276915,
+          "chunk_id": "dump:출장비_사용규정#c01a001#01",
+          "citation": "출장비_사용규정 제1조"
+        },
+        {
+          "score": 0.52202243,
+          "chunk_id": "dump:출장비_사용규정#s002#02",
+          "citation": "출장비_사용규정"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 '긴급 출장'에 대한 사유 존재 여부(업무상 부득이한 사유)를 판정할 수 있는 경로가 제공되지 않음(허용 경로 목록에 관련 필드 없음). 따라서 '긴급 출장' 예외를 자동 판단하는 룰은 생성할 수 없음.",
+          "source_citation": "출장비_사용규정 제4조 제1~3항"
+        }
+      ],
+      "requested_scope": "출장",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:58:43.256Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 119,
+  "fields": {
+    "family_key": "b659e9c8-5c73-487b-b2b7-f4c1fb713105",
+    "name": "QA_RULE_E01_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "kickback_limit_exceeded_for_target",
+    "sim_result": {
+      "ranAt": "2026-08-22 21:59",
+      "runId": 247,
+      "stats": {
+        "autoRate": 0.2105,
+        "autoCount": 4,
+        "riskCount": 10,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 15,
+        "reviewCount": 4,
+        "changedCount": 12,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 4,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.2105,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 7,
+        "reversalChangedCount": 3
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 위험 변경 5건과 낮은 자동처리율(21.05%)이 확인되어 즉시 전면 활성화보다는 개별 위험 변경 건의 근거 확인과 임계값 검토 후 승인할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 4개 · 깊이 4단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 3만원 초과 지출인데 적격증빙을 수취하지 못한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.61697263,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.5807804999999999,
+          "chunk_id": "dump:업무추진비_사용규정#c04a011#01",
+          "citation": "업무추진비_사용규정 제11조 제1~2항"
+        },
+        {
+          "score": 0.5662217,
+          "chunk_id": "dump:업무추진비_사용규정#s002#01",
+          "citation": "업무추진비_사용규정"
+        },
+        {
+          "score": 0.55930358,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.55401218,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.5508893699999999,
+          "chunk_id": "dump:업무추진비_사용규정#c05a015#01",
+          "citation": "업무추진비_사용규정 제15조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "자기승인(승인권자와 지출 담당자가 동일한지) 여부를 판단하려면 승인권자 정보가 필요하지만 허용 경로 목록에 승인권자 신원/직책 정보가 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        }
+      ],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T12:59:29.190Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 120,
+  "fields": {
+    "family_key": "3ebecc16-ab63-4fdf-96f1-7c2b9bfd402f",
+    "name": "QA_RULE_E02_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_postapproval_deadline_exceeded_reject_high",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:00",
+      "runId": 248,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 19,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 19,
+        "reviewCount": 19,
+        "changedCount": 7,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 7,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 6,
+        "intendedChangedCount": 1,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 문제는 없으나(structure: good) 실행 결과에서 19건이 전부 REVIEW로 분류되고 그중 6건이 위험 변경으로 나타났습니다. 우선 위험 변경 6건과 REVIEW 임계값을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 6건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 7개 · 깊이 7단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 30만원 초과 100만원 이하 구간에서 부서장 사전승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.61766785,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.57965523,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5644482399999999,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.55792487,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.55099857,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.54782927,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:00:38.259Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 121,
+  "fields": {
+    "family_key": "0b2e6f6b-359b-4675-8dcd-d81216b04ee2",
+    "name": "QA_RULE_E03_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_amount_above_3m_needs_ceo_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:01",
+      "runId": 249,
+      "stats": {
+        "autoRate": 0.0526,
+        "autoCount": 1,
+        "riskCount": 17,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 18,
+        "reviewCount": 5,
+        "changedCount": 10,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0526,
+        "prevVersionLabel": "",
+        "riskChangedCount": 4,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적으로는 양호하나 위험 변경 4건과 자동처리율 저하(1/19 = 5.26%)가 관찰되어 즉시 활성화보다는 위험 변경 사례의 판정 근거(특히 `entertainment_missing_receipt_above_evidence_threshold`)와 검토 임계값을 재확인한 뒤 승인할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 4건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 100만원 초과 300만원 이하 구간에서 본부장 이상 승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.59967798,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.5540434000000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5260543799999999,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.52575803,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.52207208,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.51749367,
+          "chunk_id": "dump:법인카드_사용규정#c05a014#01",
+          "citation": "법인카드_사용규정 제14조 제1~3항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "자기승인 방지(승인권자와 지출 담당자 동일 여부 판단)는 승인자 신원/역할 매핑 정보가 필요하나 허용 경로 목록에 관련 경로가 없어 구현 불가.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "reason": "행사성 접대(제4조제4호)에 대해 행사 목적, 예상 참석자 명단, 예산 계획 제출 요구를 자동으로 확인하려면 지출건의 '행사성' 판정 또는 해당 문서 필드가 필요하나 허용 경로 목록에 해당 정보가 없어 구현 불가.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        }
+      ],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:01:55.201Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 122,
+  "fields": {
+    "family_key": "f79ba8d3-1fe8-425f-8bfd-bc92783cd473",
+    "name": "QA_RULE_E04_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_kickback_law_limit_exceeded",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:03",
+      "runId": 250,
+      "stats": {
+        "autoRate": 0.1579,
+        "autoCount": 3,
+        "riskCount": 12,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 8,
+        "changedCount": 11,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 8,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.1579,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 2
+      },
+      "grades": {
+        "action": {
+          "note": "구조적으로는 문제가 없으나(모든 노드 도달) 실행 결과에서 위험 변경 5건과 자동처리율 15.8%로 실무 영향이 큽니다. 위험 변경 사례의 판정 근거와 REVIEW 임계값을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 8개 · 깊이 8단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 300만원 초과 지출인데 대표이사 사전승인이 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.61865413,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.59249336,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.5692768,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.56541926,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.54984784,
+          "chunk_id": "dump:법인카드_사용규정#c05a014#01",
+          "citation": "법인카드_사용규정 제14조 제1~3항"
+        },
+        {
+          "score": 0.54917854,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "규정의 구간별 승인권자(예: 부서장/본부장/대표이사) 또는 자기승인 방지(승인권자와 지출 담당 동일 여부)를 구현하려면 승인자 신분·역할 정보 경로가 필요하지만 허용 경로 목록에 해당 데이터가 없어 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "reason": "행사성 접대(제4조제4호)에 해당하는지 여부를 판단하려면 행사성 플래그 또는 category 정보(예: event flag)가 필요하지만 허용 경로 목록에 해당 항목이 없어 해당 룰을 생성할 수 없습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "reason": "직책별 사전승인 기준(별표1의 팀장/부서장/본부장 등 금액 상이)을 적용하려면 제출자 직책·승인권자 비교용 경로가 필요하나 허용 경로 목록에 충분한 승인자 정보가 없어 구현 불가합니다.",
+          "source_citation": "회식_운영규정 제7조"
+        }
+      ],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:03:04.818Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 123,
+  "fields": {
+    "family_key": "863db75d-2a7f-45e0-9c33-d2f123eb440b",
+    "name": "QA_RULE_E05_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_alcohol_per_person_limit_exceeded",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:03",
+      "runId": 251,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 19,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 19,
+        "reviewCount": 6,
+        "changedCount": 11,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나(rated good) 위험 변경 5건과 자동처리율 0.0%로 운영 리스크 및 검토 부담이 커 활성화 전 재검토가 필요합니다. QA_RISK_TEST_qa06 등 위험 변경 사례의 판정 근거와 검토 임계값을 확인한 뒤 승인하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "골프 등 행사성 접대에서 부서장 이상 사전승인 또는 행사계획 첨부가 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.64390516,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.6374761,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.60392177,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.60001487,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5969138,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.59301472,
+          "chunk_id": "dump:회식_운영규정#c02a004#01",
+          "citation": "회식_운영규정 제4조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "조직별 승인자(팀장/부서장/본부장 등) 및 '본인 사용 시 상위 승인자' 관련 규칙을 만들려면 카드 사용자와 신청자 간 직급·조직 관계를 비교할 수 있는 경로(예: card.user_job_title, card.user_org_unit 등)가 필요하지만 제공된 허용 경로 목록에 해당 정보가 없어 규칙 생성을 건너뜁니다.",
+          "source_citation": "회식_운영규정 제4조"
+        },
+        {
+          "reason": "전사 회식·대규모 행사에 대해 '항상 사전승인' 또는 '총무구매부 명의 카드 사용' 등 처리를 자동화하려면 회식 유형(trip.trip_type 등)이나 예상 총액 대비 조직 한도 비교를 할 수 있는 관련 경로가 필요하나 제공된 경로에 해당 변수가 없어 규칙 생성을 건너뜁니다.",
+          "source_citation": "회식_운영규정 별표1"
+        }
+      ],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:03:55.867Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 124,
+  "fields": {
+    "family_key": "85d0021b-7fe3-4738-8da2-a6aed4bb7258",
+    "name": "QA_RULE_E06_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_over_limit_with_prohibited_recipient",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:04",
+      "runId": 252,
+      "stats": {
+        "autoRate": 0.2105,
+        "autoCount": 4,
+        "riskCount": 10,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 15,
+        "reviewCount": 4,
+        "changedCount": 12,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.2105,
+        "prevVersionLabel": "",
+        "riskChangedCount": 5,
+        "intendedChangedCount": 7,
+        "reversalChangedCount": 3
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실행 결과에서 위험 변경 5건과 낮은 자동처리율(21.05%)이 확인되어 즉시 활성화보다는 재검토를 권합니다. 우선 위험 변경 사례의 판정 근거와 의도된 정책 반영 여부를 확인하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 5건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "청탁금지법 적용대상자에게 유형별 한도(음식물 5만원, 선물 5만원/농수산물 15만원, 경조사비 5만원/화환 10만원)를 초과 지급한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6838439000000001,
+          "chunk_id": "dump:업무추진비_사용규정#x001#02",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.66280812,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.63879305,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.62071812,
+          "chunk_id": "dump:업무추진비_사용규정#c03a009#01",
+          "citation": "업무추진비_사용규정 제9조"
+        },
+        {
+          "score": 0.6207123999999999,
+          "chunk_id": "dump:업무추진비_사용규정#c03a008#01",
+          "citation": "업무추진비_사용규정 제8조"
+        },
+        {
+          "score": 0.5193079700000001,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:04:36.924Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 125,
+  "fields": {
+    "family_key": "02fb8973-c812-470b-ab7b-0d6263cc1e4a",
+    "name": "QA_RULE_E07_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_kickback_law_limit_exceeded",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:05",
+      "runId": 253,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 19,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 19,
+        "reviewCount": 18,
+        "changedCount": 8,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 6,
+        "intendedChangedCount": 2,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 위험 변경 6건과 자동처리율 0.0%로 인해 운영 영향이 큽니다. 개별 위험 변경 사례 근거와 검토 임계값을 확인한 뒤 승인하십시오.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 6건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 거래처명·참석자 정보·목적 기재가 누락되거나 포괄적으로만 기재된 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.5828021800000001,
+          "chunk_id": "dump:업무추진비_사용규정#c02a007#01",
+          "citation": "업무추진비_사용규정 제7조 제1~3항"
+        },
+        {
+          "score": 0.5004629,
+          "chunk_id": "dump:법인카드_사용규정#c04a011#01",
+          "citation": "법인카드_사용규정 제11조 제1~4항"
+        },
+        {
+          "score": 0.4873786,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.48361449999999995,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.48259870000000005,
+          "chunk_id": "dump:출장비_사용규정#c04a009#01",
+          "citation": "출장비_사용규정 제9조 제1~3항"
+        },
+        {
+          "score": 0.47751135,
+          "chunk_id": "dump:업무추진비_사용규정#c01a001#01",
+          "citation": "업무추진비_사용규정 제1조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:05:22.613Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 126,
+  "fields": {
+    "family_key": "3e920320-5578-4e88-8d56-192c7240add8",
+    "name": "QA_RULE_E08_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_per_person_exceeds_limit_with_external",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:05",
+      "runId": 254,
+      "stats": {
+        "autoRate": 0.1579,
+        "autoCount": 3,
+        "riskCount": 11,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 6,
+        "changedCount": 13,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 4,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.1579,
+        "prevVersionLabel": "",
+        "riskChangedCount": 4,
+        "intendedChangedCount": 9,
+        "reversalChangedCount": 1
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 규칙 적용으로 위험 변경 4건이 발생하고 자동처리율이 낮아(자동 3건, 전체 19건) 즉시 활성화보다는 위험 변경 사례와 `dining_per_person_exceeds_limit_with_external`의 적용 근거를 먼저 재검토할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 4건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 4개 · 깊이 4단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 결제금액 중 봉사료가 10% 이상 포함된 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.55450577,
+          "chunk_id": "dump:법인카드_사용규정#c05a015#01",
+          "citation": "법인카드_사용규정 제15조"
+        },
+        {
+          "score": 0.5509721599999999,
+          "chunk_id": "dump:법인카드_사용규정#c05a014#01",
+          "citation": "법인카드_사용규정 제14조 제1~3항"
+        },
+        {
+          "score": 0.55071235,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.54845923,
+          "chunk_id": "dump:업무추진비_사용규정#s002#01",
+          "citation": "업무추진비_사용규정"
+        },
+        {
+          "score": 0.5451218,
+          "chunk_id": "dump:업무추진비_사용규정#c04a012#01",
+          "citation": "업무추진비_사용규정 제12조 제1~3항"
+        },
+        {
+          "score": 0.54100603,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청구서의 봉사료(팁) 비율이 결제금액의 10% 이상인 경우 엄격 심사한다는 규정은 있으나, 평가에 필요한 '봉사료 비율' 또는 해당 금액을 나타내는 평가 경로가 허용 경로 목록에 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "업무추진비_사용규정 제12조 제1~3항"
+        },
+        {
+          "reason": "청탁금지법 대상자 여부(누가 접대 대상인지)를 직접 나타내는 경로가 목록에 없어, 외부 참가자 유무를 판단하기 위해 participants.external_participant_count를 사용했으나 '특정 대상자(청탁금지법 적용대상자)'의 여부를 판단하는 보다 정교한 규칙을 만들기 위한 추가 경로가 필요합니다.",
+          "source_citation": "업무추진비_사용규정 별표1"
+        }
+      ],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:05:58.283Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 127,
+  "fields": {
+    "family_key": "55fa0c85-fac7-4fb3-8c33-c01af411e1e5",
+    "name": "QA_RULE_E09_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "entertainment_per_person_limit_exceed",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:06",
+      "runId": 255,
+      "stats": {
+        "autoRate": 0.1579,
+        "autoCount": 3,
+        "riskCount": 11,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 2,
+        "changedCount": 15,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.1579,
+        "prevVersionLabel": "",
+        "riskChangedCount": 6,
+        "intendedChangedCount": 9,
+        "reversalChangedCount": 3
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호해 활성화 가능성은 있으나, 시뮬레이션에서 위험 변경 6건과 사람이 검토하던 사례가 규칙으로 반려된 사례들이 확인되어 운영 영향 검토가 필요합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 6건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "거래처 경조사 화환·조의금이 20만원을 초과하는데 소명자료가 없는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.5251646,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.51786083,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.5031854499999999,
+          "chunk_id": "dump:업무추진비_사용규정#x001#02",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.503155,
+          "chunk_id": "dump:업무추진비_사용규정#c04a011#01",
+          "citation": "업무추진비_사용규정 제11조 제1~2항"
+        },
+        {
+          "score": 0.48497117,
+          "chunk_id": "dump:출장비_사용규정#c05a014#01",
+          "citation": "출장비_사용규정 제14조"
+        },
+        {
+          "score": 0.4822396,
+          "chunk_id": "dump:업무추진비_사용규정#c05a015#01",
+          "citation": "업무추진비_사용규정 제15조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:06:26.933Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 128,
+  "fields": {
+    "family_key": "13336ce4-abf1-446b-8163-ab92b10ab450",
+    "name": "QA_RULE_E10_20260822213554",
+    "scope": "접대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_amount_over_threshold_no_preapproval",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:07",
+      "runId": 256,
+      "stats": {
+        "autoRate": 0.2105,
+        "autoCount": 4,
+        "riskCount": 11,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 15,
+        "reviewCount": 7,
+        "changedCount": 10,
+        "historyTotal": 19,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.2105,
+        "prevVersionLabel": "",
+        "riskChangedCount": 4,
+        "intendedChangedCount": 6,
+        "reversalChangedCount": 2
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 실행 결과에서 위험 변경이 4건 발생하고 자동처리율이 21.05%로 낮아 운영 부담이 남습니다. 위험 변경 사례의 규칙 근거와 REVIEW 임계값을 확인한 뒤 활성화를 결정하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 4건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "기업업무추진비 지출 결의자 본인이 접대 자리에 참석하지 않은 경우(선물 제외) 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.60432595,
+          "chunk_id": "dump:업무추진비_사용규정#x002#01",
+          "citation": "업무추진비_사용규정 별표2"
+        },
+        {
+          "score": 0.60243642,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.57584065,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        },
+        {
+          "score": 0.57242024,
+          "chunk_id": "dump:회식_운영규정#c02a006#01",
+          "citation": "회식_운영규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.56768,
+          "chunk_id": "dump:회식_운영규정#s003#01",
+          "citation": "회식_운영규정"
+        },
+        {
+          "score": 0.56323594,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "접대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:07:24.398Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 129,
+  "fields": {
+    "family_key": "85f7132d-659b-48b9-bcb2-3ca7b1939264",
+    "name": "QA_RULE_M01_20260822213554",
+    "scope": "회의",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "external_meeting_over_30000_missing_receipt",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:08",
+      "runId": 257,
+      "stats": {
+        "autoRate": 0.4286,
+        "autoCount": 6,
+        "riskCount": 4,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 8,
+        "reviewCount": 3,
+        "changedCount": 6,
+        "historyTotal": 14,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 6,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.4286,
+        "prevVersionLabel": "",
+        "riskChangedCount": 2,
+        "intendedChangedCount": 4,
+        "reversalChangedCount": 1
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 테스트 케이스가 없어 결과 신뢰도가 떨어지고, 실제 내역에서 6건 변경 중 2건이 위험 변경·1건이 판정 역전을 보였습니다. 대표적 위험 변경 사례들을 검토하고 최소한의 테스트를 추가한 뒤 활성화하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 6개 · 깊이 6단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회의비 사용 시 지켜야 할 한도나 승인 규정을 알려주고 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6078323,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.60651833,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5776140000000001,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.57646036,
+          "chunk_id": "dump:회식_운영규정#c04a011#01",
+          "citation": "회식_운영규정 제11조"
+        },
+        {
+          "score": 0.57183182,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.56877154,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 명시된 회식 단위별(팀/부서/본부/전사) 1인당 권장 한도 규칙을 적용하려면 회식 단위(예: 팀/부서/본부/전사)를 나타내는 경로가 필요하지만 허용 경로 목록에 해당 필드가 없어 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제7조"
+        },
+        {
+          "reason": "별표1의 직책별 사전승인 기준(팀장 50만원 등)을 적용하려면 지출자의 직책별 승인권자 정보 또는 직책에 따른 승인 한도 경로가 필요하지만, 허용 경로 목록에 승인권자 비교에 필요한 필드가 없어 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제7조"
+        }
+      ],
+      "requested_scope": "회의",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:08:31.134Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 130,
+  "fields": {
+    "family_key": "cecee8ad-c3b0-4794-8468-ed298f36387e",
+    "name": "QA_RULE_M02_20260822213554",
+    "scope": "회의",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "corporate_entertainment_missing_evidence_over_threshold",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:09",
+      "runId": 258,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 14,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 14,
+        "reviewCount": 14,
+        "changedCount": 3,
+        "historyTotal": 14,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실행 결과에서 자동처리율이 0.0%로 모든 건이 REVIEW로 빠지고 위험 변경 3건이 발생해 운영 영향이 큽니다. 위험 변경 사례와 REVIEW 임계값을 확인한 뒤 조정하면 활성화를 재검토하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 3건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회의비 1인당 식대 한도 초과 기준에 대한 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6734543399999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6502433400000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6438172,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.62031013,
+          "chunk_id": "dump:회식_운영규정#c04a011#01",
+          "citation": "회식_운영규정 제11조"
+        },
+        {
+          "score": 0.60991567,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.60177517,
+          "chunk_id": "dump:회식_운영규정#c02a005#02",
+          "citation": "회식_운영규정 제5조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회의",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:09:18.434Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 131,
+  "fields": {
+    "family_key": "edfc0462-bcea-44b1-9d51-3a259166cb4c",
+    "name": "QA_RULE_M03_20260822213554",
+    "scope": "회의",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "mo_meeting_receipt_missing_over_threshold",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:10",
+      "runId": 259,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 14,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 14,
+        "reviewCount": 10,
+        "changedCount": 6,
+        "historyTotal": 14,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 3,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실행 결과에서 기존 흐름과 달라진 위험 변경 3건이 확인되고 자동처리율이 0%여서 운영 영향이 큽니다. 위험 변경 사례들의 판정 근거를 검토한 뒤 활성화 여부를 결정하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 3건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회의 중 다과·음료 구매의 증빙 기준 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.61244345,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.60647804,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.59878778,
+          "chunk_id": "dump:회식_운영규정#c01a001#01",
+          "citation": "회식_운영규정 제1조"
+        },
+        {
+          "score": 0.59377766,
+          "chunk_id": "dump:회식_운영규정#c04a011#01",
+          "citation": "회식_운영규정 제11조"
+        },
+        {
+          "score": 0.5906189,
+          "chunk_id": "dump:회식_운영규정#c03a009#01",
+          "citation": "회식_운영규정 제9조 제1~6항"
+        },
+        {
+          "score": 0.58980513,
+          "chunk_id": "dump:회식_운영규정#c01a002#03",
+          "citation": "회식_운영규정 제2조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 언급된 '호텔·특급 레스토랑 등 고급 업종' 판정을 위해서는 허용 경로 목록에 해당 업종을 식별할 수 있는 구체적 값 목록 또는 merchant.merchant_type의 표준값 맵이 필요하지만 제공되지 않았습니다. 따라서 관련 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "reason": "전사 회식(전사 회식 여부 판정)을 위해서는 회식 단위를 나타내는 필드(예: 회식 유형 또는 조직 단위 식별자)가 필요하지만 허용 경로 목록에 해당 필드가 없어 관련 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제8조 제8호 및 제7조"
+        },
+        {
+          "reason": "제7조의 회식 단위별 1인당 권장 한도(팀/부서/본부/전사)를 적용하려면 회식 단위 정보를가 필요하나 해당 경로가 허용 경로 목록에 없어 룰을 생성하지 못했습니다.",
+          "source_citation": "회식_운영규정 제7조"
+        }
+      ],
+      "requested_scope": "회의",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:10:24.067Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 132,
+  "fields": {
+    "family_key": "ac79e985-2af7-4561-9a8b-191e188848a7",
+    "name": "QA_RULE_M04_20260822213554",
+    "scope": "회의",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "meeting_external_preapproval_missing",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:11",
+      "runId": 260,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 14,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 14,
+        "reviewCount": 14,
+        "changedCount": 3,
+        "historyTotal": 14,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 0,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 실제 내역 14건이 모두 REVIEW로 들어가고 위험 변경 3건이 발생해 운영 영향과 오탐 가능성이 있습니다. 위험 변경 사례 근거와 임계값을 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 3건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "외부 인사가 참석하는 회의비 지출에 대한 승인 절차 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6323650000000001,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        },
+        {
+          "score": 0.6080620999999999,
+          "chunk_id": "dump:회식_운영규정#c03a009#01",
+          "citation": "회식_운영규정 제9조 제1~6항"
+        },
+        {
+          "score": 0.59742004,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.5931819,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.58346212,
+          "chunk_id": "dump:회식_운영규정#c02a004#03",
+          "citation": "회식_운영규정 제4조"
+        },
+        {
+          "score": 0.5804646600000001,
+          "chunk_id": "dump:회식_운영규정#c02a004#02",
+          "citation": "회식_운영규정 제4조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "회의",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:11:14.072Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 133,
+  "fields": {
+    "family_key": "596fb409-46ba-470b-b7b4-ac1ace803a12",
+    "name": "QA_RULE_S01_20260822213554",
+    "scope": "비품",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "equipment_no_postapproval_within_deadline",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:12",
+      "runId": 261,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 28,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 28,
+        "reviewCount": 28,
+        "changedCount": 8,
+        "historyTotal": 28,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 6,
+        "intendedChangedCount": 2,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 최근 내역에서 28건 중 6건이 위험 변경으로 분류되어(검토 필요) 즉시 활성화보다는 위험 변경 항목과 자동처리 임계값을 먼저 검토할 것을 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "기대 불일치 0건 · 위험 변경 6건",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "비품 구매 등 카테고리 특칙이 없는 지출이 직책별 사전승인 기준(대표이사 100만원/본부장 80만원/부서장 60만원/팀장 50만원/비직책자 30만원)을 초과하는 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.65043306,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.6471423000000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.59923422,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5816849,
+          "chunk_id": "dump:회식_운영규정#x001#01",
+          "citation": "회식_운영규정 별표1"
+        },
+        {
+          "score": 0.5803170799999999,
+          "chunk_id": "dump:법인카드_사용규정#x001#01",
+          "citation": "법인카드_사용규정 별표1"
+        },
+        {
+          "score": 0.57369268,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "조항에 명시된 '자기승인 방지' 규칙을 룰로 구현하려면 '지출의 승인권자'와 '지출 담당 임직원의 직책(또는 승인권자 식별)' 같은 EvalContext 경로가 필요하지만 허용 경로 목록에 해당 정보가 없습니다. 따라서 관련 룰을 생성하지 못했습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "reason": "거래처 동반(외부인 참석) 시 금액 무관 사전승인 의무를 비품(scope)에 적용하려면 '외부인 참석 여부' 또는 참가자 구성이 필요하지만 허용 경로 목록에는 해당 상세 정보(예: participants.external_participant_count는 있으나 규정상 외부인 포함 판단을 위해 추가 맥락이 필요함)가 불충분하여 직접 적용하지 않았습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제6~7항"
+        }
+      ],
+      "requested_scope": "비품",
+      "generation_attempts": 2,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:12:01.430Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 134,
+  "fields": {
+    "family_key": "aed2ae7d-7b0a-4c38-b814-5d6e7159becd",
+    "name": "QA_RULE_S02_20260822213554",
+    "scope": "비품",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "supplies_missing_receipt_over_threshold",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:12",
+      "runId": 262,
+      "stats": {
+        "autoRate": 0.4286,
+        "autoCount": 12,
+        "riskCount": 4,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 1,
+        "changedCount": 15,
+        "historyTotal": 28,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.4286,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 12,
+        "reversalChangedCount": 3
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 테스트 케이스가 없어 결과 신뢰도가 떨어지고, 사람 처리와 뒤바뀐 위험 변경 3건(통과로 뒤집힌 사례 포함)이 있어 추가 확인이 필요합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "비품 등 기업업무추진비 외 지출이 3만원을 초과하는데 적격증빙을 수취하지 못한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.59614134,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.58930713,
+          "chunk_id": "dump:업무추진비_사용규정#c04a011#01",
+          "citation": "업무추진비_사용규정 제11조 제1~2항"
+        },
+        {
+          "score": 0.5800742,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.57736796,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#01",
+          "citation": "업무추진비_사용규정 제6조 제1~5항"
+        },
+        {
+          "score": 0.56180257,
+          "chunk_id": "dump:업무추진비_사용규정#c03a009#01",
+          "citation": "업무추진비_사용규정 제9조"
+        },
+        {
+          "score": 0.5592708,
+          "chunk_id": "dump:업무추진비_사용규정#c02a006#02",
+          "citation": "업무추진비_사용규정 제6조 제6~7항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "조항 6항 및 6.5항의 자기승인 방지 규정은 승인권자와 결재선 관련 데이터를 필요로 하나, 제공된 허용 경로 목록에 승인권자 또는 결재라인 관련 경로가 없어 해당 규칙을 생성할 수 없습니다.",
+          "source_citation": "업무추진비_사용규정 제6조 제1~5항"
+        }
+      ],
+      "requested_scope": "비품",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:12:43.928Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 135,
+  "fields": {
+    "family_key": "e43c4433-3b71-4f91-90da-5860cce28356",
+    "name": "QA_RULE_S03_20260822213554",
+    "scope": "비품",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "equip_missing_purpose_001",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:13",
+      "runId": 263,
+      "stats": {
+        "autoRate": 0.4286,
+        "autoCount": 12,
+        "riskCount": 3,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 0,
+        "changedCount": 16,
+        "historyTotal": 28,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 2,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.4286,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 13,
+        "reversalChangedCount": 3
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만 자동처리율이 42.86%로 낮고, 변경된 16건 중 3건이 위험 변경이며 사람이 보완요청했던 사례들이 그래프에서 통과로 뒤집혔습니다. 위험 변경 사례를 확인한 뒤 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 2개 · 깊이 2단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "비품 구매 시 특정 브랜드 제품 구매를 제한하는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.49909939999999997,
+          "chunk_id": "dump:업무추진비_사용규정#c03a009#01",
+          "citation": "업무추진비_사용규정 제9조"
+        },
+        {
+          "score": 0.4676275,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.45433986000000004,
+          "chunk_id": "dump:법인카드_사용규정#c03a009#01",
+          "citation": "법인카드_사용규정 제9조 제1~5항"
+        },
+        {
+          "score": 0.4505399,
+          "chunk_id": "dump:법인카드_사용규정#c05a015#01",
+          "citation": "법인카드_사용규정 제15조"
+        },
+        {
+          "score": 0.4501859,
+          "chunk_id": "dump:업무추진비_사용규정#c01a001#01",
+          "citation": "업무추진비_사용규정 제1조"
+        },
+        {
+          "score": 0.44247289999999995,
+          "chunk_id": "dump:업무추진비_사용규정#c01a003#01",
+          "citation": "업무추진비_사용규정 제3조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "제공된 청크에서 비품 관련 증빙(영수증) 요구 수준이나 금액 임계값이 명시되어 있지 않아 '증빙 미비' 또는 금액 한도 관련 룰을 생성할 수 없습니다. policy.evidence_threshold 등 임계값은 존재하지만 근거 규정(출처)이 제시되지 않았습니다.",
+          "source_citation": "법인카드_사용규정 제15조"
+        },
+        {
+          "reason": "청탁금지법별표(업무추진비 한도)는 음식물·선물 등 접대비 항목에 관한 것으로, 비품(구매성 자산)과 직접 관련된 한도 규정이 없어 비품의 금액 초과 시 REJECT 룰을 만들 근거가 없습니다.",
+          "source_citation": "업무추진비_사용규정 별표1"
+        }
+      ],
+      "requested_scope": "비품",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:13:18.125Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 136,
+  "fields": {
+    "family_key": "116df376-87a1-435a-ba23-8cbfccad6665",
+    "name": "QA_RULE_ML1_20260822213554",
+    "scope": "식대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_kickback_limit_violation",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:14",
+      "runId": 264,
+      "stats": {
+        "autoRate": 0.25,
+        "autoCount": 6,
+        "riskCount": 15,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 18,
+        "reviewCount": 7,
+        "changedCount": 9,
+        "historyTotal": 24,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 5,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.25,
+        "prevVersionLabel": "",
+        "riskChangedCount": 1,
+        "intendedChangedCount": 8,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하나 자동처리율 25.0%로 검토 부담이 크고, 실제 내역에서 1건의 위험도 변경이 발생해 판정 근거 확인이 필요합니다. 위험 변경과 임계값을 확인·조정한 뒤 재활성화하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 5개 · 깊이 5단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "식대 지출 3만원 초과인데 적격증빙을 수취하지 못한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6082618799999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5933832,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5866773000000001,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.5700059,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5544483,
+          "chunk_id": "dump:회식_운영규정#c03a008#01",
+          "citation": "회식_운영규정 제8조 제1~8호"
+        },
+        {
+          "score": 0.5531819499999999,
+          "chunk_id": "dump:업무추진비_사용규정#x001#02",
+          "citation": "업무추진비_사용규정 별표1"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "회식 단위(팀/부서/본부/전사)에 따른 1인당 권장 한도(5/6/7/8만원)를 적용하려면 회식 단위를 나타내는 경로가 필요하지만 허용 경로 목록에 해당 항목이 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제7조"
+        },
+        {
+          "reason": "호텔·특급 레스토랑 등 특정 업종에서의 사전승인 요구를 구현하려면 merchant.merchant_type에 사용 가능한 구체적 값 집합이 필요하지만 제공된 규정 청크와 허용 경로 목록에서 해당 값 목록이 없어 규칙을 생성할 수 없습니다.",
+          "source_citation": "회식_운영규정 제8조 제1~8호"
+        }
+      ],
+      "requested_scope": "식대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:14:14.013Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 137,
+  "fields": {
+    "family_key": "1eb8255d-9f92-46ea-b16e-9f2295438894",
+    "name": "QA_RULE_ML2_20260822213554",
+    "scope": "식대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_exceeds_law_limit_reject",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:14",
+      "runId": 265,
+      "stats": {
+        "autoRate": 0.3333,
+        "autoCount": 8,
+        "riskCount": 8,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 16,
+        "reviewCount": 7,
+        "changedCount": 10,
+        "historyTotal": 24,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.3333,
+        "prevVersionLabel": "",
+        "riskChangedCount": 2,
+        "intendedChangedCount": 8,
+        "reversalChangedCount": 1
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하므로 즉시 비활성화 사유는 없지만, 자동처리율이 낮고 최근 내역에서 기존 사람 판단이 뒤집힌 위험 변경 2건이 있어 추가 검토가 필요합니다. 위험 변경 사례와 임계값을 확인한 뒤 재심사 후 승인하세요.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 3개 · 깊이 3단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "식대 지출이 직책별 1일·1개월 사용한도(별표1)를 초과한 경우 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.6204421,
+          "chunk_id": "dump:업무추진비_사용규정#c03a010#01",
+          "citation": "업무추진비_사용규정 제10조"
+        },
+        {
+          "score": 0.62010175,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.61909539,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5813580199999999,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.5735493300000001,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.5664646,
+          "chunk_id": "dump:업무추진비_사용규정#x001#02",
+          "citation": "업무추진비_사용규정 별표1"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "requested_scope": "식대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:14:50.792Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 138,
+  "fields": {
+    "family_key": "5edc7be3-7fa4-4c69-9b06-1c5c204dd31f",
+    "name": "QA_RULE_ML3_20260822213554",
+    "scope": "식대",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "dining_over_anti_graft_limit",
+    "sim_result": {
+      "ranAt": "2026-08-22 22:15",
+      "runId": 266,
+      "stats": {
+        "autoRate": 0.2917,
+        "autoCount": 7,
+        "riskCount": 5,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 17,
+        "reviewCount": 4,
+        "changedCount": 15,
+        "historyTotal": 24,
+        "nodeCoverage": 1.0,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 4,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.2917,
+        "prevVersionLabel": "",
+        "riskChangedCount": 3,
+        "intendedChangedCount": 12,
+        "reversalChangedCount": 1
+      },
+      "grades": {
+        "action": {
+          "note": "구조는 양호하지만(노드 4개·커버리지 1.0) 테스트 케이스가 없어 결과 신뢰도가 떨어지고, 실제 내역에서 3건의 위험 변경이 확인되어 우선 재검토를 권합니다.",
+          "cause": [
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 4개 · 깊이 4단계 · 전 노드 검증됨",
+          "label": "우수",
+          "level": "good"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "식대 지출 시 1인당 5만원을 초과하면 무조건 반려한다는 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.66302168,
+          "chunk_id": "dump:회식_운영규정#c03a007#02",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.6305098499999999,
+          "chunk_id": "dump:회식_운영규정#c03a007#03",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.61645573,
+          "chunk_id": "dump:업무추진비_사용규정#x001#01",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.61386758,
+          "chunk_id": "dump:회식_운영규정#c03a007#01",
+          "citation": "회식_운영규정 제7조"
+        },
+        {
+          "score": 0.60968512,
+          "chunk_id": "dump:업무추진비_사용규정#x001#02",
+          "citation": "업무추진비_사용규정 별표1"
+        },
+        {
+          "score": 0.59163064,
+          "chunk_id": "dump:회식_운영규정#c02a005#02",
+          "citation": "회식_운영규정 제5조"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [
+        {
+          "reason": "청크에 있는 '회식 1건이 2개 이상 가맹점으로 나뉘는 경우 후속 결제는 회식비로 인정하지 않는다' 조항을 룰화하려 했으나, 이를 판단하려면 거래 집합 내 결제 순서·동일 행사 식별자·후속 결제 여부 등 허용 경로 목록에 없는 데이터가 필요하므로 룰 생성을 건너뜁니다.",
+          "source_citation": "회식_운영규정 제5조"
+        }
+      ],
+      "requested_scope": "식대",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-22T13:15:28.376Z"
+  }
+},
+{
+  "model": "policies.rulegraph",
+  "pk": 141,
+  "fields": {
+    "family_key": "2084780d-3459-4cb2-95c4-66b1bc2626c9",
+    "name": "POSTFIX_VERIFY_M01",
+    "scope": "회의",
+    "status": "DRAFT",
+    "version": 1,
+    "entry_node_key": "meeting_preapproval_missing",
+    "sim_result": {
+      "ranAt": "2026-08-24 10:20",
+      "runId": 268,
+      "stats": {
+        "autoRate": 0.0,
+        "autoCount": 0,
+        "riskCount": 14,
+        "testTotal": 0,
+        "testFailed": 0,
+        "testGraded": 0,
+        "testPassed": 0,
+        "manualCount": 14,
+        "reviewCount": 2,
+        "changedCount": 6,
+        "historyTotal": 14,
+        "nodeCoverage": 0.6,
+        "prevAutoRate": 0.0,
+        "visitedNodes": 3,
+        "hasPrevVersion": false,
+        "reviewReduction": 0.0,
+        "prevVersionLabel": "",
+        "riskChangedCount": 2,
+        "intendedChangedCount": 4,
+        "reversalChangedCount": 0
+      },
+      "grades": {
+        "action": {
+          "note": "구조적 오류는 없지만 노드 커버리지가 60%이고 테스트 케이스가 전무하며 위험 변경 2건이 발생해 규정 근거와 임계값을 재검토한 뒤 활성화 여부를 결정하는 것이 안전합니다.",
+          "cause": [
+            "structure",
+            "result"
+          ],
+          "label": "재검토",
+          "level": "warn",
+          "aiAdjusted": true
+        },
+        "result": {
+          "note": "채점 가능한 테스트 케이스가 없음",
+          "label": "주의",
+          "level": "warn"
+        },
+        "structure": {
+          "note": "노드 커버리지 60% — 검증되지 않은 노드가 있습니다",
+          "label": "주의",
+          "level": "warn"
+        }
+      },
+      "placeholder": false
+    },
+    "source_clause": "",
+    "generation_meta": {
+      "agent": "rule-agent-v0",
+      "model": "gpt-5-mini",
+      "query": "회의비 사용 시 지켜야 할 한도나 승인 규정을 알려주고 룰을 만들어줘",
+      "sources": [
+        {
+          "score": 0.53976035,
+          "chunk_id": "ec6cdc19eba816d7#c05a015#01",
+          "citation": "법인카드_사용규정 제15조"
+        },
+        {
+          "score": 0.51966953,
+          "chunk_id": "ec6cdc19eba816d7#c03a008#01",
+          "citation": "법인카드_사용규정 제8조"
+        },
+        {
+          "score": 0.5179847,
+          "chunk_id": "ec6cdc19eba816d7#c03a010#01",
+          "citation": "법인카드_사용규정 제10조 제1~3항"
+        },
+        {
+          "score": 0.4994271,
+          "chunk_id": "ec6cdc19eba816d7#c05a014#01",
+          "citation": "법인카드_사용규정 제14조 제1~3항"
+        },
+        {
+          "score": 0.49443084000000004,
+          "chunk_id": "ec6cdc19eba816d7#x001#01",
+          "citation": "법인카드_사용규정 별표1"
+        },
+        {
+          "score": 0.49374640000000003,
+          "chunk_id": "ec6cdc19eba816d7#c04a011#01",
+          "citation": "법인카드_사용규정 제11조 제1~4항"
+        }
+      ],
+      "include_law": false,
+      "llm_skipped": [],
+      "catalog_etag": "0cacd1724961",
+      "catalog_stale": false,
+      "requested_scope": "회의",
+      "generation_attempts": 1,
+      "rejected_node_count": 0
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": "",
+    "approved_by": null,
+    "activated_at": null,
+    "created_at": "2026-08-24T01:20:26.680Z"
+  }
+}
+]

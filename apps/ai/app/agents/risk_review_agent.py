@@ -385,7 +385,13 @@ def _classify(summary: dict, stage1: dict, profile: str = "fast") -> dict:
     # 것만 추려서 넘긴다. `mcp/tools.py::search_policy` 독스트링: "Risk Review 2차 검증은
     # 항상 켠 채로 부른다" — v1 툴콜링 루프의 모든 search_policy 호출(프리시드+추가검색)에
     # 동일하게 적용한다.
-    initial_policy = _safe_search("search_policy", "chunks", query=initial_query, top_k=6, rerank=True)
+    # scope=이 정산의 category — 검색을 그 카테고리(+공통 규정) 문서로 좁힌다. 안 그러면
+    # 화제가 겹치는 다른 카테고리 규정(예: 회식 규정)이 식대·회의 건에 새어 들어온다
+    # (QA 2026-08-24 실측 결함, `default-gate.md`류 카논과 같은 성격의 스코프 누수).
+    initial_policy = _safe_search(
+        "search_policy", "chunks", query=initial_query, top_k=6, rerank=True,
+        scope=summary["category"],
+    )
     initial_cases = _safe_search("search_cases", "similar_cases", query=initial_query)
 
     messages: list[dict[str, Any]] = [
@@ -453,7 +459,7 @@ def _classify(summary: dict, stage1: dict, profile: str = "fast") -> dict:
                 hits = _safe_search(
                     "search_policy", "chunks",
                     query=args.get("query") or initial_query, top_k=args.get("top_k") or 6,
-                    rerank=True,
+                    rerank=True, scope=summary["category"],
                 )
                 tool_content = _format_policy_chunks(hits)
             elif tc.function.name == "search_cases":

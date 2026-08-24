@@ -11,7 +11,16 @@ from domain.common.permissions import CanActivateRule, CanViewRule
 from . import services, simulation
 from .context_builder import load_tables, lookup
 from .eval_context import empty_eval_context
-from .models import RuleAuthoringMessage, RuleFlag, RuleGraph, RuleGraphStatus, RuleNode, RuleRouting
+from .models import (
+    IngestStatus,
+    PolicyDoc,
+    RuleAuthoringMessage,
+    RuleFlag,
+    RuleGraph,
+    RuleGraphStatus,
+    RuleNode,
+    RuleRouting,
+)
 from .rule_agent_v0_views import action_schema_payload
 from domain.notifications import events as notification_events
 
@@ -49,6 +58,31 @@ class PolicyLookupView(APIView):
             "tax_note": "",
             "refs": refs,
         })
+
+
+class PolicyDocScopeMapView(APIView):
+    """GET /api/internal/policy-docs/scope-map/?scope=<카테고리> — RAG 검색 스코프 필터용
+    "이 scope에서 검색해도 되는 문서명" 목록.
+
+    QA 2026-08-24 실측: `search_policy`가 카테고리 구분 없이 `policy_docs` 컬렉션 전체를
+    검색해, 회식 규정이 식대 거래에·업무추진비 규정이 회의 카테고리 질의에 새어 들어오는
+    결함이 확인됐다(Rule Agent 근거 없는 카테고리 83% 환각·Risk Review 카테고리 오적용
+    2건). Chroma 청크는 `doc_name`만 갖고 scope는 안 갖는다(임베딩 스키마를 안 건드리려고
+    피함) — 대신 여기서 **문서명→scope**를 `PolicyDoc.rule_scope`로 조회해 돌려주고,
+    호출부(`search_policy`)가 그 문서명 목록으로 Chroma `where` 필터를 건다.
+
+    `rule_scope`가 빈 문서(scope 미지정, 예: 법인카드_사용규정처럼 특정 카테고리에 안
+    묶이는 공통 규정)는 **모든 scope에 공통으로 포함**시킨다 — 특정 과목에만 묶인 게
+    아니라는 뜻이라 좁히면 안 된다.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        scope = normalize_scope((request.query_params.get("scope") or "").strip())
+        docs = PolicyDoc.objects.filter(status=IngestStatus.DONE, superseded_by__isnull=True)
+        common = list(docs.filter(rule_scope="").values_list("title", flat=True))
+        scoped = list(docs.filter(rule_scope=scope).values_list("title", flat=True)) if scope else []
+        return Response({"scope": scope, "docNames": sorted(set(common) | set(scoped))})
 
 
 class RuleContextView(APIView):

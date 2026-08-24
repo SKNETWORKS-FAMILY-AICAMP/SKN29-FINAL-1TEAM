@@ -1,0 +1,652 @@
+[
+{
+  "model": "transactions.transaction",
+  "pk": 728,
+  "fields": {
+    "card": 41,
+    "merchant": "한우마당 강남점",
+    "amount": "180000",
+    "ts": "2026-08-10T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.850Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 729,
+  "fields": {
+    "card": 41,
+    "merchant": "현대옥 본점",
+    "amount": "90000",
+    "ts": "2026-08-11T09:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.853Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 730,
+  "fields": {
+    "card": 41,
+    "merchant": "김밥천국 역삼점",
+    "amount": "45000",
+    "ts": "2026-08-11T12:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.853Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 731,
+  "fields": {
+    "card": 41,
+    "merchant": "투썸플레이스 삼성점",
+    "amount": "60000",
+    "ts": "2026-08-12T05:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.854Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 732,
+  "fields": {
+    "card": 41,
+    "merchant": "더미트 파주점",
+    "amount": "250000",
+    "ts": "2026-08-12T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.855Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 733,
+  "fields": {
+    "card": 41,
+    "merchant": "온기정 한정식",
+    "amount": "280000",
+    "ts": "2026-08-13T09:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.856Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 734,
+  "fields": {
+    "card": 41,
+    "merchant": "명동교자 본점",
+    "amount": "150000",
+    "ts": "2026-08-13T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.856Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 735,
+  "fields": {
+    "card": 41,
+    "merchant": "다이소 강남역점",
+    "amount": "35000",
+    "ts": "2026-08-14T06:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.857Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 736,
+  "fields": {
+    "card": 41,
+    "merchant": "백년가게 삼겹살",
+    "amount": "120000",
+    "ts": "2026-08-14T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.857Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 737,
+  "fields": {
+    "card": 41,
+    "merchant": "던킨도너츠 역삼점",
+    "amount": "15000",
+    "ts": "2026-08-15T12:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.858Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 738,
+  "fields": {
+    "card": 41,
+    "merchant": "아웃백스테이크하우스 강남점",
+    "amount": "200000",
+    "ts": "2026-08-15T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.858Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 739,
+  "fields": {
+    "card": 41,
+    "merchant": "스타벅스 테헤란로점",
+    "amount": "50000",
+    "ts": "2026-08-16T05:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.859Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 740,
+  "fields": {
+    "card": 41,
+    "merchant": "교동면옥 청담점",
+    "amount": "450000",
+    "ts": "2026-08-16T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.859Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 741,
+  "fields": {
+    "card": 41,
+    "merchant": "을지로골뱅이 본점",
+    "amount": "200000",
+    "ts": "2026-08-17T14:30:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.860Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 742,
+  "fields": {
+    "card": 41,
+    "merchant": "오리진호프 신촌점",
+    "amount": "150000",
+    "ts": "2026-08-18T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.860Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 743,
+  "fields": {
+    "card": 41,
+    "merchant": "봉피양 여의도점",
+    "amount": "220000",
+    "ts": "2026-08-19T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.861Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 744,
+  "fields": {
+    "card": 41,
+    "merchant": "그랜드 하얏트 서울 레스토랑",
+    "amount": "500000",
+    "ts": "2026-08-20T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.861Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 745,
+  "fields": {
+    "card": 41,
+    "merchant": "와바 강남점",
+    "amount": "200000",
+    "ts": "2026-08-21T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.862Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 746,
+  "fields": {
+    "card": 41,
+    "merchant": "본죽 역삼점",
+    "amount": "80000",
+    "ts": "2026-08-22T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.863Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 747,
+  "fields": {
+    "card": 41,
+    "merchant": "맘스터치 강남점",
+    "amount": "100000",
+    "ts": "2026-08-23T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.863Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 748,
+  "fields": {
+    "card": 41,
+    "merchant": "블랙펄 노래연습장",
+    "amount": "300000",
+    "ts": "2026-08-24T13:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.864Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 749,
+  "fields": {
+    "card": 41,
+    "merchant": "달빛 유흥주점",
+    "amount": "400000",
+    "ts": "2026-08-25T14:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.864Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 750,
+  "fields": {
+    "card": 41,
+    "merchant": "교보문고 상품권코너",
+    "amount": "200000",
+    "ts": "2026-08-26T06:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.865Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 751,
+  "fields": {
+    "card": 41,
+    "merchant": "올리브영 강남점",
+    "amount": "150000",
+    "ts": "2026-08-27T06:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.865Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 752,
+  "fields": {
+    "card": 41,
+    "merchant": "애슐리퀸즈 가족식당",
+    "amount": "180000",
+    "ts": "2026-08-28T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.866Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 753,
+  "fields": {
+    "card": 41,
+    "merchant": "더본가 삼겹살",
+    "amount": "200000",
+    "ts": "2026-08-29T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.866Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 754,
+  "fields": {
+    "card": 41,
+    "merchant": "더클래식500 연회장",
+    "amount": "9000000",
+    "ts": "2026-08-30T09:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.867Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 755,
+  "fields": {
+    "card": 41,
+    "merchant": "곱창이야기 역삼점",
+    "amount": "150000",
+    "ts": "2026-08-31T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.867Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 756,
+  "fields": {
+    "card": 41,
+    "merchant": "이자카야 하나",
+    "amount": "120000",
+    "ts": "2026-09-01T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.868Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 757,
+  "fields": {
+    "card": 41,
+    "merchant": "스타벅스 을지로점",
+    "amount": "60000",
+    "ts": "2026-09-02T12:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.868Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 758,
+  "fields": {
+    "card": 41,
+    "merchant": "63컨벤션센터",
+    "amount": "12000000",
+    "ts": "2026-09-03T09:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.869Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 759,
+  "fields": {
+    "card": 41,
+    "merchant": "메가슬롯 카지노",
+    "amount": "500000",
+    "ts": "2026-09-04T11:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.869Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 760,
+  "fields": {
+    "card": 41,
+    "merchant": "정든식당",
+    "amount": "150000",
+    "ts": "2026-09-05T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.870Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 761,
+  "fields": {
+    "card": 41,
+    "merchant": "한강뷰레스토랑",
+    "amount": "350000",
+    "ts": "2026-09-06T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.870Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 762,
+  "fields": {
+    "card": 41,
+    "merchant": "이름없는분식",
+    "amount": "90000",
+    "ts": "2026-09-07T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.871Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 763,
+  "fields": {
+    "card": 41,
+    "merchant": "더미담 한정식",
+    "amount": "280000",
+    "ts": "2026-09-08T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.872Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 764,
+  "fields": {
+    "card": 41,
+    "merchant": "알수없는가게",
+    "amount": "500000",
+    "ts": "2026-09-09T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.872Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 765,
+  "fields": {
+    "card": 41,
+    "merchant": "현지식당(출장지)",
+    "amount": "200000",
+    "ts": "2026-09-10T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.872Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 766,
+  "fields": {
+    "card": 41,
+    "merchant": "이름모를가게",
+    "amount": "180000",
+    "ts": "2026-09-11T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.873Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 767,
+  "fields": {
+    "card": 41,
+    "merchant": "가나다식당",
+    "amount": "220000",
+    "ts": "2026-09-12T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.873Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 768,
+  "fields": {
+    "card": 41,
+    "merchant": "라마다호텔레스토랑",
+    "amount": "600000",
+    "ts": "2026-09-13T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.874Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 769,
+  "fields": {
+    "card": 41,
+    "merchant": "정든포차",
+    "amount": "130000",
+    "ts": "2026-09-14T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.874Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 770,
+  "fields": {
+    "card": 41,
+    "merchant": "현대백화점 강남점",
+    "amount": "3000000",
+    "ts": "2026-09-15T06:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.875Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 771,
+  "fields": {
+    "card": 41,
+    "merchant": "이디야커피 역삼점",
+    "amount": "3000",
+    "ts": "2026-09-16T01:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.875Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 772,
+  "fields": {
+    "card": 41,
+    "merchant": "삼원가든 청담점",
+    "amount": "999999",
+    "ts": "2026-09-17T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.876Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 773,
+  "fields": {
+    "card": 41,
+    "merchant": "새벽식당",
+    "amount": "50000",
+    "ts": "2026-09-17T18:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.876Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 774,
+  "fields": {
+    "card": 41,
+    "merchant": "초행가게 처음결제",
+    "amount": "700000",
+    "ts": "2026-09-19T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.877Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 775,
+  "fields": {
+    "card": 41,
+    "merchant": "연쇄결제식당",
+    "amount": "400000",
+    "ts": "2026-09-20T11:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.877Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 776,
+  "fields": {
+    "card": 41,
+    "merchant": "정확히삼십만원식당",
+    "amount": "300000",
+    "ts": "2026-09-21T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.878Z"
+  }
+},
+{
+  "model": "transactions.transaction",
+  "pk": 777,
+  "fields": {
+    "card": 41,
+    "merchant": "삼십만원일원초과식당",
+    "amount": "300001",
+    "ts": "2026-09-22T10:00:00Z",
+    "raw_payload": {},
+    "external_id": "",
+    "created_at": "2026-08-22T12:34:15.878Z"
+  }
+}
+]

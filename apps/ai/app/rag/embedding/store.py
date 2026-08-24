@@ -130,21 +130,30 @@ def search(
     encoder: OpenAIEncoder | None = None,
     config: EmbeddingConfig = DEFAULT,
     expand_parent: bool = True,
+    doc_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """검색 3단 계약 — ① parent 제외 ② 부모 확장 ③ (호출자 판단) 이웃 확장.
 
     parent 청크를 결과에서 빼는 이유: 부모는 조 전문이라 **무엇과도 어중간하게 닮는다**.
     검색은 잎으로 하고, 맞은 잎의 부모를 붙여 LLM에 넘길 문맥을 만든다.
+
+    `doc_names`를 주면 그 문서들에서만 찾는다(카테고리/scope 필터 — QA 2026-08-24 실측:
+    필터 없이 전체 컬렉션을 뒤지면 식대 거래에 회식 규정이, 회의 카테고리 질의에 회식
+    규정이 새어 들어온다). 빈 리스트/None이면 이전과 동일하게 전체를 검색한다 — 호출자가
+    scope→문서 매핑을 못 구했을 때(카탈로그 조회 실패 등) 검색 자체가 막히면 안 된다.
     """
     client = client or get_client()
     encoder = encoder or OpenAIEncoder(config)
     collection = get_collection(client, collection_name)
 
     vector = encoder.encode_queries([query])[0]
+    where: dict[str, Any] = {"chunk_role": {"$ne": "parent"}}
+    if doc_names:
+        where = {"$and": [where, {"doc_name": {"$in": doc_names}}]}
     res = collection.query(
         query_embeddings=[vector],
         n_results=top_k,
-        where={"chunk_role": {"$ne": "parent"}},
+        where=where,
         include=["documents", "metadatas", "distances"],
     )
 

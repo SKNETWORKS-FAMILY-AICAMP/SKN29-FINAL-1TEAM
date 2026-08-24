@@ -362,11 +362,14 @@ def _run_generation_loop(
             if tc.function.name == "submit_rule_nodes":
                 return args
             if tc.function.name == "search_policy":
+                # scope는 LLM 툴 인자에 없다 — 이 그래프가 만들어지는 scope를 서버가
+                # 고정해서 넘긴다(모델이 검색 중 다른 scope로 새는 걸 막는다).
                 result = mcp_client.call_tool(
                     "search_policy",
                     query=args.get("query", scope),
                     top_k=args.get("top_k") or 6,
                     include_law=bool(args.get("include_law")),
+                    scope=scope,
                 )
                 chunks = result.get("chunks", [])
                 tool_content = (
@@ -624,7 +627,8 @@ def generate(req: Any) -> dict[str, Any]:
     #    (§1.2-1) — outer 재시도 루프가 재사용할 "1차 근거"만 여기서 확보하고, 부족하면
     #    LLM이 `_run_generation_loop` 안에서 같은 툴을 추가로 호출한다.
     chunks = mcp_client.call_tool(
-        "search_policy", query=query, top_k=req.top_k, include_law=req.include_law
+        "search_policy", query=query, top_k=req.top_k, include_law=req.include_law,
+        scope=req.scope,
     ).get("chunks", [])
     if not chunks:
         return {

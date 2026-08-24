@@ -62,6 +62,7 @@ def search_policy(
     include_law: bool = False,
     filters: dict | None = None,
     rerank: bool = False,
+    scope: str | None = None,
 ) -> dict:
     """규정 청크 RAG 검색 (Chroma 직접). Rule/Risk 공용 tool.
 
@@ -70,6 +71,11 @@ def search_policy(
     라우팅까지 그대로 쓴다. `agents/rule_agent_v0/vector_store.py`는 격리된 로컬 실험
     스토어라 여기서 쓰지 않는다(승격하면 2차 검증이 빈 결과만 도는 죽은 경로가 된다).
     Risk Review Agent도 **이 tool을 거쳐** 같은 검색 경로·로깅을 공유해야 한다(§5).
+
+    `scope`를 주면 그 카테고리(+공통 규정) 문서로만 검색을 좁힌다 — 안 주면(또는 매핑
+    조회 실패 시) 이전처럼 전체 검색이라 호출부를 안 고쳐도 깨지지 않는다. Rule Agent는
+    생성 대상 scope를, Risk Review는 정산의 `category`를 넘겨야 한다(QA 2026-08-24: 둘 다
+    안 넘겨서 회식 규정이 다른 카테고리에 새어 들어오는 결함이 있었다).
 
     `rerank=True`면 벡터 top-k 대신 LLM이 질의에 실제로 답하는 후보만 추린다
     (`rag/retrieval/rerank.py`) — Rule Agent가 tool-calling 중 근거가 부정확하다고
@@ -80,7 +86,7 @@ def search_policy(
     """
     from app.agents.rule_agent_v0.search import search_policy as _search
 
-    hits = _search(query, top_k=top_k, include_law=include_law, rerank=rerank)
+    hits = _search(query, top_k=top_k, include_law=include_law, rerank=rerank, scope=scope)
     if filters:
         hits = [h for h in hits if all(h.get("metadata", {}).get(k) == v for k, v in filters.items())]
     logger.info("search_policy q=%r top_k=%d rerank=%s hits=%d", query, top_k, rerank, len(hits))

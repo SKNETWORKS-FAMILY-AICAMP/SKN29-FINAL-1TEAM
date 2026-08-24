@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.clients import core_client
 from app.rag.embedding import store
 from app.rag.retrieval.rerank import rerank as _rerank
 
@@ -57,12 +58,20 @@ def _normalize(hit: dict[str, Any], collection: str) -> dict[str, Any]:
 
 
 def search_policy(
-    query: str, top_k: int = 6, *, include_law: bool = False, rerank: bool = False
+    query: str, top_k: int = 6, *, include_law: bool = False, rerank: bool = False,
+    scope: str | None = None,
 ) -> list[dict[str, Any]]:
     """규정 조항 검색. 반환 청크에는 citation(「문서명」 제N조 …)이 항상 포함된다.
 
     `include_law=True`면 세법(`tax_refs`)도 같은 질의로 검색해 유사도 순으로 합친다.
     두 컬렉션은 같은 임베딩 신원(`3-large@1024`)을 쓰므로 점수를 직접 비교해도 된다.
+
+    `scope`를 주면 그 카테고리(+공통 규정) 문서에서만 찾는다(Django `PolicyDoc.rule_scope`
+    조회, `core_client.get_policy_doc_names`). **컬렉션 전체를 뒤지면 카테고리가 새어
+    들어온다** — QA 2026-08-24 실측: 회식 규정이 식대 거래·회의 카테고리 질의에 오적용됨.
+    `scope=None`이거나 매핑 조회가 실패하면(빈 리스트) 이전처럼 전체 검색으로 fail-open —
+    필터 장애가 검색 자체를 막지 않는다. `include_law=True`일 때 법령(`tax_refs`)에는
+    scope 필터를 걸지 않는다(세법은 카테고리 구분 없이 공통 참고 자료라서다).
 
     `rerank=True`면 벡터 top-k를 그대로 쓰지 않는다 — top_k보다 넉넉히 뽑아 LLM이
     질의에 실제로 답하는 것만 추려 top_k로 좁힌다(`rag/retrieval/rerank.py`). 벡터
@@ -70,9 +79,12 @@ def search_policy(
     대가로 근거 정밀도를 올린다.
     """
     fetch_k = min(top_k * _RERANK_OVERFETCH, _RERANK_MAX_CANDIDATES) if rerank else top_k
+    doc_names = core_client.get_policy_doc_names(scope) if scope else []
     hits = [
         _normalize(h, POLICY_COLLECTION)
-        for h in store.search(query, collection_name=POLICY_COLLECTION, top_k=fetch_k)
+        for h in store.search(
+            query, collection_name=POLICY_COLLECTION, top_k=fetch_k, doc_names=doc_names or None,
+        )
     ]
     if include_law:
         hits += [

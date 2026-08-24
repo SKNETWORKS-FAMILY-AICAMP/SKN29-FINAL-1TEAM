@@ -15,7 +15,12 @@ from domain.policies.policy_doc_views import (
     IngestCallbackView,
     PolicyDocViewSet,
 )
-from domain.policies.views import PolicyLookupView, RuleContextView, RuleGraphViewSet
+from domain.policies.views import (
+    PolicyDocScopeMapView,
+    PolicyLookupView,
+    RuleContextView,
+    RuleGraphViewSet,
+)
 from domain.settlements.views import (
     SettlementDraftContextView,
     SettlementSummaryView,
@@ -66,6 +71,7 @@ urlpatterns = [
     path("api/ai-lab/<path:subpath>", AiLabProxyView.as_view(), name="ai_lab_proxy"),
     # 내부 전용 read API — FastAPI(ai)의 FastMCP 도구가 관계형 데이터를 Django 경유로 조회(CLAUDE.md §1)
     path("api/internal/policies/<str:category>/", PolicyLookupView.as_view(), name="internal_policy"),
+    path("api/internal/policy-docs/scope-map/", PolicyDocScopeMapView.as_view(), name="internal_policy_doc_scope_map"),
     path("api/internal/rule-context/<int:settlement_id>/", RuleContextView.as_view(), name="internal_rule_context"),
     path("api/internal/tx-features/<int:tx_id>/", TxFeaturesView.as_view(), name="internal_tx_features"),
     path("api/internal/merchant-category/", MerchantCategoryUpsertView.as_view(), name="internal_merchant_category_upsert"),

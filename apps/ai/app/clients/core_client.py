@@ -67,6 +67,21 @@ def get_policy(category: str) -> dict:
     return _get(f"/api/internal/policies/{category}/")
 
 
+def get_policy_doc_names(scope: str, *, timeout: float = 5) -> list[str]:
+    """RAG 검색 스코프 필터용 — 이 scope에서 검색해도 되는 문서명 목록.
+
+    조회 실패(Django 미기동·타임아웃)는 **빈 리스트**로 fail-open한다 — `search_policy`가
+    빈 리스트를 받으면 필터 없이(이전 동작대로) 전체 검색으로 떨어진다. 스코프 필터
+    조회 장애가 검색 자체를 막으면 안 된다(다른 내부 카탈로그 조회와 같은 원칙).
+    """
+    try:
+        data = _get(f"/api/internal/policy-docs/scope-map/?scope={quote(scope or '')}", timeout=timeout)
+        return list(data.get("docNames") or [])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("policy-doc scope-map 조회 실패(필터 없이 진행): %s", exc)
+        return []
+
+
 def build_rule_context(settlement_id: int) -> dict:
     """판정용 EvalContext 조립 요청 (Django `context_builder`, 내부 read API 경유).
 

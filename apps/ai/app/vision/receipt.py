@@ -24,6 +24,7 @@ from typing import Any
 
 from app import media
 from app.vision import client
+from app.vision.uncertainty import is_uncertain
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,10 @@ _SYSTEM = """당신은 법인카드 영수증을 판독하는 보조입니다. �
 4. facts는 **관측한 것만** 담습니다:
    - `dining.includes_alcohol`: 품목에 주류(맥주·소주·와인·양주 등)가 있으면 true,
      품목이 보이는데 주류가 없으면 false. **품목 자체가 안 보이면 이 항목을 넣지 마세요.**
-   - `category.item_type`: 식사/선물/경조사 중 명확할 때만. 애매하면 넣지 마세요.
+   - `category.item_type`: 품목을 보고 식사/선물/경조사/기타 중 하나를 판단하세요.
+     **일반 음식점·카페·주점 영수증은 대부분 '식사'입니다** — 품목이 실제로 보이는데
+     망설이지 마세요. 넷 중 무엇에도 안 맞으면 '기타'를 쓰세요. **품목 자체가 전혀
+     안 보일 때만** 이 항목을 빼세요.
    - `tx.payment_time`: 영수증에 시각이 찍혀 있을 때만.
    - `participants.participant_count`: "인원 N", "N인" 표기가 있을 때만.
 5. 읽기 어려운 부분은 warnings에 남기세요(찢어짐·흐림·잘림 등).
@@ -142,6 +146,11 @@ def _collect_facts(findings: list[dict]) -> tuple[dict, dict, list, list]:
             continue
         if path == "category.item_type" and value not in ITEM_TYPES:
             dropped.append(f"{path}={value!r}(허용값 아님)")
+            continue
+        quote = finding.get("quote") or ""
+        string_value = value if isinstance(value, str) else None
+        if is_uncertain(quote, string_value):
+            dropped.append(f"{path}={value!r}(근거 문구가 불확실성을 표시함)")
             continue
         extracted[path] = value
         confidence[path] = float(finding.get("confidence") or 0.0)
