@@ -1,6 +1,6 @@
 """타이거 주식회사 규정 별표 시드 데이터 — `_context/policy-domain.md` §2.
 
-`TIGER-REG-2026-003` 계열 규정의 임계값 표를 `PolicyTable` 행으로 적재하기 위한 원본이다.
+「법인카드 사용 규정」 계열 규정의 임계값 표를 `PolicyTable` 행으로 적재하기 위한 원본이다.
 `seed_policy_tables` 관리 명령과 시연 EvalContext(`seed.py`)가 **이 모듈 하나만** 참조한다
 — 임계값이 다시 여러 곳으로 흩어지지 않게 하는 것이 이 모듈의 존재 이유다.
 
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import date
 
-REG = "TIGER-REG-2026-003"
+REG = "법인카드 사용 규정"
 EFFECTIVE_FROM = date(2026, 1, 1)
 
 

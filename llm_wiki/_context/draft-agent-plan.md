@@ -207,6 +207,6 @@ Django `draft_suggest` 액션(`settlements/views.py`)은 아직 FastAPI를 호�
 |---|---|---|
 | 영수증 이미지 업로드/저장 | `Receipt.file_ref`가 문자열 경로일 뿐 실제 파일 저장 로직 없음 | v0/v1은 텍스트 필드만, 이미지는 별도 작업으로 분리 |
 | `evidence`/`headcount` 저장처 부재 | Django `Settlement` 모델에 두 컬럼이 없다. `SettlementSerializer.get_evidence`는 항상 `"OK"` 하드코딩 반환, `headcount`는 시리얼라이저에 없음 | Draft Agent 출력을 실제로 DB에 반영하려면 스키마 확장(마이그레이션) 필요 여부 결정 |
-| Policy 테이블 실제 값 | 더미/시드 값이 정확한 규정값인지 미확인 | `TIGER-REG-2026-003` 원문 대조 |
+| Policy 테이블 실제 값 | 더미/시드 값이 정확한 규정값인지 미확인 | 「법인카드 사용 규정」 원문 대조 |
 | ⚠️ Policy 모델 자체가 폐기 대상 | 다른 팀원이 설계한 `_context/policy-domain.md`(2026-08-10)가 지금 Draft Agent가 쓰는 `Policy` 모델(`limit_amount` 등)을 **폐기**하고 `PolicyTable`+`ctx.policy.*` 카탈로그 체계로 교체하기로 결정함(설계 확정, **구현은 아직 미착수**이므로 지금 당장 영향 없음) | `PolicyTable` 체계가 실제로 구현되면 `get_policy` 연동을 그쪽으로 재연결해야 함. 그 전까지는 현행 유지 |
 | RAG 연동 시점 | Draft Agent는 Chroma 미사용 | Risk Review Agent 단계에서 RAG 작업과 합류 |

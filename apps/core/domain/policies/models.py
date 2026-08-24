@@ -272,7 +272,7 @@ class PolicyTable(models.Model):
     source_doc = models.ForeignKey(
         PolicyDoc, null=True, blank=True, on_delete=models.SET_NULL, related_name="tables",
     )
-    source_clause = models.CharField(max_length=200, blank=True)  # 'TIGER-REG-2026-003 별표2'
+    source_clause = models.CharField(max_length=200, blank=True)  # '법인카드 사용 규정 별표2'
     effective_date = models.DateField()
     superseded_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
