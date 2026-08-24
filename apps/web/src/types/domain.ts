@@ -80,6 +80,16 @@ export const EDITABLE_STATUSES: readonly SettlementStatus[] = [
   'DRAFT', 'TEAM_RETURNED', 'TEAM_REJECTED', 'RETURNED',
 ]
 
+/**
+ * **끝난 상태** — 더 갈 곳이 없다(`services.ALLOWED`에서 빈 집합).
+ *
+ * 확정 완료와 반려 종결이 함께 들어간다. 화면이 이걸 구분해야 하는 이유는 안내 문구다 —
+ * 「보완요청을 받으면 고칠 수 있습니다」는 여기서 거짓이 된다.
+ */
+export const DONE_STATUSES: readonly SettlementStatus[] = [
+  'CONFIRMED', 'ERP_VOUCHER_DRAFTED', 'REJECT', 'TEAM_REJECTED',
+]
+
 /** 여기서 「제출(SUBMITTED)」로 갈 수 있는 상태 — 서버 `services.ALLOWED`의 거울. */
 export const SUBMITTABLE_STATUSES: readonly SettlementStatus[] = ['TEAM_COLLECTING', 'RETURNED']
 

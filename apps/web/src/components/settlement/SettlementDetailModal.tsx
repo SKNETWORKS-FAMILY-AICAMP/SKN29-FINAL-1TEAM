@@ -10,7 +10,8 @@ import {
   Loader2, Receipt, Trash2, Upload, Wand2,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORY_UNSET, EDITABLE_STATUSES, STATUS_META, SUBMITTABLE_STATUSES,
+  CARD_TYPE_LABEL, CATEGORY_UNSET, DONE_STATUSES, EDITABLE_STATUSES, STATUS_META,
+  SUBMITTABLE_STATUSES,
   type CardType, type Category, type Settlement, type SettlementStatus,
 } from '../../types/domain'
 import { useCategories } from '../../lib/categories'
@@ -96,13 +97,22 @@ export function SettlementDetailModal({
   const statusEditable = isCreate || EDITABLE_STATUSES.includes(item!.status)
   const readOnly = !isCreate && (!isOwner || !statusEditable)
   //  왜 잠겼는지는 서로 다르다 — 안내 문구도 달라야 한다.
+  //  **종결된 건에 "보완요청을 받으면 고칠 수 있습니다"라고 쓰면 안 된다** — 그 일은
+  //  일어나지 않는다(`REJECT`·`TEAM_REJECTED`는 재제출 불가 단말). 기다리면 풀리는
+  //  잠금과 영영 안 풀리는 잠금을 같은 문장으로 덮으면 사용자는 계속 기다린다.
   const lockNote = !isOwner
     ? (canTeamDecide
         ? '조회 전용 화면입니다. 팀 보완요청·팀 반려로 처리하세요.'
         : '본인이 등록한 건이 아니어 조회만 가능합니다.')
     : item?.status === 'TEAM_COLLECTING'
       ? '팀에 올린 뒤라 수정할 수 없습니다. 팀장이 보완요청으로 돌려보내면 고칠 수 있습니다.'
-      : '회계로 넘어간 뒤라 수정할 수 없습니다. 보완요청을 받으면 고칠 수 있습니다.'
+      : item?.status === 'TEAM_REJECTED'
+        ? '팀에서 반려된 건이라 종결되었습니다. 다시 올릴 수 없으니 필요하면 새로 등록해 주세요.'
+        : item?.status === 'REJECT'
+          ? '회계에서 최종 반려된 건이라 종결되었습니다. 재제출할 수 없습니다.'
+          : DONE_STATUSES.includes(item!.status)
+            ? '확정된 건이라 수정할 수 없습니다.'
+            : '회계로 넘어간 뒤라 수정할 수 없습니다. 보완요청을 받으면 고칠 수 있습니다.'
 
   // ── 편집 상태(우측 폼) ──
   const [merchant, setMerchant] = useState(item?.merchant ?? '')
