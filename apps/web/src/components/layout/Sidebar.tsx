@@ -87,8 +87,9 @@ export function Sidebar() {
       onMouseLeave={() => setExpanded(false)}
     >
       <div className="sidebar-brand">
-        <div className="logo" />
-        {expanded && <span className="brand-name">법산</span>}
+        {expanded
+          ? <img src="/full_name_logo.svg" alt="로고" className="brand-logo-full" />
+          : <img src="/logo.svg" alt="로고" className="brand-logo" />}
       </div>
 
       <div className="sidebar-user">

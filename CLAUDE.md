@@ -36,7 +36,7 @@ daily_scrum/  주차별 진행 보고
 - **룰은 사전 탑재하지 않는다 — 기본 게이트 1개 + 문서에서 생성**: 제품이 미리 준비해 제공하는 것은 **`DEFAULT GATE` 하나**뿐이며, 특정 회사 규정에 종속되지 않는 **범용 default 룰**로 고도화한다. **카테고리별 세부 룰은 고객이 자사 규정 문서를 업로드하면 Rule Agent가 생성**한다(RAG 조항 추출 → 초안 → 시뮬레이션 → ACTIVE 승인). `법인카드_사용규정_기반_RULE_명세서.md`의 58 RULE과 `seed_rules`의 4개 계열 그래프는 **참고용 예시·시연용**이지 기본 제공물이 아니다.
 - **룰 도메인 = 그래프(트리)**: 단건 룰은 `condition+action+next_routings` 노드, 조립된 **룰 그래프(RuleGraph)** 가 최종 상태 도메인. **ACTIVE·버전관리·시뮬레이션·롤백은 그래프 단위**. (기술 §3.1·§4.2 / 요구사항 FR-RB·FR-RV·FR-RA)
 - **룰엔진 = 3단 파이프라인**: ① `build_rule_context(tx_id)`로 **EvalContext(facts 스냅샷)** 조립(모든 I/O·데이터 접근은 여기서만) → ② 그래프 선택(**필수 게이트 GLOBAL → 계정과목별 scope**) → ③ **결정론적 순회**(엔진은 EvalContext만 참조, 외부 I/O 0). 조건은 **JSON-Logic류 DSL**(임의코드 금지). context는 `rule_hits.eval_context`에 스냅샷 저장 → 재현·감사. 상세: `llm_wiki/_context/rule-engine.md`. (기술 §4.2(d) / 요구사항 FR-RA-08~10)
-- **비용분류 어휘 = 서버가 내려준다**: 정본 `settlements.Category` 7종(회식·회의·식대·출장·접대·비품·**기타**), 창구는 `GET /api/meta/categories/` 하나. 화면(`useCategories()`)·ai(`core_client.get_categories()`)가 런타임에 받아 쓰고 **저장 검증은 서버가 한다**(목록 밖 값은 400). **`기타` ≠ 미기재** — `기타`는 "어디에도 안 맞는다"는 확정, `""`는 "아직 못 정했다"(게이트가 `CATEGORY_MISSING`으로 잡는다). → `_context/category-vocabulary.md`
+- **비용분류 어휘 = 서버가 내려준다**: 정본 `settlements.Category` 6종(회식·회의·식대·출장·접대·**기타**), 창구는 `GET /api/meta/categories/` 하나. 화면(`useCategories()`)·ai(`core_client.get_categories()`)가 런타임에 받아 쓰고 **저장 검증은 서버가 한다**(목록 밖 값은 400). **`기타` ≠ 미기재** — `기타`는 "어디에도 안 맞는다"는 확정, `""`는 "아직 못 정했다"(게이트가 `CATEGORY_MISSING`으로 잡는다). → `_context/category-vocabulary.md`
 - **AI는 판정을 예측하지 않는다**: 「지금 제출하면 보완요청될까」는 결정론적 엔진이 이미 답을 갖고 있다(`orchestrator.judge(record=False)`). 룰 그래프를 프롬프트에 주고 순회를 흉내내게 하면 틀리고, 틀려도 티가 안 나며, 사용자에겐 "AI가 통과라 했는데 반려됨"이 된다. **엔진이 결정하고 모델은 사람 말로 옮긴다**(`narrate.py`·MCP `run_rule_engine`과 같은 분업). 모델이 낼 수 없어야 하는 값은 지시가 아니라 **출력 스키마에서 뺀다**. → `_context/draft-agent-v2.md`
 - **인가 = 기능 단위(Capability) RBAC**: 역할이 아니라 6개 Capability(`team_aggregate`·`accounting_review`·`rule_view`·`rule_activate`·`governance_view`·`ai_lab`)로 판정. **유효능력 = 역할 기본값 ∪ 개인 추가부여(`users.extra_capabilities`)** — 예: `acc`=회계+룰열람+팀취합, `acclead`=회계+룰열람+룰활성. 룰콘솔은 열람(`rule_view`)/활성(`rule_activate`) 분리. DRF `HasCapability` 파생 권한으로 백엔드 강제, `/api/me`에 `capabilities` 노출, 프론트는 `useCan()`로 게이트. **Django admin에서 사용자별 `extra_capabilities` 체크박스 부여**. (기술 §3.1a)
 - **EvalContext는 파생 불린을 두지 않고, 룰 조건에 상수를 허용한다**(v6) — 심야 22시 같은 기준을 조립기에 박으면 회사마다 다른 값을 바꾸려고 재배포해야 하고, 그 상수는 룰 콘솔에도 판정 스냅샷에도 안 보인다. 그래프가 `tx.payment_time >= "22:00"`으로 직접 비교한다(내규 개정은 잦지 않고 룰은 Rule Agent가 관리한다). **예외 셋만 조립기가 접는다** — ① null 여부(미해소 가드가 값 평가 전에 강등해 `x == null`을 룰로 못 쓴다) ② 별표 선해소(DSL에 룩업 연산자 없음 — 표로 개정되는 값은 그대로 별표다) ③ 산술·날짜(DSL에 연산자·요일 함수 없음). 남기는 불린은 **왜 예외인지를 필드 설명에 적는다**. → [[eval-context-sourcing]] §16
@@ -112,7 +112,7 @@ daily_scrum/  주차별 진행 보고
 | S-03 검토 워크스페이스 | ✅ 실 연동 | 이상탐지·RAG 검증·EvalContext 스냅샷·룰 판정 패널·결정 모달. Risk Review 진행 상태 표시 |
 | S-04 룰 콘솔 | ✅ 실 연동 | 3개 탭 전 구간(초안 편집·시뮬레이션·Active 승인/롤백·작성 대화) |
 | S-05 규정 문서 관리 | ✅ 실 연동 | 폴더 트리 + **조 단위 조항 아코디언**. 조항 상태는 저장하지 않고 파생(`SKIP`+사유만 저장) |
-| S-08 예산 / S-09 카드 | ✅ 실 연동 / 🎭 조치 큐만 목업 | 저장하는 건 사람의 결정뿐 — 사용액·「회수 필요」는 파생. **S-09 「회수/중지 필요」 화면은 시연용 목업**(`web/src/data/cardAttentionMock.ts`) — 분실신고·휴직·장기미사용을 담는 자리가 도메인에 없다. 화면에 그렇게 밝히고 회수는 서버로 안 나간다 |
+| S-08 예산 / S-09 카드 | ✅ 실 연동 / 🎭 조치 큐만 목업 | 저장하는 건 사람의 결정뿐 — 사용액·「회수 필요」는 파생. **다개월 추세·과부족 패턴도 실 데이터**(`/api/team-budget/trend/`, 목업 걷어냄) — 사용액 정의는 `settlements/budget.py` 한 곳, 집계 쿼리 2회, **정산 없는 달은 `0`이 아니라 `null`**. S-09 「회수/중지 필요」는 시연용 목업(`web/src/data/cardAttentionMock.ts`) — 분실신고·휴직·장기미사용을 담는 자리가 도메인에 없다. 화면에 그렇게 밝히고 회수는 서버로 안 나간다 |
 | 알림 | ✅ 11종 | 상태 전이·비동기 완료·룰 콘솔 사건 → **메시지 + 이동할 페이지**. 생성 지점은 `transition()` 한 곳, 링크는 서버가 완성, 개수형은 묶는다. **지금은 페이지 이동까지만**(딥링크는 받는 쪽 인프라가 없어 다음 단계). → [[notifications]] |
 | ERP 전표(안) | ✅ | `GET /api/erp/vouchers/by-settlement/{id}`. 없으면 404 그대로(빈 껍데기 금지) |
 
@@ -201,6 +201,13 @@ npm run build --prefix apps/web      # tsc 타입체크 + vite build
 docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output --dry-run  # 라우팅만(무과금)
 docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output            # 실적재(OpenAI 과금)
 docker compose exec ai python -m app.rag.embedding.index --peek                                      # 적재 현황
+
+# 벡터 DB 덤프·복원 — **재임베딩 없이** 옮긴다(OpenAI 호출 0회, 과금 0, 재현 100%).
+#   시연 데이터를 확정하려면 벡터도 함께 고정돼야 한다 — 원문을 다시 파싱·임베딩하면
+#   파서·청커·모델이 바뀔 때 어제 보던 검색 결과가 오늘 달라진다.
+#   복원은 upsert다(기존을 지우지 않는다). 깨끗한 상태가 필요하면 `--reset`을 명시한다.
+docker compose exec ai python -m app.rag.embedding.snapshot dump    --out /data/rag_snapshot
+docker compose exec ai python -m app.rag.embedding.snapshot restore --in  /data/rag_snapshot
 
 # Django (core)
 docker compose exec core python manage.py migrate

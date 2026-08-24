@@ -25,7 +25,7 @@ from app.agents import draft_agent
 from app.clients import core_client
 from app.schemas import Category as CategoryMirror
 
-SERVER_VOCAB = ["회식", "회의", "식대", "출장", "접대", "비품", "기타", "신설분류"]
+SERVER_VOCAB = ["회식", "회의", "식대", "출장", "접대", "기타", "신설분류"]
 
 
 @pytest.fixture(autouse=True)

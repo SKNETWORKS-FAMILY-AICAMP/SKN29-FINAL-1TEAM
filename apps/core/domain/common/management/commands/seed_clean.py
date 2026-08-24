@@ -406,8 +406,8 @@ class Command(BaseCommand):
             Category.MEETING: 1_000_000,
             Category.TRIP: 3_000_000,
             Category.ENTERTAIN: 3_000_000,
-            Category.SUPPLIES: 1_000_000,
-            Category.OTHER: 500_000,
+            #  「비품」은 2026-08-24에 폐기됐다 — 그 한도를 `기타`가 흡수한다.
+            Category.OTHER: 1_500_000,
         }
         missing = set(Category.values) - {c.value for c in default_limits}
         assert not missing, f"예산 행이 없는 과목: {missing} (불변식 2)"

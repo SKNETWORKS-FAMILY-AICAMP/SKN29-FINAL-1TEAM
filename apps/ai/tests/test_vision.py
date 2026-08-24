@@ -103,8 +103,10 @@ def test_document_extracts_only_kind_targets(media_root):
     (media_root / "d.pdf").write_bytes(b"%PDF-1.4")
     reply = {
         "findings": [
-            _fact("participants.participant_count", "number", 6, quote="참석자 6명"),
-            _fact("participants.external_participant_count", "number", 2, quote="외부 2명"),
+            #  **확인 필드**(문서로 읽어낸 값)다 — 신고 필드(`participants.participant_count`)와
+            #  다른 경로이고, 판독기의 `TARGETS`도 확인 필드만 연다(2026-08 인원 축 분리).
+            _fact("participants.verified_participant_count", "number", 6, quote="참석자 6명"),
+            _fact("participants.verified_external_count", "number", 2, quote="외부 2명"),
             _fact("trip.region_grade", "string", "가", quote="지역 가"),   # 회의록엔 없는 대상
         ],
         "document_summary": "8/18 거래처 미팅",
@@ -115,8 +117,8 @@ def test_document_extracts_only_kind_targets(media_root):
         out = document.read_evidence_document("d.pdf", "MEETING_MINUTES")
 
     assert out["extraction_status"] == "DONE"
-    assert out["extracted"]["participants.participant_count"] == 6
-    assert isinstance(out["extracted"]["participants.participant_count"], int)
+    assert out["extracted"]["participants.verified_participant_count"] == 6
+    assert isinstance(out["extracted"]["participants.verified_participant_count"], int)
     # 종류에 없는 대상은 버린다 — 회의록에서 지역등급을 찾게 두면 지어낸다.
     assert "trip.region_grade" not in out["extracted"]
 

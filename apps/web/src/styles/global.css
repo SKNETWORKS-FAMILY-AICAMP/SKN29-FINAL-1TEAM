@@ -105,16 +105,10 @@ textarea:focus-visible, [tabindex]:focus-visible {
   transition: width 160ms cubic-bezier(0.23,1,0.32,1);
 }
 .sidebar.expanded { width: var(--sidebar-width-expanded); align-items: stretch; box-shadow: 12px 0 32px rgba(8,12,30,0.35); }
-.sidebar-brand { flex-shrink: 0; margin-bottom: 28px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.sidebar.expanded .sidebar-brand { justify-content: flex-start; padding-left: 24px; }
-.sidebar-brand .logo {
-  width: 30px; height: 30px; border-radius: 50%; background: var(--sidebar-brand); position: relative; flex-shrink: 0;
-}
-.sidebar-brand .logo::after {
-  content: ''; position: absolute; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%;
-  background: var(--sidebar-brand-accent); border: 2px solid var(--sidebar-bg);
-}
-.sidebar-brand .brand-name { font-size: 17px; font-weight: 800; color: var(--sidebar-text); white-space: nowrap; }
+.sidebar-brand { flex-shrink: 0; margin-bottom: 28px; display: flex; align-items: center; justify-content: center; }
+.sidebar.expanded .sidebar-brand { padding: 0 12px; }
+.sidebar-brand .brand-logo { width: 80px; height: 80px; object-fit: contain; flex-shrink: 0; }
+.sidebar-brand .brand-logo-full { width: 100%; height: auto; object-fit: contain; }
 
 .sidebar-user { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; text-align: center; }
 .sidebar-user .avatar {

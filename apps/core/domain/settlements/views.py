@@ -28,6 +28,7 @@ from . import (
     decision_reasons, draft_agent, draft_context, erp_import, evidence_extract,
     risk_review, services, submit_prep,
 )
+from . import budget as budget_agg
 from .attachments import Attachment, AttachmentKind
 from .models import Category, Settlement, SettlementEvent, SettlementStatus, TeamBudget
 from .serializers import AttachmentSerializer, SettlementDetailSerializer, SettlementSerializer
@@ -770,7 +771,9 @@ class SettlementSummaryView(APIView):
 
 # 팀 사용액은 진행 상태와 무관하게 "이미 쓴 돈"으로 잡는다.
 #  카드는 이미 결제됐으므로 제출·검토 단계가 어디든 사용액이다. 최종 반려(REJECT)만 제외한다.
-_BUDGET_EXCLUDE = ["REJECT"]
+#  사용액의 정의는 `domain/settlements/budget.py` 한 곳에 있다 — 예전엔 이 파일의 두 뷰가
+#  같은 로직을 각자 들고 있었고, 추세 집계가 세 번째 사본이 될 자리였다.
+_BUDGET_EXCLUDE = list(budget_agg.BUDGET_EXCLUDE)
 
 
 class TeamBudgetView(APIView):
@@ -821,6 +824,72 @@ class TeamBudgetView(APIView):
         })
 
 
+class TeamBudgetTrendView(APIView):
+    """GET /api/team-budget/trend/?months=13&window=6&team=<id> — 다개월 추세 + 과부족 패턴.
+
+    S-08의 「계정과목별 지출 추세」·「자주 남는/부족한 항목」이 쓴다. 예전엔 이 두 섹션이
+    프론트 목업(`data/budgetTrendMock.ts`)이었다 — 과거 달 데이터가 seed에 없던 시절의
+    조치인데, `seed_adopted`가 직전 3개월을 실제 전이로 만들면서 전제가 깨졌다.
+
+    **쿼리는 2회다**(사용액 1 + 한도 1). 13개월 × 분류 6종 = 78칸이라 뷰·CTE를 둘 이유가
+    없고, 두면 「사용액이 무엇인가」가 파이썬과 SQL 두 곳에 생긴다(`budget.py` docstring).
+
+    분류 목록은 **실제 값이 있는 것만** 내려준다 — `Category.values` 전부를 내리면 한 번도
+    안 쓴 과목이 0선으로 그려지고, 담당자는 그걸 「지출이 0이었다」로 읽는다.
+    """
+    permission_classes = [CanAccountingReviewOrGovernance]
+
+    #  상한을 두는 이유: `months`를 사용자가 준다. 막지 않으면 1200을 넣어 전 기간을 훑는다.
+    MAX_MONTHS = 36
+
+    def get(self, request):
+        def _int(name, default, lo, hi):
+            try:
+                return max(lo, min(hi, int(request.query_params.get(name) or default)))
+            except (TypeError, ValueError):
+                return default
+
+        months_count = _int("months", 13, 2, self.MAX_MONTHS)
+        window = _int("window", 6, 1, months_count)
+        team_id = request.query_params.get("team")
+        team_id = int(team_id) if (team_id or "").isdigit() else None
+
+        months = budget_agg.recent_months(months_count)
+        spend = budget_agg.monthly_spend(months, team_id=team_id)
+        limits = budget_agg.monthly_limits(months, team_id=team_id)
+
+        #  값이 있는 분류만. 예산 행만 있고 지출이 없는 과목도 포함한다(한도가 남는 것도
+        #  「자주 남는 항목」의 근거다) — 반대로 둘 다 없는 과목은 보여줄 것이 없다.
+        present = {cat for (_, cat) in spend if cat} | {cat for (_, cat) in limits if cat}
+        order = [c for c in Category.values if c in present]
+        order += sorted(present - set(order))          # 폐지된 옛 분류도 이력엔 남는다
+
+        #  정산이 한 건도 없는 달은 `0`이 아니라 `null`이다 — 이력이 3개월뿐인데 13개월을
+        #  0으로 채우면 사람은 「지출이 없었다」로 읽고 그 다음 달을 「급증」으로 읽는다.
+        has_data = budget_agg.months_with_data(spend)
+        series = lambda src, c: [  # noqa: E731
+            (src.get((m, c), 0) if m in has_data else None) for m in months
+        ]
+        #  과부족 패턴은 **데이터가 있는 달만** 본다(빈 달을 「전액 남음」으로 세면 안 된다).
+        recent = [m for m in months[-window:] if m in has_data]
+        return Response({
+            "months": months,
+            "categories": order,
+            "spend": {c: series(spend, c) for c in order},
+            "limits": {c: series(limits, c) for c in order},
+            "totals": [
+                (sum(spend.get((m, c), 0) for c in order) if m in has_data else None)
+                for m in months
+            ],
+            #  화면이 「어디서부터 그릴지」를 정할 수 있게 알려준다.
+            "dataMonths": sorted(has_data),
+            "window": window,
+            "windowMonths": recent,
+            "pattern": budget_agg.gap_pattern(recent, order, spend, limits),
+            "team": team_id,
+        })
+
+
 class TeamBudgetOverviewView(APIView):
     """GET /api/team-budget/overview/?month=YYYY-MM — **전 팀** 예산 현황(S-08 예산 관리).
 
@@ -838,15 +907,7 @@ class TeamBudgetOverviewView(APIView):
     def get(self, request):
         month = request.query_params.get("month") or timezone.localdate().strftime("%Y-%m")
 
-        used_qs = Settlement.objects.exclude(status__in=_BUDGET_EXCLUDE)
-        if "-" in month:
-            y, m = month.split("-")[:2]
-            used_qs = used_qs.filter(transaction__ts__year=int(y), transaction__ts__month=int(m))
-        used: dict[tuple[int, str], int] = {
-            (r["team_id"], r["category"]): int(r["s"] or 0)
-            for r in used_qs.values("team_id", "category").annotate(s=Sum("transaction__amount"))
-            if r["team_id"]
-        }
+        used = budget_agg.spend_by_team(month)
 
         limits: dict[int, dict[str, int]] = {}
         for b in TeamBudget.objects.filter(year_month=month):

@@ -52,13 +52,14 @@ from django.core.management.base import BaseCommand
 from django.db.models import Count
 from django.utils import timezone
 
-from domain.accounts.models import JobTitle, Position, Role, Team, User
+from domain.accounts.models import Capability, JobTitle, Position, Role, Team, User
 from domain.cards.models import Card, CardType
 from domain.erp.models import ErpVoucher
 from domain.notifications.models import Notification
 from domain.policies.models import PolicyTable, RuleGraph, RuleHit
 from domain.policies.tiger_tables import upsert_all as upsert_policy_tables
 from domain.risk.models import RiskReview
+from domain.settlements.attachments import Attachment, AttachmentKind, ExtractionStatus
 from domain.settlements import risk_review as risk_review_module
 from domain.settlements import services as settlement_services
 from domain.settlements.models import Category as C, Settlement, SettlementEvent
@@ -104,6 +105,10 @@ class Spend:
     receipt: bool = True
     headcount: int | None = None
     external_headcount: int | None = None
+    #: **문서로 확인된** 인원(참석자 명단 첨부에서 읽어낸 값). 신고값(`headcount`)과 다른 축이다 —
+    #  법정 한도 판정은 본인이 적은 인원으로 나누면 인원을 부풀려 한도를 피할 수 있어서
+    #  확인값만 쓴다(`seed_rules` E-003). `None`이면 명단 첨부를 만들지 않는다.
+    verified_headcount: int | None = None
     pre_approved: bool | None = None
     kickback_target: bool | None = None
     is_secondary_venue: bool | None = None
@@ -145,12 +150,12 @@ MERCHANTS: dict[str, list[tuple[str, str, str]]] = {
         ("대한항공", "주유/교통", "교통"), ("신라스테이 대전", "숙박", "숙박"),
         ("카카오T", "주유/교통", "교통"), ("GS칼텍스 주유", "주유/교통", "교통"),
     ],
-    C.SUPPLIES: [
+    #  「비품」 과목이 폐기되면서(2026-08-24) 소모품·사무용품 구매가 여기로 왔다 —
+    #  나열된 다섯 과목 어디에도 안 맞는 지출이 모이는 자리다.
+    C.OTHER: [
         ("오피스디포", "문구/사무용품", "소모품"), ("알파문구", "문구/사무용품", "소모품"),
         ("다이소 역삼", "문구/사무용품", "소모품"), ("쿠팡", "기타", "소모품"),
         ("교보문고", "문구/사무용품", "소모품"), ("테크노마트", "전자/가전", "소모품"),
-    ],
-    C.OTHER: [
         ("우체국 등기", "기타", "기타"), ("공영주차장", "주유/교통", "기타"),
     ],
 }
@@ -162,8 +167,7 @@ AMOUNTS: dict[str, tuple[int, int]] = {
     C.GATHERING: (180_000, 520_000),
     C.ENTERTAIN: (120_000, 280_000),
     C.TRIP: (14_000, 240_000),
-    C.SUPPLIES: (9_000, 180_000),
-    C.OTHER: (4_000, 32_000),
+    C.OTHER: (4_000, 180_000),      # 소모품(~18만) ∪ 기타 잡비(4천~) — 폐기된 비품 대역 흡수
 }
 
 PURPOSES: dict[str, list[str]] = {
@@ -172,8 +176,8 @@ PURPOSES: dict[str, list[str]] = {
     C.GATHERING: ["분기 마감 팀 회식", "신규 입사자 환영 회식", "프로젝트 완료 회식"],
     C.ENTERTAIN: ["거래처 계약 협의", "신규 거래처 상담", "재계약 협의 식사"],
     C.TRIP: ["지방사업장 출장", "고객사 방문 이동", "출장 숙박", "본사 회의 참석"],
-    C.SUPPLIES: ["사무 비품 구매", "제안서 인쇄 용지", "개발 장비 소모품", "기술 서적 구입"],
-    C.OTHER: ["증빙 원본 발송", "출장 중 주차"],
+    C.OTHER: ["사무 비품 구매", "제안서 인쇄 용지", "개발 장비 소모품", "기술 서적 구입",
+              "증빙 원본 발송", "출장 중 주차"],
 }
 
 
@@ -253,12 +257,22 @@ class Command(BaseCommand):
         `seed_clean`의 5명만으로는 팀 통계가 사람 한둘로 채워져 "누가 얼마나 썼나" 화면이
         의미를 잃는다. **직책을 흩어 놓는 게 중요하다** — 전원 비직책자면 별표1(직책별
         사전승인 기준)이 한 행으로만 해소돼 직책별로 판정이 갈리는지 확인할 수 없다.
+
+        **팀당 팀장은 한 명이다.** 예전엔 영업팀에 `lead`(역할 팀장)와 박민수(직책 팀장)가
+        같이 있어서, `_team_lead()`가 둘 중 하나를 집을 때마다 처리자가 달라졌다.
+
+        **직책이 팀장이면 팀 취합 권한을 개별 부여한다**(`extra_capabilities`). 역할은
+        `EMPLOYEE`인데 직책만 팀장인 사람이 실재하고(이영희), 그 사람이 팀 제출을 하는 것이
+        조직 현실이다. 이걸 안 주면 화면 이력엔 "이영희가 제출했다"고 남는데 정작 이영희로
+        로그인하면 그 화면에 못 들어간다 — **이력과 인가가 서로 다른 말을 한다.**
+        역할 기본값을 넓히지 않는 이유: 그러면 전 직원이 팀 취합 권한을 갖는다.
         """
         pos = {p.name: p for p in Position.objects.all()}
         title = {j.name: j for j in JobTitle.objects.all()}
         NONE = title["비직책자(공용카드)"]
         roster = [
-            ("박민수", "영업팀", "차장", "팀장"), ("정하늘", "영업팀", "주임", None),
+            #  영업팀 팀장은 `lead`(seed_clean이 만든다) — 여기서 또 만들지 않는다.
+            ("박민수", "영업팀", "차장", None), ("정하늘", "영업팀", "주임", None),
             ("이도윤", "영업팀", "대리", None), ("서지훈", "영업팀", "사원", None),
             ("이영희", "AI·개발팀", "과장", "팀장"), ("최지우", "AI·개발팀", "대리", None),
             ("김철수", "AI·개발팀", "사원", None), ("한도현", "AI·개발팀", "부장", "부서장"),
@@ -269,6 +283,8 @@ class Command(BaseCommand):
                 f"emp{index + 1}", password="pass1234", role=Role.EMPLOYEE,
                 team=teams[team_name], first_name=name,
                 position=pos[grade], job_title=title[job] if job else NONE,
+                #  직책 팀장은 팀 취합을 한다 — 역할이 아니라 **개인 부여**로 준다(위 docstring).
+                extra_capabilities=[Capability.TEAM_AGGREGATE.value] if job == "팀장" else [],
             )
             Card.objects.create(
                 card_type=CardType.PERSONAL, name=f"{name} 개인카드",
@@ -378,10 +394,10 @@ class Command(BaseCommand):
         #  쌓이면 그건 적용 완료가 아니라 도입 실패다.
         plan = [
             ("영업팀", C.MEAL, 6), ("영업팀", C.MEETING, 4), ("영업팀", C.TRIP, 5),
-            ("영업팀", C.SUPPLIES, 3), ("영업팀", C.ENTERTAIN, 2), ("영업팀", C.GATHERING, 1),
-            ("AI·개발팀", C.MEAL, 5), ("AI·개발팀", C.MEETING, 4), ("AI·개발팀", C.SUPPLIES, 4),
+            ("영업팀", C.OTHER, 3), ("영업팀", C.ENTERTAIN, 2), ("영업팀", C.GATHERING, 1),
+            ("AI·개발팀", C.MEAL, 5), ("AI·개발팀", C.MEETING, 4), ("AI·개발팀", C.OTHER, 4),
             ("AI·개발팀", C.TRIP, 2), ("AI·개발팀", C.GATHERING, 1),
-            ("재무회계팀", C.MEAL, 4), ("재무회계팀", C.MEETING, 3), ("재무회계팀", C.SUPPLIES, 3),
+            ("재무회계팀", C.MEAL, 4), ("재무회계팀", C.MEETING, 3), ("재무회계팀", C.OTHER, 3),
             ("재무회계팀", C.TRIP, 2), ("재무회계팀", C.OTHER, 2),
         ]
         for team_name, category, count in plan:
@@ -439,10 +455,10 @@ class Command(BaseCommand):
                               anomaly_reasons=["청탁금지법 대상자 참석", "업무 관련성 불명확"]))
             #  진행 중 — 화면이 살아 있으려면 "지금 처리할 것"이 있어야 한다.
             for _ in range(4):
-                rows.append(spend("영업팀", self.rng.choice([C.MEAL, C.MEETING, C.SUPPLIES]),
+                rows.append(spend("영업팀", self.rng.choice([C.MEAL, C.MEETING, C.OTHER]),
                                   outcome="inflight_team", day=self.rng.randint(max(1, last_day - 6), last_day)))
             for _ in range(2):
-                rows.append(spend("AI·개발팀", self.rng.choice([C.MEAL, C.SUPPLIES]),
+                rows.append(spend("AI·개발팀", self.rng.choice([C.MEAL, C.OTHER]),
                                   outcome="inflight_team", day=self.rng.randint(max(1, last_day - 6), last_day)))
             for _ in range(3):
                 rows.append(spend("재무회계팀", self.rng.choice([C.MEAL, C.MEETING, C.TRIP]),
@@ -505,6 +521,12 @@ class Command(BaseCommand):
                 row.headcount = max(3, min(14, round(row.amount / per_person)))
             if row.category == C.ENTERTAIN and row.external_headcount is None:
                 row.external_headcount = self.rng.randint(1, 2)
+            if row.category == C.ENTERTAIN and row.verified_headcount is None:
+                #  **접대비는 참석자 명단이 있는 게 정상이다.** 규정이 그걸 요구하고
+                #  (제12조③·청탁금지법 제8조) 룰이 확인값만 보기 때문에, 명단이 없으면
+                #  전건이 「판정 정보 부족」으로 강등된다. 신고값과 같은 수로 둔다 —
+                #  둘이 어긋나는 시나리오는 아래 ④에서 따로 만든다.
+                row.verified_headcount = row.headcount
             if row.category == C.GATHERING:
                 row.external_headcount = 0
                 if row.is_secondary_venue is None:
@@ -529,6 +551,9 @@ class Command(BaseCommand):
 
         for row in spends:
             settlement = self._create(row)
+            #  **판정 전에 붙여야 한다.** 첨부에서 나온 사실이 EvalContext에 실리려면
+            #  `judge()`보다 먼저 존재해야 한다 — 뒤에 붙이면 이미 끝난 판정에 안 들어간다.
+            self._attach_participant_list(settlement, row, settlement.transaction.ts)
             base = timezone.localtime(settlement.transaction.ts)
             marker = self._latest_event_id(settlement)
 
@@ -584,8 +609,19 @@ class Command(BaseCommand):
         return mismatched
 
     def _team_lead(self, user: User) -> User | None:
-        return (User.objects.filter(team_id=user.team_id, job_title__name="팀장")
-                .exclude(pk=user.pk).first())
+        """같은 팀의 팀 취합 담당자.
+
+        **직책만 보지 않고 권한도 확인한다.** 직책이 팀장이어도 `team_aggregate`가 없으면
+        화면에서 그 일을 할 수 없는 사람이라, 이력에 처리자로 남기면 인가와 어긋난다.
+        지금은 직책 팀장에게 권한을 부여하므로 대개 같은 사람이지만, 둘이 갈릴 때는
+        **권한 쪽을 따른다** — 이력은 "실제로 할 수 있는 사람"이 한 것으로 남아야 한다.
+        """
+        candidates = (User.objects.filter(team_id=user.team_id, job_title__name="팀장")
+                      .exclude(pk=user.pk))
+        for candidate in candidates:
+            if candidate.has_capability(Capability.TEAM_AGGREGATE):
+                return candidate
+        return None
 
     def _create(self, row: Spend) -> Settlement:
         year, month = row.year, row.month
@@ -610,6 +646,45 @@ class Command(BaseCommand):
             actual_user_recorded=recorded,
             actual_user=row.owner if recorded else None,
         )
+
+    # ── 참석자 명단 첨부 ─────────────────────────────────────────────────
+    #
+    #  **접대비 판정은 「문서로 확인된 인원」을 요구한다**(`seed_rules` E-003). 명단이 없으면
+    #  `tx.verified_per_person_amount`가 null이라 미해소 가드가 판정을 REVIEW로 강등한다 —
+    #  룰이 의도한 동작이다. 그런데 시드가 그 문서를 안 만들어서 **접대 건이 전건 강등**되고
+    #  있었다(2026-08-24, `test_seed_adopted`가 실패로 잡았다).
+    #
+    #  판독 결과를 손으로 쓰는 건 `RiskReview`와 같은 이유다 — 비전 판독을 시연 준비마다
+    #  수십 번 부를 수 없다. **모양은 실제 판독기와 같게** 맞춘다(`vision/document.py`가
+    #  내는 dot-path·신뢰도 형식 그대로) — 다르면 조립기가 못 읽는다.
+    PARTICIPANT_CONFIDENCE = 0.92
+
+    def _attach_participant_list(self, settlement: Settlement, row: Spend, when) -> None:
+        """확인 인원이 정해진 건에 참석자 명단 첨부를 만든다."""
+        verified = row.verified_headcount
+        if not verified:
+            return
+        extracted = {"participants.verified_participant_count": verified}
+        if row.external_headcount is not None:
+            extracted["participants.verified_external_count"] = row.external_headcount
+        if row.kickback_target is not None:
+            extracted["participants.has_kickback_law_target"] = row.kickback_target
+
+        attachment = Attachment.objects.create(
+            settlement=settlement,
+            kind=AttachmentKind.PARTICIPANT_LIST,
+            original_name=f"참석자명단_{settlement.pk}.pdf",
+            file_ref=f"attachments/seed/{settlement.pk}.pdf",
+            extraction_status=ExtractionStatus.DONE,
+            extracted=extracted,
+            field_confidence={path: self.PARTICIPANT_CONFIDENCE for path in extracted},
+            extractor_version="seed",
+            uploaded_by=row.owner,
+        )
+        #  `extracted_at`은 조립기가 문서끼리 충돌할 때 순서를 보는 값이고, `uploaded_at`은
+        #  `auto_now_add`라 무엇을 해도 "지금"이 박힌다 — 둘 다 결제일로 되돌린다
+        #  (`_stamp_events`가 이력 시각에 대해 하는 것과 같은 이유).
+        Attachment.objects.filter(pk=attachment.pk).update(extracted_at=when, uploaded_at=when)
 
     def _remediate(self, settlement: Settlement, row: Spend) -> None:
         """보완요청을 받은 건을 지출자가 고친다 — **사실을 실제로 바꾼다.**
@@ -638,16 +713,79 @@ class Command(BaseCommand):
         """
         if row.anomaly <= 0:
             return
+        recommendation = "REJECT" if row.outcome == "reject" else "APPROVE"
+        tier = self._risk_tier(row.anomaly)
+        #  근거는 **판정이 실제로 붙인 사유**에서 만든다 — 시드가 조문을 지어내면 화면의
+        #  인용문과 룰이 건 사유가 서로 다른 말을 한다.
+        refs = [{"title": reason, "source": f"{settlement.category} 검증 그래프", "kind": "policy"}
+                for reason in row.anomaly_reasons]
         RiskReview.objects.create(
             settlement=settlement,
             anomaly_score=row.anomaly,
+            #  1차 등급·상태를 비워 두면 화면이 「측정 안 됨」/등급 없음으로 그린다
+            #  (`stage1_status`가 빈 값이면 시리얼라이저가 `ok`로 폴백하지만 등급은 안 나온다).
+            risk_tier=tier,
+            stage1_status="ok",
             anomaly_reasons=row.anomaly_reasons,
             reasons=[{"feature": reason, "weight": round(row.anomaly / max(1, len(row.anomaly_reasons)), 2)}
                      for reason in row.anomaly_reasons],
-            rag_refs=[],
-            ai_recommendation="REJECT" if row.outcome == "reject" else "APPROVE",
+            rag_refs=refs,
+            ai_recommendation=recommendation,
             ai_confidence=round(min(0.95, 0.55 + row.anomaly / 3), 2),
+            #  ②RAG 카드가 읽는 **구조화 보고서**. 없으면 「보고서가 없습니다」로 뜬다 —
+            #  검토 화면이 시연의 핵심이라 빈 채로 둘 수 없다. Agent 산출물의 대역이다.
+            report=self._demo_report(row, recommendation, settlement),
+            tier_path="heavy" if tier == "HIGH" else "fast",
+            model_name="seed",
+            stage2_verdict={
+                "violation_verdict": "VIOLATION" if recommendation != "APPROVE" else "NO_VIOLATION",
+                "review_reasons": row.anomaly_reasons,
+                "recommendation": "REJECT" if recommendation == "REJECT" else "APPROVE",
+                "citations": [], "similar_cases": [],
+            },
         )
+
+    @staticmethod
+    def _risk_tier(score: float) -> str:
+        """`risk_review_agent.RISK_TIER_*`와 **같은 경계**를 쓴다.
+
+        시드 점수는 0~1 대역이고 실제 모델 점수는 0.0037/0.0134 근방이라 스케일이 다르다 —
+        여기서는 시연용 대역값의 상대 크기로만 등급을 매긴다. 컷오프 실험이 끝나 상수가
+        바뀌면 이 함수도 같이 본다(`.personal/FINDINGS.md`에 예정으로 등록돼 있다).
+        """
+        if score >= 0.7:
+            return "HIGH"
+        return "MEDIUM" if score >= 0.4 else "LOW"
+
+    def _demo_report(self, row: Spend, recommendation: str, settlement) -> dict:
+        """검토 화면이 그대로 그리는 보고서 — **시연용 대역이다.**
+
+        Agent를 185번 부를 수 없어 손으로 쓰지만, **모양은 실제 산출물과 같게** 맞춘다
+        (`risk_review_agent.RiskReport`). 화면은 모양이 어긋나도 죽지 않게 방어하지만
+        (`RiskReportView.normalize`), 어긋난 채 두면 시연에서 절반만 보인다.
+        """
+        amount = int(settlement.transaction.amount)
+        per_person = f" · 1인당 {amount // row.headcount:,}원" if row.headcount else ""
+        head = row.anomaly_reasons[0] if row.anomaly_reasons else "이상 신호"
+        return {
+            "summary": (
+                f"{head} 사유로 검토가 필요한 건입니다. "
+                + ("규정 위반 소지가 있어 반려를 권장합니다."
+                   if recommendation == "REJECT" else "소명이 확인되면 승인 가능합니다.")
+            ),
+            "recommendation": "REJECT" if recommendation == "REJECT" else "APPROVE",
+            "highlights": [
+                f"{row.merchant} · {amount:,}원{per_person}",
+                f"결제 {row.hour:02d}시 · {row.category}",
+            ],
+            "findings": [
+                {"claim": reason,
+                 "reasoning": f"{settlement.category} 검증 그래프가 이 사유로 검토를 요청했습니다.",
+                 "evidence": []}
+                for reason in (row.anomaly_reasons or ["이상 신호가 감지됐습니다."])
+            ],
+            "advisories": ["시연용 대역 보고서입니다 — 실제 검토는 Agent 산출물로 대체됩니다."],
+        }
 
     # ── 시각 되돌리기 ────────────────────────────────────────────────────
     def _latest_event_id(self, settlement: Settlement) -> int:
@@ -744,6 +882,8 @@ class Command(BaseCommand):
                     f"기대={row.expect} 실제={actual}"
                 )
             self.stdout.write("  사실(Spend)을 고치거나 기대값을 갱신할 것.")
+
+        self._warn_unresolved_facts()
         if not self.verbosity:
             return
 
@@ -767,3 +907,30 @@ class Command(BaseCommand):
         ))
         for status, count in sorted(by_status.items(), key=lambda kv: -kv[1]):
             self.stdout.write(f"    {status:<24}{count:>5}")
+
+    def _warn_unresolved_facts(self) -> None:
+        """**룰이 참조하는데 시드가 못 채운 사실**을 끝에 나열한다.
+
+        기대 판정 불일치(`expect`)는 "결과가 다르다"만 말해서, 원인이 사실 누락인지 룰 변경인지
+        구분되지 않는다. 실제로 그 구분이 필요했다 — 접대 그래프가 「문서로 확인된 인원」을
+        요구하도록 바뀌었을 때, 시드는 "기대=PASS 실제=REVIEW"라고만 알려줬고 **왜인지는
+        `rule_hits`를 직접 열어야** 알 수 있었다(2026-08-24).
+
+        미해소는 판정 플래그에 이미 경로까지 적혀 있다(`UNRESOLVED_FACT:<경로>`) — 그걸 모아
+        보여주기만 하면 된다. 새 룰이 새 사실을 요구할 때 **그 자리에서** 드러난다.
+        """
+        counts: dict[str, int] = {}
+        for flags in RuleHit.objects.values_list("flags", flat=True):
+            for flag in flags or []:
+                if str(flag).startswith("UNRESOLVED_"):
+                    counts[str(flag)] = counts.get(str(flag), 0) + 1
+        if not counts:
+            return
+        self.stdout.write(self.style.WARNING(
+            f"\n[경고] 룰이 참조하는데 시드가 못 채운 사실 {len(counts)}종:"
+        ))
+        for flag, n in sorted(counts.items(), key=lambda kv: -kv[1]):
+            self.stdout.write(f"  - {flag} — {n}건 강등")
+        self.stdout.write(
+            "  판정이 「정보 부족」으로 떨어진다. 그 사실을 만드는 첨부·컬럼을 시드에 추가할 것."
+        )

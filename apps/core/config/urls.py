@@ -26,6 +26,7 @@ from domain.settlements.views import (
     SettlementSummaryView,
     SettlementViewSet,
     TeamBudgetOverviewView,
+    TeamBudgetTrendView,
     TeamBudgetView,
 )
 from domain.transactions.views import (
@@ -67,6 +68,7 @@ urlpatterns = [
     path("api/team-budget/", TeamBudgetView.as_view(), name="team_budget"),
     # 전 팀 예산 현황(S-08). 팀 하나짜리 위 뷰와 응답 셰이프가 달라 URL을 나눈다.
     path("api/team-budget/overview/", TeamBudgetOverviewView.as_view(), name="team_budget_overview"),
+    path("api/team-budget/trend/", TeamBudgetTrendView.as_view(), name="team_budget_trend"),
     # AI-LAB(관리자) — AI 기능 독립 실행. FastAPI `/lab/*`로 전달, 인가는 Capability `ai_lab`.
     path("api/ai-lab/<path:subpath>", AiLabProxyView.as_view(), name="ai_lab_proxy"),
     # 내부 전용 read API — FastAPI(ai)의 FastMCP 도구가 관계형 데이터를 Django 경유로 조회(CLAUDE.md §1)

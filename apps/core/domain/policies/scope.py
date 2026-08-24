@@ -20,7 +20,10 @@ RULE_SUBJECT_TO_CATEGORY = {
     "식대": Category.MEAL,
     "출장": Category.TRIP,
     "회의": Category.MEETING,
-    "비품": Category.SUPPLIES,
+    #  2026-08-24: "비품"은 Category에서 폐기됐다(과목 5종+기타로 단순화). 규정 문서에
+    #  「비품」 과목이 나와도 그 자리를 대신할 정본 값이 없으므로 **매핑하지 않는다** —
+    #  `normalize_scope`가 원문을 그대로 통과시키고, ACTIVE 전환 시 CHECK 제약이 막는다.
+    #  임의로 `기타`에 붙이면 "비품 규정"으로 만든 그래프가 조용히 기타 과목을 판정한다.
 }
 
 

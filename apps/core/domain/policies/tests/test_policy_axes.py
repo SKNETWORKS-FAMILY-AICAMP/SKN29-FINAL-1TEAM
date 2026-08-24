@@ -162,7 +162,9 @@ class ActivationGateTests(TestCase):
             key_axes=[], payload={"value": 100_000}, effective_date=EFFECTIVE,
         )
         self.draft = RuleGraph.objects.create(
-            name="복리후생 검증", scope="비품", status=RuleGraphStatus.DRAFT,
+            #  "비품"은 2026-08-24에 Category에서 폐기됐다 — scope CHECK 제약이 막는다.
+            #  이 테스트가 보는 건 별표 축이지 과목이 아니라 아무 유효 scope나 쓰면 된다.
+            name="복리후생 검증", scope="기타", status=RuleGraphStatus.DRAFT,
             version=1, entry_node_key="entry",
         )
 

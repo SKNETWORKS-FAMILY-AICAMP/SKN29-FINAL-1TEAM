@@ -103,6 +103,10 @@ export function SettlementDetailModal({
   //  드롭다운 목록은 서버 어휘를 쓴다(`GET /api/meta/categories/`) — 화면 상수로 두면
   //  분류가 늘어도 여기서만 안 보인다.
   const { categories } = useCategories()
+  //  **영수증을 요구할지는 유래가 정한다.** 화면 등록은 파일이 필수지만(서버가 400),
+  //  카드사 원장에서 수집한 건은 애초에 파일이 없다 — 같은 자리에 「필수」를 띄우면
+  //  사용자가 고칠 수 없는 것을 고치라고 요구하는 셈이다.
+  const fromErp = item?.origin === 'ERP'
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   //  참석 인원 — **빈 문자열은 「모름」이고 0은 「확인했더니 없음」이다**(서버 계약).
   //  숫자 state로 두면 그 구분이 사라져 안 적은 건이 "인원 0명"으로 단정된다.
@@ -660,20 +664,32 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head">
               <h3>영수증</h3>
-              {receiptUp && <span className="tag ok"><Check size={11} /> Vision 판독</span>}
+              {receiptUp
+                ? <span className="tag ok"><Check size={11} /> Vision 판독</span>
+                : fromErp && <span className="tag">원장 수집</span>}
             </div>
-            <div className="card-body">
+            <div className={'card-body' + (fromErp && !receiptUp ? ' is-muted' : '')}>
               <div style={{
                 height: 168, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 6, color: 'var(--muted)', border: '1px dashed var(--border-strong)',
+                //  원장 수집 건은 **비활성**으로 보여준다 — 여기서 할 일이 없다는 뜻이다.
+                opacity: fromErp && !receiptUp ? 0.55 : 1,
               }}>
                 {receiptFile
                   ? <><Receipt size={18} /> {receiptFile.name}</>
                   : receiptUp
                     ? <><Receipt size={18} /> 첨부된 영수증</>
-                    : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '영수증을 첨부해 주세요 (필수)'}</>}
+                    : fromErp
+                      ? <><Receipt size={18} /> 원장 수집 건 — 영수증 파일 없음</>
+                      : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '영수증을 첨부해 주세요 (필수)'}</>}
               </div>
+              {fromErp && !receiptUp && (
+                <div className="text-meta" style={{ marginTop: 8 }}>
+                  카드사 결제기록에서 수집한 건이라 영수증 파일이 없습니다.
+                  증빙이 필요하면 아래 <b>증빙 자료</b>에서 첨부해 주세요.
+                </div>
+              )}
               {!readOnly && isCreate && (
                 <>
                   <input
@@ -832,26 +848,21 @@ export function SettlementDetailModal({
               <div className="field">
                 <label>
                   참석 인원 <span className="text-meta" style={{ fontWeight: 400 }}>(신고)</span>
-                  <span className="text-meta" style={{ marginLeft: 6, fontWeight: 400 }}>
-                    비워두면 「모름」 · 0은 「해당 없음」
-                  </span>
                 </label>
                 <input
                   type="number" min={0} inputMode="numeric" value={headcount} disabled={readOnly}
                   onChange={(e) => setHeadcount(e.target.value)}
-                  placeholder="식대·회식·접대처럼 1인당 한도를 보는 지출이면 적어주세요"
+                  placeholder="비워두면 「모름」 · 0은 「해당 없음」"
                 />
                 {headcount.trim() !== '' && Number(headcount) > 0 && numOnly(amountText) > 0 && (
                   <div className="text-meta" style={{ marginTop: 4 }}>
                     1인당 {Math.floor(numOnly(amountText) / Number(headcount)).toLocaleString()}원으로 판정됩니다
                   </div>
                 )}
-                {/* 신고값이 어디까지 쓰이는지 적는다 — 안 적으면 "인원을 적었으니 됐다"고
-                    믿고 명단을 안 올린다. 청탁금지 같은 판정은 문서 확인값만 본다. */}
+                {/*  신고값과 확인값이 **다른 축**이라는 것만 짧게. 안 적으면 "인원을
+                    적었으니 됐다"고 믿고 명단을 안 올린다. */}
                 <div className="text-meta" style={{ marginTop: 4 }}>
-                  본인이 적은 값이라 식대·복리후생처럼 승인이 느슨한 지출에 쓰입니다.
-                  청탁금지 한도처럼 정확한 인원이 필요한 판정은 <b>참석자 명단·회의록</b>을
-                  첨부해야 확인값으로 계산됩니다.
+                  정확한 인원이 필요한 판정은 <b>참석자 명단·회의록</b> 첨부값을 씁니다.
                 </div>
               </div>
               <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>

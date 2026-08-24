@@ -162,6 +162,12 @@ export const endpoints = {
 
   // ── S-08 예산 관리 — 전 팀 한도·사용액. 팀 하나짜리 teamBudget과 응답 셰이프가 다르다.
   budgetOverview: (month?: string) => api.get('/team-budget/overview/', { params: month ? { month } : undefined }),
+  /**
+   * 다개월 지출 추세 + 과부족 패턴. `team`을 주면 그 팀만, 없으면 전사.
+   * 정산이 한 건도 없는 달은 `null`로 온다 — 0원과 다른 뜻이다.
+   */
+  budgetTrend: (team?: number, months = 13, window = 6) =>
+    api.get('/team-budget/trend/', { params: { months, window, ...(team ? { team } : {}) } }),
 
   // ── S-09 법인카드 관리 — 조회는 사용액·조치필요 여부(계산값)를 함께 받는다.
   cards: (params?: Record<string, unknown>) => api.get('/cards/', { params }),

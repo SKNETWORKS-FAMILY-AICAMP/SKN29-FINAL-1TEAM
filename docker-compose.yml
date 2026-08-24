@@ -110,6 +110,9 @@ services:
       - ./docling_eval:/data/docling_eval:ro
       # core가 저장한 업로드 원본(규정 PDF). ai는 읽기만 한다 — 파일의 SoR은 Django다.
       - media:/data/media:ro
+      # 벡터 DB 덤프가 **호스트에 남게** 한다 — 컨테이너 안에만 쓰면 재생성 시 사라진다.
+      #   `app.rag.embedding.snapshot dump --out /data/rag_snapshot`
+      - ./rag_snapshot:/data/rag_snapshot
       # 컨테이너 로그를 호스트에서 그대로 열어보기 위한 바인드. ai는 `logs/ai.log`에 쓴다.
       - ./logs:/logs
     ports:
