@@ -1,17 +1,34 @@
-// 초안 Agent 진행 상태 · 설명 · 안내 — 정산 상세 모달 우측 상단.
+// AI 작업 카드 — **한 번의 AI 실행이 낸 것을 한 자리에서 보여준다.**
 //
-//  **진행률을 꾸며내지 않는다.** 비전 판독은 실제로 수십 초가 걸리므로, 퍼센트 대신
-//  지금 무엇을 하는 중인지를 단계로 보여준다(가짜 진행 바는 멈춘 것보다 나쁘다 —
-//  끝나지 않는데 90%에서 서 있으면 사용자는 고장으로 읽는다).
+//  예전엔 둘로 갈려 있었다: 상단 「초안 Agent」 패널(진행·설명·안내)과 하단 「AI 코멘트」
+//  로그. 같은 실행의 결과가 두 카드에 나뉘어 떠서, 사용자는 위아래를 오가며 맞춰 봐야 했다.
+//  갈린 이유는 의도가 달라서가 아니라 **출력 구조가 달랐기 때문**이다 — 하단은
+//  `{icon, text}` 평문뿐이라 안내 등급·플래그 라벨·판정 배지를 담을 수 없었다.
 //
-//  안내(notice)의 `level`은 **서버가 정한다**. 화면이 규칙을 갖고 있으면 서버와 갈린다.
-//   · blocker — 지금 제출하면 되돌아온다(RETURN/REJECT 예상)
-//   · warn    — 사람이 봐야 한다(문장이 과하게 바뀜, 정보 부족)
-//   · info    — 알고만 있으면 된다. **REVIEW는 여기다**(회계가 보는 정상 경로).
-import { AlertTriangle, CheckCircle2, Info, Loader2, Sparkles } from 'lucide-react'
+//  ## 누적되는 것과 교체되는 것을 구분한다 (이 컴포넌트의 핵심)
+//
+//   · **누적(logs)**  — "영수증을 올렸다", "증빙 3건을 읽었다" 같은 **일어난 일**. 쌓인다.
+//   · **교체(reasoning·notices·judgement)** — "지금 이 건은 이렇다"는 **현재 상태**.
+//     새 실행이 오면 갈아끼운다. 안 그러면 이미 고친 문제를 계속 지적한다.
+//
+//  호출부가 이 구분을 지켜야 한다 — `logs`는 push, 나머지는 set.
+//
+//  ## 진행 표시는 헤더에도 둔다
+//
+//  이 카드는 화면 **아래쪽**이라 저장→판독→초안이 도는 동안 스크롤 밖일 수 있다.
+//  그래서 헤더 배지로도 알린다. 진행률은 꾸며내지 않는다 — 단계만 말한다.
+import {
+  AlertTriangle, CheckCircle2, FileText, Info, Loader2, Receipt, Sparkles,
+} from 'lucide-react'
 import type { DraftNotice, JudgementPreview } from '../../api/settlementService'
 
 export type AgentPhase = '' | 'saving' | 'reading' | 'drafting'
+
+/** 누적 로그 한 줄 — 무엇이 일어났는지. */
+export interface AgentLog {
+  icon: 'ocr' | 'doc' | 'ai'
+  text: string
+}
 
 const PHASE_TEXT: Record<Exclude<AgentPhase, ''>, { title: string; detail: string }> = {
   saving: { title: '지출 건을 등록하는 중…', detail: '영수증을 서버에 올리고 있습니다.' },
@@ -26,6 +43,12 @@ const LEVEL_STYLE: Record<DraftNotice['level'], { tone: string; Icon: typeof Inf
   blocker: { tone: 'red', Icon: AlertTriangle },
   warn: { tone: 'amber', Icon: AlertTriangle },
   info: { tone: 'blue', Icon: Info },
+}
+
+const LOG_ICON = {
+  ocr: <Receipt size={11} />,
+  doc: <FileText size={11} />,
+  ai: <Sparkles size={11} />,
 }
 
 /** 판정 미리보기 한 줄. **엔진이 낸 값이지 모델이 예측한 값이 아니다.** */
@@ -62,24 +85,33 @@ function JudgementLine({ judgement }: { judgement: JudgementPreview }) {
 }
 
 export function AgentPanel({
-  phase, error, reasoning, notices, judgement,
+  phase, error, reasoning, notices, judgement, logs, readOnly, readOnlyNote,
 }: {
   phase: AgentPhase
   error?: string
+  /** 왜 이렇게 했는지 — 실행마다 **교체**된다. */
   reasoning?: string
+  /** 판정 사유 안내 — 실행마다 **교체**된다. */
   notices: DraftNotice[]
+  /** 엔진 dry-run 결과 — 실행마다 **교체**된다. */
   judgement: JudgementPreview | null
+  /** 무엇이 일어났는지 — **누적**된다. */
+  logs: AgentLog[]
+  readOnly?: boolean
+  readOnlyNote?: string
 }) {
   const busy = phase !== ''
-  if (!busy && !error && !reasoning && notices.length === 0 && !judgement) return null
+  const hasState = Boolean(reasoning) || notices.length > 0 || Boolean(judgement)
 
   return (
     <div className="card">
       <div className="card-head">
-        <h3><Sparkles size={13} style={{ verticalAlign: '-2px' }} /> 초안 Agent</h3>
+        <h3><Sparkles size={13} style={{ verticalAlign: '-2px' }} /> AI 코멘트</h3>
+        {/*  카드가 화면 아래쪽이라 진행 중인 걸 헤더에서도 알 수 있어야 한다. */}
         {busy && <span className="tag ai"><Loader2 size={11} className="spin" /> 진행 중</span>}
       </div>
       <div className="card-body stack" style={{ gap: 10 }}>
+        {/* ── 진행 ── */}
         {busy && (
           <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
             <Loader2 size={16} className="spin" style={{ marginTop: 2, flexShrink: 0 }} />
@@ -90,7 +122,7 @@ export function AgentPanel({
           </div>
         )}
 
-        {/* 실패는 폴백으로 덮지 않는다 — 사유를 그대로 보여주고 사람이 직접 채우게 한다. */}
+        {/*  실패는 폴백으로 덮지 않는다 — 사유를 그대로 보여주고 사람이 직접 채우게 한다. */}
         {error && (
           <div className="row" style={{ gap: 8, alignItems: 'flex-start', color: 'var(--tone-red)' }}>
             <AlertTriangle size={15} style={{ marginTop: 2, flexShrink: 0 }} />
@@ -98,10 +130,8 @@ export function AgentPanel({
           </div>
         )}
 
-        {!busy && reasoning && (
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{reasoning}</div>
-        )}
-
+        {/* ── 현재 상태(교체) ── */}
+        {!busy && reasoning && <div style={{ fontSize: 13, lineHeight: 1.6 }}>{reasoning}</div>}
         {!busy && judgement && <JudgementLine judgement={judgement} />}
 
         {!busy && notices.length > 0 && (
@@ -122,9 +152,37 @@ export function AgentPanel({
           </ul>
         )}
 
-        {!busy && !error && notices.length === 0 && judgement?.available && judgement.decision === 'PASS' && (
+        {!busy && !error && hasState && notices.length === 0
+          && judgement?.available && judgement.decision === 'PASS' && (
           <div className="row" style={{ gap: 7, color: 'var(--tone-green)', fontSize: 13 }}>
             <CheckCircle2 size={14} /> 확인이 필요한 사항이 없습니다.
+          </div>
+        )}
+
+        {/* ── 일어난 일(누적) ── */}
+        {logs.length > 0 && (
+          <ul
+            className="stack"
+            style={{
+              gap: 8, listStyle: 'none', padding: hasState || busy ? '10px 0 0' : 0, margin: 0,
+              borderTop: hasState || busy ? '1px solid var(--border)' : undefined,
+            }}
+          >
+            {logs.map((c, i) => (
+              <li key={i} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <span className="tag ai" style={{ flexShrink: 0 }}>{LOG_ICON[c.icon]}</span>
+                <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>{c.text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* ── 빈 상태 ── */}
+        {!busy && !error && !hasState && logs.length === 0 && (
+          <div className="text-meta">
+            {readOnly
+              ? (readOnlyNote || '조회 전용 화면입니다.')
+              : '영수증·증빙을 업로드하거나 AI 버튼을 누르면 무엇을 반영해 어디를 수정했는지 안내합니다.'}
           </div>
         )}
       </div>

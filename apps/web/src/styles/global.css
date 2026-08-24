@@ -463,6 +463,15 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .btn.sm { padding: var(--space-1) var(--space-2); font-size: var(--text-meta); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* 카드 헤더 오른쪽 끝의 아이콘 버튼(기본 내역의 「AI로 다시 작성」).
+   제목과 같은 줄에 앉되 제목을 밀지 않도록 정사각으로 고정한다. */
+.btn.icon-only {
+  width: 30px; height: 30px; padding: 0; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn.icon-only.ai { color: var(--primary); }
+.btn.icon-only.ai:hover:not(:disabled) { background: var(--tone-blue-bg); border-color: var(--primary); }
+
 /* ── 필터 바 ──────────────────────────────── */
 .filter-bar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-4); }
 .filter-bar select, .filter-bar input {

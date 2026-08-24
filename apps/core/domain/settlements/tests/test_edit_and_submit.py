@@ -235,3 +235,64 @@ class RiskReviewScopeTests(TestCase):
             run.assert_called_once()
         settlement.refresh_from_db()
         self.assertEqual(settlement.status, S.IN_REVIEW)
+
+
+class ErpImportedEditTests(TestCase):
+    """**원장에서 수집한 건은 거래 내역을 못 고친다.**
+
+    가맹점·금액·일자·카드는 카드사 결제기록이라 우리가 정정할 대상이 아니다 — 고치면
+    원장과 화면이 다른 말을 한다. 반면 분류·목적·참석 인원처럼 **사람이 채우는 값**은
+    수집한 건에서도 그대로 고쳐야 한다(그게 「내역 불러오기」 후 사용자가 할 일이다).
+    """
+
+    def setUp(self):
+        self.team = Team.objects.create(name="영업팀", bu="영업본부")
+        self.user = User.objects.create_user("kim", password="pw", role=Role.EMPLOYEE,
+                                             team=self.team, first_name="김영업")
+        self.card = Card.objects.create(card_type=CardType.PERSONAL, owner=self.user)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def _settlement(self, *, external_id=""):
+        tx = Transaction.objects.create(card=self.card, merchant="스타벅스 역삼점",
+                                        amount=Decimal("8000"), ts=timezone.now(),
+                                        external_id=external_id)
+        Receipt.objects.create(matched_tx=tx, status="MATCHED", file_ref="r.jpg")
+        return Settlement.objects.create(transaction=tx, submitted_by=self.user, team=self.team,
+                                         status=S.DRAFT, category="", ai_category=Category.MEAL)
+
+    def test_수집한_건은_거래내역을_못_고친다(self):
+        s = self._settlement(external_id="ERP-2026-0001")
+        for field, value in (("merchant", "다른 가맹점"), ("amount", "99000"), ("date", "2026-08-01")):
+            with self.subTest(field=field):
+                r = self.client.patch(f"/api/settlements/{s.id}/", {field: value}, format="json")
+                self.assertEqual(r.status_code, 400)
+                self.assertIn("수집한 건", r.data["detail"])
+        s.refresh_from_db()
+        self.assertEqual(s.transaction.merchant, "스타벅스 역삼점")
+        self.assertEqual(int(s.transaction.amount), 8000)
+
+    def test_수집한_건도_분류_목적은_고칠_수_있다(self):
+        """그게 「내역 불러오기」 후 사용자가 할 일이다."""
+        s = self._settlement(external_id="ERP-2026-0002")
+        r = self.client.patch(f"/api/settlements/{s.id}/",
+                              {"category": Category.MEAL, "purpose": "팀 점심", "headcount": 4},
+                              format="json")
+        self.assertEqual(r.status_code, 200)
+        s.refresh_from_db()
+        self.assertEqual(s.category, Category.MEAL)
+        self.assertEqual(s.purpose, "팀 점심")
+
+    def test_화면_등록_건은_거래내역도_고칠_수_있다(self):
+        s = self._settlement()          # external_id 없음 = 화면 등록
+        r = self.client.patch(f"/api/settlements/{s.id}/", {"merchant": "스타벅스 삼성점"}, format="json")
+        self.assertEqual(r.status_code, 200)
+        s.refresh_from_db()
+        self.assertEqual(s.transaction.merchant, "스타벅스 삼성점")
+
+    def test_유래가_직렬화된다(self):
+        """화면이 영수증 요구·필드 잠금을 유래로 가른다."""
+        erp = self._settlement(external_id="ERP-2026-0003")
+        own = self._settlement()
+        self.assertEqual(SettlementSerializer(erp).data["origin"], "ERP")
+        self.assertEqual(SettlementSerializer(own).data["origin"], "UPLOAD")

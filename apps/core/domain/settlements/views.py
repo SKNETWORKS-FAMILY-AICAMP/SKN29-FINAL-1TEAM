@@ -245,6 +245,18 @@ class SettlementViewSet(viewsets.ModelViewSet):
             return Response({"detail": "본인이 등록한 건만 수정할 수 있습니다."}, status=403)
 
         d = request.data
+        #  **원장에서 수집한 건은 거래 자체를 못 고친다.** 가맹점·금액·일자는 카드사 결제
+        #  기록이라 우리가 정정할 대상이 아니고, 고치면 원장과 화면이 다른 말을 하게 된다
+        #  (`Transaction.external_id`가 원천 식별자이자 중복 수집을 막는 키다).
+        #  분류·목적·참석 인원 같은 **사람이 채우는 값**은 그대로 고칠 수 있다.
+        if settlement.transaction and settlement.transaction.external_id:
+            locked = [k for k in ("merchant", "amount", "date", "cardId") if k in d]
+            if locked:
+                return Response(
+                    {"detail": "카드사 결제기록에서 수집한 건은 거래 내역(가맹점·금액·일자·카드)을 "
+                               "수정할 수 없습니다. 분류·목적은 수정할 수 있습니다."},
+                    status=400,
+                )
         fields = []
         if "category" in d:
             # 빈 값이면 지우지 않고 그대로 둔다 — 화면이 실수로 빈 값을 보내 확정 분류를

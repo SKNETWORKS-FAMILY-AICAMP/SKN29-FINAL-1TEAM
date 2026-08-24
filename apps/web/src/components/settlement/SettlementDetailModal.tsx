@@ -6,12 +6,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle, Check, ChevronDown, ChevronRight, FileText, Lock,
-  Receipt, Sparkles, Trash2, Upload,
+  AlertTriangle, Check, ChevronDown, ChevronRight, Lock,
+  Loader2, Receipt, Trash2, Upload, Wand2,
 } from 'lucide-react'
 import {
-  CARD_TYPE_LABEL, CATEGORY_UNSET,
-  type CardType, type Category, type ReviewItem, type Settlement, type SettlementStatus,
+  CARD_TYPE_LABEL, CATEGORY_UNSET, STATUS_META,
+  type CardType, type Category, type Settlement, type SettlementStatus,
 } from '../../types/domain'
 import { useCategories } from '../../lib/categories'
 import { needsAttention } from '../../lib/judgement'
@@ -22,9 +22,8 @@ import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
 import {
   createSettlement, decideTeamSettlement, deleteSettlement, draftForSettlement,
-  prepareSubmit, raiseSettlements, reviewSettlement, reviseDraft, submitSettlements,
-  suggestDraft, updateSettlement,
-  type DraftNotice, type DraftSuggestion, type JudgementPreview, type PolicyHint,
+  prepareSubmit, raiseSettlements, reviewSettlement, submitSettlements, updateSettlement,
+  type DraftNotice, type JudgementPreview,
   type SubmitPreparation,
 } from '../../api/settlementService'
 import { AgentPanel } from './AgentPanel'
@@ -41,6 +40,16 @@ interface ExtraFile { id: string; name: string }
 const numOnly = (s: string) => Number(s.replace(/[^0-9]/g, '') || '0')
 // 상태 변경 이력 타임라인 점 색 — 상태값을 매핑하지 않고 진행 단계를 순환색으로 표현(시안 실측: 회색→파랑→amber→빨강)
 const TIMELINE_TONES = ['gray', 'blue', 'amber', 'red']
+
+/** 이력 시각 — 오늘이면 시:분, 아니면 날짜까지. 잘못된 값은 원문을 그대로 보여준다. */
+function fmtEventTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const today = new Date()
+  const sameDay = d.toDateString() === today.toDateString()
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return sameDay ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`
+}
 
 export function SettlementDetailModal({
   item,
@@ -107,6 +116,10 @@ export function SettlementDetailModal({
   //  카드사 원장에서 수집한 건은 애초에 파일이 없다 — 같은 자리에 「필수」를 띄우면
   //  사용자가 고칠 수 없는 것을 고치라고 요구하는 셈이다.
   const fromErp = item?.origin === 'ERP'
+  //  **거래 내역은 원장이 정본이다** — 가맹점·금액·일자·카드는 카드사 결제기록이라
+  //  우리가 정정할 대상이 아니다(서버도 400으로 막는다). 분류·목적처럼 사람이 채우는
+  //  값은 그대로 고칠 수 있다. 화면만 막고 서버를 안 막으면 요청을 손댄 값이 들어간다.
+  const txLocked = readOnly || fromErp
   const [purpose, setPurpose] = useState(item?.purpose ?? '')
   //  참석 인원 — **빈 문자열은 「모름」이고 0은 「확인했더니 없음」이다**(서버 계약).
   //  숫자 state로 두면 그 구분이 사라져 안 적은 건이 "인원 0명"으로 단정된다.
@@ -130,8 +143,6 @@ export function SettlementDetailModal({
 
   // ── AI 코멘트 로그 / 규정 힌트 / 지시 입력 / fact.json 접힘 ──
   const [comments, setComments] = useState<AiComment[]>([])
-  const [hints, setHints] = useState<PolicyHint[]>([])
-  const [instruction, setInstruction] = useState('')
   // 신규 등록(F-1) 시안은 방금 생성된 fact.json을 펼쳐서 보여준다 — 기존 건 조회는 접어둔 채 시작.
   const [factOpen, setFactOpen] = useState(isCreate)
 
@@ -247,6 +258,13 @@ export function SettlementDetailModal({
   const runSettlementDraft = useCallback(async (id: string, instruction = '') => {
     setAgentPhase('drafting')
     setAgentError('')
+    //  **교체 대상은 시작할 때 비운다.** 실패하면 `catch`가 사유만 세우는데, 그때 옛
+    //  안내가 남아 있으면 「이미 고친 문제」를 계속 지적하고 오류와 나란히 떠서 어느
+    //  쪽이 지금 상태인지 알 수 없다. 누적 로그(`comments`)는 그대로 둔다 — 그건
+    //  일어난 일이라 지우면 안 된다.
+    setReasoning('')
+    setNotices([])
+    setJudgement(null)
     try {
       const result = await draftForSettlement(id, instruction)
       const d = result.draft
@@ -268,52 +286,6 @@ export function SettlementDetailModal({
       setAgentPhase('')
     }
   }, [])
-
-  /** Draft Agent 응답을 폼·코멘트·규정 힌트에 반영 */
-  const applyDraft = (result: DraftSuggestion) => {
-    const d = result.draft
-    if (d.merchant) setMerchant(String(d.merchant))
-    if (d.amount) setAmountText(String(d.amount))
-    //  Agent가 분류를 비워 보내면(판단 불가) **덮지 않는다** — 사람이 이미 고른 값이
-    //  있으면 그게 낫고, 없으면 그대로 「선택 필요」로 남아 사람이 고르게 된다.
-    if (d.category) { setCategory(d.category as Category); setAiSuggested(true) }
-    if (d.merchantIndustry !== undefined) setIndustry(String(d.merchantIndustry ?? ''))
-    if (d.merchantIndustryCode !== undefined) setIndustryCode(String(d.merchantIndustryCode ?? ''))
-    if (d.purpose) setPurpose(String(d.purpose))
-    if (d.evidence) setReceiptUp(d.evidence === 'OK')
-    setHints(result.policyHints ?? [])
-    result.comments?.forEach((c) => pushComment({ icon: c.icon as AiComment['icon'], text: c.text }))
-  }
-
-  /**
-   * 자연어 지시로 초안 수정.
-   *
-   * **저장된 건이면 정산 모드로 보낸다** — 그래야 지시가 판정 사실·판독 결과와 함께 읽힌다.
-   * 폼 값을 실어 보내는 옛 경로(`reviseDraft`)는 아직 저장 전인 경우에만 남는다.
-   */
-  const askAgent = async () => {
-    const text = instruction.trim()
-    if (workingId) {
-      setInstruction('')
-      await runSettlementDraft(workingId, text)
-      return
-    }
-    setPending(true)
-    const result = text
-      ? await reviseDraft(text, {
-          merchant, amount: numOnly(amountText), category, aiCategory: category,
-          merchantIndustry: industry, merchantIndustryCode: industryCode,
-          //  예전엔 `0`을 하드코딩해 보냈다 — 안 적은 건을 "인원 0명"이라고 Agent에게
-          //  단정해 알려주던 셈이다. 모르면 모른다고 보낸다.
-          purpose, evidence,
-          headcount: headcount.trim() === '' ? null : Number(headcount),
-        })
-      : await suggestDraft({ merchant, amount: numOnly(amountText), date: dateStr, cardType, evidence })
-    setPending(false)
-    if (!result) { pushComment({ icon: 'ai', text: 'AI 초안 생성에 실패했습니다. Core API 연결을 확인해주세요.' }); return }
-    applyDraft(result)
-    setInstruction('')
-  }
 
   // 첨부 판독이 끝나면 AI 코멘트로 알린다. **문구를 지어내지 않는다** — 서버가 실제로
   // 읽어낸 사실 개수만 말한다(예전엔 업로드하는 순간 "인식했습니다"를 찍어 놓고
@@ -636,7 +608,9 @@ export function SettlementDetailModal({
     </>
   )
 
-  const auditTrail = item ? (item as ReviewItem).auditTrail : undefined
+  //  이력은 서버가 주는 `events`가 정본이다(`SettlementEvent`). `auditTrail`은 mock 전용이라
+  //  실 모드에서는 항상 비어 있었고, 그 빈자리를 가짜 3줄이 채우고 있었다.
+  const events = item?.events ?? []
   const title = isCreate
     ? '신규 지출 등록'
     : `정산 상세${readOnly ? '' : ' · 수정'} · ${item!.id}`
@@ -738,22 +712,24 @@ export function SettlementDetailModal({
           <div className="card">
             <div className="card-head"><h3>상태 변경 이력</h3></div>
             <div className="card-body">
+              {/*  **실제 `SettlementEvent`를 그린다.** 예전엔 서버가 `events`를 내려주는데도
+                   화면은 `auditTrail`(목업)을 봤고, 없으면 09:12/09:40/09:41이 박힌 가짜 3줄을
+                   그렸다 — 처리자도 사유도 실제와 무관했다. 이력은 감사 기록이라 지어내면 안 된다. */}
               {isCreate ? (
                 <div className="text-meta">저장 후 이력이 기록됩니다.</div>
+              ) : events.length === 0 ? (
+                <div className="text-meta">아직 기록된 상태 변경이 없습니다.</div>
               ) : (
                 <ul className="timeline">
-                  {auditTrail?.map((ev, i) => (
-                    <li key={i} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
-                      <div style={{ fontSize: 13 }}>{ev.status}{ev.note ? ` — ${ev.note}` : ''}</div>
-                      <div className="t-meta">{ev.actor} · {ev.timestamp}</div>
+                  {events.map((ev, i) => (
+                    <li key={ev.id ?? i} className={TIMELINE_TONES[i % TIMELINE_TONES.length]}>
+                      <div style={{ fontSize: 13 }}>
+                        {STATUS_META[ev.toState as SettlementStatus]?.label ?? ev.toState}
+                        {ev.reason ? ` — ${ev.reason}` : ''}
+                      </div>
+                      <div className="t-meta">{ev.actor || '시스템'} · {fmtEventTime(ev.createdAt)}</div>
                     </li>
-                  )) ?? (
-                    <>
-                      <li className="gray"><div>DRAFT — 초안 자동생성</div><div className="t-meta">Draft Agent · {item!.date} 09:12</div></li>
-                      <li className="blue"><div>SUBMITTED — 제출</div><div className="t-meta">{item!.user} · 09:40</div></li>
-                      <li className="amber"><div>RPA_JUDGED — Rule Agent 판정</div><div className="t-meta">Rule Agent · 09:41</div></li>
-                    </>
-                  )}
+                  ))}
                 </ul>
               )}
             </div>
@@ -762,50 +738,50 @@ export function SettlementDetailModal({
 
         {/* ───────── 우측: Agent 진행·안내 + 기본내역 + 분류·사유 + fact.json ───────── */}
         <div className="stack">
-          {/*  진행 상태를 맨 위에 둔다 — 저장→판독→초안이 수십 초 걸리는 동안 사용자가
-              무슨 일이 벌어지는지 알 수 있어야 한다(가짜 진행률은 쓰지 않는다). */}
-          <AgentPanel
-            phase={agentPhase}
-            error={agentError}
-            reasoning={reasoning}
-            notices={notices}
-            judgement={judgement}
-          />
           <div className="card">
             <div className="card-head">
               <h3>기본 내역</h3>
-              {!readOnly && <span className="tag ai"><Sparkles size={11} /> Draft Agent</span>}
+              {/*  **지시문 입력칸을 없앤 자리.** 「AI에게 지시」는 메인 흐름이 아니다 —
+                  이 화면의 기본 경로는 영수증을 올리면 저장→판독→초안이 저절로 도는 것이고,
+                  지시문은 그 위에 얹힌 옛 폼 기반 경로였다. 버튼 하나만 남겨
+                  「방금 고친 값으로 다시 써 줘」에만 쓴다. */}
+              {!readOnly && (
+                <button
+                  className="btn sm icon-only ai"
+                  onClick={() => { if (workingId) void runSettlementDraft(workingId) }}
+                  disabled={!workingId || pending || agentPhase !== ''}
+                  title={workingId
+                    ? 'AI로 다시 작성 — 저장된 사실과 증빙 판독 결과로 분류·목적을 채웁니다'
+                    : '영수증을 올려 등록한 뒤 사용할 수 있습니다'}
+                  aria-label="AI로 다시 작성"
+                >
+                  {/*  누르는 자리에서 바로 돌아야 한다 — AI 카드는 화면 아래라
+                      스크롤 밖일 수 있다. */}
+                  {agentPhase !== '' ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />}
+                </button>
+              )}
             </div>
             <div className="card-body">
-              {!readOnly && (
-                <div className="row" style={{ gap: 6, marginBottom: 12 }}>
-                  <input
-                    value={instruction}
-                    onChange={(e) => setInstruction(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') void askAgent() }}
-                    placeholder="AI에게 지시 — 예) 분류는 접대로, 참석 6명, 사유 더 자세히"
-                    style={{ flex: 1 }}
-                    disabled={pending}
-                  />
-                  <button className="btn primary" onClick={() => void askAgent()} disabled={pending}>
-                    <Sparkles size={13} /> {instruction.trim() ? 'AI로 수정' : 'AI로 생성'}
-                  </button>
+              {fromErp && !readOnly && (
+                <div className="text-meta" style={{ marginBottom: 10 }}>
+                  카드사 결제기록에서 수집한 건이라 <b>거래 내역은 수정할 수 없습니다.</b>
+                  분류·목적·참석 인원은 고칠 수 있습니다.
                 </div>
               )}
               <div className="field"><label>가맹점</label>
-                <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="가맹점명" disabled={readOnly} />
+                <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="가맹점명" disabled={txLocked} />
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
                 <div className="field"><label>거래일자</label>
-                  <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} disabled={readOnly} />
+                  <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} disabled={txLocked} />
                 </div>
                 <div className="field"><label>금액 (원)</label>
-                  <input value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="0" inputMode="numeric" disabled={readOnly} />
+                  <input value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="0" inputMode="numeric" disabled={txLocked} />
                 </div>
               </div>
               <div className="grid-2" style={{ gap: 10 }}>
                 <div className="field"><label>사용 카드</label>
-                  {readOnly ? (
+                  {txLocked ? (
                     <input value={item?.cardName ?? CARD_TYPE_LABEL[cardType]} readOnly disabled />
                   ) : (
                     <select
@@ -846,8 +822,14 @@ export function SettlementDetailModal({
                 </div>
               </div>
               <div className="field">
-                <label>
-                  참석 인원 <span className="text-meta" style={{ fontWeight: 400 }}>(신고)</span>
+                {/*  안내문은 라벨 옆에 **더 연하게** 붙인다 — 입력칸 아래에 문단으로
+                    두면 값보다 안내가 커 보인다. 짧게 남기는 이유는 신고값과 확인값이
+                    **다른 축**이라서다: 안 적으면 "인원을 적었으니 됐다"고 믿고 명단을 안 올린다. */}
+                <label style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                  <span>참석 인원 <span className="text-meta" style={{ fontWeight: 400 }}>(신고)</span></span>
+                  <span className="text-meta" style={{ fontWeight: 400, opacity: 0.72 }}>
+                    정확한 인원이 필요한 판정은 참석자 명단·회의록 첨부값을 씁니다
+                  </span>
                 </label>
                 <input
                   type="number" min={0} inputMode="numeric" value={headcount} disabled={readOnly}
@@ -859,36 +841,10 @@ export function SettlementDetailModal({
                     1인당 {Math.floor(numOnly(amountText) / Number(headcount)).toLocaleString()}원으로 판정됩니다
                   </div>
                 )}
-                {/*  신고값과 확인값이 **다른 축**이라는 것만 짧게. 안 적으면 "인원을
-                    적었으니 됐다"고 믿고 명단을 안 올린다. */}
-                <div className="text-meta" style={{ marginTop: 4 }}>
-                  정확한 인원이 필요한 판정은 <b>참석자 명단·회의록</b> 첨부값을 씁니다.
-                </div>
               </div>
-              <div className="field" style={{ marginBottom: hints.length ? undefined : 0 }}><label>지출 목적 · 사유</label>
+              <div className="field" style={{ marginBottom: 0 }}><label>지출 목적 · 사유</label>
                 <textarea rows={2} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="실사용자·목적·거래처 등 (AI 버튼으로 자동 보정 가능)" disabled={readOnly} />
               </div>
-              {/* 제출 전 규정 안내 — 반려를 미리 막는다 */}
-              {hints.length > 0 && (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>제출 전 규정 안내 {hints.filter((h) => h.level === 'warn').length > 0
-                    && <span className="tag warn">확인 {hints.filter((h) => h.level === 'warn').length}건</span>}</label>
-                  <div className="stack" style={{ gap: 6 }}>
-                    {hints.map((hint, index) => (
-                      <div key={index} style={{
-                        padding: '8px 10px', borderRadius: 'var(--radius-control)', fontSize: 12.5, lineHeight: 1.6,
-                        background: hint.level === 'warn' ? 'var(--tone-amber-bg)' : 'var(--primary-soft)',
-                      }}>
-                        <div className="row" style={{ gap: 6 }}>
-                          <span className="tag">{hint.clause}</span>
-                          <b style={{ fontSize: 12 }}>{hint.status}</b>
-                        </div>
-                        <div className="text-meta" style={{ marginTop: 3 }}>{hint.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -918,28 +874,21 @@ export function SettlementDetailModal({
               신규 등록 중에는 판정 대상 자체가 없으므로 저장 후부터 보인다. */}
           {!isCreate && item && <RuleJudgementPanel item={item} />}
 
-          {/* AI 코멘트 로그 */}
-          <div className="card">
-            <div className="card-head"><h3>AI 코멘트</h3></div>
-            <div className="card-body">
-              {readOnly ? (
-                <div className="text-meta">조회 전용 화면입니다. {canTeamDecide ? '팀 보완요청·팀 반려로 처리하세요.' : ''}</div>
-              ) : comments.length === 0 ? (
-                <div className="text-meta">영수증·증빙을 업로드하거나 AI 버튼을 누르면 무엇을 반영해 어디를 수정했는지 안내합니다.</div>
-              ) : (
-                <ul className="stack" style={{ gap: 8, listStyle: 'none', padding: 0, margin: 0 }}>
-                  {comments.map((c, i) => (
-                    <li key={i} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-                      <span className="tag ai" style={{ flexShrink: 0 }}>
-                        {c.icon === 'ocr' ? <Receipt size={11} /> : c.icon === 'doc' ? <FileText size={11} /> : <Sparkles size={11} />}
-                      </span>
-                      <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>{c.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          {/*  **한 번의 AI 실행이 낸 것을 한 자리에서** 보여준다. 예전엔 진행·설명·안내가
+               상단 패널에, 로그가 여기에 나뉘어 있어서 위아래를 오가며 맞춰 봐야 했다.
+               누적(logs)과 교체(reasoning·notices·judgement)의 구분은 컴포넌트가 설명한다. */}
+          <AgentPanel
+            phase={agentPhase}
+            error={agentError}
+            reasoning={reasoning}
+            notices={notices}
+            judgement={judgement}
+            logs={comments}
+            readOnly={readOnly}
+            readOnlyNote={canTeamDecide
+              ? '조회 전용 화면입니다. 팀 보완요청·팀 반려로 처리하세요.'
+              : '조회 전용 화면입니다.'}
+          />
         </div>
       </div>
     </Modal>
