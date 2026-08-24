@@ -202,6 +202,13 @@ docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_ev
 docker compose exec ai python -m app.rag.embedding.index --dump /data/docling_eval/output            # 실적재(OpenAI 과금)
 docker compose exec ai python -m app.rag.embedding.index --peek                                      # 적재 현황
 
+# 벡터 DB 덤프·복원 — **재임베딩 없이** 옮긴다(OpenAI 호출 0회, 과금 0, 재현 100%).
+#   시연 데이터를 확정하려면 벡터도 함께 고정돼야 한다 — 원문을 다시 파싱·임베딩하면
+#   파서·청커·모델이 바뀔 때 어제 보던 검색 결과가 오늘 달라진다.
+#   복원은 upsert다(기존을 지우지 않는다). 깨끗한 상태가 필요하면 `--reset`을 명시한다.
+docker compose exec ai python -m app.rag.embedding.snapshot dump    --out /data/rag_snapshot
+docker compose exec ai python -m app.rag.embedding.snapshot restore --in  /data/rag_snapshot
+
 # Django (core)
 docker compose exec core python manage.py migrate
 docker compose exec core python manage.py createsuperuser
