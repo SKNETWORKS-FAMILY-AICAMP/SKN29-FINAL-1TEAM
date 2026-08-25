@@ -7,23 +7,9 @@
 // 그래서 두 가지를 화면이 반드시 한다:
 //   ① 표 원문을 **나란히** 보여준다 — 대조할 근거가 없으면 승인은 형식이 된다
 //   ② 지금 누르면 걸릴 문제(`problems`)를 **누르기 전에** 보여준다
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
-
-/** 파이프 마크다운 표(GFM)를 헤더/행으로 나눈다. 구분선(---)이 없거나 못 알아보는
- *  형식이면 null — 잘못 잘라 보여주는 것보다 원문(pre) 그대로가 낫다. */
-function parseMarkdownTable(md: string): { headers: string[]; rows: string[][] } | null {
-  const lines = md.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'))
-  if (lines.length < 2) return null
-  const splitRow = (line: string) =>
-    line.slice(1, line.endsWith('|') ? -1 : undefined).split('|').map((c) => c.trim())
-  const sepCells = splitRow(lines[1])
-  if (!sepCells.length || !sepCells.every((c) => /^:?-{2,}:?$/.test(c))) return null
-  const headers = splitRow(lines[0])
-  const rows = lines.slice(2).map(splitRow).filter((r) => r.some((c) => c))
-  return rows.length ? { headers, rows } : null
-}
 
 const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: string }> = {
   PENDING: { label: '승인 대기', tone: 'var(--tone-amber)' },
@@ -121,9 +107,6 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
   const [rejecting, setRejecting] = useState(false)
   const locked = proposal.status !== 'PENDING' || busy
   const meta = STATUS_META[proposal.status]
-  const parsedTable = useMemo(() => parseMarkdownTable(proposal.rawMarkdown), [proposal.rawMarkdown])
-  const pageLabel = proposal.pageStart === proposal.pageEnd
-    ? `p.${proposal.pageStart}` : `p.${proposal.pageStart}~${proposal.pageEnd}`
 
   return (
     <div className="pd-clause">
@@ -155,23 +138,8 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
       {open && (
         <div className="pd-clause-body">
           {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다. */}
-          <div className="text-meta">문서에 있는 표 원문 ({pageLabel})</div>
-          {parsedTable ? (
-            <div className="pd-table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>{parsedTable.headers.map((h, i) => <th key={i}>{h}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {parsedTable.rows.map((row, ri) => (
-                    <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
-          )}
+          <div className="text-meta">문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})</div>
+          <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
 
           {proposal.notes && (
             <div className="note" style={{ whiteSpace: 'pre-wrap' }}>

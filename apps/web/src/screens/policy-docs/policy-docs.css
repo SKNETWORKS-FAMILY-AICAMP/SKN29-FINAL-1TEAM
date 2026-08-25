@@ -258,20 +258,6 @@
   overflow: auto;
 }
 
-/* 별표 원문 표 — .pd-markdown과 같은 박스, 안은 진짜 <table>(원문 대조가 목적이라
-   행 클릭처럼 읽히면 안 되므로 전역 .table의 hover 포인터는 끈다). */
-.pd-table-wrap {
-  margin: 6px 0 0;
-  padding: 4px;
-  background: var(--surface-muted);
-  border-radius: var(--radius-control);
-  max-height: 260px;
-  overflow: auto;
-}
-.pd-table-wrap .table { font-size: 12px; }
-.pd-table-wrap .table th, .pd-table-wrap .table td { padding: var(--space-1) var(--space-2); white-space: nowrap; }
-.pd-table-wrap .table tbody tr:hover { background: transparent; cursor: default; }
-
 .pd-linked {
   margin-top: 12px;
   padding: 12px;
