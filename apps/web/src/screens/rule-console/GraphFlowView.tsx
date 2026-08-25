@@ -199,7 +199,7 @@ export function GraphFlowView({ graph, selectedKey, onSelect }: {
               <div className="row" style={{ gap: 6 }}>
                 {item.node.nodeKey === flow.entry && <span className="tag ai">시작</span>}
                 <span className={'tag ' + nodeStatusTone(item.node.workflowStatus)}>{nodeStatusLabel(item.node.workflowStatus)}</span>
-                <span className="text-meta" style={{ marginLeft: 'auto' }}>{item.node.nodeKey}</span>
+                <span className="text-meta flow-node-key" style={{ marginLeft: 'auto' }} title={item.node.nodeKey}>{item.node.nodeKey}</span>
               </div>
               <div className="flow-node-title">{item.node.title}</div>
             </div>

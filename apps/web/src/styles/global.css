@@ -306,12 +306,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .flow-edge-label.back { background: var(--tone-red-bg); border-color: #f3c9c5; color: var(--tone-red); }
 .flow-node {
   position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 10px 12px;
-  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); overflow: hidden;
   cursor: pointer; transition: border-color 150ms, background-color 150ms;
 }
 .flow-node:hover { border-color: var(--primary); }
 .flow-node.selected { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
 .flow-node-title { font-size: 12.5px; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.flow-node .tag { white-space: nowrap; flex-shrink: 0; }
+.flow-node-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .flow-end {
   position: absolute; display: grid; place-items: center; border: 1px dashed var(--border-strong);
   border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600;
