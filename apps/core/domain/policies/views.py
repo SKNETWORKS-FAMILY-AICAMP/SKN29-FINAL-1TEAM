@@ -170,6 +170,11 @@ class RuleGraphViewSet(viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
         if self.request.query_params.get("status"):
             qs = qs.filter(status=self.request.query_params["status"])
+        #  scope는 규정 표기(「식대」·「기업업무추진비」)로도 들어온다 — 정규화해서 받는다.
+        #  Rule Agent가 "이 과목에 편집 중인 초안이 있나"를 묻는 창구이기도 하다.
+        scope = (self.request.query_params.get("scope") or "").strip()
+        if scope:
+            qs = qs.filter(scope=normalize_scope(scope))
         return qs
 
     def get_permissions(self):

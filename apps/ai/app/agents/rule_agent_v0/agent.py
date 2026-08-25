@@ -29,6 +29,18 @@ MCP 툴콜링 전환(v1, `llm_wiki/_context/agent-v1-upgrade-plan.md` §1.2-1):
     `NO_VALID_NODES_EXHAUSTED`(sanitize 전멸이 N회 반복)/
     `STRUCTURE_INVALID_EXHAUSTED`(구조검증 실패가 N회 반복).
 
+기존 초안에 이어 붙이기(2026-08-25):
+  - 생성 전에 그 scope의 **편집 중인 초안**을 찾아(`find_open_draft`) 있으면 거기에 노드를
+    잇는다. 예전엔 호출마다 새 계열이 생겨 룰 콘솔이 초안으로 뒤덮였고, 사람이 어느 것을
+    보고 있는지도 흐려졌다.
+  - 모델에게 **기존 초안 목록을 보여준다**(`_existing_summary`). 안 보여주면 같은 조항으로
+    같은 룰을 계속 다시 만든다 — 중복 노드가 쌓이던 원인이 이것이다.
+  - 체인 잇기는 `_plan_append`가 결정론적으로 계획한다: 종단 PASS를 또 만들지 않고, 직전
+    꼬리의 `NO_MATCH`를 새 노드로 돌리며(안 돌리면 새 노드는 **도달 불가**가 되어 조용히
+    무용해진다), 키가 겹치면 새로 짓는다.
+  - **구조검증 실패 시 초안을 지우지 않는다.** 사람이 편집하던 그래프이므로 우리가 만든
+    노드만 걷어낸다(`_rollback_append`) — 자동 생성이 실패했다고 남의 작업을 지우지 않는다.
+
 v0 단순화 결정(의도적, GAPS.md 참조):
   - LLM은 "노드"만 생성한다. 그래프 위상(라우팅)은 파이썬이 결정론적으로 조립한다
     — 시드 GLOBAL 그래프와 동일한 선형 체인(우선순위순 NO_MATCH→NO_MATCH→…→_PASS 종단).
@@ -257,15 +269,28 @@ def _format_chunks(chunks: list[dict]) -> str:
 
 
 def _build_user_prompt(
-    scope: str, chunks: list[dict], ctx: Bundle, feedback: str | None = None
+    scope: str, chunks: list[dict], ctx: Bundle, feedback: str | None = None,
+    existing: dict | None = None,
 ) -> str:
     """카탈로그 블록은 core가 만든 것을 **그대로** 싣는다.
 
     여기서 요약하거나 손으로 다시 적으면 그 순간 사본이 된다 — 프롬프트가 스키마 버전을
     직접 적고 있던 시절(`EvalContext v4`, 코드는 이미 v5)이 그 결과였다.
     """
+    #  편집 중인 초안이 있으면 **무엇이 이미 있는지** 알려준다. 안 알려주면 모델이 같은
+    #  조항으로 같은 룰을 다시 만든다 — 생성할 때마다 중복 노드가 쌓이던 원인이다.
+    existing_block = ""
+    if existing:
+        listing = _existing_summary(existing) or "(아직 노드가 없습니다)"
+        existing_block = (
+            f"[현재 편집 중인 초안 — 여기에 **이어 붙입니다**]\n{listing}\n"
+            "위 목록과 **뜻이 겹치는 룰은 만들지 마세요.** 같은 조항을 근거로 이미 만들어진 "
+            "것이 있으면 그 조항은 skipped에 「이미 초안에 있음」으로 남기고, 빠진 요건만 "
+            "새로 만드세요.\n\n"
+        )
     prompt = (
         f"대상 scope(비용 분류): {scope}\n\n"
+        f"{existing_block}"
         f"[도메인 카탈로그 — 이 시스템의 실제 어휘]\n{ctx.prompt()}\n\n"
         f"[규정 조항 청크 — 1차 검색 결과]\n{_format_chunks(chunks)}\n\n"
         "위 청크만으로 부족하면 `search_policy` 툴을 다른 질의로 호출해 추가 근거를 "
@@ -312,7 +337,8 @@ def _submit_nodes_tool() -> dict[str, Any]:
 
 
 def _run_generation_loop(
-    scope: str, initial_chunks: list[dict], ctx: Bundle, feedback: str | None = None
+    scope: str, initial_chunks: list[dict], ctx: Bundle, feedback: str | None = None,
+    existing: dict | None = None,
 ) -> dict:
     """MCP 툴콜링 멀티턴 루프. `submit_rule_nodes` 호출 시 그 인자를 최종 결과로 반환.
 
@@ -321,7 +347,8 @@ def _run_generation_loop(
     """
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _build_user_prompt(scope, initial_chunks, ctx, feedback)},
+        {"role": "user",
+         "content": _build_user_prompt(scope, initial_chunks, ctx, feedback, existing)},
     ]
 
     for _ in range(MAX_TOOL_TURNS):
@@ -583,6 +610,122 @@ def _assemble_linear_graph(nodes: list[dict]) -> tuple[list[dict], list[dict], s
     return all_nodes, routings, entry
 
 
+def _existing_summary(graph: dict) -> str:
+    """편집 중인 초안을 프롬프트에 실을 문장으로. **중복 생성을 막는 것이 목적**이다.
+
+    지금까지는 모델이 기존 초안을 못 봐서 같은 조항으로 같은 룰을 계속 새로 만들었다
+    (그리고 생성마다 새 계열이 생겨 초안이 쌓였다).
+    """
+    rows = []
+    for node in sorted(graph.get("nodes") or [], key=lambda n: n.get("priority", 0)):
+        action = node.get("action") or {}
+        if node.get("nodeKey") == PASS_NODE_KEY:
+            continue
+        title = action.get("title") or node.get("nodeKey")
+        clause = action.get("source_clause") or ""
+        rows.append(
+            f"- {node.get('nodeKey')} · {title} → {action.get('decision', '')}"
+            + (f" (근거: {clause})" if clause else "")
+        )
+    return "\n".join(rows)
+
+
+def _plan_append(existing: dict, ordered: list[dict]) -> tuple[list[dict], dict, list[dict]]:
+    """기존 초안 **끝에** 새 노드를 잇는 계획 — `(nodes, routings_by_node, rewire)`.
+
+    선형 체인이라 세 가지를 맞춰야 한다:
+      ① **종단 PASS를 또 만들지 않는다.** 기존 그래프에 이미 있다.
+      ② **직전 노드의 `NO_MATCH`를 새 노드로 돌린다.** 안 고치면 새 노드는 달려만 있고
+         아무도 도달하지 못한다 — 엔진이 순회하지 않으므로 **조용히 무용해진다**.
+      ③ **키가 겹치면 새로 짓는다.** 같은 키로 POST하면 400이거나 기존 노드를 덮어쓴다.
+    """
+    taken = {n.get("nodeKey") for n in (existing.get("nodes") or [])}
+    routings = existing.get("routings") or []
+
+    #  체인의 꼬리 = 종단 PASS를 가리키는 노드. PASS가 없는(사람이 만든) 그래프면
+    #  NO_MATCH가 없는 노드가 꼬리다.
+    pass_key = next(
+        (n.get("nodeKey") for n in (existing.get("nodes") or [])
+         if n.get("nodeKey") == PASS_NODE_KEY
+         or (n.get("action") or {}).get("decision") == "PASS"),
+        "",
+    )
+    has_no_match = {r["fromNodeKey"] for r in routings if r.get("onResult") == "NO_MATCH"}
+    tail = next(
+        (r["fromNodeKey"] for r in routings
+         if r.get("onResult") == "NO_MATCH" and r.get("toNodeKey") == pass_key),
+        "",
+    )
+    if not tail:
+        tail = next(
+            (n.get("nodeKey") for n in (existing.get("nodes") or [])
+             if n.get("nodeKey") not in has_no_match and n.get("nodeKey") != pass_key),
+            "",
+        )
+
+    renamed: list[dict] = []
+    for node in ordered:
+        key = node["node_key"]
+        if key in taken:
+            suffix = 2
+            while f"{key}-{suffix}" in taken:
+                suffix += 1
+            key = f"{key}-{suffix}"
+        taken.add(key)
+        renamed.append({**node, "node_key": key})
+
+    routings_by_node: dict[str, list[dict[str, str]]] = {}
+    for i, node in enumerate(renamed):
+        nxt = renamed[i + 1]["node_key"] if i + 1 < len(renamed) else pass_key
+        routings_by_node[node["node_key"]] = [
+            {"onResult": "MATCH", "toNodeKey": ""},
+            #  마지막 새 노드는 기존 종단으로 되돌아간다. 종단이 없으면(빈 그래프 등)
+            #  라우팅을 걸지 않아 그 노드의 액션이 곧 판정이 된다.
+            *([{"onResult": "NO_MATCH", "toNodeKey": nxt}] if nxt else []),
+        ]
+
+    rewire = []
+    if tail and renamed:
+        rewire.append({
+            "node_key": tail,
+            "routings": [
+                {"onResult": "MATCH", "toNodeKey": ""},
+                {"onResult": "NO_MATCH", "toNodeKey": renamed[0]["node_key"]},
+            ],
+            #  실패 시 되돌릴 값 — 지금 이 노드가 가리키던 곳. 안 적어 두면 롤백이
+            #  "원래 어디를 가리켰는지"를 모르고, 체인이 끊긴 채로 남는다.
+            "restore_to": pass_key,
+        })
+    return renamed, routings_by_node, rewire
+
+
+def _rollback_append(graph_id: str, created: list[str], rewire: list[dict]) -> None:
+    """이어 붙이기 실패 시 **우리가 만든 것만** 되돌린다.
+
+    `discard_draft`를 쓰면 사람이 편집하던 초안이 통째로 사라진다 — 자동 생성이 실패했다고
+    남의 작업을 지우는 것은 이 시스템이 절대 하면 안 되는 종류의 일이다.
+
+    순서가 중요하다: **라우팅을 먼저 원복**하고 노드를 지운다. 반대로 하면 직전 노드가
+    없는 노드를 가리키는 잠깐이 생기고, 그 사이 판정이 돌면 그래프가 깨진 채로 보인다.
+    되돌리기 자체가 실패해도 예외를 올리지 않는다 — 여기서 터지면 원래 반환하려던 실패
+    사유마저 사라진다.
+    """
+    for fix in (rewire or []):
+        try:
+            django_client.update_node(
+                graph_id, fix["node_key"],
+                routings=[{"onResult": "MATCH", "toNodeKey": ""},
+                          {"onResult": "NO_MATCH", "toNodeKey": fix.get("restore_to", "")}],
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    for node_key in created:
+        try:
+            django_client.delete_node(graph_id, node_key)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 # ---------------------------------------------------------------- 진입점
 
 DEFAULT_QUERIES = {
@@ -646,6 +789,11 @@ def generate(req: Any) -> dict[str, Any]:
     ctx = catalog()
     schema_paths = ctx.paths
 
+    #  이 scope에 **편집 중인 초안**이 있으면 거기에 이어 붙인다. 예전엔 생성할 때마다 새
+    #  계열이 생겨 룰 콘솔이 초안으로 뒤덮였고(사람이 어느 걸 보고 있는지도 흐려졌다),
+    #  모델은 기존 초안을 못 봐서 같은 조항으로 같은 룰을 계속 다시 만들었다.
+    existing = django_client.find_open_draft(req.scope)
+
     # ③~⑤ 검증→재생성 루프 (agent-v1-upgrade-plan.md §1.2-4, A안).
     #   - RAG 청크(①)는 시도 전체에서 재사용한다 — 재조회하면 "피드백이 통했는지"와
     #     "우연히 다른 청크가 걸렸는지"를 구분할 수 없어져 루프의 신뢰성이 무너진다.
@@ -656,7 +804,7 @@ def generate(req: Any) -> dict[str, Any]:
     attempt_history: list[dict[str, Any]] = []
 
     for attempt_no in range(1, MAX_GENERATE_ATTEMPTS + 1):
-        llm_out = _run_generation_loop(req.scope, chunks, ctx, feedback)
+        llm_out = _run_generation_loop(req.scope, chunks, ctx, feedback, existing=existing)
         accepted, rejected = _sanitize_nodes(
             llm_out.get("nodes", []), set(schema_paths), ctx.operators
         )
@@ -703,13 +851,33 @@ def generate(req: Any) -> dict[str, Any]:
             "llm_skipped": llm_out.get("skipped", []),
             "generation_attempts": attempt_no,
         }
-        saved = django_client.create_rule_graph_draft(
-            name=req.name or f"{req.scope} 자동생성 초안",
-            scope=req.scope,
-            nodes=nodes,
-            routings_by_node=routings_by_node,
-            generation_meta=generation_meta,
-        )
+        rewire: list[dict] = []
+        if existing:
+            #  기존 초안에 **이어 붙인다**. `_assemble_linear_graph`가 만든 종단 PASS는
+            #  빼고 보낸다 — 기존 그래프에 이미 있고, 둘이면 뒤엣것이 도달 불가가 된다.
+            appended, append_routings, rewire = _plan_append(
+                existing, [n for n in nodes if n["node_key"] != PASS_NODE_KEY],
+            )
+            django_client.append_to_draft(
+                existing["id"], appended, append_routings, rewire,
+            )
+            saved = {
+                "graph_id": existing["id"],
+                "family_key": existing.get("familyKey"),
+                "version": existing.get("version"),
+                "scope": existing.get("scope"),
+                "status": existing.get("status"),
+                "created_nodes": [n["node_key"] for n in appended],
+                "appended_to_existing": True,
+            }
+        else:
+            saved = django_client.create_rule_graph_draft(
+                name=req.name or f"{req.scope} 자동생성 초안",
+                scope=req.scope,
+                nodes=nodes,
+                routings_by_node=routings_by_node,
+                generation_meta=generation_meta,
+            )
 
         # ⑥ 구조검증 — 저장된 그래프를 대상으로만 돌릴 수 있다(사전 dry-validate
         #    엔드포인트는 없음, §1.2-3). 실패하면 이 시도의 그래프를 지우고 재시도.
@@ -732,7 +900,13 @@ def generate(req: Any) -> dict[str, Any]:
             "attempt": attempt_no, "stage": "structure",
             "structure_error": structure_error, "graph_id": saved["graph_id"],
         })
-        django_client.discard_draft(saved["graph_id"])
+        #  ⚠️ 이어 붙인 경우에는 **그래프를 지우면 안 된다** — 사람이 편집하던 초안이다.
+        #     우리가 만든 노드만 걷어내 원래 상태로 되돌린다(라우팅은 append 전 값이
+        #     기존 그래프에 그대로 남아 있으므로 노드만 지우면 체인이 복구된다).
+        if saved.get("appended_to_existing"):
+            _rollback_append(saved["graph_id"], saved["created_nodes"], rewire)
+        else:
+            django_client.discard_draft(saved["graph_id"])
 
         if attempt_no == MAX_GENERATE_ATTEMPTS:
             return {
