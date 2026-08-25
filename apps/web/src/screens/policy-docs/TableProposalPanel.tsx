@@ -12,10 +12,26 @@
 //
 // `SKIPPED`는 AI가 "임계값 표가 아니다"라고 본 것이다. 조용히 버리지 않고 사유와 함께
 // 남긴다 — 안 그러면 담당자는 「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
 import { Markdown } from '../../components/ui/Markdown'
+
+/** 원문이 **진짜 GFM 표인지** 가리는 판별기. 구분선(---)이 없거나 못 알아보는 형식이면
+ *  null이고, 그때는 표로 그리지 않고 원문(pre) 그대로 둔다 — 잘못 잘라 보여주는 것보다
+ *  낫다. 그리는 일은 `Markdown`이 한다(원문에 표가 둘 이상이거나 표 밖 문장이 섞여도
+ *  블록별로 나눠 그린다 — 여기서 헤더/행을 직접 쓰면 그 경우가 한 표로 뭉친다). */
+function parseMarkdownTable(md: string): { headers: string[]; rows: string[][] } | null {
+  const lines = md.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'))
+  if (lines.length < 2) return null
+  const splitRow = (line: string) =>
+    line.slice(1, line.endsWith('|') ? -1 : undefined).split('|').map((c) => c.trim())
+  const sepCells = splitRow(lines[1])
+  if (!sepCells.length || !sepCells.every((c) => /^:?-{2,}:?$/.test(c))) return null
+  const headers = splitRow(lines[0])
+  const rows = lines.slice(2).map(splitRow).filter((r) => r.some((c) => c))
+  return rows.length ? { headers, rows } : null
+}
 
 const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: string }> = {
   PENDING: { label: '승인 대기', tone: 'var(--tone-amber)' },
@@ -198,6 +214,9 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
   const [rejecting, setRejecting] = useState(false)
   const locked = proposal.status !== 'PENDING' || busy
   const meta = STATUS_META[proposal.status]
+  const parsedTable = useMemo(() => parseMarkdownTable(proposal.rawMarkdown), [proposal.rawMarkdown])
+  const pageLabel = proposal.pageStart === proposal.pageEnd
+    ? `p.${proposal.pageStart}` : `p.${proposal.pageStart}~${proposal.pageEnd}`
 
   return (
     <div className="pd-clause">
@@ -240,17 +259,18 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
           {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다.
               **마크다운 표로 그린다.** 파이프 문자가 그대로 보이면 셀 경계를 눈으로 세어야
               해서, 아래 추출 결과와 대조하는 데 시간이 걸린다(그러면 대충 누르게 된다).
-              원문 그대로도 볼 수 있게 남긴다 — 렌더가 표를 잘못 접었을 때 확인할 길이
-              없으면 안 된다. */}
+              단, **GFM 표로 안 읽히는 원문은 그리지 않고 원문 그대로 둔다** — 잘못 잘라
+              보여주는 것보다 파이프가 보이는 편이 낫다. 렌더가 맞아도 원문을 볼 길은
+              남긴다(표를 잘못 접었을 때 확인할 것이 없으면 안 된다). */}
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="text-meta">
-              문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})
-            </span>
-            <button className="btn sm" onClick={() => setRaw((v) => !v)}>
-              {raw ? '표로 보기' : '원문 보기'}
-            </button>
+            <span className="text-meta">문서에 있는 표 원문 ({pageLabel})</span>
+            {parsedTable && (
+              <button className="btn sm" onClick={() => setRaw((v) => !v)}>
+                {raw ? '표로 보기' : '원문 보기'}
+              </button>
+            )}
           </div>
-          {raw
+          {raw || !parsedTable
             ? <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
             : <div className="pd-md-table"><Markdown source={proposal.rawMarkdown} /></div>}
 

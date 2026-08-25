@@ -3,11 +3,11 @@
 //  노드 제목 + 라우팅(MATCH/NO_MATCH) 구조만 보여주고, 상세는 우측 읽기 패널이 담당한다.
 import { useMemo } from 'react'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
-import { nodeStatusLabel, nodeStatusTone } from './data/graphApi'
+import { nodeStatusTone } from './data/graphApi'
 import type { GraphNode, RuleGraph } from './data/ruleConsoleMock'
 
-const CARD_W = 208
-const CARD_H = 78
+const CARD_W = 224
+const CARD_H = 88
 const GAP_COL = 32 // 같은 레벨(행) 안 좌우 간격
 const GAP_ROW = 74 // 레벨 사이 상하 간격 — 라우팅 라벨이 들어갈 자리
 const PAD = 24
@@ -185,23 +185,23 @@ export function GraphFlowView({ graph, selectedKey, onSelect }: {
 
         {flow.edges.filter((edge) => edge.label || edge.back).map((edge) => (
           <div key={`label-${edge.key}`}
-            className={'flow-edge-label' + (edge.back ? ' back' : edge.label === 'MATCH' ? ' match' : '')}
+            className={'flow-edge-label' + (edge.back ? ' back' : edge.label === 'MATCH' ? ' match' : edge.label === 'NO_MATCH' ? ' nomatch' : '')}
             style={{ left: edge.labelX, top: edge.labelY }}>{edge.back ? `↺ ${edge.label}` : edge.label}</div>
         ))}
 
         {flow.items.map((item) => item.kind === 'end'
           ? <div key={item.key} className="flow-end" style={{ left: item.x + (CARD_W - END_W) / 2, top: item.y, width: END_W, height: END_H }}>종료</div>
           : (
-            <div key={item.key} className={'flow-node' + (item.node.nodeKey === selectedKey ? ' selected' : '')}
+            <div key={item.key}
+              className={'flow-node'
+                + (nodeStatusTone(item.node.workflowStatus) ? ' tone-' + nodeStatusTone(item.node.workflowStatus) : '')
+                + (item.node.nodeKey === selectedKey ? ' selected' : '')}
               style={{ left: item.x, top: item.y, width: CARD_W, height: CARD_H }}
               role="button" tabIndex={0} aria-pressed={item.node.nodeKey === selectedKey}
               onClick={() => onSelect(item.node.nodeKey)} onKeyDown={activateOnEnterOrSpace(() => onSelect(item.node.nodeKey))}>
-              <div className="row" style={{ gap: 6 }}>
-                {item.node.nodeKey === flow.entry && <span className="tag ai">시작</span>}
-                <span className={'tag ' + nodeStatusTone(item.node.workflowStatus)}>{nodeStatusLabel(item.node.workflowStatus)}</span>
-                <span className="text-meta" style={{ marginLeft: 'auto' }}>{item.node.nodeKey}</span>
-              </div>
+              {item.node.nodeKey === flow.entry && <span className="flow-node-entry">시작</span>}
               <div className="flow-node-title">{item.node.title}</div>
+              <div className="flow-node-key" title={item.node.nodeKey}>{item.node.nodeKey}</div>
             </div>
           ))}
       </div>
