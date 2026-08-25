@@ -292,6 +292,11 @@ class TableProposalStatus(models.TextChoices):
     PENDING = "PENDING", "승인 대기"
     APPROVED = "APPROVED", "승인됨"
     REJECTED = "REJECTED", "반려"
+    #  **AI가 "임계값 표가 아니다"라고 판단한 것.** 사람의 결정이 아니라 AI 판단이므로
+    #  재색인하면 다시 계산된다(APPROVED·REJECTED만 이월한다 — `_replace_table_proposals`).
+    #  버리지 않고 남기는 이유: 조용히 사라지면 담당자는 "표가 있는데 왜 후보가 없지"를
+    #  스스로 알아내야 한다.
+    SKIPPED = "SKIPPED", "생성 안 함"
 
 
 class PolicyTableProposal(models.Model):
@@ -326,6 +331,17 @@ class PolicyTableProposal(models.Model):
     # 숨기면 사람이 "AI가 확신했나 보다"로 읽는다.
     confidence = models.FloatField(default=0.0)
     notes = models.TextField("AI 메모", blank=True)
+    #  담당자에게 사람 말로 설명하는 자리. `notes`가 "못 옮긴 열·애매한 머리글" 같은
+    #  **기술적 단서**라면 이쪽은 "무엇을 읽었고 무엇을 눈으로 확인해야 하나"다.
+    comment = models.TextField("AI 코멘트", blank=True)
+    #  승인하면 이 값이 **어디에 어떻게 쓰이는지**. key·축·payload는 개발자 어휘라
+    #  회계 담당자는 자기가 무엇을 승인하는지 알 수 없었다.
+    usage_note = models.TextField("활용 안내", blank=True)
+    #  추출 시점 자동검사 결과 `[{level, message}]`. level: ok·info·warn.
+    #  **재시도로도 안 풀린 문제를 숨기지 않는다** — 화면이 그대로 띄운다.
+    checks = models.JSONField(default=list, blank=True)
+    #  임계값 표가 아니라고 판단한 이유(status=SKIPPED일 때).
+    skip_reason = models.TextField("생성 안 함 사유", blank=True)
 
     # ── 사람의 결정 ─────────────────────────────────────────────
     status = models.CharField(

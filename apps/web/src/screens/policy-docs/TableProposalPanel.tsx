@@ -7,6 +7,11 @@
 // 그래서 두 가지를 화면이 반드시 한다:
 //   ① 표 원문을 **나란히** 보여준다 — 대조할 근거가 없으면 승인은 형식이 된다
 //   ② 지금 누르면 걸릴 문제(`problems`)를 **누르기 전에** 보여준다
+//   ③ **무엇을 승인하는지 사람 말로** 말한다(`comment`·`usageNote`). key·축·payload는
+//      개발자 어휘라, 회계 담당자는 자기가 무엇에 서명하는지 알 수 없었다.
+//
+// `SKIPPED`는 AI가 "임계값 표가 아니다"라고 본 것이다. 조용히 버리지 않고 사유와 함께
+// 남긴다 — 안 그러면 담당자는 「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다.
 import { useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
@@ -15,6 +20,11 @@ const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: 
   PENDING: { label: '승인 대기', tone: 'var(--tone-amber)' },
   APPROVED: { label: '승인됨', tone: 'var(--tone-green)' },
   REJECTED: { label: '반려', tone: 'var(--muted)' },
+  SKIPPED: { label: '생성 안 함', tone: 'var(--muted)' },
+}
+
+const CHECK_TONE: Record<string, string> = {
+  ok: 'var(--tone-green)', info: 'var(--muted)', warn: 'var(--tone-amber)',
 }
 
 /** 중첩 payload를 사람이 고칠 수 있게 JSON 텍스트로 편다. 표 구조가 자유형식이라
@@ -116,6 +126,11 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
           {proposal.sourceLabel || proposal.key || '이름 없는 표'}
           {proposal.title && <span className="text-meta"> · {proposal.title}</span>}
         </span>
+        {proposal.checks.some((c) => c.level === 'warn') && proposal.status === 'PENDING' && (
+          <span className="pd-badge" style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
+            검사 {proposal.checks.filter((c) => c.level === 'warn').length}
+          </span>
+        )}
         {proposal.problems.length > 0 && proposal.status === 'PENDING' && (
           <span className="pd-badge" style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
             확인 {proposal.problems.length}
@@ -131,7 +146,11 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
             ? `판정 변수 ${proposal.policyVar} 로 사용 중`
             : proposal.status === 'REJECTED'
               ? `반려 사유: ${proposal.reviewNote}`
-              : `AI 확신도 ${Math.round(proposal.confidence * 100)}% · ${proposal.notes.slice(0, 60) || '표를 확인해 주세요'}`}
+              : proposal.status === 'SKIPPED'
+                ? proposal.skipReason || '임계값 표가 아니라고 판단했습니다.'
+                //  접힌 상태에서 먼저 보여줄 것은 **사람 말 설명**이다. 확신도만 있으면
+                //  담당자는 숫자를 보고도 무엇을 확인할지 모른다.
+                : `${proposal.comment || proposal.notes || '표를 확인해 주세요'} (AI 확신도 ${Math.round(proposal.confidence * 100)}%)`}
         </div>
       )}
 
@@ -141,9 +160,49 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
           <div className="text-meta">문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})</div>
           <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
 
-          {proposal.notes && (
+          {/* AI가 표가 아니라고 본 건 여기서 끝난다 — 편집·승인 UI를 띄우지 않는다. */}
+          {proposal.status === 'SKIPPED' && (
             <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-              <b>AI 메모</b> · 확신도 {Math.round(proposal.confidence * 100)}%
+              <b>임계값 표로 만들지 않았습니다</b>
+              <div style={{ marginTop: 4 }}>{proposal.skipReason}</div>
+              {proposal.comment && <div style={{ marginTop: 6 }}>{proposal.comment}</div>}
+              <div className="text-meta" style={{ marginTop: 6 }}>
+                판단이 틀렸다면 문서를 재색인하면 다시 계산됩니다.
+              </div>
+            </div>
+          )}
+
+          {/* ③ 무엇을 승인하는지 — 사람 말이 먼저, 개발자 어휘는 아래 편집 칸에. */}
+          {proposal.status !== 'SKIPPED' && proposal.comment && (
+            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+              <b>AI 코멘트</b> · 확신도 {Math.round(proposal.confidence * 100)}%
+              <div style={{ marginTop: 4 }}>{proposal.comment}</div>
+            </div>
+          )}
+
+          {proposal.status !== 'SKIPPED' && proposal.usageNote && (
+            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+              <b>승인하면 이렇게 쓰입니다</b>
+              <div style={{ marginTop: 4 }}>{proposal.usageNote}</div>
+            </div>
+          )}
+
+          {/*  추출 시점 자동검사. **재시도로도 안 풀린 문제를 숨기지 않는다** —
+              통과 항목까지 함께 보여야 "검사를 했다"는 사실이 전달된다. */}
+          {proposal.status !== 'SKIPPED' && proposal.checks.length > 0 && (
+            <div className="note">
+              <b>자동 검사</b>
+              {proposal.checks.map((c, i) => (
+                <div key={i} style={{ marginTop: 4, color: CHECK_TONE[c.level] }}>
+                  {c.level === 'warn' ? '⚠' : c.level === 'ok' ? '✓' : '·'} {c.message}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {proposal.status !== 'SKIPPED' && proposal.notes && (
+            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+              <b>AI 메모</b>
               <div>{proposal.notes}</div>
             </div>
           )}
