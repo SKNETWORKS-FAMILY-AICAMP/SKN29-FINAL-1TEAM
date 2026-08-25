@@ -1,0 +1,110 @@
+{
+  "Document": "식대_사용규정",
+  "Table": 2,
+  "Page": 4,
+  "Rows": 7,
+  "Cols": 2,
+  "Cells": 10,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "미충족 요건 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "처리"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "금액(별표1 한도 초과, 또는 「법인카드 사용 규정」제10조제2항에 따른 건당 30만원 초과) "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "초과분에 대하여"
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "사전에 소속 팀장"
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "이상의 승인 필요"
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인원 또는 시점 "
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "정산 시스템에 사"
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "유 기재, 재무회"
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "계팀 확인 대상"
+    }
+  ],
+  "markdown": "| 미충족 요건                                               | 처리        |\n|------------------------------------------------------|-----------|\n| 금액(별표1 한도 초과, 또는 「법인카드 사용 규정」제10조제2항에 따른 건당 30만원 초과) | 초과분에 대하여  |\n|                                                      | 사전에 소속 팀장 |\n|                                                      | 이상의 승인 필요 |\n| 인원 또는 시점                                             | 정산 시스템에 사 |\n|                                                      | 유 기재, 재무회 |\n|                                                      | 계팀 확인 대상  |"
+}

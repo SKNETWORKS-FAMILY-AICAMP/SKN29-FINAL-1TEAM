@@ -1,0 +1,92 @@
+{
+  "Document": "회의비_사용규정",
+  "Table": 1,
+  "Page": 3,
+  "Rows": 4,
+  "Cols": 2,
+  "Cells": 8,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "요건 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "기준"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "금액 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "1인당 지출 금액이 별표1의 해당 유형 한도 이내일 것"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "일정 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인사시스템 또는 협업툴의 일정(캘린더)·회의실 예약 기록으로 회의 개최 사실이 확인될 것(제2조제2 항)"
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "참석자 "
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "참석자 전원이 임직원일 것(제3조제2항)"
+    }
+  ],
+  "markdown": "| 요건    | 기준                                                         |\n|-------|------------------------------------------------------------|\n| 금액    | 1인당 지출 금액이 별표1의 해당 유형 한도 이내일 것                             |\n| 일정    | 인사시스템 또는 협업툴의 일정(캘린더)·회의실 예약 기록으로 회의 개최 사실이 확인될 것(제2조제2 항) |\n| 참석자   | 참석자 전원이 임직원일 것(제3조제2항)                                     |"
+}

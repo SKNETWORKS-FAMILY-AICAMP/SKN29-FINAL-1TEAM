@@ -1,10 +1,10 @@
 {
-  "Document": "회식_운영규정",
-  "Table": 8,
-  "Page": 8,
+  "Document": "회식_사용규정",
+  "Table": 4,
+  "Page": 5,
   "Rows": 5,
-  "Cols": 5,
-  "Cells": 25,
+  "Cols": 4,
+  "Cells": 20,
   "Header": "Detected",
   "Header Rows": 1,
   "Multi Header": "N",
@@ -22,7 +22,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "회식 유형 "
+      "text": "회식 단위 "
     },
     {
       "row": 0,
@@ -31,7 +31,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "개최 권한 "
+      "text": "1인당 식대 권 장 한도 "
     },
     {
       "row": 0,
@@ -40,7 +40,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "1차 승인 "
+      "text": "사전승인 필요 금액 기준 "
     },
     {
       "row": 0,
@@ -49,16 +49,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "최종 승인(사전승인 대상 시) "
-    },
-    {
-      "row": 0,
-      "col": 4,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": true,
-      "row_header": false,
-      "text": "사전승인 트 리거"
+      "text": "근거"
     },
     {
       "row": 1,
@@ -76,7 +67,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "팀장"
+      "text": "5만원 "
     },
     {
       "row": 1,
@@ -85,7 +76,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "팀장(본인 사용 시 부 서장)"
+      "text": "건당 총액 30만원 초과 "
     },
     {
       "row": 1,
@@ -94,16 +85,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "부서장"
-    },
-    {
-      "row": 1,
-      "col": 4,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "30만원 초 과, 야간·주 말, 외부인 참석"
+      "text": "제10조 2항(식대는 직책 불문 30만 원 기준 우선 적용)"
     },
     {
       "row": 2,
@@ -121,7 +103,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "부서장"
+      "text": "6만원 "
     },
     {
       "row": 2,
@@ -130,20 +112,11 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "부서장(본 인 사용 시 본부장/ CEO)"
+      "text": "건당 총액 30만원 초과 "
     },
     {
       "row": 2,
       "col": 3,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "본부장 또는 CEO(경영지원본부) "
-    },
-    {
-      "row": 2,
-      "col": 4,
       "row_span": 1,
       "col_span": 1,
       "column_header": false,
@@ -166,7 +139,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "본부장"
+      "text": "7만원 "
     },
     {
       "row": 3,
@@ -175,7 +148,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "본부장(본 인 사용 시 CEO)"
+      "text": "건당 총액 30만원 초과(항상 본부장 이 상 사전승인 권장) "
     },
     {
       "row": 3,
@@ -184,16 +157,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "CEO"
-    },
-    {
-      "row": 3,
-      "col": 4,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "상동 + 항상 사전보고 권 장"
+      "text": "상동"
     },
     {
       "row": 4,
@@ -211,7 +175,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "CEO/경영지 원본부 "
+      "text": "8만원 "
     },
     {
       "row": 4,
@@ -220,7 +184,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "CEO "
+      "text": "금액 무관 CEO 사전승인 필수 "
     },
     {
       "row": 4,
@@ -229,17 +193,8 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "CEO"
-    },
-    {
-      "row": 4,
-      "col": 4,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "금액 무관 항 상 사전승인"
+      "text": "제4조"
     }
   ],
-  "markdown": "| 회식 유형    | 개최 권한         | 1차 승인                          | 최종 승인(사전승인 대상 시)    | 사전승인 트 리거                      |\n|--------------|-------------------|-----------------------------------|--------------------------------|---------------------------------------|\n| 팀 회식      | 팀장              | 팀장(본인 사용 시 부 서장)        | 부서장                         | 30만원 초 과, 야간·주 말, 외부인 참석 |\n| 부서 회식    | 부서장            | 부서장(본 인 사용 시 본부장/ CEO) | 본부장 또는 CEO(경영지원본부)  | 상동                                  |\n| 본부 회식    | 본부장            | 본부장(본 인 사용 시 CEO)         | CEO                            | 상동 + 항상 사전보고 권 장            |\n| 전사 회식    | CEO/경영지 원본부 | CEO                               | CEO                            | 금액 무관 항 상 사전승인              |"
+  "markdown": "| 회식 단위    | 1인당 식대 권 장 한도    | 사전승인 필요 금액 기준                                | 근거                                                |\n|--------------|--------------------------|--------------------------------------------------------|-----------------------------------------------------|\n| 팀 회식      | 5만원                    | 건당 총액 30만원 초과                                  | 제10조 2항(식대는 직책 불문 30만 원 기준 우선 적용) |\n| 부서 회식    | 6만원                    | 건당 총액 30만원 초과                                  | 상동                                                |\n| 본부 회식    | 7만원                    | 건당 총액 30만원 초과(항상 본부장 이 상 사전승인 권장) | 상동                                                |\n| 전사 회식    | 8만원                    | 금액 무관 CEO 사전승인 필수                            | 제4조                                               |"
 }

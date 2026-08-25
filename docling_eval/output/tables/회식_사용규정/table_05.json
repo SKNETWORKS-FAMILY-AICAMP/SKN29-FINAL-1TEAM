@@ -1,10 +1,10 @@
 {
-  "Document": "회식_운영규정",
-  "Table": 4,
-  "Page": 5,
-  "Rows": 5,
-  "Cols": 4,
-  "Cells": 20,
+  "Document": "회식_사용규정",
+  "Table": 5,
+  "Page": 6,
+  "Rows": 6,
+  "Cols": 3,
+  "Cells": 18,
   "Header": "Detected",
   "Header Rows": 1,
   "Multi Header": "N",
@@ -22,7 +22,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "회식 단위 "
+      "text": "구분 "
     },
     {
       "row": 0,
@@ -31,7 +31,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "1인당 식대 권 장 한도 "
+      "text": "필수 여부 "
     },
     {
       "row": 0,
@@ -40,16 +40,7 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "사전승인 필요 금액 기준 "
-    },
-    {
-      "row": 0,
-      "col": 3,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": true,
-      "row_header": false,
-      "text": "근거"
+      "text": "비고"
     },
     {
       "row": 1,
@@ -58,7 +49,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "팀 회식 "
+      "text": "카드 전표(적격증명서류) "
     },
     {
       "row": 1,
@@ -67,7 +58,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "5만원 "
+      "text": "필수 "
     },
     {
       "row": 1,
@@ -76,16 +67,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "건당 총액 30만원 초과 "
-    },
-    {
-      "row": 1,
-      "col": 3,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "제10조 2항(식대는 직책 불문 30만 원 기준 우선 적용)"
+      "text": "3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금 불산입)"
     },
     {
       "row": 2,
@@ -94,7 +76,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "부서 회식 "
+      "text": "참석자 명단(소속·직급·성 명) "
     },
     {
       "row": 2,
@@ -103,7 +85,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "6만원 "
+      "text": "필수 "
     },
     {
       "row": 2,
@@ -112,16 +94,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "건당 총액 30만원 초과 "
-    },
-    {
-      "row": 2,
-      "col": 3,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "상동"
+      "text": "최소 참석 인원(3인) 확인용"
     },
     {
       "row": 3,
@@ -130,7 +103,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "본부 회식 "
+      "text": "회식 목적 "
     },
     {
       "row": 3,
@@ -139,7 +112,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "7만원 "
+      "text": "필수 "
     },
     {
       "row": 3,
@@ -148,16 +121,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "건당 총액 30만원 초과(항상 본부장 이 상 사전승인 권장) "
-    },
-    {
-      "row": 3,
-      "col": 3,
-      "row_span": 1,
-      "col_span": 1,
-      "column_header": false,
-      "row_header": false,
-      "text": "상동"
+      "text": "제2조 유형 중 택1 및 사유 서술"
     },
     {
       "row": 4,
@@ -166,7 +130,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "전사 회식 "
+      "text": "회식 장소 및 일시 "
     },
     {
       "row": 4,
@@ -175,7 +139,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "8만원 "
+      "text": "필수 "
     },
     {
       "row": 4,
@@ -184,17 +148,35 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "금액 무관 CEO 사전승인 필수 "
+      "text": "야간·주말 여부 자동 판별용"
     },
     {
-      "row": 4,
-      "col": 3,
+      "row": 5,
+      "col": 0,
       "row_span": 1,
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "제4조"
+      "text": "거래처 정보(참석 시) "
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "조건부 필 수"
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "거래처명·담당자, 제2조 ⑧ 해당 시"
     }
   ],
-  "markdown": "| 회식 단위    | 1인당 식대 권 장 한도    | 사전승인 필요 금액 기준                                | 근거                                                |\n|--------------|--------------------------|--------------------------------------------------------|-----------------------------------------------------|\n| 팀 회식      | 5만원                    | 건당 총액 30만원 초과                                  | 제10조 2항(식대는 직책 불문 30만 원 기준 우선 적용) |\n| 부서 회식    | 6만원                    | 건당 총액 30만원 초과                                  | 상동                                                |\n| 본부 회식    | 7만원                    | 건당 총액 30만원 초과(항상 본부장 이 상 사전승인 권장) | 상동                                                |\n| 전사 회식    | 8만원                    | 금액 무관 CEO 사전승인 필수                            | 제4조                                               |"
+  "markdown": "| 구분                         | 필수 여부    | 비고                                                                      |\n|------------------------------|--------------|---------------------------------------------------------------------------|\n| 카드 전표(적격증명서류)      | 필수         | 3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금 불산입) |\n| 참석자 명단(소속·직급·성 명) | 필수         | 최소 참석 인원(3인) 확인용                                                |\n| 회식 목적                    | 필수         | 제2조 유형 중 택1 및 사유 서술                                            |\n| 회식 장소 및 일시            | 필수         | 야간·주말 여부 자동 판별용                                                |\n| 거래처 정보(참석 시)         | 조건부 필 수 | 거래처명·담당자, 제2조 ⑧ 해당 시                                          |"
 }

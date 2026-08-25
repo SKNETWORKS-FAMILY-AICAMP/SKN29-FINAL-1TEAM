@@ -1,10 +1,10 @@
 {
-  "Document": "회식_운영규정",
-  "Table": 5,
+  "Document": "식대_사용규정",
+  "Table": 3,
   "Page": 6,
   "Rows": 6,
-  "Cols": 3,
-  "Cells": 18,
+  "Cols": 4,
+  "Cells": 24,
   "Header": "Detected",
   "Header Rows": 1,
   "Multi Header": "N",
@@ -12,7 +12,7 @@
   "Merged Cells": 0,
   "Empty Cells": 0,
   "Fill Rate": 1.0,
-  "Caption": "",
+  "Caption": "별표 1. 식대 유형별 1식 한도 및 시간대",
   "Note": "",
   "cells": [
     {
@@ -31,11 +31,20 @@
       "col_span": 1,
       "column_header": true,
       "row_header": false,
-      "text": "필수 여부 "
+      "text": "시간대 "
     },
     {
       "row": 0,
       "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1식 한도 "
+    },
+    {
+      "row": 0,
+      "col": 3,
       "row_span": 1,
       "col_span": 1,
       "column_header": true,
@@ -49,7 +58,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "카드 전표(적격증명서류) "
+      "text": "정규 식대(조식) "
     },
     {
       "row": 1,
@@ -58,7 +67,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "필수 "
+      "text": "06:00~09:00 "
     },
     {
       "row": 1,
@@ -67,7 +76,16 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금 불산입)"
+      "text": "8,000원 "
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "-"
     },
     {
       "row": 2,
@@ -76,7 +94,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "참석자 명단(소속·직급·성 명) "
+      "text": "정규 식대(중식) "
     },
     {
       "row": 2,
@@ -85,7 +103,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "필수 "
+      "text": "11:00~14:00 "
     },
     {
       "row": 2,
@@ -94,7 +112,16 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "최소 참석 인원(3인) 확인용"
+      "text": "12,000원 "
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "-"
     },
     {
       "row": 3,
@@ -103,7 +130,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "회식 목적 "
+      "text": "정규 식대(석식) "
     },
     {
       "row": 3,
@@ -112,7 +139,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "필수 "
+      "text": "17:00~18:00 "
     },
     {
       "row": 3,
@@ -121,7 +148,16 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "제2조 유형 중 택1 및 사유 서술"
+      "text": "12,000원 "
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "통상 근무 종료 시각(18:00) 이전까지"
     },
     {
       "row": 4,
@@ -130,7 +166,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "회식 장소 및 일시 "
+      "text": "시간외근무 식대(야근식대) "
     },
     {
       "row": 4,
@@ -139,7 +175,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "필수 "
+      "text": "18:00 이후 "
     },
     {
       "row": 4,
@@ -148,7 +184,16 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "야간·주말 여부 자동 판별용"
+      "text": "15,000원 "
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "제8조의 시간외근무 기준 충족 시"
     },
     {
       "row": 5,
@@ -157,7 +202,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "거래처 정보(참석 시) "
+      "text": "재택·원격근무 식대 "
     },
     {
       "row": 5,
@@ -166,7 +211,7 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "조건부 필 수"
+      "text": "조식·중식·석식과 동일 "
     },
     {
       "row": 5,
@@ -175,8 +220,17 @@
       "col_span": 1,
       "column_header": false,
       "row_header": false,
-      "text": "거래처명·담당자, 제2조 ⑧ 해당 시"
+      "text": "12,000원 "
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "1일 1식 기준(제9조), 정규 식대와 동일"
     }
   ],
-  "markdown": "| 구분                         | 필수 여부    | 비고                                                                      |\n|------------------------------|--------------|---------------------------------------------------------------------------|\n| 카드 전표(적격증명서류)      | 필수         | 3만원 초과 시 미수취 시 증빙불비가산세(기업업무추진비는 전액 손금 불산입) |\n| 참석자 명단(소속·직급·성 명) | 필수         | 최소 참석 인원(3인) 확인용                                                |\n| 회식 목적                    | 필수         | 제2조 유형 중 택1 및 사유 서술                                            |\n| 회식 장소 및 일시            | 필수         | 야간·주말 여부 자동 판별용                                                |\n| 거래처 정보(참석 시)         | 조건부 필 수 | 거래처명·담당자, 제2조 ⑧ 해당 시                                          |"
+  "markdown": "별표 1. 식대 유형별 1식 한도 및 시간대\n\n| 구분             | 시간대          | 1식 한도    | 비고                       |\n|----------------|--------------|----------|--------------------------|\n| 정규 식대(조식)      | 06:00~09:00  | 8,000원   | -                        |\n| 정규 식대(중식)      | 11:00~14:00  | 12,000원  | -                        |\n| 정규 식대(석식)      | 17:00~18:00  | 12,000원  | 통상 근무 종료 시각(18:00) 이전까지  |\n| 시간외근무 식대(야근식대) | 18:00 이후     | 15,000원  | 제8조의 시간외근무 기준 충족 시       |\n| 재택·원격근무 식대     | 조식·중식·석식과 동일 | 12,000원  | 1일 1식 기준(제9조), 정규 식대와 동일 |"
 }
