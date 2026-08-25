@@ -1,6 +1,6 @@
 # 규정 문서 적재 파이프라인 — 구현 캐논
 
-> 최종 갱신: 2026-08-16 · 상태: **적재·룰 자동 생성 트리거 모두 구현 완료**
+> 최종 갱신: 2026-08-25 · 상태: **적재·룰 자동 생성 트리거 모두 구현 완료**
 > (트리거는 `feature/rule-agent-v1`에서 실구현됐다 — 상세 `rule-agent-v1-implementation.md`)
 > 권위 스펙: `docs/기술명세서.md §4.2·§6.1·§6.2` · 전략 캐논 `pdf_parsing_strategy.md` ·
 > `chunking-strategy.md` · `embedding-strategy.md`
@@ -174,7 +174,7 @@ Content-Type을 무시하고 내용을 스니핑해 HTML로 렌더하면 그 스
 
 docling은 모델을 올리고(문서당 수십 초~분) 버전 드리프트에 민감하다. 파싱이 깨지면 그
 뒤 체인(교정→청킹→임베딩→적재→조항→룰 트리거) **전체를 시험할 방법이 없어진다.**
-`DOCLING_MOCK=1`이면 **파싱 단계만** 미리 떠둔 덤프(`docling_eval/output`, 11종 4,388요소)로
+`DOCLING_MOCK=1`이면 **파싱 단계만** 미리 떠둔 덤프(`docling_eval/output`, 13종 4,561요소)로
 대체한다.
 
 ```
@@ -195,15 +195,51 @@ DOCLING_MOCK_DUMP=/data/docling_eval/output     # 기본값. compose가 :ro로 �
 | 매번 WARNING 로그 | 어떤 요청이 어떤 덤프로 갔는지 `logs/ai.log`에 남는다 |
 | 화면 배너 | 경고가 `PolicyDoc.error`로 흘러 규정 문서 화면에 노란 배너로 뜬다(경고 목록 **맨 앞**에 넣어 잘리지 않게) |
 | `dump:` doc_id | 모킹 벡터는 `dump:<문서명>`, 실물은 파일 해시 — Chroma에서 눈으로 구분되고 나중에 골라낼 수 있다 |
-| **넘겨짚기 금지** | 이름이 정확히 안 맞으면 **실패**시킨다. 실제 docling으로 조용히 폴백하지 않고, 접두사·부분 일치도 쓰지 않는다 — 넘겨짚으면 A 문서 내용이 B 레코드에 적재되는 **조용한 오염**이 된다. 실패 메시지가 고를 수 있는 이름 11종을 알려준다 |
+| **넘겨짚기 금지** | 이름이 정확히 안 맞으면 **실패**시킨다. 실제 docling으로 조용히 폴백하지 않고, 접두사·부분 일치도 쓰지 않는다 — 넘겨짚으면 A 문서 내용이 B 레코드에 적재되는 **조용한 오염**이 된다. 실패 메시지가 고를 수 있는 이름을 전부 알려준다(`mock.available()`) |
 | 정규화만 허용 | NFC 통일 + 공백/대소문자만 정규화한다(macOS 한글 파일명 NFD 함정). 유사도 매칭이 아니다 |
 
 ⚠️ 모킹 중에는 **업로드한 파일 내용이 무시된다** — 이름만 보고 덤프를 고른다. 그게 목적이지만
 운영에서 켜면 안 되는 이유이기도 하다. 기본값은 꺼짐이고, `0`/`false`/`no`/빈 값 전부 꺼짐이다.
 
-📏 실측(모킹 경로로 조항 추출까지): 법인카드_사용규정 25청크·**20조항** / 회식_운영규정
-31청크·**14조항** / 법인세법 425청크·**207조항**(LAW→`tax_refs` 라우팅 확인).
+📏 실측(모킹 경로로 조항 추출까지, 2026-08-25 재측정): 법인카드_사용규정 25청크·**19조항** /
+회식_사용규정 31청크·**11조항** / 법인세법 425청크·**207조항**(LAW→`tax_refs` 라우팅 확인).
+앞의 두 건은 이전 기록이 각각 20·14조항이었는데, `build_clauses()`가 그 뒤(2026-08-18)에
+바뀐 것을 반영하지 못한 값이었다 — 청크 수는 그대로다. 법인세법은 값이 같다.
 회귀 `apps/ai/tests/test_docling_mock.py`(덤프 없으면 skip).
+
+### 신규 문서를 모킹 대상에 추가하기
+
+모킹은 **덤프에 이미 있는 이름만** 처리한다. 새 규정을 모킹으로 돌리려면 docling을 한 번은
+진짜로 태워 그 산출물을 덤프에 넣어야 한다. 그 산출물을 만들던 코드는 평가 노트북
+(`docling_parsing_test.ipynb`) 셀 안에만 있었고 전 코퍼스 재실행을 전제해서, 문서 몇 종을
+얹는 데 쓸 수 없었다 → `app/rag/parsing/dump_writer.py`(`dump.py`의 역방향).
+
+```bash
+# compose가 /data/docling_eval을 :ro로 마운트하므로 --out은 쓰기 가능한 경로여야 한다.
+docker cp docling_eval/output <ai컨테이너>:/tmp/dump
+docker cp <PDF들>             <ai컨테이너>:/tmp/newpdf
+docker exec -e PYTHONPATH=/app -e DOCLING_MOCK=0 <ai컨테이너> \
+    sh -c 'python -m app.rag.parsing.dump_writer --pdf /tmp/newpdf/*.pdf --out /tmp/dump'
+# 결과 중 바뀌는 것만 되가져온다: layout/*.csv · tables/table_summary.csv ·
+#   tables/<문서>/ · markdown/<문서>.md
+```
+
+- **떠 있는 스택을 안 건드린다** — `docker exec`가 새 프로세스를 띄우고 거기서만
+  `DOCLING_MOCK=0`이다. 서버 프로세스는 계속 모킹으로 돈다(`enabled()`가 import 시점이
+  아니라 **호출 시점에** `os.environ`을 읽는다).
+- **덤프는 교정 전 상태**다. `ingest_pdf()`가 뒤에서 `corrections.pipeline.run()`을 걸므로,
+  교정 후 텍스트를 넣으면 모킹 경로에서만 교정이 두 번 걸린다.
+- **순회 범위는 `BODY + FURNITURE`** — 기존 4,388행을 만든 노트북과 같은 범위다(운영
+  `engine._to_elements()`는 기본 순회라 BODY만 본다). 같은 CSV에 두 규칙이 섞이면 문서별로
+  Header/Footer 유무가 갈린다. 차이는 하류가 흡수한다(`ParsedDoc.body()`가 걷어낸다).
+- **병합은 문서 단위 교체**다(append 아님). 재실행이 행을 두 배로 만들면 `load_all()`이
+  Order 중복으로 조용히 뒤섞인 문서를 내놓는다.
+- 평가 산출물(`summary.csv`·`hierarchy/`·`chunking/`·`evaluation/`)은 **건드리지 않는다** —
+  11종을 채점한 스냅샷(Overall 89.3)이라 신규 문서를 끼우면 채점 대상과 결과가 어긋난다.
+
+📏 2026-08-25 추가: 회의비_사용규정(5p·77요소·표 4·24청크·**12조항**) / 식대_사용규정
+(7p·96요소·표 4·27청크·**15조항**). 둘 다 `REGULATION` 판정, 1순위 백엔드(pypdfium2)
+`SUCCESS`, 조 라벨 제1조부터 연속. 덤프 11종 4,388요소 → **13종 4,561요소**.
 
 ---
 

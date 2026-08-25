@@ -98,7 +98,7 @@ daily_scrum/  주차별 진행 보고
 | 문서 업로드 → 적재 | ✅ | 업로드 → `PolicyDoc(PENDING)` → 백그라운드 파싱·청킹·임베딩·Chroma upsert → 룰 트리거 → 콜백. **한계**: ai 재시작 시 진행 중 작업 유실 → 「재색인」으로 복구. → [[rag-ingestion]] |
 | 적재 → 룰 자동 생성 | ✅ | 업로드 시 고른 scope 1개만. scope 미지정=`SKIPPED_NO_SCOPE`, 재색인=`SKIPPED_REINDEX`. 트리거 실패가 적재를 실패시키지 않는다 |
 | 문서 분류(triage) + 별표 승인 | ✅ + 별표 고도화 | 분류는 **제안이지 차단이 아니다**(SKIP에서도 룰 생성 가능). 우선순위는 조항 단건이 아니라 **문서 단위 선별**로 정한다(단건만 보면 전 조항이 「확인 필요」로 나왔다) — AUTO 상한·최소 1건은 코드가 강제. 별표 후보는 **별도 모델**이고 개정은 INSERT. 별표 추출은 **부모 청크로 조각을 합쳐**(페이지 분할 표) 맥락·**모범 예시 3개**와 함께 `heavy`(gpt-5-mini)로 읽고, **자동검사→재시도**를 거쳐 AI 코멘트·활용안내와 올라온다. **별표 하나가 표 여러 개를 낸다**(값 열이 여럿인 표 — 실측 3규정 12개, 경고 0). **별표는 조항이 아니다**(`chunk_type`으로 거른다 — 라벨만 보면 룰 생성 질의에 섞인다). 승인이 강제하는 건 축 + **값 어휘**(경로만 맞고 표기가 다르면 룩업이 조용히 `*`로 떨어진다). → [[document-triage]] |
-| docling 모킹 스위치 | ✅ | `DOCLING_MOCK=1`이면 파싱만 덤프로 대체. **진짜 위험은 켠 걸 잊는 것** → WARNING 로그·노란 배너·`dump:` doc_id·이름 불일치 시 폴백 없이 실패 |
+| docling 모킹 스위치 | ✅ | `DOCLING_MOCK=1`이면 파싱만 덤프로 대체(13종). **진짜 위험은 켠 걸 잊는 것** → WARNING 로그·노란 배너·`dump:` doc_id·이름 불일치 시 폴백 없이 실패. 신규 문서는 `dump_writer`로 덤프에 얹는다 — **스택을 내리지 않고** `docker exec -e DOCLING_MOCK=0`로 실파싱한다(§6). → [[rag-ingestion]] §3b |
 | 결정 사례(case_history) | ✅ 기틀 | **「다르게 판단한 것」만** 적재(일치 건까지 넣으면 봐야 할 예외가 밀린다). 본문은 스냅샷. **남음**: 골든/실사례 메타 구분·마스킹 정책·사례 목록 화면. → [[decision-case-data]] |
 | Chroma 운영 적재 | 🚧 | 화면 업로드 경로는 동작. CLI 재적재는 `app.rag.embedding.index`(§6) |
 
@@ -172,7 +172,8 @@ llm_wiki/
 
 - **해당 문서를 직접 편집·작성하는 작업이 아닌 한 열람하지 않는다.** (컨텍스트 오염 방지)
 - 규정 값이 필요하면 실제 런타임에선 Chroma(`policy_docs`/`case_history`/`tax_refs`)를 거친다. 코딩 중 규정 내용을 추측해 하드코딩하지 말 것.
-- 포함(`md/`·`pdf/` 동일 파일명): `법인카드_사용규정`, `업무추진비_사용규정`, `출장비_사용규정`, `회식_운영규정`, `부서소개`, `조직도`, `직급체계`, `조직설계_상세기획서`. `law/`에 `법인세법`·`부가가치세법`·`여신전문금융업법` PDF.
+- 포함(`md/`·`pdf/` 동일 파일명): `법인카드_사용규정`, `업무추진비_사용규정`, `출장비_사용규정`, `회식_사용규정`, `식대_사용규정`, `회의비_사용규정`, `부서소개`, `조직도`, `직급체계`, `조직설계_상세기획서`. `law/`에 `법인세법`·`부가가치세법`·`여신전문금융업법` PDF.
+- **이 13종이 곧 docling 모킹 덤프의 문서 목록**이다(이름 정확 일치). 문서를 늘리면 덤프도 같이 늘려야 한다 — §6.
 
 ---
 
@@ -207,6 +208,17 @@ docker compose exec ai python -m app.rag.embedding.index --peek                 
 #   복원은 upsert다(기존을 지우지 않는다). 깨끗한 상태가 필요하면 `--reset`을 명시한다.
 docker compose exec ai python -m app.rag.embedding.snapshot dump    --out /data/rag_snapshot
 docker compose exec ai python -m app.rag.embedding.snapshot restore --in  /data/rag_snapshot
+
+# docling 모킹 덤프에 신규 문서 추가 — 모킹은 **덤프에 있는 이름만** 처리한다.
+#   떠 있는 스택은 그대로 둔다: exec가 새 프로세스를 띄우고 거기서만 DOCLING_MOCK=0이다
+#   (`mock.enabled()`가 import 시점이 아니라 호출 시점에 env를 읽는다).
+#   ⚠️ /data/docling_eval은 :ro라 --out은 쓰기 가능한 경로여야 한다 → docker cp로 오간다.
+docker cp docling_eval/output <ai>:/tmp/dump
+docker cp <PDF들>             <ai>:/tmp/newpdf
+docker exec -e PYTHONPATH=/app -e DOCLING_MOCK=0 <ai> \
+    sh -c 'python -m app.rag.parsing.dump_writer --pdf /tmp/newpdf/*.pdf --out /tmp/dump'
+# 되가져올 것: layout/*.csv · tables/table_summary.csv · tables/<문서>/ · markdown/<문서>.md
+# 한글 파일명은 PowerShell로 docker cp 할 것(Git Bash가 인자를 깨뜨린다 — CLAUDE.local.md §1)
 
 # Django (core)
 docker compose exec core python manage.py migrate

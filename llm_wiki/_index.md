@@ -87,7 +87,7 @@ llm_wiki/
 | `decision-case-data.md` | 결정 사례 적재 — 「다르게 판단한 것」만, 본문은 스냅샷 |
 | `agent-context-tool.md` | 에이전트 프롬프트용 도메인 카탈로그(어휘) — TTL·stale 규약 |
 | `document-triage.md` | 조항 분류(성격 판별 → **문서 단위 우선순위 선별** 2단) + 별표 승인 — 제안이지 차단이 아니다, 축만 강제 |
-| `rag-ingestion.md` | 규정 문서 적재 파이프라인 + 룰 트리거 |
+| `rag-ingestion.md` | 규정 문서 적재 파이프라인 + 룰 트리거 · docling 모킹 스위치(§3b — 신규 문서 덤프 추가 포함) |
 | `pdf_parsing_strategy.md` | PDF 파싱(docling) — 프로파일·교정 C1~C7 |
 | `chunking-strategy.md` | 청킹 — **자르는 단위는 조(條)** |
 | `embedding-strategy.md` | 임베딩 — `3-large @ 1024` 확정 근거, `bge-m3` 격차(재검토 트리거) |

@@ -1,8 +1,9 @@
 """파싱 교정 회귀 테스트 — `pdf_parsing_strategy.md` §7.3.
 
-**docling을 재실행하지 않는다.** `docling_eval/output/layout/layout_result.csv`는 11종
-4,388개 요소 전량 덤프이므로, 교정 계층만 이 덤프에 걸어 회귀를 고정한다(docling은 별도
-conda 환경과 모델 로딩을 요구해 CI에서 돌리기에 비싸다).
+**docling을 재실행하지 않는다.** `docling_eval/output/layout/layout_result.csv`는 13종
+4,561개 요소 전량 덤프이므로, 교정 계층만 이 덤프에 걸어 회귀를 고정한다(docling은 별도
+conda 환경과 모델 로딩을 요구해 CI에서 돌리기에 비싸다). 덤프에 문서를 추가하는 경로는
+`app/rag/parsing/dump_writer.py`.
 
 교정 단계는 반드시 **적용 전/후 양쪽을 재고** 개선분을 확인한다. 도해 문서 회귀 사고가
 바로 이 대조 없이는 보이지 않는다.
@@ -30,7 +31,9 @@ EXPECTED_PROFILE = {
     "법인카드_사용규정": "REGULATION",
     "업무추진비_사용규정": "REGULATION",
     "출장비_사용규정": "REGULATION",
-    "회식_운영규정": "REGULATION",
+    "회식_사용규정": "REGULATION",
+    "식대_사용규정": "REGULATION",
+    "회의비_사용규정": "REGULATION",
     "법인세법": "LAW",
     "부가가치세법": "LAW",
     "여신전문금융업법": "LAW",
