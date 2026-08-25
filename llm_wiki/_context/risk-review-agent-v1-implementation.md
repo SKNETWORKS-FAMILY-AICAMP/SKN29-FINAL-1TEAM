@@ -1,10 +1,39 @@
 # Risk Review Agent v1 구현 기록
 
-> `agent-v1-upgrade-plan.md` §2가 "무엇을 결정했는지"만 요약한다면, 이 문서는 **그 결정의 근거·코드 위치·실동작 검증 결과**를 남긴다. Rule Agent 쪽의 같은 역할은 `rule-agent-v1-implementation.md`.
+> 이 문서는 **결정의 근거·코드 위치·실동작 검증 결과**를 남긴다. Rule Agent 쪽의 같은 역할은
+> `rule-agent-v1-implementation.md`. §0에 "무엇을 결정했는지"(구 `agent-v1-upgrade-plan.md` §2,
+> 2026-08-25 이 문서로 병합) 요약이 있다.
 
-**범위**: §2.2의 5개 항목 중 4개(1·2·3·5) 구현·검증 완료(2026-08-19). 항목4(`feature_contribs` 실값)는 `anomaly.pkl` 재학습이 선행돼야 하는 별도 ML 트랙이라 이번 범위 밖.
+**범위**: 아래 §0.1의 5개 항목 중 4개(1·2·3·5) 구현·검증 완료(2026-08-19). 항목4(`feature_contribs` 실값)는 `anomaly.pkl` 재학습이 선행돼야 하는 별도 ML 트랙이라 이번 범위 밖.
 
-## 0. main 병합 시점에 발견한 동시 작업 — 수동 리졸브(2026-08-19)
+## 0. 결정 배경 — v1 고도화 계획 요약 (Risk Review Agent 부분)
+
+> Rule Agent 쪽 결정·MCP 배경은 `rule-agent-v1-implementation.md` §0 참조.
+
+### 0.1 구현 상태
+
+| 항목 | 상태 | 근거 |
+|---|---|---|
+| anomaly score → RAG → 보고서 2단계 파이프라인 | ✅ 구현 | `agents/risk_review_agent.py`: Stage1(`_stage1`, `get_tx_features`→`ml_infer`→`risk_tier`) → Stage2(`_stage2`, `_classify`(MCP 툴콜링)→`_decide_action`) |
+| anomaly score 높을 때 3범주 분류 | ✅ 구현 | `stage1_anomaly.risk_tier`(HIGH/MEDIUM/LOW) — 고정 anomaly_score 임계값, §0.2-2 참조 |
+| 분류(판단)와 액션(실행) 분리 | ✅ 구현 | `_classify()`(위반 여부만, MCP 툴콜링 루프) → `_decide_action()`(분류 결과만 입력받아 recommendation만 결정, 별도 LLM 호출) |
+| Rule Agent와 공유하는 MCP 툴 사용 | ✅ 구현 | `mcp_client.py`를 `agents/rule_agent_v0/`에서 `agents/`(공용)로 승격, Rule Agent·Risk Review Agent 둘 다 같은 in-process 클라이언트로 `search_policy`/`search_cases`를 진짜 MCP 툴콜링으로 호출 |
+
+### 0.2 v1에 필요한 것 — 처리 현황
+
+1. **[기반] MCP 툴콜링 루프 전환** — ✅ 완료. `apps/ai/app/agents/mcp_client.py`(구 `rule_agent_v0/mcp_client.py`, 내용 변경 없이 이동)를 Rule Agent(`agent.py`/`chat.py`)와 Risk Review Agent(`_classify`)가 공유. Rule Agent와 달리 **초기 검색 1회분(policy+cases)을 파이썬이 먼저 실행**해 대화 맥락에 심어둔다 — 안 그러면 `search_policy`/`search_cases` 두 툴을 오가며 재검색만 반복하다 `MAX_TOOL_TURNS`(=6)를 다 쓰고도 한 번도 `submit_classification`을 못 부르는 사례가 실측됐다(정상 케이스에서도 발생). 프리시드 후 재검증 4건 전부 1턴 내 정상 종료 확인.
+2. **3범주 분류 스키마 신설** — ✅ 완료(팀 결정: 고정 anomaly_score 임계값). `risk_tier`는 `violation_verdict`와 별개 필드로 Stage1에 추가(기존 필드는 그대로 유지, 확장만). 경계값은 배포된 `anomaly.pkl`의 실측 calibration_table에서 "80~90% 밴드(관측 이상비율 1.7%) → 90~100% 밴드(28.19%, lift 8.08배)"로 급등하는 지점을 HIGH 경계(`RISK_TIER_HIGH_THRESHOLD=0.0134`)로, 기존 운영 `is_outlier` 컷오프(모델 `threshold`)를 MEDIUM 경계(`RISK_TIER_MEDIUM_THRESHOLD=0.0037`)로 삼았다. 재학습해도 이 상수는 자동 갱신되지 않는다(고정값을 고른 이유이자 트레이드오프) — 분포가 크게 바뀌면 재학습 시 사람이 다시 실측해 갱신해야 한다.
+3. **분류 단계와 액션(recommendation) 단계 분리** — ✅ 완료. `_classify()`(MCP 툴콜링, `Classification` 스키마: violation_verdict/review_reasons/citations/similar_cases) → `_decide_action()`(단일 호출, `ActionDecision` 스키마: recommendation/rationale, 분류 결과가 이미 확정된 전제로만 판단하고 위반 여부를 재판단하지 않음). **반환 계약은 그대로**(`stage2_rag_review`의 5개 필드 동일) — `_stage2()`가 두 결과를 기존 shape으로 재조립.
+4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — ❌ 여전히 미착수. `anomaly.pkl` 재학습 필요(ML 파이프라인 작업, Agent 코드와 무관) — 이번 세션 범위 밖.
+5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — ✅ 완료(팀 결정: 이번에 같이 확충). `app/rag/golden_cases.py` 10건→18건 — "업무활성"→"회식"(GATHERING) 리네임 후 회식 사례가 0건이던 공백을 메우고(3건 추가), 나머지 카테고리도 사례 다양성 보강. `python -m app.rag.case_store --upsert`로 `case_history` 재적재 완료(18건, 기존 id는 upsert라 멱등 갱신).
+
+**해소된 미결정(2026-08-19, 팀 확인):**
+1. 3범주 분류 정의 → 고정 anomaly_score 임계값(위 §0.2-2)
+2. `case_history` 실 이력 적재 파이프라인 → v1에서 골든데이터만 확충(수동 셋), **실 결정이력 자동 적재 파이프라인 자체는 여전히 post-MVP**(항목 5의 범위는 "골든데이터 보강"이지 "적재 자동화"가 아님 — 착오 주의). 이후 실제 파이프라인은 `decision-case-data.md`로 구현됨.
+
+---
+
+## 0a. main 병합 시점에 발견한 동시 작업 — 수동 리졸브(2026-08-19)
 
 이 v1 재작성을 로컬에서 진행하는 동안, 팀원이 같은 파일(`risk_review_agent.py`)을 다른 목적(검색 품질 개선)으로 고쳐 이미 `main`에 병합해 둔 상태였다(`c605e99`·`21ffe4f`). `git fetch`로 뒤늦게 발견해 `git stash` → `git merge origin/main --ff-only` → `git stash pop`으로 충돌을 수동 리졸브했다. 두 변경이 같은 함수(`_build_query`/`_format_chunks`/`_stage2`)를 다른 방향으로 건드리고 있어 **자동 병합이 불가능했다** — 정확히는 어느 한쪽을 버리는 게 아니라 **둘 다 적용**해야 했다.
 
@@ -23,21 +52,21 @@
 
 ---
 
-## 1. MCP 툴콜링 전환 (§2.2 항목1)
+## 1. MCP 툴콜링 전환 (§0.1 항목1)
 
 ### 1.1 `mcp_client.py` 공용화
 
-기존 `apps/ai/app/agents/rule_agent_v0/mcp_client.py`(Rule Agent 전용 경로에 있었지만 내용 자체는 `fastmcp.Client`로 `app.mcp.server.mcp`에 in-process 접속하는 범용 헬퍼)를 `apps/ai/app/agents/mcp_client.py`(공용 위치)로 **내용 변경 없이 이동**했다. Rule Agent(`rule_agent_v0/agent.py`, `rule_agent_v0/chat.py`)의 import를 `from .. import mcp_client`로 갱신하고, Risk Review Agent가 같은 모듈을 `from app.agents import mcp_client`로 가져다 쓴다. Agent별 사본을 만들지 않는다는 원칙(§3 비침습 체크리스트) 그대로 유지.
+기존 `apps/ai/app/agents/rule_agent_v0/mcp_client.py`(Rule Agent 전용 경로에 있었지만 내용 자체는 `fastmcp.Client`로 `app.mcp.server.mcp`에 in-process 접속하는 범용 헬퍼)를 `apps/ai/app/agents/mcp_client.py`(공용 위치)로 **내용 변경 없이 이동**했다. Rule Agent(`rule_agent_v0/agent.py`, `rule_agent_v0/chat.py`)의 import를 `from .. import mcp_client`로 갱신하고, Risk Review Agent가 같은 모듈을 `from app.agents import mcp_client`로 가져다 쓴다. Agent별 사본을 만들지 않는다는 원칙(`rule-agent-v1-implementation.md` §0.2 비침습 체크리스트) 그대로 유지.
 
 ### 1.2 Stage2를 실제 툴콜링 루프로 재작성
 
-이전(v0)엔 파이썬이 `search_policy`/`search_cases`를 미리 한 번 실행해 결과를 프롬프트 문자열에 박아넣고 `beta.chat.completions.parse`로 단발 구조화 출력을 받았다. v1은 Rule Agent(§1 항목1)와 같은 패턴 — `tools=[search_policy, search_cases, submit_classification]`로 멀티턴 루프를 돌리고, `submit_classification`(종료 툴)이 호출돼야 끝난다. 안전판 `MAX_TOOL_TURNS=6`(Rule Agent와 동일 근거).
+이전(v0)엔 파이썬이 `search_policy`/`search_cases`를 미리 한 번 실행해 결과를 프롬프트 문자열에 박아넣고 `beta.chat.completions.parse`로 단발 구조화 출력을 받았다. v1은 Rule Agent(`rule-agent-v1-implementation.md` §0.1 항목1)와 같은 패턴 — `tools=[search_policy, search_cases, submit_classification]`로 멀티턴 루프를 돌리고, `submit_classification`(종료 툴)이 호출돼야 끝난다. 안전판 `MAX_TOOL_TURNS=6`(Rule Agent와 동일 근거).
 
 ### 1.3 실측으로 잡은 버그: 프리시드 없이는 턴을 다 쓰고도 제출을 못 함
 
 **증상**: 실제 IN_REVIEW 정산 건(settlement 369, 식대)으로 최초 구현을 그대로 돌려보니, 모델이 `search_policy`/`search_cases`를 번갈아 5회 호출하며 질의를 계속 바꿔가다가(`"식대 본죽"` → `"출장 중 식대"` → `"출장 중 식사"` → …) `MAX_TOOL_TURNS=6`을 전부 소진하고 한 번도 `submit_classification`을 부르지 않았다. 안전판(`INSUFFICIENT_INFO` 폴백)이 정상 작동해 죽지는 않았지만, **정상적으로 판단 가능한 건이 안전판으로 떨어지는 건 품질 저하**다.
 
-**원인**: Rule Agent는 첫 턴에 이미 파이썬이 실행한 `initial_chunks`를 대화 맥락에 심어두고 "부족하면 추가 검색"만 모델에게 맡긴다(§1 항목1 결정 그대로). Risk Review v1 최초 구현은 이 프리시드 없이 "질의 힌트 문자열"만 주고 첫 검색부터 모델에게 맡겼다 — 그러다 보니 매 턴이 "검색 한 번"으로 소모되고, 두 개의 검색 툴(policy+cases)을 오가느라 Rule Agent(검색 툴 1개)보다 두 배 빠르게 턴을 잡아먹었다.
+**원인**: Rule Agent는 첫 턴에 이미 파이썬이 실행한 `initial_chunks`를 대화 맥락에 심어두고 "부족하면 추가 검색"만 모델에게 맡긴다(`rule-agent-v1-implementation.md` §0.1 항목1 결정 그대로). Risk Review v1 최초 구현은 이 프리시드 없이 "질의 힌트 문자열"만 주고 첫 검색부터 모델에게 맡겼다 — 그러다 보니 매 턴이 "검색 한 번"으로 소모되고, 두 개의 검색 툴(policy+cases)을 오가느라 Rule Agent(검색 툴 1개)보다 두 배 빠르게 턴을 잡아먹었다.
 
 **수정**: `_classify()` 진입 시 `mcp_client.call_tool("search_policy", ...)`와 `search_cases`를 파이썬이 먼저 1회씩 실행해 첫 user 메시지에 통째로 심는다(`_format_policy_chunks`/`_format_case_hits`). 시스템 프롬프트도 "먼저 검색을 호출하라"에서 "주어진 근거로 충분하면 바로 제출, 부족하면 추가 검색"으로 바꿨다.
 
@@ -45,7 +74,7 @@
 
 ---
 
-## 2. risk_tier 3단계 분류 (§2.2 항목2)
+## 2. risk_tier 3단계 분류 (§0.2-2)
 
 ### 2.1 결정: 고정 anomaly_score 임계값
 
@@ -82,13 +111,13 @@ _risk_tier(0.0)   == "LOW"
 
 ---
 
-## 3. 분류(violation_verdict) ↔ 액션(recommendation) 단계 분리 (§2.2 항목3)
+## 3. 분류(violation_verdict) ↔ 액션(recommendation) 단계 분리 (§0.2-3)
 
 ### 3.1 설계
 
 - **`_classify()`**: MCP 툴콜링 루프(§1). 산출물은 `Classification` 스키마 — `violation_verdict`/`review_reasons`/`citations`/`similar_cases`. **`recommendation`을 포함하지 않는다** — 이 단계는 "위반인가 아닌가"만 본다.
 - **`_decide_action()`**: 단일 LLM 호출(검색 없음 — 분류 단계가 이미 확보한 근거만 입력으로 받는다). 산출물은 `ActionDecision` 스키마 — `recommendation`/`rationale`. 시스템 프롬프트가 "위반 여부를 재판단하거나 뒤집지 말 것"을 명시.
-- `_stage2()`가 두 결과를 기존 v0 응답 shape(`violation_verdict`/`review_reasons`/`recommendation`/`citations`/`similar_cases` 5개 필드)으로 재조립한다 — **Django `risk_review.py`의 소비 코드는 한 글자도 안 바꿨다**(`.get()` 기반 dict 접근이라 shape 동일하면 무영향, §3 비침습 체크리스트 그대로 통과).
+- `_stage2()`가 두 결과를 기존 v0 응답 shape(`violation_verdict`/`review_reasons`/`recommendation`/`citations`/`similar_cases` 5개 필드)으로 재조립한다 — **Django `risk_review.py`의 소비 코드는 한 글자도 안 바꿨다**(`.get()` 기반 dict 접근이라 shape 동일하면 무영향, 비침습 체크리스트 그대로 통과).
 
 ### 3.2 왜 나눴나
 
@@ -96,7 +125,7 @@ _risk_tier(0.0)   == "LOW"
 
 ---
 
-## 4. `case_history` 골든데이터 확충 (§2.2 항목5)
+## 4. `case_history` 골든데이터 확충 (§0.2-5)
 
 팀 결정(AskUserQuestion, 2026-08-19) — "이번에 같이 확충"을 선택. `app/rag/golden_cases.py`: 10건 → 18건.
 

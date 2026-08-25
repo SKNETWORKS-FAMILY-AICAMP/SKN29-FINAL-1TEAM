@@ -1,7 +1,8 @@
 # QA 테스트 데이터 시드 (Django fixture, `dumpdata` 산출)
 
-2026-08-22~24 라이브 QA에서 만든 DB 리소스를 지우지 않고 재사용 가능한 형태로 남긴 것.
-`llm_wiki/_context/qa/_summary.md` §정리(cleanup)에서 언급된 그 데이터의 스냅샷이다.
+2026-08-22~24 라이브 QA에서 만든 DB 리소스를 재사용 가능한 형태로 남긴 것.
+**2026-08-25 확인: 원본 DB 레코드는 이미 삭제됐다** — 이 fixture가 그 데이터의 유일한 남은
+스냅샷이다(`llm_wiki/docs/qa/_summary.md` 참조). 재현하려면 아래 `loaddata` 절차를 쓴다.
 
 ## 파일 목록
 
@@ -25,7 +26,7 @@
 
 즉 이 fixture는 "QA를 재현했던 바로 그 DB 상태"의 스냅샷이지, 범용 시드 스크립트(`seed.py`류)와
 같은 이식성은 없다. 새 환경에서 처음부터 이 테스트를 재현하려면 fixture 로드보다
-`llm_wiki/_context/qa/test-cases-risk-review-agent.md`(필드 설계 근거)를 참고해 관리 명령을
+`llm_wiki/docs/qa/risk-review-agent-qa.md`(필드 설계 근거)를 참고해 관리 명령을
 새로 짜는 편이 더 안전하다 — 이 fixture는 "지금 있는 걸 잃지 않기 위한 백업"이 1차 목적이다.
 
 ## 로드 방법
@@ -34,13 +35,13 @@ FK 순서를 지켜야 한다(Transaction → Settlement, RuleGraph → RuleNode
 
 ```bash
 docker compose exec core python manage.py loaddata \
-  /app/../llm_wiki/_context/qa/fixtures/qa_risk_review_transactions.json
+  /app/../llm_wiki/docs/qa/fixtures/qa_risk_review_transactions.json
 docker compose exec core python manage.py loaddata \
-  /app/../llm_wiki/_context/qa/fixtures/qa_risk_review_settlements.json
+  /app/../llm_wiki/docs/qa/fixtures/qa_risk_review_settlements.json
 docker compose exec core python manage.py loaddata \
-  /app/../llm_wiki/_context/qa/fixtures/qa_rule_agent_rulegraphs.json
+  /app/../llm_wiki/docs/qa/fixtures/qa_rule_agent_rulegraphs.json
 docker compose exec core python manage.py loaddata \
-  /app/../llm_wiki/_context/qa/fixtures/qa_rule_agent_rulenodes.json
+  /app/../llm_wiki/docs/qa/fixtures/qa_rule_agent_rulenodes.json
 ```
 
 (컨테이너에 이 경로가 마운트 안 돼 있으면 파일을 core 컨테이너의 media/app 볼륨 아래로 복사한
@@ -51,5 +52,5 @@ docker compose exec core python manage.py loaddata \
 - **지금 DB에서 원본이 지워진 뒤 되돌리고 싶을 때**: 위 순서대로 `loaddata`.
 - **다른 개발자 환경에서 같은 QA를 재현하고 싶을 때**: 위 전제 조건이 맞는지 먼저 확인
   (`Card.objects.get(id=41).owner.username == "kim"` 등).
-- **케이스 설계 자체를 참고하고 싶을 때**: 이 JSON보다 `test-cases-risk-review-agent.md`·
-  `test-cases-rule-agent.md`가 사람이 읽기 좋다 — 필드 조합의 "왜"가 여기 없다.
+- **케이스 설계 자체를 참고하고 싶을 때**: 이 JSON보다 `risk-review-agent-qa.md`·
+  `rule-agent-qa.md`가 사람이 읽기 좋다 — 필드 조합의 "왜"가 여기 없다.

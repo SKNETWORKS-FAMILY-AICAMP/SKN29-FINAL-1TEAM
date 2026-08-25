@@ -27,10 +27,12 @@ llm_wiki/
 |---|---|---|---|
 | `docs/요구사항_명세서.md` | v1.0 | 기능/비기능 요구사항(FR-*), 상태머신, Open Issue | 확정 |
 | `docs/기술명세서.md` | v1.0 | 아키텍처·데이터·API·FastMCP Tool·ML/RAG·룰 그래프 + 서비스 기획(§12, 2026-08-24 `기획_확장안.md` 병합: 문제정의·UI 목업·대시보드·카드구분×분류 흐름분기) | 확정 |
-| `docs/RULE_명세서.md` | v1.4 | 규정에서 도출 가능한 58 RULE의 참고 예시 — 필드정의·심각도·우선순위. 제품 기본 제공은 DEFAULT GATE 1개뿐이며 세부 룰은 고객 규정 문서 업로드 시 생성된다 | 확정(참고 자료) |
+| `docs/RULE_명세서.md` | v1.4 | 규정에서 도출 가능한 76 RULE의 참고 예시(접대·회식·출장·회의·식대 5개 카테고리) — 필드정의·심각도·우선순위. 제품 기본 제공은 DEFAULT GATE 1개뿐이며 세부 룰은 고객 규정 문서 업로드 시 생성된다 | 확정(참고 자료) |
+| `docs/agent_test_result.md` | 2026-08-24 | Rule Agent·Risk Review Agent 실측 검증 결과 요약(발표용) — 정량 지표·발견한 결함·조치. 상세 데이터는 `docs/qa/` | 확정 |
 | `화면설계서/` | Rev.1 v1.1 | 6개 화면(S-01~06)·역할·상태머신 화면매핑 (압축해제 .docx) | 프론트 구현 기준 |
 
-> **2026-08-24**: `기획_확장안.md`는 §12로 기술명세서에 병합·삭제됐다. `rule-agent-v0.md`·`Risk_Review_Agent_v0_SUMMARY.md`(→`risk-review-agent-v0-summary.md`)는 이미 v1/v2 문서로 대체된 구현 기록이라 `_context/`로 이동했다(§3.2).
+> **2026-08-24**: `기획_확장안.md`는 §12로 기술명세서에 병합·삭제됐다.
+> **2026-08-25**: `_context/` 1차 정리 — v1/v2 문서로 완전 대체된 v0 구현 기록·낡은 계획·상위 문서로 흡수된 메모 7건 삭제(§3.2 안내 참조).
 
 세 스펙 문서(요구사항·기술·기획)는 서로 상충 없이 유지한다. 상태머신·룰 도메인·Risk 2단계 등 핵심 결정은 아래 §2에 요약.
 
@@ -71,10 +73,10 @@ llm_wiki/
 | 파일 | 용도 |
 |---|---|
 | `eval-context-guide.md` | **EvalContext 읽는 법(사람용 안내서).** 판정이 어떻게 이뤄지는지 한 문서로 — 새로 합류하면 여기부터 |
-| `rule-engine.md` | 룰엔진 캐논 — DSL·게이트/과목별 그래프·실행 워크스루·결정→상태 매핑 |
+| `rule-engine.md` | 룰엔진 캐논 — DSL·게이트/과목별 그래프·실행 워크스루·결정→상태 매핑. §8에 설계 이력(구 `rule-engine-design.md`, 2026-08-25 병합) |
 | `rule-flags.md` | 판정 사유 코드 2계층. **불변식: 플래그는 상태머신을 움직이지 않는다** |
 | `default-gate.md` | 기본 게이트 설계 — 방향(기본 REVIEW+사유), `PASS_THROUGH` 체인, 미해소 가드 우회(§4·실측 결함 2건 §4.1), 시드 3종(`seed_clean`/`seed_adopted`/`seed`) 차이 §6 |
-| `policy-domain.md` | 규정 임계값 2층 구조 + `ctx.policy.*` 동적화(§3) + 축 정합 검사 |
+| `policy-domain.md` | 규정 임계값 2층 구조 + `ctx.policy.*` 동적화(§3) + 축 정합 검사. §8에 구현 계획·인수 조건 실측 기록(구 `policy-domain-plan.md`, 2026-08-25 병합) |
 | `category-vocabulary.md` | 비용분류 어휘 정본 — 서버 단일 창구, `기타` ≠ 미기재 |
 | `merchant-industry-vocabulary.md` | 가맹점 업종 어휘 정본 15종 — 코드/라벨 분리, 미확정 처리 |
 | `notifications.md` | 알림 11종 — 자격 조건, 수신자(Capability 기준), 묶기, 「화면에 있으면 화면이 접는다」 |
@@ -95,24 +97,12 @@ llm_wiki/
 
 | 파일 | 용도 |
 |---|---|
-| `rule-agent-v1-implementation.md` | Rule Agent v1 구현 기록(근거·코드 위치·검증 결과) |
-| `risk-review-agent-v1-implementation.md` | Risk Review v1 구현 기록 |
-| `rule-agent-v0.md` | Rule Agent(생성) v0 구현 기록 — ⚠️ 대체됨, `rule-agent-v1-implementation.md`가 정본(2026-08-24 `docs/`에서 이동) |
-| `risk-review-agent-v0-summary.md` | Risk Review v0 구현 기록 — ⚠️ 대체됨, `risk-review-agent-v2.md`가 정본(2026-08-24 `docs/`에서 이동, 파일명 kebab-case 통일) |
-| `agent-v1-upgrade-plan.md` | Rule/Risk v1 결정 사항 요약(근거는 위 두 문서) |
+| `rule-agent-v1-implementation.md` | Rule Agent v1 구현 기록. §0에 결정 사항 요약(구 `agent-v1-upgrade-plan.md`, 2026-08-25 병합) + 근거·코드 위치·검증 결과 |
+| `risk-review-agent-v1-implementation.md` | Risk Review v1 구현 기록. §0에 결정 사항 요약(구 `agent-v1-upgrade-plan.md` §2, 2026-08-25 병합) + 근거·코드 위치·검증 결과 |
 | `rule-agent-v1-ux-upgrade-plan.md` | 룰 콘솔 UX 고도화 계획·구현 |
-| `agent-evaluation-2026-08-21.md` | Agent 실측 평가 기록 |
-| `eval-context-sourcing.md` | EvalContext 필드 출처 등급화(A~D) + v3 다이어트 기록 |
-| `policy-domain-plan.md` | policy 도메인 구현 PLAN + 인수 결과 |
-| `rule-seed-plan.md` | ⚠️ 대체됨 — 2026-07-30 시점 계획(GLOBAL 게이트만 구현·엔진 부재 전제). 현재 상태는 CLAUDE.md §3.6·`default-gate.md`·`rule-engine.md`가 정본 |
-| `rule-engine-design.md` | 룰엔진 설계 원안. 현행과 다른 부분은 상단 대조표 참조 — 현재 상태는 `eval-context-guide.md`가 정본 |
-| `case-history-golden-data-note.md` | 골든 사례 데이터 메모 |
+| `eval-context-sourcing.md` | EvalContext 다이어트 실행 기록(§12~) + v6·DSL null 의미론·참석인원 출처 결정(§15~18). 다이어트 이전 조사(구 §0~11)는 2026-08-25에 배경 요약으로 압축 |
 
-### 3.3 폐기 예정
-
-| 파일 | 사유 |
-|---|---|
-| `draft-agent-plan.md` · `draft-agent-v0.2.md` | Draft Agent v0/v1 설계·로드맵. **`draft-agent-v2.md`가 대체**한다(폼 기반 옛 경로가 제거되면 삭제) |
+> **2026-08-25 삭제(§3.2 舊)**: `rule-agent-v0.md`·`risk-review-agent-v0-summary.md`(v1/v2로 완전 대체) · `rule-seed-plan.md`(2026-07-30 시점 계획, 엔진 부재 전제로 현행과 무관) · `agent-evaluation-2026-08-21.md`(같은 4개 Agent를 더 엄밀히 재평가한 `qa/`로 완전 대체, `docs/agent_test_result.md`가 그 요약본) · `case-history-golden-data-note.md`(파이프라인 기틀이 구현된 `decision-case-data.md`가 완전 대체).
 
 ## 4. 발표·보고 자료 (llm_wiki 밖, 팀 관리)
 

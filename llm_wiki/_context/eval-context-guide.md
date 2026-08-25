@@ -5,7 +5,7 @@
 >
 > 설계 근거·결정 이력은 다른 문서에 있다:
 > `policy-domain.md`(규정 임계값) · `eval-context-sourcing.md`(필드 출처·다이어트) ·
-> `evidence-extraction-agent.md`(첨부 추출) · `rule-engine-design.md`(엔진 설계 원안)
+> `evidence-extraction-agent.md`(첨부 추출) · `rule-engine.md` §8(엔진 설계 원안·이력)
 >
 > 최종 갱신: 2026-08-22 · **스키마 v5 (47 필드)**
 > ⚠️ §8 필드 카탈로그 표는 아직 v4 기준이다 — v5 차이(`user.position` → `user.job_title` +

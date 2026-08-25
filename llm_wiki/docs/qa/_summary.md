@@ -78,12 +78,10 @@ ai `pytest -k "vision or evidence or rule_agent or risk_review or rag"` 73건 �
 실패로, `verified_participant_count`로 필드가 언제 개명됐는지와 무관하게 이번 변경 전부터
 깨져 있었을 가능성이 높다(수정 범위 밖으로 남김, 필요하면 후속 작업으로).
 
-### 정리 필요(변경분)
-
-- 이번 검증 중 새로 생성된 RuleGraph DRAFT 1건: `POSTFIX_VERIFY_M01`(graph_id 141) —
-  기존 `QA_RULE_*` 50건과 함께 일괄 삭제 대상에 추가.
-
-> 개별 케이스/리포트: `test-cases-*.md` + `*-test-report.md` (본 디렉터리). 실행은 전부 AI-LAB `/lab/*` 경로(운영과 동일 코드, 트레이스만 추가 노출)로 실제 OpenAI 호출을 사용했다. 게이트(룰엔진) 50건은 결정론적이라 문서 설계만 하고 별도 실행은 하지 않았다(`test-cases-default-gate.md`).
+> 개별 케이스/리포트: 에이전트별 `*-qa.md`(테스트 케이스+실행결과 통합, 본 디렉터리) — `rule-agent-qa.md`·
+> `risk-review-agent-qa.md`·`draft-agent-qa.md`·`evidence-extraction-agent-qa.md`. 실행은 전부 AI-LAB
+> `/lab/*` 경로(운영과 동일 코드, 트레이스만 추가 노출)로 실제 OpenAI 호출을 사용했다. 게이트(룰엔진)
+> 50건은 결정론적이라 문서 설계만 하고 별도 실행은 하지 않았다(`default-gate-qa.md`).
 >
 > **2026-08-24: main 대량 풀(44커밋) 이후 상태 갱신.** Draft Agent·Risk Review Agent가 v2로 전면
 > 개편됐다. Risk Review는 같은 50건으로 재검증 완료(아래 표 반영). Draft Agent는 테스트했던 경로
@@ -106,7 +104,7 @@ ai `pytest -k "vision or evidence or rule_agent or risk_review or rag"` 73건 �
 - **개선 확인**: false VIOLATION율 68%→17%, R-201 경계값(`>`/`>=`) 처리 정확, qa01 총액↔1인당
   산술(180,000÷5=36,000) 정확 — v1 최우선 권고(산술 검산·경계 정확도)가 사실상 해결됨.
 - **재분석하니 오탐 5건 중 3건은 애초에 golden label 설계가 틀렸다**(정보부족=면제가 아니라
-  필수기재누락/한도초과 자체가 위반이었음 — `risk-review-agent-test-report.md` §2-1). **실제 버그는
+  필수기재누락/한도초과 자체가 위반이었음 — `risk-review-agent-qa.md` §2.2). **실제 버그는
   2건**: 식대(MEAL) 카테고리 거래에 회식(GATHERING) 최소참석인원 규정을 적용해 반려한 사례(qa44·46,
   둘 다 DB에서 `category="식대"` 확인됨). **이는 Rule Agent가 겪는 "근거 없는 카테고리에서 다른
   카테고리 규정을 가져오는" 문제와 같은 계열** — 두 에이전트 모두 검색 단계에서 category/scope를
@@ -126,19 +124,16 @@ ai `pytest -k "vision or evidence or rule_agent or risk_review or rag"` 73건 �
 4. **[Draft v2] 새 경로(`/agent/draft/settlement`) 테스트 설계** — AI-LAB에 정산 모드 탭이 없어 사이드이펙트 있는 흐름을 직접 두드려야 함. 별도 작업으로 분리.
 5. **[해결됨, 하향] Risk Review 산술 검산·경계값** — v2에서 재현 안 됨, 후속 조치 불필요.
 
-## ✅ 2026-08-24 — 테스트 데이터 fixture로 백업 완료 (`fixtures/` 참조)
+## ✅ 2026-08-24 fixture 백업 → 2026-08-25 원본 DB 레코드 삭제 확인
 
-테스트가 만든 실 DB 레코드(RuleGraph DRAFT 51건·Settlement/Transaction 50쌍)는 지우는 대신
-`llm_wiki/_context/qa/fixtures/`에 Django `dumpdata` fixture로 백업했다(round-trip
-`loaddata` 검증 완료 — §`fixtures/README.md`). **원본 DB 레코드는 아직 안 지웠다** — 언제든
-지워도 fixture로 복원 가능하니, 지금 룰 콘솔·팀 취합 화면 목록을 정리하고 싶으면 아래 명령으로
-지우면 된다:
-
-- **RuleGraph DRAFT 51건**(id 89-138, 141, `name` 접두 `QA_RULE_`/`POSTFIX_VERIFY_`): `RuleGraph.objects.filter(name__startswith="QA_RULE_").delete(); RuleGraph.objects.filter(name__startswith="POSTFIX_VERIFY_").delete()`
-- **Settlement 476-525 + Transaction 728-777**(`purpose` 접두 `QA_RISK_TEST_`): Settlement 먼저 삭제 후 Transaction 삭제(FK 순서)
-- 증빙 추출/Draft Agent는 DB 레코드를 만들지 않아 정리 불필요(증빙 추출 synthetic 이미지는 media 볼륨과 함께 이미 유실됨)
-
-fixture가 있으니 지워도 안전하지만, 삭제는 여전히 파괴적 작업이라 요청 시에만 실행한다.
+테스트가 만든 실 DB 레코드(RuleGraph DRAFT 51건·Settlement/Transaction 50쌍)는
+`llm_wiki/docs/qa/fixtures/`에 Django `dumpdata` fixture로 백업해 뒀다(round-trip
+`loaddata` 검증 완료 — `fixtures/README.md`). **2026-08-25 확인 결과 원본 DB 레코드는 이미
+삭제된 상태였다**(`RuleGraph.objects.filter(name__startswith="QA_RULE_").count()==0`,
+`Settlement.objects.filter(purpose__startswith="QA_RISK_TEST_").count()==0` — 현재 RuleGraph
+12건·Settlement 102건은 전부 시드 데이터). 재현이 필요하면 `fixtures/README.md`의 `loaddata`
+절차를 따른다. 증빙 추출/Draft Agent는 애초에 DB 레코드를 만들지 않는다(증빙 추출 synthetic
+이미지는 media 볼륨과 함께 이미 유실됨 — §수정 2 참조).
 
 ## 알려진 테스트 설계 한계 (결과 해석 시 감안할 것)
 
