@@ -49,7 +49,13 @@ CLAUSE_BODY_LIMIT = 900
 #  다만 무한정 넘길 수는 없어 상한을 둔다 — 넘으면 그 표는 사람이 직접 만든다.
 TABLE_TEXT_LIMIT = 6000
 
-MODEL = "gpt-4o-mini"
+#: 이 단계가 쓰는 프로파일. **판단이 결과가 되는 자리**라 heavy(`llm_heavy_model`)다 —
+#  별표 한 장을 잘못 읽으면 그 값이 모든 정산 판정에 들어간다. 모델 이름은 `app/llm.py`가
+#  한 곳에서 알고, env(`LLM_HEAVY_MODEL`)로 바뀐다.
+#
+#  gpt-4o-mini로 돌던 동안 같은 입력의 결과가 실행마다 달랐다(key 이름·축 선택·스킵 여부).
+#  → `.personal/TRIAGE_TABLE_DUMP.md`
+PROFILE = "heavy"
 
 #: 별표 key 표기 — core `table_proposals.KEY_RE`의 거울(승인 검사와 같은 기준을
 #  추출 시점에 적용해, 승인 화면에서 막히기 전에 모델이 다시 만들게 한다).
@@ -252,19 +258,24 @@ def axis_options() -> list[dict[str, Any]]:
     return _catalog({"policy", "tables", "conflicts", "meta"})
 
 
-def _openai():
-    from app.agents.rule_agent_v0.agent import _openai as client
-    return client()
+def _chat(system: str, user: str, schema: dict, schema_name: str,
+          shots: list[tuple[str, str]] | None = None) -> dict[str, Any]:
+    """모델 호출 1회. **모델 이름·파라미터 차이는 `app/llm.py`가 안다**(호출부는 역할로 부른다).
 
+    `shots`: (사용자 입력, 모범 출력 JSON) 쌍. 지시문만으로는 안 잡히는 것들 —
+    표기 매핑·다열 처리·건너뛰기 판단 — 을 **보여준다.**
+    """
+    from app import llm
 
-def _chat(system: str, user: str, schema: dict, schema_name: str) -> dict[str, Any]:
-    resp = _openai().chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {"name": schema_name, "schema": schema, "strict": True},
-        },
+    messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
+    for shot_user, shot_answer in shots or []:
+        messages.append({"role": "user", "content": shot_user})
+        messages.append({"role": "assistant", "content": shot_answer})
+    messages.append({"role": "user", "content": user})
+
+    resp = llm.chat(
+        PROFILE, messages=messages, timeout=120,
+        response_format={"name": schema_name, "schema": schema, "strict": True},
     )
     return json.loads(resp.choices[0].message.content or "{}")
 
@@ -497,6 +508,81 @@ _TABLE_SCHEMA = {
                  "payload_json", "strict_keys", "confidence", "notes", "comment"],
     "additionalProperties": False,
 }
+
+
+#: 별표 추출 few-shot. **지시문으로 안 잡히던 셋을 보여준다** — ① 표 머리글을 값 어휘로
+#  옮기기 ② 값 열이 여러 개일 때 하나만 고르기 ③ 임계값 표가 아닌 것 건너뛰기.
+#
+#  실측 예시가 아니라 **일반화된 가상 표**다. 실제 규정 문장을 넣으면 모델이 그 회사 값을
+#  기억해 다른 문서에도 흘린다(프롬프트가 데이터를 오염시킨다).
+_SHOTS: list[tuple[str, str]] = [
+    (
+        "[사용 가능한 축]\n"
+        "  category.item_type (string) — 지출 세부유형\n"
+        "      값: 식사 | 선물 | 경조사 | 상품권 | 행사성 | 숙박 | 교통 | 소모품 | 기타\n\n"
+        "[문서] 사내복지_운영지침\n"
+        "[위치] 제4장 지원 기준 · 별표3 · 항목별 증빙 기준액\n"
+        "[앞 문맥] …다음 각 호의 항목은 별표3의 기준액을 초과할 때 적격증빙을 첨부한다.\n\n"
+        "[표 원문 — p12]\n"
+        "| 항목 | 기준액 |\n|---|---|\n| 식음료 | 30,000원 |\n| 기념품 | 50,000원 |\n"
+        "| 경조 화환 | 100,000원 |",
+        json.dumps({
+            "is_threshold_table": True, "skip_reason": "",
+            "key": "item_evidence_threshold_table",
+            "title": "별표3. 항목별 증빙 기준액",
+            "key_axes": ["category.item_type"],
+            "payload_json": json.dumps(
+                {"식사": 30000, "선물": 50000, "경조사": 100000}, ensure_ascii=False),
+            "strict_keys": False, "confidence": 0.9,
+            "notes": "표 머리글을 값 어휘로 옮겼습니다: 식음료→식사, 기념품→선물, 경조 화환→경조사.",
+            "comment": "항목별로 적격증빙이 필요해지는 금액입니다. 세 행의 표기를 시스템 어휘로"
+                       " 바꿔 담았으니, 원문의 「식음료·기념품·경조 화환」과 같은 뜻이 맞는지"
+                       " 확인해 주세요.",
+        }, ensure_ascii=False),
+    ),
+    (
+        "[사용 가능한 축]\n"
+        "  trip.trip_type (string) — 출장 구분\n      값: 국내당일 | 국내숙박 | 해외\n"
+        "  trip.region_grade (string) — 출장 지역등급\n      값: A | B | C\n\n"
+        "[문서] 출장관리_내규\n"
+        "[위치] 별표1 · 출장 구분·지역별 지급 기준\n\n"
+        "[표 원문 — p7]\n"
+        "| 구분 | 지역 | 교통비 | 숙박비 | 일비 |\n|---|---|---|---|---|\n"
+        "| 해외 | 1급지 | 실비 | 200,000원 | 70,000원 |\n"
+        "| 해외 | 2급지 | 실비 | 140,000원 | 50,000원 |",
+        json.dumps({
+            "is_threshold_table": True, "skip_reason": "",
+            "key": "overseas_lodging_limit_table",
+            "title": "별표1. 출장 구분·지역별 지급 기준(숙박비)",
+            "key_axes": ["trip.trip_type", "trip.region_grade"],
+            "payload_json": json.dumps(
+                {"해외": {"A": 200000, "B": 140000}}, ensure_ascii=False),
+            "strict_keys": False, "confidence": 0.85,
+            "notes": "값 열이 셋이라 숙박비만 담았습니다. 별도 표로 나눠야 함: 일비(해외 A 70,000원,"
+                     " B 50,000원), 교통비(실비라 임계값 없음)."
+                     " 지역 표기 1급지→A, 2급지→B로 옮겼습니다. C급지는 표에 없어 비웠습니다.",
+            "comment": "해외출장 숙박비 상한입니다. 한 행에 교통비·숙박비·일비가 함께 있어"
+                       " 숙박비만 옮겼고, 일비는 별도 표로 만들어야 합니다. 「1급지/2급지」를"
+                       " A/B로 본 것이 맞는지 확인해 주세요.",
+        }, ensure_ascii=False),
+    ),
+    (
+        "[사용 가능한 축]\n  user.job_title (string) — 지출자의 직책\n\n"
+        "[문서] 지출결의_업무편람\n[위치] 제3장 결재 · 별표5 · 결재 단계별 담당\n\n"
+        "[표 원문 — p20]\n"
+        "| 단계 | 담당 | 처리 기한 |\n|---|---|---|\n"
+        "| 1차 | 기안 부서장 | 2영업일 |\n| 2차 | 재무팀 | 3영업일 |",
+        json.dumps({
+            "is_threshold_table": False,
+            "skip_reason": "결재 단계별 담당과 처리 기한을 적은 절차 표이고, 정산 판정이 비교할"
+                           " 금액 임계값이 없습니다.",
+            "key": "", "title": "", "key_axes": [], "payload_json": "{}",
+            "strict_keys": False, "confidence": 0.95, "notes": "",
+            "comment": "결재 절차를 설명하는 표라 판정 임계값으로 만들지 않았습니다."
+                       " 처리 기한(2·3영업일)은 금액 기준이 아니라 업무 규칙입니다.",
+        }, ensure_ascii=False),
+    ),
+]
 
 
 def _groups(table_chunks: list[Any]) -> list[list[Any]]:
@@ -753,7 +839,8 @@ def extract_tables(
                 + "\n".join(f"- {p}" for p in problems)
             )
             try:
-                got = _chat(_TABLE_SYSTEM, user, _TABLE_SCHEMA, "policy_table_extract")
+                got = _chat(_TABLE_SYSTEM, user, _TABLE_SCHEMA, "policy_table_extract",
+                            shots=_SHOTS)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("별표 추출 실패 chunk=%s: %s", head.chunk_id, exc)
                 #  **재시도가 실패해도 첫 결과를 버리지 않는다.** 검사에 걸린 표는

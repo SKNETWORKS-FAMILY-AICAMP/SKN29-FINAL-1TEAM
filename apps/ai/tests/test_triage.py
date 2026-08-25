@@ -78,8 +78,9 @@ def chat(monkeypatch):
     def _install(replies):
         queue = list(replies)
 
-        def fake(system, user, schema, name):
-            calls.append({"name": name, "user": user})
+        def fake(system, user, schema, name, shots=None):
+            #  few-shot을 함께 기록한다 — 예시가 실제로 실렸는지도 계약이다.
+            calls.append({"name": name, "user": user, "shots": shots or []})
             if not queue:
                 raise AssertionError("예상보다 많은 LLM 호출")
             nxt = queue.pop(0)
@@ -355,6 +356,33 @@ def test_어휘_전체를_채우면_잡는다(chat):
     row = triage.extract_tables([FakeChunk("c1", raw)], axes)[0]
     warns = [c["message"] for c in row["checks"] if c["level"] == "warn"]
     assert any("찾을 수 없는 항목" in m for m in warns), warns
+
+
+def test_별표_추출은_모범_예시를_함께_보낸다(chat):
+    """지시문만으로는 안 잡히던 셋 — 표기 매핑·다열 처리·건너뛰기 판단 — 을 **보여준다.**
+
+    예시는 **가상 표**여야 한다. 실제 규정 문장을 넣으면 모델이 그 회사 값을 기억해 다른
+    문서에도 흘린다(프롬프트가 데이터를 오염시킨다)."""
+    chat([{
+        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
+        "title": "t", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
+        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
+    }])
+    calls = chat([{
+        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
+        "title": "t", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
+        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
+    }])
+    triage.extract_tables([FakeChunk("c1", "| 한도 | 30,000원 |")], AXES)
+    shots = calls[0]["shots"]
+    assert len(shots) >= 3, "표기 매핑·다열·건너뛰기 셋은 보여줘야 한다"
+    joined = " ".join(u + a for u, a in shots)
+    assert "식음료" in joined and "식사" in joined, "표기 매핑 예시"
+    assert "별도 표로 나눠야 함" in joined, "값 열이 여러 개일 때의 예시"
+    assert "is_threshold_table" in joined and "skip_reason" in joined, "건너뛰기 예시"
+    #  **실제 규정 문장이 새어 들어가면 안 된다.**
+    for leaked in ("타이거", "청탁금지", "업무추진비"):
+        assert leaked not in joined, leaked
 
 
 def test_축_어휘를_프롬프트에_보여준다(chat):
