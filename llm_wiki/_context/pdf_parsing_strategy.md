@@ -407,7 +407,9 @@ class ParsedDoc:
 
 ### 7.4 회귀 테스트 — `apps/ai/tests/test_parsing_corrections.py` (66건 통과)
 
-**docling을 재실행하지 않는다.** `docling_eval/output/layout/layout_result.csv`가 11종 4,388요소 전량 덤프이므로, 교정 계층만 이 덤프에 걸어 고정한다(docling은 별도 conda 환경과 모델 로딩을 요구해 CI에서 돌리기에 비싸다). 운영 경로는 `engine.convert()`, 검증 경로는 `dump.load_all()`이며 **교정 계층은 둘이 공유**한다.
+**docling을 재실행하지 않는다.** `docling_eval/output/layout/layout_result.csv`가 13종 4,561요소 전량 덤프이므로, 교정 계층만 이 덤프에 걸어 고정한다(docling은 별도 conda 환경과 모델 로딩을 요구해 CI에서 돌리기에 비싸다). 운영 경로는 `engine.convert()`, 검증 경로는 `dump.load_all()`이며 **교정 계층은 둘이 공유**한다.
+
+⚠️ 위 §7.2·§5의 실측 수치(2026-08-12)는 **당시 11종 4,388요소** 기준이다. 덤프는 그 뒤 13종 4,561요소로 늘었지만(회의비·식대 규정 추가 — `dump_writer.py`) 채점을 다시 돌리지 않았으므로 그 값들은 그대로 둔다. 재채점 전까지 "덤프 크기"와 "채점 대상 코퍼스"는 다른 수다.
 
 고정한 계약:
 

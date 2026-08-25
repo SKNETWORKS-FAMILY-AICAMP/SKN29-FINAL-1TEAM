@@ -1,0 +1,74 @@
+{
+  "Document": "회의비_사용규정",
+  "Table": 2,
+  "Page": 4,
+  "Rows": 3,
+  "Cols": 2,
+  "Cells": 6,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "미충족 요건 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "처리"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "금액(별표1 한도 초과, 또는 건당 총액 20만원 초과) "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "초과분에 대하여 사전에 소속 팀장 이상의 승인 필요"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "일정 등록 기록 없음 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "정산 시스템에 회의 목적 소명, 재무회계팀 확인 대상"
+    }
+  ],
+  "markdown": "| 미충족 요건                          | 처리                            |\n|---------------------------------|-------------------------------|\n| 금액(별표1 한도 초과, 또는 건당 총액 20만원 초과) | 초과분에 대하여 사전에 소속 팀장 이상의 승인 필요  |\n| 일정 등록 기록 없음                     | 정산 시스템에 회의 목적 소명, 재무회계팀 확인 대상 |"
+}

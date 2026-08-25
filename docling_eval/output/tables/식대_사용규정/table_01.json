@@ -1,0 +1,74 @@
+{
+  "Document": "식대_사용규정",
+  "Table": 1,
+  "Page": 3,
+  "Rows": 3,
+  "Cols": 2,
+  "Cells": 6,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "요건 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "기준"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "금액 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "건당 결제 금액이 별표1의 해당 유형 한도 이내일 것"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "인원 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "동석자를 포함한 인원이 2인 이하일 것(제5조제1항)"
+    }
+  ],
+  "markdown": "| 요건    | 기준                            |\n|-------|-------------------------------|\n| 금액    | 건당 결제 금액이 별표1의 해당 유형 한도 이내일 것 |\n| 인원    | 동석자를 포함한 인원이 2인 이하일 것(제5조제1항) |"
+}

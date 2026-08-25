@@ -1,0 +1,101 @@
+{
+  "Document": "회의비_사용규정",
+  "Table": 3,
+  "Page": 5,
+  "Rows": 3,
+  "Cols": 3,
+  "Cells": 9,
+  "Header": "Detected",
+  "Header Rows": 1,
+  "Multi Header": "N",
+  "Row Header": "N",
+  "Merged Cells": 0,
+  "Empty Cells": 0,
+  "Fill Rate": 1.0,
+  "Caption": "별표 1. 회의비 유형별 1인당 한도",
+  "Note": "",
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "구분 "
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "1인당 한도 "
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": true,
+      "row_header": false,
+      "text": "비고"
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "다과형 회의비 "
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "5,000원 "
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "음료·간식 등"
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "식사형 회의비 "
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "15,000원 "
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "row_span": 1,
+      "col_span": 1,
+      "column_header": false,
+      "row_header": false,
+      "text": "도시락 등 식사 제공 시"
+    }
+  ],
+  "markdown": "별표 1. 회의비 유형별 1인당 한도\n\n| 구분      | 1인당 한도    | 비고            |\n|---------|-----------|---------------|\n| 다과형 회의비 | 5,000원    | 음료·간식 등       |\n| 식사형 회의비 | 15,000원   | 도시락 등 식사 제공 시 |"
+}
