@@ -28,13 +28,15 @@ pytestmark = pytest.mark.skipif(
     not LAYOUT_CSV.exists(), reason="docling_eval 덤프가 없는 환경"
 )
 
+# 아래 두 슬라이스가 위치에 의존한다 — 규정을 앞, 법령을 그 다음에 **붙여서** 둘 것.
 DOCS = [
     "법인카드_사용규정", "업무추진비_사용규정", "출장비_사용규정", "회식_사용규정",
+    "식대_사용규정", "회의비_사용규정",
     "법인세법", "부가가치세법", "여신전문금융업법",
     "부서소개", "조직도", "직급체계", "조직설계_상세기획서",
 ]
-REGULATIONS = DOCS[:4]
-LAWS = DOCS[4:7]
+REGULATIONS = DOCS[:6]
+LAWS = DOCS[6:9]
 
 
 @pytest.fixture(scope="module")
