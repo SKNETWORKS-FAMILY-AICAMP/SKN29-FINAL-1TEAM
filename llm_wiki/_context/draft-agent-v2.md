@@ -6,7 +6,7 @@ _최종 갱신: 2026-08-22 · 상태: 구현 완료_
 > 분류·목적·설명만 남긴다. 「보완요청될 것 같은가」는 LLM이 예측하지 않고
 > **결정론적 엔진을 dry-run으로 돌려** 얻는다.
 
-관련: [[draft-agent-plan]] · [[rule-engine]] · [[eval-context-guide]] · [[rule-flags]] ·
+관련: [[rule-engine]] · [[eval-context-guide]] · [[rule-flags]] ·
 [[evidence-extraction-agent]] · [[decision-case-data]] · [[category-vocabulary]]
 
 ---

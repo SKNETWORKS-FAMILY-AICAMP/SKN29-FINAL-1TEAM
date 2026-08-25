@@ -722,12 +722,7 @@ export function SettlementDetailModal({
                       ? <><Receipt size={18} /> 원장 수집 건 — 영수증 파일 없음</>
                       : <><AlertTriangle size={16} /> {readOnly ? '첨부된 영수증 없음' : '영수증을 첨부해 주세요 (필수)'}</>}
               </div>
-              {fromErp && !receiptUp && (
-                <div className="text-meta" style={{ marginTop: 8 }}>
-                  카드사 결제기록에서 수집한 건이라 영수증 파일이 없습니다.
-                  증빙이 필요하면 아래 <b>증빙 자료</b>에서 첨부해 주세요.
-                </div>
-              )}
+
               {!readOnly && isCreate && (
                 <>
                   <input
@@ -757,9 +752,11 @@ export function SettlementDetailModal({
                   </div>
                 </>
               )}
+              {/*  **한 줄이면 된다.** 「원장 수집 건 — 영수증 파일 없음」은 위 자리표시자가
+                  이미 말한다. 여기 남길 것은 "그럼 어디에 올리나"뿐이다. */}
               {!readOnly && !isCreate && (
                 <div className="text-meta" style={{ marginTop: 10 }}>
-                  추가 영수증·증빙은 아래 <b>증빙 자료</b>에서 첨부합니다.
+                  {fromErp && !receiptUp ? '증빙' : '추가 증빙'}은 아래 <b>증빙 자료</b>에서 첨부합니다.
                 </div>
               )}
             </div>

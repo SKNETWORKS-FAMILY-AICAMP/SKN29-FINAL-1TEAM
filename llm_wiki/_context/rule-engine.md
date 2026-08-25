@@ -136,3 +136,43 @@ eval_context(스냅샷), decision, confidence, flags }`. 합쳐서 한 행에 �
 - 항목 구분 모호(추진비 vs 복리후생 vs 회의비, 제15조) → Risk Review 1차 분류 + 사람 최종
 - 업무 관련성 소명(제9조4호) → REVIEW
 - 연간 추진비 손금한도(제14조)·기한 3회 초과(제13조) → 누적 집계 → 대시보드/배치
+
+## 8. 설계 이력 — 2026-07-31 원안과 무엇이 달라졌나
+
+> 이 섹션은 `rule-engine-design.md`(엔지니어링 설계 원안)를 2026-08-25에 흡수한 것이다.
+> 위 §1~7이 **현재 상태**이고, 아래는 "처음엔 어떻게 설계했고 왜 지금 형태로 바뀌었나"의 기록이다.
+
+### 8.1 설계안 vs 현재 구현
+
+| 항목 | 설계안(2026-07-31) | **현재 구현 (2026-08-11)** |
+|---|---|---|
+| EvalContext 필드 수 | 101 | **46** (v4). 판정 필드·조합 가능 필드·원천 없는 필드를 잘라냄 → `eval-context-sourcing.md` §12 |
+| 조립기 위치 | `eval_context.py`에 `build_rule_context` | **`policies/context_builder.py`** (`eval_context.py`는 스키마 계약 전용) |
+| 별표 로더 | `tables.py`(미작성) | **`PolicyTable` 모델 + `tiger_tables.py` 시드** → `policy-domain.md` |
+| 별표 선해소 | 개념만 | **구현 완료.** `RESOLVERS` 8종 + `merchant.forbidden` 불린. 표별 폴백 정책(`strict_keys`) |
+| 미해소 처리 | 언급 없음 | **미해소 가드** — 참조 경로가 `null`이면 `REVIEW` 강등 + `UNRESOLVED_POLICY_VAR`/`UNRESOLVED_FACT` |
+| 출처 충돌 | 언급 없음 | **`FactMerger`** — 출처 순위(SoR>입력>추출) + `ctx.conflicts` 기록 |
+| 첨부 추출 | 언급 없음 | **`Attachment` 모델** + 증빙자료 추출 Agent → `evidence-extraction-agent.md` |
+| `orchestrator.py` | 계획 | **구현 완료** — GLOBAL→scope 선택·`RuleHit` 기록·상태 매핑 (위 §6) |
+| AI 파생 필드 | `personal_use_suspected` 등 사용 | **제거.** 판정을 입력받지 않고 그래프에서 원자 사실을 조합한다 |
+
+### 8.2 지금도 유효한 설계 원칙
+
+| 목표 | 판정 기준 |
+|---|---|
+| **완전성(Completeness)** | 활성 그래프의 모든 노드 조건이 참조하는 `var` 경로가 **EvalContext 스키마에 100% 존재**. 미정의 참조로 룰이 조용히 오작동하지 않는다. |
+| **정확성(Correctness)** | 각 필드가 규정이 요구하는 의미로 산출된다(파생식·조회테이블·업종). 룰↔필드 추적 가능. |
+| **재현성(Reproducibility)** | 같은 `(eval_context, graph_version)` → 항상 같은 `decision·path·flags`. 엔진은 순수함수(외부 I/O 0). |
+| **감사성(Auditability)** | 판정 시점의 EvalContext 전체가 `rule_hits.eval_context`에 스냅샷 → 사후 리플레이·근거 추적. |
+| **단일 I/O 경계** | 모든 데이터 접근은 **조립 단계 1곳**(`build_rule_context`)에서만. 엔진·DSL은 Postgres를 모른다. |
+| **안전성** | DSL은 임의 코드 실행 불가(연산자 화이트리스트). 테이블 조회는 조립기가 선해소해 DSL을 단순 비교로 유지. |
+
+설계 제1원칙: **"똑똑함은 조립기(①)에, 결정론은 엔진(③)에."** 복잡한 I/O·계산·룩업은 전부 조립 단계로 밀어넣고, 엔진은 스냅샷된 스칼라만 비교한다.
+
+### 8.3 Open Issues — 아직 안 끝난 것만
+
+- **θ_pass·θ_reject**(확신 임계) 확정 — decision→상태 컷. MVP는 게이트 CRITICAL=자동 REJECT 후보/그 외 REVIEW로 보수적 처리 중, 정식 임계값 미확정.
+- **완전성 게이트의 엄격도** — 활성 전환을 막을지(hard) 경고만(soft)할지: 설계는 hard(안전) 권장, 현행도 hard로 구현됨.
+
+> 나머지 Open Issue(AI 파생 필드·별표 버전 관리·스키마 진화)는 각각 v3 다이어트·`policy-domain.md`·
+> `eval-context-sourcing.md`에서 해소됐다.
