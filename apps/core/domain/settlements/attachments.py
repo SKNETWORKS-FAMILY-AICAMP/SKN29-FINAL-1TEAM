@@ -25,6 +25,11 @@ class AttachmentKind(models.TextChoices):
     MEETING_MINUTES = "MEETING_MINUTES", "회의록"
     PARTICIPANT_LIST = "PARTICIPANT_LIST", "참석자 명단"
     TRIP_PLAN = "TRIP_PLAN", "출장계획서"
+    #  **서식이 있는 증빙 2종.** 자유 서술 문서에서 「회식 단위」를 찾는 것보다 체크박스가
+    #  훨씬 안정적이고, 서식의 선택지가 곧 `vocab.*`라 표기 불일치가 애초에 안 생긴다
+    #  (실측 2026-08-25: 별표 축의 「음식물 vs 식사」 불일치 — `.personal/EVIDENCE_FORMS_PLAN.md`).
+    DINING_REPORT = "DINING_REPORT", "회식 실시 확인서"
+    HOSPITALITY_REPORT = "HOSPITALITY_REPORT", "접대 확인서"
     CONTRACT = "CONTRACT", "계약서·견적서"
     OTHER = "OTHER", "기타"
 

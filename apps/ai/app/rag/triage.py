@@ -212,7 +212,11 @@ def _catalog(skip: set[str]) -> list[dict[str, Any]]:
 
     bundle = get_context("rule_generate", {"sections": "eval_context.paths"})
     return [
-        {"path": f["path"], "type": f["type"], "desc": f["desc"]}
+        #  **값 어휘(`enumValues`)를 함께 싣는다.** 축이 실재하는 경로이기만 하면 통과하던
+        #  탓에, payload 키가 그 축의 값으로 나올 수 없는 표기여도(축 `category.value`에
+        #  키 「음식물」) 검사를 지나갔다 — 룩업은 매번 `*`로 떨어지고 에러도 로그도 없다.
+        {"path": f["path"], "type": f["type"], "desc": f["desc"],
+         "values": f.get("enumValues") or []}
         for sec in bundle.data("eval_context.paths").get("sections", [])
         if sec.get("section") not in skip
         for f in sec.get("fields", [])
@@ -226,6 +230,9 @@ def fact_paths() -> list[dict[str, Any]]:
     있는가」를 물으려면 함께 보여야 한다. 실패하면 빈 목록 — 선별이 사실 가용성을 보지
     않을 뿐, 분류 자체는 그대로 돈다.
     """
+    #  값 어휘까지 함께 온다(`_catalog`) — 증빙 추출(`vision/document.py`)이 이 목록으로
+    #  모델을 제약한다. **별표 축과 증빙 추출이 같은 어휘를 봐야** 서식·표 키·추출값 셋이
+    #  한 줄로 꿰인다.
     return _catalog({"tables", "conflicts", "meta"})
 
 
@@ -443,9 +450,18 @@ _TABLE_SYSTEM = """당신은 회사 규정의 **별표(한도표)** 를 읽고, 
   쓰세요. 목록에 없는 축이 필요하면 key_axes를 비우고 notes에 그 사실을 적으세요.
   표의 행/열 머리글이 곧 축입니다(직책별이면 축 1개, 출장구분×지역등급이면 축 2개).
 - payload: 축을 따라 값을 고르는 중첩 객체. 축이 1개면 {"머리글": 값}, 2개면
-  {"머리글1": {"머리글2": 값}}. 축이 없으면 {"value": 값}.
+  {"머리글1": {"머리글2": 값}}. **축이 하나라도 있으면 마지막 자리는 숫자입니다** —
+  `{"팀": 50000}`이지 `{"팀": {"value": 50000}}`가 아닙니다.
+  `value` 키는 **축이 하나도 없을 때만** 씁니다: {"value": 값}.
   값은 숫자로(원 단위, 쉼표·"원" 제거). 표에 없는 경우를 위한 기본값은 "*" 키에 두세요.
   **payload의 중첩 깊이는 key_axes 길이와 반드시 같아야 합니다.**
+  축에 「값:」 목록이 붙어 있으면 **payload의 키는 그 목록에 있는 표기여야 합니다.**
+  표 머리글이 다르면 뜻이 같은 값으로 바꿔 적으세요 — 머리글이 "음식물"이고 값 목록에
+  "식사"가 있으면 키는 "식사"입니다. 어느 값에도 대응되지 않는 행이 있으면 그 축을 쓰지
+  말고 key_axes를 비운 뒤 notes에 적으세요.
+  **값 목록은 표기를 맞추는 용도이지 채워 넣을 목록이 아닙니다.** 표에 실제로 나온 행만
+  담으세요 — 표에 없는 값을 목록에서 가져와 같은 숫자로 채우면 그 축은 아무것도 가르지
+  못합니다.
 - strict_keys: 축 값을 모를 때 "*" 기본값으로 떨어져도 되면 false. 금지 목록처럼
   "모르면 안전하다"고 단정하면 안 되는 표면 true.
 - confidence: 0~1. 셀이 병합돼 있거나 값을 확신 못 하면 낮게 주세요.
@@ -528,9 +544,19 @@ def _context_block(group: list[Any], by_id: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+#: 「5만원」·「3천원」처럼 단위를 붙여 적은 값 → 원 단위. **이걸 안 펴면 오탐이 난다**
+#  (실측 2026-08-25: 회식 별표4 원문이 "5만원"이라 payload의 50000이 「원문에 없는 숫자」로
+#  걸렸다 — 검사가 맞는 값을 틀렸다고 하면 사람이 검사를 안 믿게 된다).
+_UNIT = re.compile(r"(\d[\d,]*)\s*(만|천)")
+
+
 def _numbers(text: str) -> set[int]:
-    """본문에 실제로 등장한 정수들(쉼표 제거). 지어낸 값 탐지에 쓴다."""
-    return {int(m.replace(",", "")) for m in re.findall(r"\d[\d,]*", text or "")}
+    """본문에 실제로 등장한 정수들. 쉼표를 떼고 만·천 단위를 원으로 편다."""
+    text = text or ""
+    out = {int(m.replace(",", "")) for m in re.findall(r"\d[\d,]*", text)}
+    for digits, unit in _UNIT.findall(text):
+        out.add(int(digits.replace(",", "")) * (10_000 if unit == "만" else 1_000))
+    return out
 
 
 def _leaves(node: Any, depth: int) -> tuple[list[Any], bool]:
@@ -552,8 +578,20 @@ def _leaves(node: Any, depth: int) -> tuple[list[Any], bool]:
     return out, ok and bool(out)
 
 
+def _keys_at(node: Any, depth: int) -> list[str]:
+    """축을 `depth`번 따라간 자리의 **키들**. 값 어휘 대조에 쓴다."""
+    if not isinstance(node, dict):
+        return []
+    if depth <= 0:
+        return list(node.keys())
+    out: list[str] = []
+    for v in node.values():
+        out += _keys_at(v, depth - 1)
+    return out
+
+
 def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[str],
-           raw: str) -> list[str]:
+           raw: str, vocab: dict[str, list[str]] | None = None) -> list[str]:
     """추출 결과 자동 검사. **고칠 수 있도록 문제를 문장으로** 돌려준다(재시도 입력).
 
     core `table_proposals.validate`가 승인 시점에 하는 검사를 **추출 시점으로 당긴 것**이다.
@@ -577,6 +615,21 @@ def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[st
         problems.append("payload가 비어 있거나 객체가 아닙니다.")
         return problems
 
+    #  **축이 실재하기만 해서는 부족하다.** 실측 2026-08-25: 업무추진비 별표1이
+    #  `category.value` 축으로 「검사 통과」였는데 키는 음식물·선물·경조사비였다
+    #  (맞는 축은 `category.item_type`). 경로만 보면 못 잡고 값 어휘를 대조해야 잡힌다.
+    for depth, axis in enumerate(axes):
+        allowed_values = (vocab or {}).get(axis)
+        if not allowed_values:
+            continue
+        unknown = [k for k in _keys_at(payload, depth) if k != "*" and k not in allowed_values]
+        if unknown:
+            problems.append(
+                f"`{axis}` 축의 값이 아닌 항목이 있습니다: " + ", ".join(unknown[:6])
+                + f" — 이 축이 가질 수 있는 값은 {', '.join(allowed_values)} 뿐입니다."
+                  " 표 내용에 맞는 다른 축을 고르거나, 맞는 축이 없으면 key_axes를 비우세요."
+            )
+
     #  **core `_exposes_scalar`와 같은 규칙이어야 한다.** 축이 없는 표는 중첩이 아니라
     #  `{"value": 스칼라}`다(`lookup`이 마지막에 `node.get("value")`로 꺼낸다). 이걸
     #  깊이 0의 중첩으로 보면 멀쩡한 표가 매번 「깊이 불일치」로 걸린다.
@@ -598,6 +651,23 @@ def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[st
             "값 자리에 객체가 남아 있습니다 — 값 열이 여러 개면 하나만 고르고 나머지는"
             " notes에 적으세요."
         )
+
+    #  **원문에 근거 없는 항목 탐지.** 실측 2026-08-25: 「키를 값 목록의 표기로 쓰라」를
+    #  모델이 **어휘 전체를 채우라**로 읽어 `{"회식":50000,"회의":50000,…}`를 냈고 다른
+    #  검사를 전부 통과했다 — 조용히 틀렸는데 ✅로 보이는, 이 검사들이 막으려던 상태다.
+    #
+    #  「모든 값이 같으면 축이 아니다」로는 못 잡는다 — 실제 별표도 세 항목이 다 5만원이다.
+    #  구분되는 것은 **키가 표에서 나왔는가**다. 다만 표기 변환(음식물→식사)은 정당하므로
+    #  전부가 아니라 **과반이 근거 없을 때만** 잡는다.
+    if axes:
+        keys = [k for k in _keys_at(payload, 0) if k != "*"]
+        anchorless = [k for k in keys if k not in raw]
+        if keys and len(anchorless) * 2 > len(keys):
+            problems.append(
+                "표에서 찾을 수 없는 항목이 대부분입니다: " + ", ".join(anchorless[:6])
+                + " — 축의 값 목록은 **표기를 맞추는 용도**이지 채워 넣을 목록이 아닙니다."
+                  " 표에 실제로 나온 행만 담으세요."
+            )
 
     #  **지어낸 숫자 탐지.** 원문에 없는 값이 payload에 있으면 셀을 잘못 읽었거나 만든 것이다.
     src = _numbers(raw)
@@ -648,8 +718,15 @@ def extract_tables(
         return []
 
     by_id = {c.chunk_id: c for c in (all_chunks or table_chunks)}
-    axes_block = "\n".join(f"  {a['path']} ({a['type']}) — {a['desc']}" for a in axis_options)
+    #  어휘가 있는 축은 **고를 수 있는 값까지** 보여준다. 안 보여주고 "목록에서 고르라"고만
+    #  하면 모델은 표 머리글을 그대로 쓰고, 그 표기는 판정에서 영영 안 맞는다.
+    axes_block = "\n".join(
+        f"  {a['path']} ({a['type']}) — {a['desc']}"
+        + (f"\n      값: {' | '.join(a['values'])}" if a.get("values") else "")
+        for a in axis_options
+    )
     allowed = {a["path"] for a in axis_options}
+    vocab = {a["path"]: a["values"] for a in axis_options if a.get("values")}
     out: list[dict[str, Any]] = []
 
     for group in _groups(table_chunks):
@@ -694,7 +771,7 @@ def extract_tables(
                 payload = {}
             axes = [a for a in (data.get("key_axes") or []) if a in allowed]
             dropped = [a for a in (data.get("key_axes") or []) if a not in allowed]
-            problems = _check(data, payload, axes, dropped, raw)
+            problems = _check(data, payload, axes, dropped, raw, vocab)
             if not problems:
                 break
 

@@ -35,7 +35,22 @@ from app.vision.uncertainty import is_uncertain
 
 logger = logging.getLogger(__name__)
 
-EXTRACTOR_VERSION = "vision-doc-1"
+EXTRACTOR_VERSION = "vision-doc-2"
+
+#: 어휘 조회 실패 시 캐시 없이 빈 dict — 어휘 없이 돌되 **제약이 없다는 사실**이 경고로 남는다.
+def _vocab() -> dict[str, list[str]]:
+    """경로 → 값 어휘. core 카탈로그가 정본이다(사본을 만들지 않는다).
+
+    **별표 추출(`rag/triage`)과 같은 출처를 쓴다.** 어휘가 갈리면 「서식이 제시한 값」과
+    「별표 payload의 키」와 「추출이 받아들이는 값」이 서로 달라지고, 그 불일치는 에러가
+    아니라 **룩업이 늘 기본값으로 떨어지는 침묵**으로 나타난다.
+    """
+    try:
+        from app.rag.triage import fact_paths
+        return {f["path"]: f["values"] for f in fact_paths() if f.get("values")}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("값 어휘를 가져오지 못했다 — 어휘 제약 없이 추출한다: %s", exc)
+        return {}
 
 # 종류 → 뽑을 EvalContext 경로 (`evidence-extraction-agent.md` §종류별 추출 대상).
 # 여기 없는 종류는 추출 대상이 아니다 — 계약서·기타는 판정 사실이 정해져 있지 않다.
@@ -54,9 +69,27 @@ TARGETS: dict[str, dict[str, str]] = {
         "participants.has_kickback_law_target": "공직자·언론인·교직원 등 청탁금지법 대상이 포함됐는가",
     },
     "TRIP_PLAN": {
-        "trip.trip_type": "출장 구분(국내/해외)",
-        "trip.region_grade": "지역 등급 표기(가/나/다 또는 A/B/C 등 문서 표기 그대로)",
+        #  **「문서 표기 그대로」를 버렸다.** 그러면 별표 payload의 키와 안 맞을 때 룩업이
+        #  조용히 `*`로 떨어진다(에러도 로그도 없다). 이제 값 어휘가 프롬프트에 실리고
+        #  어휘 밖 값은 `_collect`가 버린다.
+        "trip.trip_type": "출장 구분",
+        "trip.region_grade": "지역 등급. 해외출장이 아니면 넣지 마세요",
         "trip.lodging_amount_per_night": "1박당 숙박비(원 단위 정수)",
+    },
+    "DINING_REPORT": {
+        "dining.gathering_unit": "회식 단위 — 체크된 항목",
+        "dining.gathering_type": "회식 유형 — 체크된 항목",
+        "dining.includes_alcohol": "주류 포함 여부",
+        "dining.is_secondary_venue": "2차 이상 포함 여부",
+        "participants.verified_participant_count": "총 참석 인원",
+        "participants.verified_external_count": "사외 참석 인원. 「사외 참석자 없음」에 체크돼 있으면 0",
+        "approval.pre_approval_obtained": "사전승인을 받았는가. 「사전승인 대상 아님」 체크면 넣지 마세요",
+    },
+    "HOSPITALITY_REPORT": {
+        "category.item_type": "지출 세부유형 — 체크된 항목",
+        "participants.has_kickback_law_target": "청탁금지법 대상자 포함 여부",
+        "participants.verified_participant_count": "총 참석 인원",
+        "participants.verified_external_count": "사외 인원. 전원 내부면 0",
     },
     # RECEIPT은 여기 없다 — `app/api/evidence.py`·`app/api/lab.py` 둘 다 kind=="RECEIPT"를
     # `receipt.py::read_receipt`로 분기해 이 함수는 호출되지 않는다(별도 도구·별도 프롬프트).
@@ -130,7 +163,8 @@ def _value_of(finding: dict) -> Any:
             "string": finding.get("string")}.get(finding.get("value_kind"))
 
 
-def _collect(findings: list[dict], allowed: set[str]) -> tuple[dict, dict, list, list]:
+def _collect(findings: list[dict], allowed: set[str],
+             vocab: dict[str, list[str]] | None = None) -> tuple[dict, dict, list, list]:
     extracted, confidence, spans, dropped = {}, {}, [], []
     for finding in findings:
         path = finding.get("path", "")
@@ -153,6 +187,13 @@ def _collect(findings: list[dict], allowed: set[str]) -> tuple[dict, dict, list,
         string_value = value if isinstance(value, str) else None
         if is_uncertain(quote, string_value):
             dropped.append(f"{path}={value!r}(근거 문구가 불확실성을 표시함)")
+            continue
+        # **어휘가 있는 경로는 그 값이어야 한다.** 문서 표기(「가등급」·「1박 이상」)를
+        # 그대로 받으면 별표 payload의 키와 안 맞아 룩업이 늘 `*`로 떨어진다 — 에러도
+        # 로그도 없는 침묵이라, 여기서 버리고 그 사실을 경고로 남긴다.
+        choices = (vocab or {}).get(path)
+        if choices and value not in choices:
+            dropped.append(f"{path}={value!r}(값 어휘 밖 — {'/'.join(choices)})")
             continue
         # 인원수는 정수여야 한다(모델이 4.0을 낼 수 있다).
         if path.endswith("_count") and isinstance(value, float):
@@ -182,7 +223,13 @@ def read_evidence_document(file_ref: str, kind: str) -> dict[str, Any]:
 
     path: Path = media.resolve(file_ref)
     images, warnings = client.load_images(path)
-    listing = "\n".join(f"- {p}: {desc}" for p, desc in targets.items())
+    vocab = _vocab()
+    #  고를 수 있는 값을 **보여준다.** 안 보여주고 받기만 거절하면 모델은 계속 문서 표기를
+    #  내고 그 항목은 매번 버려진다 — 사용자에겐 "왜 안 읽혔지"만 남는다.
+    listing = "\n".join(
+        f"- {p}: {desc}" + (f"\n    (이 값 중 하나: {' | '.join(vocab[p])})" if p in vocab else "")
+        for p, desc in targets.items()
+    )
     raw = client.ask(
         _SYSTEM,
         f"문서 종류: {kind}\n\n[뽑을 항목]\n{listing}\n\n위 항목만 판독해 주세요.",
@@ -190,7 +237,8 @@ def read_evidence_document(file_ref: str, kind: str) -> dict[str, Any]:
         _schema(sorted(targets)),
     )
 
-    extracted, confidence, spans, dropped = _collect(raw.get("findings") or [], set(targets))
+    extracted, confidence, spans, dropped = _collect(
+        raw.get("findings") or [], set(targets), vocab)
     warnings = [*warnings, *(raw.get("warnings") or [])]
     if dropped:
         warnings.append(f"근거 부족·허용 밖 항목 {len(dropped)}건을 버렸다: {', '.join(dropped[:5])}")

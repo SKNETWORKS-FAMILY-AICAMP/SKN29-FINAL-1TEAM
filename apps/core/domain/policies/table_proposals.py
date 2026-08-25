@@ -29,11 +29,23 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
-from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS
+from .eval_context import EVAL_CONTEXT_SCHEMA_PATHS, enum_values_by_path
 from .models import PolicyTable, PolicyTableProposal, TableProposalStatus
 
 #: 별표 key 표기 — `ctx.policy.<이름>` 파생에 쓰이므로 식별자로 안전해야 한다.
 KEY_RE = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
+
+
+def _keys_at(node, depth: int) -> list[str]:
+    """축을 `depth`번 따라간 자리의 **키들**. 값 어휘 대조에 쓴다."""
+    if not isinstance(node, dict):
+        return []
+    if depth <= 0:
+        return list(node.keys())
+    out: list[str] = []
+    for v in node.values():
+        out += _keys_at(v, depth - 1)
+    return out
 
 
 class ProposalError(ValueError):
@@ -63,6 +75,23 @@ def validate(proposal: PolicyTableProposal) -> list[str]:
             + " — 실재하는 경로로 바꾸거나, 표에 값이 하나뿐이면 축을 비우세요."
               " (없는 축은 에러 없이 항상 기본값으로 떨어져 표가 무력해집니다.)"
         )
+
+    #  **축이 실재하기만 해서는 부족하다.** payload 키가 그 축의 값 어휘 밖이면 룩업이
+    #  매번 `*`로 떨어진다 — 에러도 로그도 없이 표가 무력해진다(실측: 업무추진비 별표1이
+    #  `category.value`로 통과했는데 키는 음식물·선물·경조사비였다).
+    vocab = enum_values_by_path()
+    for depth, axis in enumerate(axes):
+        allowed = vocab.get(axis)
+        if not allowed:
+            continue
+        keys = _keys_at(proposal.payload, depth)
+        unknown = [k for k in keys if k != "*" and k not in allowed]
+        if unknown:
+            problems.append(
+                f"`{axis}` 축의 값이 아닌 항목이 있습니다: " + ", ".join(unknown[:6])
+                + f" — 이 축이 가질 수 있는 값은 {', '.join(allowed)} 입니다."
+                  " 축을 바꾸거나 항목 표기를 맞추세요(안 맞으면 룩업이 늘 기본값으로 떨어집니다)."
+            )
 
     payload = proposal.payload
     if not isinstance(payload, dict) or not payload:

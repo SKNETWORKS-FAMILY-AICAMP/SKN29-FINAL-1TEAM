@@ -34,6 +34,50 @@ class Category(models.TextChoices):
     OTHER = "기타", "기타"
 
 
+class TripType(models.TextChoices):
+    """출장 구분 — `policy.lodging_limit` 별표의 축 1.
+
+    **표기가 곧 별표 payload의 키다.** 바꾸면 한도가 조용히 와일드카드로 떨어진다
+    (`accounts.OrgCode`와 같은 경고 — 에러도 플래그도 없다). 지금은 증빙 서식의 선택지도
+    이 목록이므로, 셋이 한 줄로 꿰여 있어야 판정이 성립한다.
+    """
+    DOMESTIC_DAY = "국내당일", "국내출장(당일)"
+    DOMESTIC_STAY = "국내숙박", "국내출장(1박 이상)"
+    OVERSEAS = "해외", "해외출장"
+
+
+class RegionGrade(models.TextChoices):
+    """출장 지역등급 — `policy.lodging_limit` 별표의 축 2. 해외출장에만 의미가 있다."""
+    A = "A", "A등급(미국·유럽·중동)"
+    B = "B", "B등급(일본·동남아·중국)"
+    C = "C", "C등급(그 밖의 지역)"
+
+
+class GatheringUnit(models.TextChoices):
+    """회식 단위 — 1인당 식대 한도·사전승인 기준의 축.
+
+    이 축이 없어서 `dining_per_person_limit_table`이 **전역 단일값**으로만 존재했다
+    (실측 2026-08-25: 회식 별표4의 팀5만·부서6만·본부7만·전사8만을 구분하지 못했고,
+    모델이 `user.job_title`로 아무거나 골랐다).
+    """
+    TEAM = "팀", "팀 회식"
+    DEPARTMENT = "부서", "부서 회식"
+    DIVISION = "본부", "본부 회식"
+    COMPANY = "전사", "전사 회식"
+
+
+class GatheringType(models.TextChoices):
+    """회식 유형 — 필요 증빙·승인권자가 이 값으로 갈린다(회식 별표1·2)."""
+    OFFICIAL = "공식", "공식 회식"
+    TEAM = "팀", "팀 회식"
+    PROJECT = "프로젝트", "프로젝트 회식"
+    WORKSHOP = "워크숍", "워크숍 식사"
+    WELCOME = "환영회", "신규 입사자 환영회"
+    FAREWELL = "송별회", "퇴사자 송별회"
+    ACHIEVEMENT = "성과축하", "성과 달성 축하 회식"
+    CLIENT = "거래처동반", "거래처 동반 회식"
+
+
 class ItemType(models.TextChoices):
     """지출 세부유형 — 청탁금지 한도 룩업 키(`kickback_limit_table`)를 겸한다.
 

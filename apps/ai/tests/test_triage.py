@@ -243,9 +243,9 @@ def test_페이지에_걸친_표는_한_덩어리로_읽는다(chat):
         "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "숙박비 상한입니다.",
     }])
     rows = triage.extract_tables([
-        FakeChunk("x2#01", "| 등급 | 상한 |\n| A | 250,000 |", parent_chunk_id="x2#P",
+        FakeChunk("x2#01", "| 직책 | 상한 |\n| 부장 | 250,000 |", parent_chunk_id="x2#P",
                   page_start=5, page_end=5),
-        FakeChunk("x2#02", "| C | 150,000 |", parent_chunk_id="x2#P",
+        FakeChunk("x2#02", "| 그 외 | 150,000 |", parent_chunk_id="x2#P",
                   page_start=6, page_end=6),
     ], AXES)
     assert len(rows) == 1, "조각마다 제안이 생기면 반쪽 표가 승인 대기에 올라온다"
@@ -292,6 +292,18 @@ def test_지어낸_숫자는_재시도로_되돌린다(chat):
     assert all(c["level"] != "warn" for c in rows[0]["checks"])
 
 
+def test_만원_표기는_지어낸_숫자가_아니다(chat):
+    """실측 2026-08-25: 회식 별표4 원문이 "5만원"이라 payload의 50000이 「원문에 없는
+    숫자」로 걸렸다 — **검사가 맞는 값을 틀렸다고 하면 사람이 검사를 안 믿게 된다.**"""
+    chat([{
+        "is_threshold_table": True, "skip_reason": "", "key": "dining_limit_table",
+        "title": "별표4", "key_axes": [], "payload_json": json.dumps({"value": 50000}),
+        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
+    }])
+    row = triage.extract_tables([FakeChunk("c1", "| 팀 회식 | 5만원 |")], AXES)[0]
+    assert all(c["level"] != "warn" for c in row["checks"]), row["checks"]
+
+
 def test_고쳐지지_않은_문제는_숨기지_않는다(chat):
     """재시도로도 안 풀리면 **승인 화면이 그대로 띄운다** — 조용히 통과시키지 않는다."""
     bad = {"is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
@@ -301,6 +313,63 @@ def test_고쳐지지_않은_문제는_숨기지_않는다(chat):
     rows = triage.extract_tables([FakeChunk("c1", "| 한도 | 30,000원 |")], AXES)
     warns = [c for c in rows[0]["checks"] if c["level"] == "warn"]
     assert warns and "999999" in warns[0]["message"]
+
+
+def test_축의_값_어휘가_아니면_재시도한다(chat):
+    """**축이 실재하기만 해서는 부족하다.** 실측 2026-08-25: 업무추진비 별표1이
+    `category.value` 축으로 「검사 통과」였는데 키는 음식물·선물·경조사비였다 —
+    그 축의 값으로는 절대 안 나오므로 룩업이 매번 `*`로 떨어진다(에러도 로그도 없다)."""
+    axes = [
+        {"path": "category.value", "type": "string", "desc": "비용분류",
+         "values": ["회식", "회의", "식대", "출장", "접대", "기타"]},
+        {"path": "category.item_type", "type": "string", "desc": "지출 세부유형",
+         "values": ["식사", "선물", "경조사", "상품권", "행사성", "숙박", "교통"]},
+    ]
+    wrong = {"is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
+             "title": "별표1", "key_axes": ["category.value"],
+             "payload_json": json.dumps({"식사": 50000, "선물": 50000}),
+             "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""}
+    right = {**wrong, "key_axes": ["category.item_type"]}
+    calls = chat([wrong, right])
+    row = triage.extract_tables(
+        [FakeChunk("c1", "| 구분 | 1인당 한도 |\n| 식사 | 50,000 |\n| 선물 | 50,000 |")], axes)[0]
+    assert len(calls) == 2, "어휘가 안 맞으면 다시 만들게 한다"
+    assert "category.value" in calls[1]["user"] and "식사" in calls[1]["user"]
+    assert row["keyAxes"] == ["category.item_type"]
+    assert all(c["level"] != "warn" for c in row["checks"])
+
+
+def test_어휘_전체를_채우면_잡는다(chat):
+    """실측 2026-08-25: 「키를 값 목록의 표기로 쓰라」는 지시를 모델이 **어휘 전체를 채우라**로
+    읽어 `{"회식":50000,"회의":50000,...}`를 냈고 다른 검사를 전부 통과했다 — 조용히 틀렸는데
+    ✅로 보이는, 이 검사들이 막으려던 바로 그 상태다."""
+    axes = [{"path": "category.value", "type": "string", "desc": "비용분류",
+             "values": ["회식", "회의", "식대", "출장", "접대", "기타"]}]
+    flat = {"is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
+            "title": "별표1", "key_axes": ["category.value"],
+            "payload_json": json.dumps({v: 50000 for v in
+                                        ["회식", "회의", "식대", "출장", "접대", "기타"]}),
+            "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""}
+    chat([flat, flat])
+    raw = "| 구분 | 1인당 한도 |" + '\\n' + "| 음식물 | 50,000 |" + '\\n' + "| 선물 | 50,000 |"
+    row = triage.extract_tables([FakeChunk("c1", raw)], axes)[0]
+    warns = [c["message"] for c in row["checks"] if c["level"] == "warn"]
+    assert any("찾을 수 없는 항목" in m for m in warns), warns
+
+
+def test_축_어휘를_프롬프트에_보여준다(chat):
+    """고를 수 있는 값을 안 보여주고 「목록에서 고르라」고만 하면 모델은 표 머리글을
+    그대로 쓰고, 그 표기는 판정에서 영영 안 맞는다."""
+    axes = [{"path": "category.item_type", "type": "string", "desc": "세부유형",
+             "values": ["식사", "선물", "경조사"]}]
+    calls = chat([{
+        "is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
+        "title": "별표1", "key_axes": ["category.item_type"],
+        "payload_json": json.dumps({"식사": 50000}),
+        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
+    }])
+    triage.extract_tables([FakeChunk("c1", "| 식사 | 50,000 |")], axes)
+    assert "값: 식사 | 선물 | 경조사" in calls[0]["user"]
 
 
 def test_활용_안내를_사람_말로_붙인다(chat):

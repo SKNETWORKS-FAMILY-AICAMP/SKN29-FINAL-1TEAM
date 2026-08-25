@@ -71,7 +71,9 @@ class FieldSpec(NamedTuple):
     """
     type: str            # number | integer | boolean | string | time
     desc: str
-    enum: str = ""       # vocab.card_type | vocab.org | vocab.industry | vocab.category | vocab.item_type
+    enum: str = ""       # vocab.card_type | vocab.org | vocab.industry | vocab.category
+                         # | vocab.item_type | vocab.trip_type | vocab.region_grade
+                         # | vocab.gathering_unit | vocab.gathering_type
 
 
 _F = FieldSpec
@@ -197,12 +199,27 @@ _SCHEMA_FIELDS: dict[str, dict[str, FieldSpec]] = {
     },
     # 출장 도메인 미구현 — 숙박 한도 판정에 필요한 3개만 남긴다(별표 축 2 + 비교 대상 1).
     "trip": {
-        "trip_type": _F("string", "출장 구분. `policy.lodging_limit` 별표의 축 1."),
-        "region_grade": _F("string", "출장 지역등급. `policy.lodging_limit` 별표의 축 2."),
+        #  **어휘가 없으면 검사가 값을 못 지킨다.** 실측 2026-08-25: 출장비 별표2가
+        #  2단 키에 `항공권`·`숙박비`·`일비`(열 이름)를 넣고도 통과했다 — 깊이·리프만 맞으면
+        #  구조 검사는 지나가고, `category.*`였다면 잡혔을 일이다.
+        "trip_type": _F(
+            "string", "출장 구분. `policy.lodging_limit` 별표의 축 1.", "vocab.trip_type"),
+        "region_grade": _F(
+            "string", "출장 지역등급. `policy.lodging_limit` 별표의 축 2.", "vocab.region_grade"),
         "lodging_amount_per_night": _F("number", "1박 숙박비(원)."),
     },
     # 분할결제(same_event_multiple_merchants)는 이상탐지(Risk) 영역으로 이관.
     "dining": {
+        #  **증빙 서식에서만 온다** — 저장 컬럼을 두지 않는다. 「회식 실시 확인서」의
+        #  체크 항목이 그대로 이 값이 되고(`collect_from_attachments`가 경로째 얹는다),
+        #  없으면 null로 남아 미해소 가드가 판정을 검토로 낮춘다. 화면 입력칸을 만들면
+        #  자기신고가 문서 확인값과 같은 자리를 쓰게 되므로 지금은 두지 않는다.
+        "gathering_unit": _F(
+            "string", "회식 단위. 1인당 식대 한도·사전승인 기준의 축이다(증빙 서식에서 확인).",
+            "vocab.gathering_unit"),
+        "gathering_type": _F(
+            "string", "회식 유형. 필요 증빙·승인권자가 이 값으로 갈린다(증빙 서식에서 확인).",
+            "vocab.gathering_type"),
         "includes_alcohol": _F("boolean", "주류가 포함됐는가."),
         "is_secondary_venue": _F("boolean", "2차(차수 이어붙임) 성격의 결제인가."),
     },
@@ -289,6 +306,7 @@ def schema_catalog(policy_extra: dict[str, FieldSpec] | None = None) -> dict[str
     강제하는 목록은 같아야 하므로, 고정 8칸만 싣지 않는다 — 모델이 쓸 수 있는 임계값을
     모르면 숫자 리터럴을 박는다.
     """
+    _vocab = enum_values()
     fields_by_section = dict(_SCHEMA_FIELDS)
     if policy_extra:
         fields_by_section["policy"] = {**fields_by_section["policy"], **policy_extra}
@@ -305,6 +323,10 @@ def schema_catalog(policy_extra: dict[str, FieldSpec] | None = None) -> dict[str
                         "type": spec.type,
                         "desc": spec.desc,
                         "enum": spec.enum or None,
+                        #  이름만으로는 아무도 값을 모른다. **어휘를 같이 내린다** —
+                        #  프롬프트가 보여주는 목록과 검사가 쓰는 목록이 갈리면
+                        #  "목록에서 고르라"는 지시가 검증되지 않는다.
+                        "enumValues": _vocab.get(spec.enum or "") or None,
                     }
                     for name, spec in fields.items()
                 ],
@@ -360,3 +382,58 @@ def validate_graph_vars(graph: Any, allowed_paths: frozenset[str] | None = None)
         condition = node.get("condition", {}) if isinstance(node, dict) else node.condition
         missing.update(extract_vars(condition) - allowed_paths)
     return missing
+
+
+# ─────────────────────────────────────────────────────────── 값 어휘(enum)
+
+def enum_values() -> dict[str, list[str]]:
+    """`FieldSpec.enum` 이름 → **실제 값 목록**. 정본에서 조립한다(사본을 만들지 않는다).
+
+    ## 왜 값까지 실어야 하나
+
+    축이 **실재하는 경로이기만 하면** 지금까지 검사를 통과했다. 그런데 payload 키가 그 축의
+    값으로 나올 수 없는 표기면(예: 축 `category.value`인데 키가 「음식물·선물·경조사비」)
+    룩업은 **매번 `*`로 떨어진다** — 에러도 로그도 없다. 실측 2026-08-25에 업무추진비
+    별표1이 정확히 그 상태로 「검사 통과」였다(맞는 축은 `category.item_type`).
+
+    경로 유효성만으로는 못 잡는다. **값 어휘까지 대조해야** 잡힌다.
+
+    지연 import는 순환 참조를 피하기 위한 것이다(`settlements` → `policies` 방향이 이미 있다).
+    """
+    from domain.accounts.models import JobTitle
+    from domain.cards.models import CardType
+    from domain.settlements.models import (
+        Category, GatheringType, GatheringUnit, ItemType, RegionGrade, TripType,
+    )
+    from domain.transactions import industry as industry_vocab
+
+    #  **직책만 DB다.** `JobTitle`은 코드 상수가 아니라 마스터 데이터라(조직 개편으로
+    #  바뀐다) 표기가 별표 키와 어긋나는 일이 실제로 있다 — `org_codes.check_table_keys()`가
+    #  이미 그 대조를 한다. 여기서는 카탈로그가 그 표기를 그대로 싣게 한다.
+    try:
+        org = [j.name for j in JobTitle.objects.filter(is_active=True).order_by("rank")]
+    except Exception:  # noqa: BLE001  # 마이그레이션 전·DB 없음 — 어휘 없이 돈다
+        org = []
+    return {
+        "vocab.category": [c.value for c in Category],
+        "vocab.item_type": [c.value for c in ItemType],
+        "vocab.card_type": [c.value for c in CardType],
+        "vocab.org": org,
+        "vocab.industry": [c.label for c in industry_vocab.IndustryCode],
+        "vocab.trip_type": [c.value for c in TripType],
+        "vocab.region_grade": [c.value for c in RegionGrade],
+        "vocab.gathering_unit": [c.value for c in GatheringUnit],
+        "vocab.gathering_type": [c.value for c in GatheringType],
+    }
+
+
+def enum_values_by_path() -> dict[str, list[str]]:
+    """EvalContext 경로 → 값 어휘. 어휘가 없는 경로는 담지 않는다."""
+    vocab = enum_values()
+    out: dict[str, list[str]] = {}
+    for section, fields in _SCHEMA_FIELDS.items():
+        for name, spec in fields.items():
+            values = vocab.get(spec.enum or "")
+            if values:
+                out[f"{section}.{name}"] = values
+    return out
