@@ -12,9 +12,23 @@
 //
 // `SKIPPED`는 AI가 "임계값 표가 아니다"라고 본 것이다. 조용히 버리지 않고 사유와 함께
 // 남긴다 — 안 그러면 담당자는 「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
+
+/** 파이프 마크다운 표(GFM)를 헤더/행으로 나눈다. 구분선(---)이 없거나 못 알아보는
+ *  형식이면 null — 잘못 잘라 보여주는 것보다 원문(pre) 그대로가 낫다. */
+function parseMarkdownTable(md: string): { headers: string[]; rows: string[][] } | null {
+  const lines = md.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'))
+  if (lines.length < 2) return null
+  const splitRow = (line: string) =>
+    line.slice(1, line.endsWith('|') ? -1 : undefined).split('|').map((c) => c.trim())
+  const sepCells = splitRow(lines[1])
+  if (!sepCells.length || !sepCells.every((c) => /^:?-{2,}:?$/.test(c))) return null
+  const headers = splitRow(lines[0])
+  const rows = lines.slice(2).map(splitRow).filter((r) => r.some((c) => c))
+  return rows.length ? { headers, rows } : null
+}
 
 const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: string }> = {
   PENDING: { label: '승인 대기', tone: 'var(--tone-amber)' },
@@ -117,6 +131,9 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
   const [rejecting, setRejecting] = useState(false)
   const locked = proposal.status !== 'PENDING' || busy
   const meta = STATUS_META[proposal.status]
+  const parsedTable = useMemo(() => parseMarkdownTable(proposal.rawMarkdown), [proposal.rawMarkdown])
+  const pageLabel = proposal.pageStart === proposal.pageEnd
+    ? `p.${proposal.pageStart}` : `p.${proposal.pageStart}~${proposal.pageEnd}`
 
   return (
     <div className="pd-clause">
@@ -157,8 +174,23 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
       {open && (
         <div className="pd-clause-body">
           {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다. */}
-          <div className="text-meta">문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})</div>
-          <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
+          <div className="text-meta">문서에 있는 표 원문 ({pageLabel})</div>
+          {parsedTable ? (
+            <div className="pd-table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>{parsedTable.headers.map((h, i) => <th key={i}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {parsedTable.rows.map((row, ri) => (
+                    <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
+          )}
 
           {/* AI가 표가 아니라고 본 건 여기서 끝난다 — 편집·승인 UI를 띄우지 않는다. */}
           {proposal.status === 'SKIPPED' && (
