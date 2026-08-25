@@ -34,11 +34,11 @@
 출장비_사용규정,Layout,Element Detection F1,0.94,document
 출장비_사용규정,Layout,Missing Elements,3.0,document
 출장비_사용규정,Layout,Extra Elements,5.0,document
-회식_운영규정,Layout,Element Detection Precision,0.818,document
-회식_운영규정,Layout,Element Detection Recall,0.94,document
-회식_운영규정,Layout,Element Detection F1,0.875,document
-회식_운영규정,Layout,Missing Elements,4.0,document
-회식_운영규정,Layout,Extra Elements,14.0,document
+회식_사용규정,Layout,Element Detection Precision,0.818,document
+회식_사용규정,Layout,Element Detection Recall,0.94,document
+회식_사용규정,Layout,Element Detection F1,0.875,document
+회식_사용규정,Layout,Missing Elements,4.0,document
+회식_사용규정,Layout,Extra Elements,14.0,document
 법인카드_사용규정,Hierarchy,Heading Detection F1,0.964,document
 법인카드_사용규정,Hierarchy,Heading Level Acc (strict),0.037,document
 법인카드_사용규정,Hierarchy,Heading Level Acc (offset),0.963,document
@@ -81,12 +81,12 @@
 출장비_사용규정,Hierarchy,Parent-Child Acc,0.5,document
 출장비_사용규정,Hierarchy,Document Order Acc,0.85,document
 출장비_사용규정,Hierarchy,Level Offset,-1.0,document
-회식_운영규정,Hierarchy,Heading Detection F1,0.878,document
-회식_운영규정,Hierarchy,Heading Level Acc (strict),0.056,document
-회식_운영규정,Hierarchy,Heading Level Acc (offset),0.889,document
-회식_운영규정,Hierarchy,Parent-Child Acc,0.722,document
-회식_운영규정,Hierarchy,Document Order Acc,0.889,document
-회식_운영규정,Hierarchy,Level Offset,-1.0,document
+회식_사용규정,Hierarchy,Heading Detection F1,0.878,document
+회식_사용규정,Hierarchy,Heading Level Acc (strict),0.056,document
+회식_사용규정,Hierarchy,Heading Level Acc (offset),0.889,document
+회식_사용규정,Hierarchy,Parent-Child Acc,0.722,document
+회식_사용규정,Hierarchy,Document Order Acc,0.889,document
+회식_사용규정,Hierarchy,Level Offset,-1.0,document
 법인카드_사용규정,Table,Table Detection F1,1.0,document
 법인카드_사용규정,Table,Missing Tables,0.0,document
 법인카드_사용규정,Table,False Positive Tables,0.0,document
@@ -115,10 +115,10 @@
 출장비_사용규정,Table,Missing Tables,0.0,document
 출장비_사용규정,Table,False Positive Tables,0.0,document
 출장비_사용규정,Table,Split Tables,1.0,document
-회식_운영규정,Table,Table Detection F1,0.889,document
-회식_운영규정,Table,Missing Tables,1.0,document
-회식_운영규정,Table,False Positive Tables,1.0,document
-회식_운영규정,Table,Split Tables,2.0,document
+회식_사용규정,Table,Table Detection F1,0.889,document
+회식_사용규정,Table,Missing Tables,1.0,document
+회식_사용규정,Table,False Positive Tables,1.0,document
+회식_사용규정,Table,Split Tables,2.0,document
 법인카드_사용규정,Table,Cell Accuracy,0.5,table 1
 법인카드_사용규정,Table,Cell Accuracy (strict),0.5,table 1
 법인카드_사용규정,Table,Cell Accuracy,1.0,table 2
@@ -167,19 +167,19 @@
 출장비_사용규정,Table,Cell Accuracy (strict),1.0,table 2
 출장비_사용규정,Table,Cell Accuracy,1.0,table 3
 출장비_사용규정,Table,Cell Accuracy (strict),0.8,table 3
-회식_운영규정,Table,Cell Accuracy,1.0,table 2
-회식_운영규정,Table,Cell Accuracy (strict),0.667,table 2
-회식_운영규정,Table,Cell Accuracy,1.0,table 3
-회식_운영규정,Table,Cell Accuracy (strict),0.8,table 3
-회식_운영규정,Table,Cell Accuracy,1.0,table 4
-회식_운영규정,Table,Cell Accuracy (strict),0.833,table 4
-회식_운영규정,Table,Cell Accuracy,1.0,table 5
-회식_운영규정,Table,Cell Accuracy (strict),0.85,table 5
-회식_운영규정,Table,Cell Accuracy,1.0,table 6
-회식_운영규정,Table,Cell Accuracy (strict),0.833,table 6
-회식_운영규정,Table,Cell Accuracy,1.0,table 7
-회식_운영규정,Table,Cell Accuracy (strict),0.833,table 7
-회식_운영규정,Table,Cell Accuracy,1.0,table 8
-회식_운영규정,Table,Cell Accuracy (strict),0.58,table 8
-회식_운영규정,Table,Cell Accuracy,0.898,table 9
-회식_운영규정,Table,Cell Accuracy (strict),0.755,table 9
+회식_사용규정,Table,Cell Accuracy,1.0,table 2
+회식_사용규정,Table,Cell Accuracy (strict),0.667,table 2
+회식_사용규정,Table,Cell Accuracy,1.0,table 3
+회식_사용규정,Table,Cell Accuracy (strict),0.8,table 3
+회식_사용규정,Table,Cell Accuracy,1.0,table 4
+회식_사용규정,Table,Cell Accuracy (strict),0.833,table 4
+회식_사용규정,Table,Cell Accuracy,1.0,table 5
+회식_사용규정,Table,Cell Accuracy (strict),0.85,table 5
+회식_사용규정,Table,Cell Accuracy,1.0,table 6
+회식_사용규정,Table,Cell Accuracy (strict),0.833,table 6
+회식_사용규정,Table,Cell Accuracy,1.0,table 7
+회식_사용규정,Table,Cell Accuracy (strict),0.833,table 7
+회식_사용규정,Table,Cell Accuracy,1.0,table 8
+회식_사용규정,Table,Cell Accuracy (strict),0.58,table 8
+회식_사용규정,Table,Cell Accuracy,0.898,table 9
+회식_사용규정,Table,Cell Accuracy (strict),0.755,table 9

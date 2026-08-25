@@ -34,7 +34,7 @@ AI_RESPONSE = {
         "violation_verdict": "VIOLATION",
         "review_reasons": ["1인당 한도 초과"],
         "recommendation": "SUPPLEMENT",
-        "citations": [{"doc": "회식_운영규정", "article": "제5조", "quote_summary": "1인당 5만원"}],
+        "citations": [{"doc": "회식_사용규정", "article": "제5조", "quote_summary": "1인당 5만원"}],
         "similar_cases": [{"case_id": "C-12", "outcome": "RETURN", "relevance": "유사 금액대"}],
     },
 }
@@ -224,7 +224,7 @@ class ReviewWorkspaceContractTests(TestCase):
             anomaly_score=0.91,
             reasons=[{"feature": "amount", "weight": 0.4}],
             anomaly_reasons=["1인당 한도 초과"],
-            rag_refs=[{"title": "1인당 5만원", "source": "회식_운영규정 제5조", "kind": "policy"}],
+            rag_refs=[{"title": "1인당 5만원", "source": "회식_사용규정 제5조", "kind": "policy"}],
             ai_recommendation="RETURN",
             risk_tier="HIGH",
             stage2_verdict={"violation_verdict": "VIOLATION", "recommendation": "SUPPLEMENT"},

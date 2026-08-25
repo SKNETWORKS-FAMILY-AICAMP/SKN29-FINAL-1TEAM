@@ -31,7 +31,7 @@ EXPECTED_PROFILE = {
     "법인카드_사용규정": "REGULATION",
     "업무추진비_사용규정": "REGULATION",
     "출장비_사용규정": "REGULATION",
-    "회식_운영규정": "REGULATION",
+    "회식_사용규정": "REGULATION",
     "법인세법": "LAW",
     "부가가치세법": "LAW",
     "여신전문금융업법": "LAW",
