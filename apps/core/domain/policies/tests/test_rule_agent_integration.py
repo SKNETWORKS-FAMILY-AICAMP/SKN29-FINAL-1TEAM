@@ -10,6 +10,7 @@
      **복제되지 않는다**(사람이 손댄 버전을 AI 생성물로 오인하지 않도록).
 """
 from django.test import TestCase
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from domain.accounts.models import Capability, Role, User
@@ -130,3 +131,43 @@ class GenerationMetaTests(TestCase):
         nxt = create_draft_version(graph)
         self.assertEqual(nxt.generation_meta, {})
         self.assertEqual(nxt.family_key, graph.family_key)
+
+class RuleGraphScopeFilterTests(TestCase):
+    """`GET /api/rules/?scope=&status=DRAFT` — Rule Agent가 「편집 중인 초안이 있나」를 묻는 창구.
+
+    이 필터가 없으면 Agent가 기존 초안을 못 찾고 **생성할 때마다 새 계열**을 만든다
+    (룰 콘솔이 초안으로 뒤덮이던 원인).
+    """
+
+    def setUp(self):
+        from domain.accounts.models import Capability as Cap
+
+        user = get_user_model().objects.create_user("acc", password="p")
+        user.extra_capabilities = [Cap.RULE_VIEW]
+        user.save()
+        self.client = APIClient()
+        self.client.force_authenticate(user)
+        self.draft = RuleGraph.objects.create(
+            name="식대 초안", scope="식대", status=RuleGraphStatus.DRAFT, version=1,
+        )
+        RuleGraph.objects.create(
+            name="식대 활성", scope="식대", status=RuleGraphStatus.ACTIVE, version=1,
+        )
+        RuleGraph.objects.create(
+            name="접대 초안", scope="접대", status=RuleGraphStatus.DRAFT, version=1,
+        )
+
+    def _names(self, **params):
+        rows = self.client.get("/api/rules/", params).json()
+        items = rows.get("results", rows) if isinstance(rows, dict) else rows
+        return {g["name"] for g in items}
+
+    def test_scope와_status를_함께_좁힌다(self):
+        self.assertEqual(self._names(scope="식대", status="DRAFT"), {"식대 초안"})
+
+    def test_규정_표기도_정규화해서_받는다(self):
+        """업로드·프롬프트가 「기업업무추진비」처럼 규정 원문 표기를 쓴다."""
+        self.assertEqual(self._names(scope="기업업무추진비", status="DRAFT"), {"접대 초안"})
+
+    def test_scope를_안_주면_전부_돌려준다(self):
+        self.assertEqual(len(self._names(status="DRAFT")), 2)

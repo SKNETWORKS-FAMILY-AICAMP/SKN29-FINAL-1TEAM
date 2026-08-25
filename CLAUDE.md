@@ -77,7 +77,7 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | Draft Agent | ✅ v2 | 사실 주입(기본 내역·첨부 추출·EvalContext) + **엔진 dry-run 판정 미리보기**. 판정을 LLM이 예측하지 않는다. 모델이 낼 수 없는 것은 스키마에서 뺀다. → [[draft-agent-v2]] |
-| Rule Agent (생성·대화·검증셋·서술) | ✅ 전 구간 | 규정 문서 → RAG → LLM 노드 → 결정론적 조립 → DRAFT 저장 → 구조검증 → 재시도. 대화형 수정·검증셋 자동생성·시뮬 보고서 서술 포함. → `docs/rule-agent-v0.md` · [[rule-agent-v1-implementation]] |
+| Rule Agent (생성·대화·검증셋·서술) | ✅ 전 구간 | 규정 문서 → RAG → LLM 노드 → 결정론적 조립 → DRAFT 저장 → 구조검증 → 재시도. 대화형 수정·검증셋 자동생성·시뮬 보고서 서술 포함. → `docs/rule-agent-v0.md` · [[rule-agent-v1-implementation]] · **기존 DRAFT에 이어 붙인다**(호출마다 새 계열이 생기던 것 해소) — 편집 중인 초안을 프롬프트에 실어 중복 생성을 막고, 구조검증 실패 시 **초안을 지우지 않고** 만든 노드만 걷어낸다 |
 | Risk Review Agent | ✅ v2 (등급 분기) | 1차 이상탐지 → **등급이 2차를 가른다**: `LOW`=LLM 0회 고정 안내(「검사 안 함」을 명시) / `MEDIUM`=fast / `HIGH`·미측정=heavy. 2차 산출물은 **구조화 보고서**(요약·특징·근거+판단·추가안내) — 근거 id를 서버가 대조해 지어낸 인용을 버리고, 근거 없는 판단은 참고사항으로 강등한다. → [[risk-review-agent-v2]] · **보고서 `highlights`는 화면에 없는 것만** — 이력·신고vs확인 인원·업종 신뢰도·미해소 사실을 **코드가 골라**(`review_notables`) 모델은 문장만 옮긴다 |
 | 증빙자료 추출 Agent | ✅ | 업로드가 곧 판독 트리거. 신뢰도 게이트 0.6 미만은 EvalContext에 안 올린다. → [[evidence-extraction-agent]] |
 | 결정 사유 초안 Agent | ✅ | 선택지는 서버 정본, LLM은 문장. ai 없어도 플래그 설명으로 폴백. → [[settlement-ui-rules]] §5 |

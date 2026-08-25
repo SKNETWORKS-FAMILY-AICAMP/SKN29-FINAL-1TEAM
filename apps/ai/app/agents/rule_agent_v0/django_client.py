@@ -82,6 +82,62 @@ def create_rule_graph_draft(
     }
 
 
+def find_open_draft(scope: str) -> dict[str, Any] | None:
+    """이 scope에 **편집 중인 초안**이 있으면 그 그래프(노드·라우팅 포함)를 돌려준다.
+
+    없으면 `None`. 조회 실패도 `None`이다 — 초안을 못 찾은 것과 초안이 없는 것을 여기서
+    가르지 않는다(둘 다 「새로 만든다」로 떨어지고, 그게 예전 동작이라 안전한 쪽이다).
+
+    여러 개면 **가장 최근 것**을 고른다. 원래 생성마다 새 계열이 생겨서 초안이 쌓인 이력이
+    있고, 그 상태에서 "아무거나"를 고르면 사람이 지금 보고 있는 것과 다른 그래프에 노드가
+    붙는다.
+    """
+    try:
+        rows = _request(
+            "GET", "/api/rules/", params={"scope": scope, "status": "DRAFT"},
+        ).json()
+    except Exception:  # noqa: BLE001
+        return None
+    items = rows.get("results", rows) if isinstance(rows, dict) else rows
+    if not items:
+        return None
+    return max(items, key=lambda g: (g.get("updatedAt") or "", g.get("id") or 0))
+
+
+def append_to_draft(
+    graph_id: str,
+    nodes: list[dict[str, Any]],
+    routings_by_node: dict[str, list[dict[str, str]]],
+    rewire: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """기존 초안에 노드를 **이어 붙인다**. 새 계열을 만들지 않는다.
+
+    `rewire`는 기존 노드의 라우팅을 고치는 지시다 — 선형 체인이라 새 노드를 끼우려면
+    직전 노드의 `NO_MATCH`가 새 노드를 가리켜야 한다. 안 고치면 새 노드는 **그래프에
+    달려만 있고 아무도 도달하지 못한다**(엔진이 순회하지 않으므로 조용히 무용해진다).
+    """
+    created: list[str] = []
+    for node in nodes:
+        node_key = node["node_key"]
+        _request("POST", f"/api/rules/{graph_id}/nodes/", json={"nodeKey": node_key})
+        created.append(node_key)
+        _request(
+            "PATCH", f"/api/rules/{graph_id}/nodes/{node_key}/",
+            json={
+                "condition": node["condition"],
+                "conditionText": node["condition_text"],
+                "action": node["action"],
+                "routings": routings_by_node.get(node_key, []),
+            },
+        )
+    for fix in (rewire or []):
+        _request(
+            "PATCH", f"/api/rules/{graph_id}/nodes/{fix['node_key']}/",
+            json={"routings": fix["routings"]},
+        )
+    return {"graph_id": graph_id, "created_nodes": created}
+
+
 def simulate_graph(graph_id: str, narrate: bool = True) -> dict[str, Any]:
     """검증 시뮬레이션 실행 — 구조검증(`validate_graph`) + 검증셋/직전달 내역 판정.
 
