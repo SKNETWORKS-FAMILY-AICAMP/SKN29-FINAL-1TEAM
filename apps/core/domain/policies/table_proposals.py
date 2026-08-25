@@ -89,6 +89,18 @@ def _payload_problems(payload: dict, axes: list[str]) -> list[str]:
             problems.append("축이 없는 표의 값은 스칼라여야 합니다.")
         return problems
 
+    #  축을 선언해 놓고 `{"value": …}`(축 없는 표의 예약 키)로 온 경우. 구조 검사는
+    #  통과한다 — 축 값이 문자열 "value"인 행으로 읽히기 때문이다. 그러면 그 표는
+    #  **승인은 되는데 영원히 해소되지 않는다**(직책이 "value"인 사람은 없다).
+    #  실측으로 잡았다: LLM이 축은 고르고 payload는 단일값으로 낸 제안이 200으로 통과했다.
+    if set(payload) == {"value"}:
+        problems.append(
+            f'축({", ".join(axes)})을 선언했는데 표 내용이 `{{"value": …}}` 한 칸입니다 — '
+            "축 값별로 나누거나(예: `{\"부서장\": 30000, \"*\": 20000}`), 값이 하나뿐이면 "
+            "축을 비우세요. 지금 형태로 승인하면 이 표는 아무 건에도 걸리지 않습니다."
+        )
+        return problems
+
     def walk(node: Any, depth: int, path: str) -> None:
         if depth == 0:
             if isinstance(node, dict):

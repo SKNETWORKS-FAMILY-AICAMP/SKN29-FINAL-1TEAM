@@ -46,6 +46,8 @@ export function PolicyDocuments() {
   // 조항이 수십 개인 문서에서 "지금 할 일"만 보기 위한 필터. 기본은 전체 —
   // 필터를 기본값으로 켜두면 안 보이는 조항이 있다는 걸 아무도 모른다.
   const [onlyActionable, setOnlyActionable] = useState(false)
+  //  제안 하나에 대한 실패 사유 — 카드 안에서 보여주려고 id와 함께 들고 있는다.
+  const [proposalError, setProposalError] = useState<{ id: number; message: string } | null>(null)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -182,14 +184,24 @@ export function PolicyDocuments() {
       await loadClauses(selectedId)
     }, '별표 수정을 저장하지 못했습니다.')
 
-  const decideProposal = (
+  //  ⚠️ 결정 실패는 **카드 안에서** 보여준다. 페이지 상단 배너로만 띄우면 목록을 스크롤해
+  //     내려간 상태에서 승인을 누른 사람에게는 화면 밖에서 뜬다 — 실제로 "승인을 눌러도
+  //     아무 반응이 없다"로 보고된 증상이 이것이었다(서버는 400과 사유를 주고 있었다).
+  const decideProposal = async (
     id: number, action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>,
-  ) =>
-    withBusy(async () => {
-      if (!selectedId) return
+  ) => {
+    if (!selectedId) return
+    setBusy(true); setProposalError(null)
+    try {
       await endpoints.decidePolicyTableProposal(selectedId, id, action, note, patch)
       await loadClauses(selectedId)
-    }, '별표 결정을 저장하지 못했습니다.')
+    } catch (exc) {
+      const detail = (exc as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      setProposalError({ id, message: detail || '별표 결정을 저장하지 못했습니다.' })
+    } finally {
+      setBusy(false)
+    }
+  }
 
   // 조항 하나로 룰 생성. **AI가 제외로 본 조항에서도 부를 수 있다** — 분류는 제안이다.
   // 생성물의 편집·승인은 룰 콘솔이 주인이라, 여기서는 만들고 링크만 안내한다.
@@ -410,6 +422,7 @@ export function PolicyDocuments() {
                       onSave={(patch) => void saveProposal(proposal.id, patch)}
                       onDecide={(action, note, patch) =>
                         void decideProposal(proposal.id, action, note, patch)}
+                      error={proposalError?.id === proposal.id ? proposalError.message : ''}
                     />
                   ))}
                 </>
