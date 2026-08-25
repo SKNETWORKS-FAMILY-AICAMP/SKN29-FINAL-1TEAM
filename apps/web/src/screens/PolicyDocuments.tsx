@@ -219,6 +219,13 @@ export function PolicyDocuments() {
 
   const triaged = clauses.some((c) => c.triagePriority)
   const pendingTables = proposals.filter((p) => p.status === 'PENDING').length
+  const skippedTables = proposals.filter((p) => p.status === 'SKIPPED').length
+  //  **사람이 판단할 것이 먼저다.** AI가 「표가 아니다」라고 본 건(`SKIPPED`)은 버리지
+  //  않되 맨 뒤로 보낸다 — 대기 목록 사이에 섞이면 무엇을 처리해야 하는지 흐려진다.
+  const orderedProposals = useMemo(() => {
+    const rank = { PENDING: 0, APPROVED: 1, REJECTED: 2, SKIPPED: 3 } as const
+    return [...proposals].sort((a, b) => rank[a.status] - rank[b.status] || a.id - b.id)
+  }, [proposals])
 
   const kpi = useMemo(() => ({
     total: docs.length,
@@ -385,11 +392,16 @@ export function PolicyDocuments() {
                         승인 대기 {pendingTables}
                       </span>
                     )}
+                    {skippedTables > 0 && (
+                      <span className="pd-badge" style={{ marginLeft: 6 }}>
+                        생성 안 함 {skippedTables}
+                      </span>
+                    )}
                   </div>
                   <div className="note">
                     승인하면 이 표의 값이 <b>모든 정산 판정</b>에 쓰입니다. 표 원문과 값을 대조한 뒤 눌러주세요.
                   </div>
-                  {proposals.map((proposal) => (
+                  {orderedProposals.map((proposal) => (
                     <TableProposalCard
                       key={proposal.id}
                       proposal={proposal}

@@ -529,7 +529,18 @@ export interface PolicyTableProposal {
   effectiveDate: string | null
   confidence: number
   notes: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  /** 담당자에게 **사람 말로** 하는 설명. `notes`가 기술적 단서라면 이쪽은 "무엇을
+   *  읽었고 무엇을 눈으로 확인해야 하나"다. */
+  comment: string
+  /** 승인하면 이 값이 어디에 어떻게 쓰이는지 — key·축·payload는 개발자 어휘다. */
+  usageNote: string
+  /** 추출 시점 자동검사 결과. 재시도로도 안 풀린 문제를 숨기지 않는다. */
+  checks: { level: 'ok' | 'info' | 'warn'; message: string }[]
+  /** 임계값 표가 아니라고 판단한 이유(`SKIPPED`일 때). */
+  skipReason: string
+  //  `SKIPPED` = AI가 "표가 아니다"라고 본 것. **사람의 결정이 아니라** 재색인하면
+  //  다시 계산된다 — 승인 대기 목록에 섞이지 않는다.
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED'
   reviewNote: string
   reviewedBy: string
   reviewedAt: string | null

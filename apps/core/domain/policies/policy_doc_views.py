@@ -85,6 +85,10 @@ def _proposal_row(p: PolicyTableProposal) -> dict:
         "effectiveDate": p.effective_date,
         "confidence": round(p.confidence, 2),
         "notes": p.notes,
+        "comment": p.comment,
+        "usageNote": p.usage_note,
+        "checks": p.checks or [],
+        "skipReason": p.skip_reason,
         "status": p.status,
         "reviewNote": p.review_note,
         "reviewedBy": getattr(p.reviewed_by, "first_name", "") or getattr(p.reviewed_by, "username", ""),
@@ -771,11 +775,16 @@ def _replace_table_proposals(doc: PolicyDoc, rows: list[dict]) -> None:
     같은 표인지는 `source_chunk_id`로 본다. 청크 id는 문서 해시+블록 순번이라 같은 문서를
     다시 넣으면 같은 값이 나온다(재색인이 멱등 upsert인 것과 같은 근거).
     """
+    #  이월하는 것은 **사람이 내린 결정**뿐이다. `SKIPPED`는 AI 판단이라 다시 계산한다 —
+    #  모델·프롬프트가 나아지면 예전에 건너뛴 표가 후보가 될 수 있어야 한다.
     handled = set(
-        doc.table_proposals.exclude(status=TableProposalStatus.PENDING)
-        .values_list("source_chunk_id", flat=True)
+        doc.table_proposals.filter(status__in=(
+            TableProposalStatus.APPROVED, TableProposalStatus.REJECTED,
+        )).values_list("source_chunk_id", flat=True)
     )
-    doc.table_proposals.filter(status=TableProposalStatus.PENDING).delete()
+    doc.table_proposals.filter(status__in=(
+        TableProposalStatus.PENDING, TableProposalStatus.SKIPPED,
+    )).delete()
 
     PolicyTableProposal.objects.bulk_create([
         PolicyTableProposal(
@@ -798,6 +807,14 @@ def _replace_table_proposals(doc: PolicyDoc, rows: list[dict]) -> None:
                 row.get("effectiveDate") or doc.effective_date or timezone.localdate()
             ),
             confidence=float(row.get("confidence") or 0.0),
+            comment=str(row.get("comment") or ""),
+            usage_note=str(row.get("usageNote") or ""),
+            checks=row.get("checks") or [],
+            skip_reason=str(row.get("skipReason") or ""),
+            #  AI가 표가 아니라고 본 건 승인 대기에 섞지 않는다 — 대기 목록은
+            #  "사람이 판단해야 할 것"만 담아야 의미가 있다.
+            status=(TableProposalStatus.SKIPPED if row.get("skipped")
+                    else TableProposalStatus.PENDING),
             notes=str(row.get("notes") or "")[:2000],
         )
         for row in rows

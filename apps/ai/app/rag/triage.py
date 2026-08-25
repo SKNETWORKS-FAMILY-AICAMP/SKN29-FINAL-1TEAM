@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -49,6 +50,10 @@ CLAUSE_BODY_LIMIT = 900
 TABLE_TEXT_LIMIT = 6000
 
 MODEL = "gpt-4o-mini"
+
+#: 별표 key 표기 — core `table_proposals.KEY_RE`의 거울(승인 검사와 같은 기준을
+#  추출 시점에 적용해, 승인 화면에서 막히기 전에 모델이 다시 만들게 한다).
+KEY_RE = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
 
 VALID_KINDS = {"RULE", "INFO", "ANNEX"}
 VALID_PRIORITIES = {"AUTO", "P1", "P2", "P3", "SKIP"}
@@ -419,7 +424,13 @@ def classify_clauses(
         }
     return out
 
-# ─────────────────────────────────────────────────────── 별표 → 임계값 표
+# ────────────────────── 별표 → 임계값 표
+
+#: 앞뒤 청크에서 끌어올 문맥 길이. 표만 던지면 「무엇의 한도인지」가 표 밖에 있다 —
+#  머리글이 "구분"뿐이고 그게 출장 유형인지 회식 단위인지는 앞 문장이 말한다.
+NEIGHBOR_CONTEXT = 400
+#: 추출 시도 횟수(최초 호출 포함). 검사에 걸린 문제를 적어 다시 부른다.
+TABLE_ATTEMPTS = 2
 
 _TABLE_SYSTEM = """당신은 회사 규정의 **별표(한도표)** 를 읽고, 정산 판정 엔진이 쓰는
 임계값 표로 옮기는 작업을 합니다.
@@ -434,13 +445,21 @@ _TABLE_SYSTEM = """당신은 회사 규정의 **별표(한도표)** 를 읽고, 
 - payload: 축을 따라 값을 고르는 중첩 객체. 축이 1개면 {"머리글": 값}, 2개면
   {"머리글1": {"머리글2": 값}}. 축이 없으면 {"value": 값}.
   값은 숫자로(원 단위, 쉼표·"원" 제거). 표에 없는 경우를 위한 기본값은 "*" 키에 두세요.
+  **payload의 중첩 깊이는 key_axes 길이와 반드시 같아야 합니다.**
 - strict_keys: 축 값을 모를 때 "*" 기본값으로 떨어져도 되면 false. 금지 목록처럼
   "모르면 안전하다"고 단정하면 안 되는 표면 true.
 - confidence: 0~1. 셀이 병합돼 있거나 값을 확신 못 하면 낮게 주세요.
 - notes: 사람이 확인해야 할 점. 못 옮긴 열, 애매한 머리글, 단위가 불분명한 값.
+- comment: 담당자에게 **한국어 두세 문장**으로 설명하세요 — 이 표에서 무엇을 읽었고
+  승인 전에 무엇을 눈으로 확인해야 하는지. 전문용어(축·payload·스칼라)는 쓰지 마세요.
 
-**이 표가 임계값 표가 아니면**(조직도·서식·절차 흐름 등) is_threshold_table을 false로
-두고 나머지는 비우세요. 억지로 만들지 마세요 — 승인하는 사람의 시간을 뺏습니다.
+**한 표에 값 열이 여러 개면**(예: 일비·식비·숙박비가 한 행에) 그중 **하나만** 고르고
+나머지는 notes에 "별도 표로 나눠야 함: …"이라고 적으세요. 판정 엔진은 표 하나에서
+값 하나를 꺼내므로, 여러 열을 한 payload에 섞으면 쓸 수 없습니다.
+
+**이 표가 임계값 표가 아니면**(조직도·서식·절차 흐름·승인권자 표 등) is_threshold_table을
+false로 두고 **skip_reason에 그 이유를 한국어 한 문장**으로 적으세요. 억지로 만들지
+마세요 — 승인하는 사람의 시간을 뺏습니다.
 
 숫자를 지어내지 마세요. 표에 없는 값은 넣지 않습니다."""
 
@@ -448,6 +467,7 @@ _TABLE_SCHEMA = {
     "type": "object",
     "properties": {
         "is_threshold_table": {"type": "boolean"},
+        "skip_reason": {"type": "string"},
         "key": {"type": "string"},
         "title": {"type": "string"},
         "key_axes": {"type": "array", "items": {"type": "string"}},
@@ -455,78 +475,285 @@ _TABLE_SCHEMA = {
         "strict_keys": {"type": "boolean"},
         "confidence": {"type": "number"},
         "notes": {"type": "string"},
+        "comment": {"type": "string"},
     },
-    "required": ["is_threshold_table", "key", "title", "key_axes", "payload_json",
-                 "strict_keys", "confidence", "notes"],
+    "required": ["is_threshold_table", "skip_reason", "key", "title", "key_axes",
+                 "payload_json", "strict_keys", "confidence", "notes", "comment"],
     "additionalProperties": False,
 }
 
 
+def _groups(table_chunks: list[Any]) -> list[list[Any]]:
+    """**같은 별표는 한 덩어리로 묶는다.**
+
+    표는 페이지 경계에서 쪼개진다 — 실측: `출장비_사용규정` 별표2가 A·B등급(5쪽)과
+    C등급(6쪽) 두 청크였다. 청크마다 따로 추출하면 **반쪽짜리 표 두 개**가 승인 대기에
+    올라온다(C등급만 있는 표는 승인해도 쓸모가 없다). 게다가 머리글이 첫 조각에만 있어
+    뒷 조각은 축조차 고를 수 없다.
+
+    묶는 기준은 `parent_chunk_id` — 청커가 같은 조/별표의 조각에 같은 부모를 달아 준다.
+    부모가 없는 단독 표(`atomic`)는 혼자 한 그룹이다.
+    """
+    buckets: dict[str, list[Any]] = {}
+    for c in table_chunks:
+        buckets.setdefault(c.parent_chunk_id or c.chunk_id, []).append(c)
+    for group in buckets.values():
+        group.sort(key=lambda c: (c.page_start or 0, c.chunk_id))
+    return list(buckets.values())
+
+
+def _context_block(group: list[Any], by_id: dict[str, Any]) -> str:
+    """표 앞뒤의 맥락. **표 안에 없는 것이 표의 의미를 정한다.**
+
+    머리글이 "구분"뿐이면 그게 출장 유형인지 회식 단위인지 표만 봐서는 모른다 — 문서명·
+    장·조 제목과 바로 앞 문장이 그걸 말한다. 뒤 문장은 단위·예외("천원 단위", "다만 …는
+    제외")가 붙는 자리라 함께 넣는다.
+    """
+    head = group[0]
+    lines = [f"[문서] {head.doc_name}"]
+    where = " · ".join(x for x in (head.chapter_title, head.article_label, head.article_title) if x)
+    if where:
+        lines.append(f"[위치] {where}")
+    if head.citation:
+        lines.append(f"[인용] {head.citation}")
+    if head.header:
+        lines.append(f"[계층] {head.header}")
+
+    prev = by_id.get(head.prev_chunk_id or "")
+    if prev is not None and prev.chunk_role != "parent" and prev.text:
+        lines.append(f"[앞 문맥] …{prev.text[-NEIGHBOR_CONTEXT:].strip()}")
+    nxt = by_id.get(group[-1].next_chunk_id or "")
+    if nxt is not None and nxt.chunk_role != "parent" and nxt.text:
+        lines.append(f"[뒤 문맥] {nxt.text[:NEIGHBOR_CONTEXT].strip()}…")
+    return "\n".join(lines)
+
+
+def _numbers(text: str) -> set[int]:
+    """본문에 실제로 등장한 정수들(쉼표 제거). 지어낸 값 탐지에 쓴다."""
+    return {int(m.replace(",", "")) for m in re.findall(r"\d[\d,]*", text or "")}
+
+
+def _leaves(node: Any, depth: int) -> tuple[list[Any], bool]:
+    """축을 `depth`번 따라간 자리의 값들과 **깊이가 맞았는지**.
+
+    core `context_builder._payload_leaves`와 같은 규칙이다. 여기서 미리 잡는 이유는,
+    깊이가 어긋난 표는 승인돼도 `lookup`이 늘 `None`을 주는데 **에러가 안 나기** 때문이다.
+    """
+    if depth <= 0:
+        return [node], not isinstance(node, dict)
+    if not isinstance(node, dict):
+        return [], False
+    out: list[Any] = []
+    ok = True
+    for v in node.values():
+        got, fine = _leaves(v, depth - 1)
+        out += got
+        ok = ok and fine
+    return out, ok and bool(out)
+
+
+def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[str],
+           raw: str) -> list[str]:
+    """추출 결과 자동 검사. **고칠 수 있도록 문제를 문장으로** 돌려준다(재시도 입력).
+
+    core `table_proposals.validate`가 승인 시점에 하는 검사를 **추출 시점으로 당긴 것**이다.
+    승인 화면에서 막히면 사람이 손으로 고쳐야 하지만, 여기서 걸리면 모델이 다시 만든다.
+    """
+    problems: list[str] = []
+
+    key = str(data.get("key") or "").strip()
+    if not KEY_RE.match(key):
+        problems.append(
+            f"key `{key}`가 표기 규칙에 어긋납니다 — 영문 소문자·숫자·밑줄 3자 이상,"
+            " `_table`로 끝내세요."
+        )
+    if dropped:
+        problems.append(
+            "판정 사실에 없는 축을 썼습니다: " + ", ".join(dropped)
+            + " — [사용 가능한 축] 목록에서 고르거나, 맞는 축이 없으면 key_axes를 비우고"
+              " notes에 그 사실을 적으세요."
+        )
+    if not isinstance(payload, dict) or not payload:
+        problems.append("payload가 비어 있거나 객체가 아닙니다.")
+        return problems
+
+    #  **core `_exposes_scalar`와 같은 규칙이어야 한다.** 축이 없는 표는 중첩이 아니라
+    #  `{"value": 스칼라}`다(`lookup`이 마지막에 `node.get("value")`로 꺼낸다). 이걸
+    #  깊이 0의 중첩으로 보면 멀쩡한 표가 매번 「깊이 불일치」로 걸린다.
+    if not axes:
+        if "value" not in payload:
+            problems.append('축이 없는 표는 payload가 {"value": 숫자} 형태여야 합니다.')
+            leaves, depth_ok = [], True
+        else:
+            leaves, depth_ok = [payload["value"]], True
+    else:
+        leaves, depth_ok = _leaves(payload, len(axes))
+    if not depth_ok:
+        problems.append(
+            f"payload 중첩 깊이가 key_axes 길이({len(axes)})와 맞지 않습니다 — 축 하나당"
+            " 한 겹씩만 중첩하고 마지막 자리에는 숫자를 두세요."
+        )
+    if any(isinstance(v, dict) for v in leaves):
+        problems.append(
+            "값 자리에 객체가 남아 있습니다 — 값 열이 여러 개면 하나만 고르고 나머지는"
+            " notes에 적으세요."
+        )
+
+    #  **지어낸 숫자 탐지.** 원문에 없는 값이 payload에 있으면 셀을 잘못 읽었거나 만든 것이다.
+    src = _numbers(raw)
+    invented = [
+        v for v in leaves
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and int(v) not in src
+    ]
+    if invented:
+        problems.append(
+            "표 원문에 없는 숫자가 있습니다: " + ", ".join(str(v) for v in invented[:5])
+            + " — 원문 셀의 값을 그대로 옮기세요(쉼표·'원'만 제거)."
+        )
+    return problems
+
+
+def _usage_note(key: str, axes: list[str], strict: bool) -> str:
+    """**이 값이 어디에 어떻게 쓰이는지** 한국어로. 승인 화면이 그대로 보여준다.
+
+    승인하는 사람이 판단할 것은 "이 숫자가 맞나"만이 아니라 "이게 어디에 쓰이나"다.
+    화면은 key·축·payload만 보여줬는데 그건 개발자 어휘라, 회계 담당자는 자기가 무엇을
+    승인하는지 알 수 없었다.
+    """
+    field = key[:-6] if key.endswith("_table") else key
+    if not axes:
+        pick = "표에 값이 하나뿐이라 모든 정산 건에 같은 값이 쓰입니다."
+    else:
+        pick = "정산 건의 " + " · ".join(f"`{a}`" for a in axes) + " 값으로 행을 골라 씁니다."
+    tail = (
+        " 축 값을 모르면 이 표는 적용하지 않습니다(모르는 것을 안전하다고 단정하지 않습니다)."
+        if strict else " 축 값을 모르면 `*` 기본값이 쓰입니다."
+    )
+    return f"승인하면 판정 사실 `policy.{field}`가 되어 룰이 이 값과 비교합니다. {pick}{tail}"
+
+
 def extract_tables(
     table_chunks: list[Any], axis_options: list[dict[str, Any]],
+    all_chunks: list[Any] | None = None,
 ) -> list[dict[str, Any]]:
     """별표·표 청크 → `PolicyTable` 후보 목록.
 
     축 목록을 프롬프트에 싣는다 — 모델이 축을 지어내면 그 표는 승인 검사에서 막히고
     사람이 다시 고르게 되는데, 애초에 고를 수 있는 것을 보여주면 그 왕복이 없다.
+
+    **임계값 표가 아니라고 판단한 것도 돌려준다**(`skipped=True`). 조용히 버리면 화면에
+    아무것도 안 남아, 담당자는 "표가 있는데 왜 후보가 없지"를 스스로 알아내야 한다.
     """
     if not table_chunks:
         return []
 
+    by_id = {c.chunk_id: c for c in (all_chunks or table_chunks)}
     axes_block = "\n".join(f"  {a['path']} ({a['type']}) — {a['desc']}" for a in axis_options)
+    allowed = {a["path"] for a in axis_options}
     out: list[dict[str, Any]] = []
 
-    for chunk in table_chunks:
-        body = (chunk.text or "")[:TABLE_TEXT_LIMIT]
-        if not body.strip():
-            continue
-        label = (chunk.article_label or chunk.citation or chunk.chunk_id).strip()
-        try:
-            data = _chat(
-                _TABLE_SYSTEM,
-                f"[사용 가능한 축]\n{axes_block}\n\n[표 원문 — {label}]\n{body}",
-                _TABLE_SCHEMA, "policy_table_extract",
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("별표 추출 실패 chunk=%s: %s", chunk.chunk_id, exc)
+    for group in _groups(table_chunks):
+        pieces = []
+        for i, c in enumerate(group, 1):
+            tag = f" (조각 {i}/{len(group)})" if len(group) > 1 else ""
+            pieces.append(f"[표 원문{tag} — p{c.page_start}]\n{(c.text or '').strip()}")
+        raw = "\n\n".join(pieces)[:TABLE_TEXT_LIMIT]
+        if not raw.strip():
             continue
 
-        if not data.get("is_threshold_table"):
+        head = group[0]
+        label = (head.article_label or head.citation or head.chunk_id).strip()
+        base = f"[사용 가능한 축]\n{axes_block}\n\n{_context_block(group, by_id)}\n\n{raw}"
+
+        data: dict[str, Any] = {}
+        payload: Any = {}
+        axes: list[str] = []
+        dropped: list[str] = []
+        problems: list[str] = []
+        for attempt in range(TABLE_ATTEMPTS):
+            user = base if attempt == 0 else (
+                base + "\n\n[직전 출력의 문제 — 고쳐서 다시 만드세요]\n"
+                + "\n".join(f"- {p}" for p in problems)
+            )
+            try:
+                got = _chat(_TABLE_SYSTEM, user, _TABLE_SCHEMA, "policy_table_extract")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("별표 추출 실패 chunk=%s: %s", head.chunk_id, exc)
+                #  **재시도가 실패해도 첫 결과를 버리지 않는다.** 검사에 걸린 표는
+                #  문제를 달아 승인 대기에 올리면 사람이 고칠 수 있지만, 통째로 사라지면
+                #  담당자는 그 별표가 있었다는 것조차 모른다.
+                if attempt == 0:
+                    data = {}
+                break
+            data = got
+            if not data.get("is_threshold_table"):
+                break
+            try:
+                payload = json.loads(data.get("payload_json") or "{}")
+            except ValueError:
+                payload = {}
+            axes = [a for a in (data.get("key_axes") or []) if a in allowed]
+            dropped = [a for a in (data.get("key_axes") or []) if a not in allowed]
+            problems = _check(data, payload, axes, dropped, raw)
+            if not problems:
+                break
+
+        if not data:
             continue
-        try:
-            payload = json.loads(data.get("payload_json") or "{}")
-        except ValueError:
-            logger.warning("별표 payload JSON 파싱 실패 chunk=%s", chunk.chunk_id)
-            payload = {}
+
+        base_row = {
+            "chunkId": ",".join(c.chunk_id for c in group)[:64],
+            "label": label[:100],
+            "citation": head.citation,
+            "pageStart": head.page_start,
+            "pageEnd": group[-1].page_end,
+            "rawMarkdown": raw,
+            "confidence": float(data.get("confidence") or 0.0),
+            "comment": str(data.get("comment") or "")[:1000],
+        }
+
+        if not data.get("is_threshold_table"):
+            #  **버리지 않고 남긴다** — 왜 안 만들었는지가 화면에 보여야 한다.
+            out.append({
+                **base_row, "skipped": True,
+                "skipReason": str(data.get("skip_reason")
+                                  or "임계값 표가 아니라고 판단했습니다.")[:500],
+                "key": "", "title": "", "keyAxes": [], "payload": {}, "strictKeys": False,
+                "notes": "", "checks": [], "usageNote": "",
+            })
+            continue
+
         if not isinstance(payload, dict) or not payload:
             continue
 
-        # 축은 여기서도 거른다 — 프롬프트가 목록을 줬어도 모델은 지어낼 수 있고,
-        # 없는 축은 에러 없이 항상 기본값으로 떨어지는 가장 조용한 결함이다.
-        allowed = {a["path"] for a in axis_options}
-        axes = [a for a in (data.get("key_axes") or []) if a in allowed]
-        dropped = [a for a in (data.get("key_axes") or []) if a not in allowed]
         notes = str(data.get("notes") or "")
         if dropped:
             notes = (notes + "\n" if notes else "") + (
                 "판정 사실에 없는 축이라 제외했습니다: " + ", ".join(dropped)
                 + " — 축을 다시 고르거나, 표에 값이 하나뿐이면 축 없이 두세요."
             )
+        #  재시도로도 안 풀린 문제는 **숨기지 않는다.** 승인 화면이 그대로 띄운다.
+        checks = [{"level": "warn", "message": m} for m in problems]
+        if len(group) > 1:
+            checks.append({
+                "level": "info",
+                "message": f"페이지에 걸쳐 나뉜 표 {len(group)}조각을 하나로 합쳐 읽었습니다.",
+            })
+        if not problems:
+            checks.append({"level": "ok", "message": "축·중첩 깊이·값 검사를 통과했습니다."})
 
+        key = str(data.get("key") or "").strip()[:64]
+        strict = bool(data.get("strict_keys"))
         out.append({
-            "chunkId": chunk.chunk_id,
-            "label": label[:100],
-            "citation": chunk.citation,
-            "pageStart": chunk.page_start,
-            "pageEnd": chunk.page_end,
-            "rawMarkdown": body,
-            "key": str(data.get("key") or "").strip()[:64],
+            **base_row, "skipped": False, "skipReason": "",
+            "key": key,
             "title": str(data.get("title") or "").strip()[:200],
             "keyAxes": axes,
             "payload": payload,
-            "strictKeys": bool(data.get("strict_keys")),
-            "confidence": float(data.get("confidence") or 0.0),
+            "strictKeys": strict,
             "notes": notes[:2000],
+            "usageNote": _usage_note(key, axes, strict),
+            "checks": checks,
         })
     return out
 
@@ -570,7 +797,7 @@ def run(
             c for c in chunks
             if c.chunk_role != "parent" and (c.chunk_type in ("annex", "table") or c.has_table)
         ]
-        result.tables = extract_tables(table_chunks, axis_options or [])
+        result.tables = extract_tables(table_chunks, axis_options or [], chunks)
         result.table_count = len(result.tables)
     except Exception as exc:  # noqa: BLE001
         logger.exception("별표 추출 단계 실패")
