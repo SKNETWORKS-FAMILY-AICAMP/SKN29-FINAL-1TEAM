@@ -96,7 +96,10 @@ services:
       # 바이트를 HTTP로 되넘기는 대신 core와 같은 볼륨을 공유한다.
       RAG_MEDIA_ROOT: /data/media
       # 비전 판독(영수증·증빙 문서). 페이지 수만큼 이미지 토큰이 붙으므로 상한을 둔다.
-      VISION_MODEL: ${VISION_MODEL:-gpt-4o-mini}
+      #  gpt-4o-mini는 증빙 서식을 못 읽는다(실측 2026-08-25: 「주류 포함 예」→false,
+      #  참석 「5명」→58, 둘 다 확신도 1.00). 판독값이 곧 판정 사실이라 여기서 아끼면
+      #  조용히 잘못된 한도가 적용된다.
+      VISION_MODEL: ${VISION_MODEL:-gpt-4o}
       VISION_MAX_PAGES: ${VISION_MAX_PAGES:-8}
       # 개발용: docling 파싱만 미리 떠둔 덤프로 대체한다(아래 docling_eval 마운트).
       # 켜면 업로드 **파일 내용이 무시되고 문서명으로만** 덤프를 고른다 — 운영에선 절대 켜지 말 것.

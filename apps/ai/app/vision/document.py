@@ -79,11 +79,13 @@ TARGETS: dict[str, dict[str, str]] = {
     "DINING_REPORT": {
         "dining.gathering_unit": "회식 단위 — 체크된 항목",
         "dining.gathering_type": "회식 유형 — 체크된 항목",
-        "dining.includes_alcohol": "주류 포함 여부",
-        "dining.is_secondary_venue": "2차 이상 포함 여부",
+        #  **불린은 서식의 한국어 표기를 매핑해 줘야 한다.** 「주류 포함: 예」를 그대로
+        #  두면 모델이 value_kind를 string으로 내고 boolean 자리가 비어 버려진다(실측).
+        "dining.includes_alcohol": "주류 포함 여부 — 「예/포함」이면 true, 「아니오/미포함」이면 false",
+        "dining.is_secondary_venue": "2차 이상 포함 여부 — 「2차 이상 포함」이면 true, 「1차만」이면 false",
         "participants.verified_participant_count": "총 참석 인원",
         "participants.verified_external_count": "사외 참석 인원. 「사외 참석자 없음」에 체크돼 있으면 0",
-        "approval.pre_approval_obtained": "사전승인을 받았는가. 「사전승인 대상 아님」 체크면 넣지 마세요",
+        "approval.pre_approval_obtained": "사전승인을 받았는가 — 승인자·승인일시가 적혀 있으면 true. 「대상 아님」이면 넣지 마세요",
     },
     "HOSPITALITY_REPORT": {
         "category.item_type": "지출 세부유형 — 체크된 항목",

@@ -22,7 +22,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # 비전 지원 모델. Draft/Rule Agent와 따로 바꿔 끼울 수 있게 별도 env로 둔다.
-MODEL = os.environ.get("VISION_MODEL", "gpt-4o-mini")
+#: 비전 판독 모델. **`gpt-4o-mini`로는 서식을 못 읽는다**(실측 2026-08-25):
+#  「주류 포함: 예」를 false로, 참석 인원 「5명」을 58로 — 확신도 1.00으로 틀렸다.
+#  같은 서식·같은 프롬프트를 `gpt-4o`로 돌리니 11/11 정확했다. 판독값은 곧 판정 사실이라
+#  틀리면 조용히 잘못된 한도가 적용된다 — 여기서 아끼면 안 되는 자리다.
+MODEL = os.environ.get("VISION_MODEL", "gpt-4o")
 # 증빙 문서 한 건에서 읽을 최대 페이지. 사전승인·회의록은 보통 1~3장이다.
 MAX_PAGES = int(os.environ.get("VISION_MAX_PAGES", "8"))
 # 렌더 배율. 2.0이면 대략 144DPI — 도장·작은 표까지 읽히면서 토큰이 과하지 않은 지점.
