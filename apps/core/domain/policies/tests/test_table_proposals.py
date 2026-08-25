@@ -167,6 +167,28 @@ class ReindexTests(ProposalBase):
         # 승인 실물은 그대로 살아 있다.
         self.assertTrue(PolicyTable.objects.filter(key="welfare_limit_table").exists())
 
+    def test_한_별표의_후보들은_서로의_결정을_덮지_않는다(self):
+        """**한 별표에서 표 여러 개가 나온다**(값 열이 여럿인 표 — 2026-08-25).
+
+        `source_chunk_id`가 같으면 하나를 반려한 결정이 나머지까지 이월돼, 재색인 뒤
+        멀쩡한 표가 「반려됨」으로 남는다. 추출이 `chunkId#key`로 보내는 이유다.
+        """
+        rejected = make_proposal(
+            self.doc, source_chunk_id="x1#daily_allowance_table", key="daily_allowance_table")
+        table_proposals.reject(rejected, note="일비는 따로 관리한다")
+
+        _replace_table_proposals(self.doc, [
+            {"chunkId": "x1#daily_allowance_table", "key": "daily_allowance_table",
+             "label": "별표1", "payload": {"value": 20000}},
+            {"chunkId": "x1#lodging_limit_table", "key": "lodging_limit_table",
+             "label": "별표1", "payload": {"value": 150000}},
+        ])
+
+        rows = {p.source_chunk_id: p for p in self.doc.table_proposals.all()}
+        self.assertEqual(rows["x1#daily_allowance_table"].status, TableProposalStatus.REJECTED)
+        #  같은 별표의 **다른** 표는 반려에 물들지 않고 새로 대기에 오른다.
+        self.assertEqual(rows["x1#lodging_limit_table"].status, TableProposalStatus.PENDING)
+
     def test_조항_분류는_매_적재마다_새로_온다(self):
         """사람의 결정과 달리 이월하지 않는다 — 문서가 바뀌었는데 옛 분류를 물려주면
         그게 곧 틀린 제안이 된다."""

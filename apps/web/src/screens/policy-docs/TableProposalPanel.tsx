@@ -12,7 +12,7 @@
 //
 // `SKIPPED`는 AI가 "임계값 표가 아니다"라고 본 것이다. 조용히 버리지 않고 사유와 함께
 // 남긴다 — 안 그러면 담당자는 「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다.
-import { useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
 import { Markdown } from '../../components/ui/Markdown'
@@ -127,19 +127,37 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
   const cell = (v: unknown) =>
     typeof v === 'number' ? v.toLocaleString() : String(v ?? '—')
 
+  //  **무엇이 되는지가 표보다 먼저다.** 숫자만 보면 「어느 판정 변수에 어떤 축으로
+  //  들어가는가」를 알 수 없고, 그게 승인에서 실제로 판단할 것이다.
+  const head = (
+    <div className="pd-resolved-head">
+      <code>policy.{(proposal.key || '').replace(/_table$/, '') || '이름 없음'}</code>
+      <span className="text-meta">
+        {axes.length === 0
+          ? ' · 축 없음'
+          : ` · 축 ${axes.map((a) => `\`${a}\``).join(' × ')}`}
+        {proposal.effectiveDate ? ` · ${proposal.effectiveDate} 시행` : ''}
+        {proposal.strictKeys ? ' · 축 값 모르면 미적용' : ''}
+      </span>
+    </div>
+  )
+
+  const wrap = (body: ReactNode, scroll = false) => (
+    <div className="pd-resolved" style={scroll ? { overflowX: 'auto' } : undefined}>
+      {head}
+      {body}
+    </div>
+  )
+
   if (axes.length === 0) {
-    return (
-      <div className="pd-resolved">
-        <div className="text-meta">축 없음 — 모든 건에 같은 값</div>
-        <b style={{ fontSize: 15 }}>{cell(payload.value)}</b>
-      </div>
+    return wrap(
+      <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{cell(payload.value)}</div>,
     )
   }
 
   if (axes.length === 1) {
-    return (
-      <div className="pd-resolved">
-        <table className="table">
+    return wrap(
+      <table className="table">
           <thead><tr><th>{axes[0]}</th><th className="num">값</th></tr></thead>
           <tbody>
             {Object.entries(payload).map(([k, v]) => (
@@ -149,8 +167,7 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+      </table>,
     )
   }
 
@@ -160,9 +177,8 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
       Object.values(payload).flatMap((row) =>
         row && typeof row === 'object' ? Object.keys(row as object) : []),
     )]
-    return (
-      <div className="pd-resolved" style={{ overflowX: 'auto' }}>
-        <table className="table">
+    return wrap(
+      <table className="table">
           <thead>
             <tr>
               <th>{axes[0]} \ {axes[1]}</th>
@@ -181,12 +197,13 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+      </table>,
+      true,
     )
   }
 
-  return <pre className="pd-json">{JSON.stringify(payload, null, 2)}</pre>
+  //  축이 셋 이상이면 표로 접지 않는다 — 잘못 접어 보여주느니 날것이 낫다.
+  return wrap(<pre className="pd-json" style={{ marginTop: 6 }}>{JSON.stringify(payload, null, 2)}</pre>)
 }
 
 
@@ -256,26 +273,12 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
 
       {open && (
         <div className="pd-clause-body">
-          {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다.
-              **마크다운 표로 그린다.** 파이프 문자가 그대로 보이면 셀 경계를 눈으로 세어야
-              해서, 아래 추출 결과와 대조하는 데 시간이 걸린다(그러면 대충 누르게 된다).
-              단, **GFM 표로 안 읽히는 원문은 그리지 않고 원문 그대로 둔다** — 잘못 잘라
-              보여주는 것보다 파이프가 보이는 편이 낫다. 렌더가 맞아도 원문을 볼 길은
-              남긴다(표를 잘못 접었을 때 확인할 것이 없으면 안 된다). */}
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="text-meta">문서에 있는 표 원문 ({pageLabel})</span>
-            {parsedTable && (
-              <button className="btn sm" onClick={() => setRaw((v) => !v)}>
-                {raw ? '표로 보기' : '원문 보기'}
-              </button>
-            )}
-          </div>
-          {raw || !parsedTable
-            ? <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
-            : <div className="pd-md-table"><Markdown source={proposal.rawMarkdown} /></div>}
+          {/*  **결론이 맨 위다.** 예전엔 표 원문 → 코멘트 → 활용안내 → 검사 → 메모 →
+              문제 → 편집 폼 순서라, 「그래서 무슨 값이 들어가나」를 보려면 여섯 블록을
+              지나야 했다. 지금은 **처리된 결과**를 먼저 그리고, 대조용 원문과 손볼 칸은
+              접어 둔다(필요한 사람만 편다). */}
 
-          {/* AI가 표가 아니라고 본 건 여기서 끝난다 — 편집·승인 UI를 띄우지 않는다. */}
-          {proposal.status === 'SKIPPED' && (
+          {proposal.status === 'SKIPPED' ? (
             <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
               <b>임계값 표로 만들지 않았습니다</b>
               <div style={{ marginTop: 4 }}>{proposal.skipReason}</div>
@@ -284,94 +287,142 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
                 판단이 틀렸다면 문서를 재색인하면 다시 계산됩니다.
               </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* ① 처리된 결과 — 1·2축은 표로, 3축 이상은 JSON으로. */}
+              <ResolvedTable proposal={proposal} />
 
-          {/* ③ 무엇을 승인하는지 — 사람 말이 먼저, 개발자 어휘는 아래 편집 칸에. */}
-          {proposal.status !== 'SKIPPED' && proposal.comment && (
-            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-              <b>AI 코멘트</b> · 확신도 {Math.round(proposal.confidence * 100)}%
-              <div style={{ marginTop: 4 }}>{proposal.comment}</div>
-            </div>
-          )}
-
-          {proposal.status !== 'SKIPPED' && proposal.usageNote && (
-            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-              <b>승인하면 이렇게 쓰입니다</b>
-              <div style={{ marginTop: 4 }}>{proposal.usageNote}</div>
-            </div>
-          )}
-
-          {/*  추출 시점 자동검사. **재시도로도 안 풀린 문제를 숨기지 않는다** —
-              통과 항목까지 함께 보여야 "검사를 했다"는 사실이 전달된다. */}
-          {proposal.status !== 'SKIPPED' && proposal.checks.length > 0 && (
-            <div className="note">
-              <b>자동 검사</b>
-              {proposal.checks.map((c, i) => (
-                <div key={i} style={{ marginTop: 4, color: CHECK_TONE[c.level] }}>
-                  {c.level === 'warn' ? '⚠' : c.level === 'ok' ? '✓' : '·'} {c.message}
+              {/* ② 사람 말 설명. 확신도를 같이 붙여 「얼마나 믿을 값인가」를 한 줄에. */}
+              {proposal.comment && (
+                <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+                  <b>AI 코멘트</b> · 확신도 {Math.round(proposal.confidence * 100)}%
+                  <div style={{ marginTop: 4 }}>{proposal.comment}</div>
                 </div>
-              ))}
-            </div>
+              )}
+
+              {/* ③ 확인이 필요한 것만 펴 둔다. **통과 항목까지 항상 펼치면 경고가 묻힌다** —
+                  검사를 했다는 사실은 요약 줄로 전하고, 통과 내역은 접는다. */}
+              {(() => {
+                const warns = proposal.checks.filter((c) => c.level === 'warn')
+                const rest = proposal.checks.filter((c) => c.level !== 'warn')
+                return (
+                  <>
+                    {warns.length > 0 && (
+                      <div className="note" style={{ borderColor: 'var(--tone-amber)' }}>
+                        <div className="row" style={{ gap: 6, alignItems: 'center', color: 'var(--tone-amber)' }}>
+                          <AlertTriangle size={13} /> <b>확인이 필요합니다</b>
+                        </div>
+                        {warns.map((c, i) => (
+                          <div key={i} style={{ marginTop: 4 }}>· {c.message}</div>
+                        ))}
+                      </div>
+                    )}
+                    {rest.length > 0 && (
+                      <details className="pd-fold">
+                        <summary>
+                          자동 검사 <span className="text-meta">{rest.length}건 통과</span>
+                        </summary>
+                        {rest.map((c, i) => (
+                          <div key={i} style={{ marginTop: 4, color: CHECK_TONE[c.level] }}>
+                            {c.level === 'ok' ? '✓' : '·'} {c.message}
+                          </div>
+                        ))}
+                      </details>
+                    )}
+                  </>
+                )
+              })()}
+
+              {/* ④ AI 메모 — **결과 다음**이다. 못 옮긴 열·애매한 머리글·표기 변환 기록처럼
+                  「결과를 보고 나서」 의미가 생기는 단서라, 결과 앞에 두면 무슨 말인지 모른다. */}
+              {proposal.notes && (
+                <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+                  <b>AI 메모</b>
+                  <span className="text-meta"> — 옮기며 판단한 것·확인이 남은 것</span>
+                  <div style={{ marginTop: 4 }}>{proposal.notes}</div>
+                </div>
+              )}
+
+              {/* ⑤ 지금 누르면 걸릴 문제 — 누른 뒤가 아니라 누르기 전에. */}
+              {proposal.status === 'PENDING' && proposal.problems.length > 0 && (
+                <div className="note" style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}>
+                  <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                    <AlertTriangle size={13} /> <b>이대로는 승인할 수 없어요</b>
+                  </div>
+                  {proposal.problems.map((p, i) => <div key={i} style={{ marginTop: 4 }}>· {p}</div>)}
+                </div>
+              )}
+            </>
           )}
 
-          {proposal.status !== 'SKIPPED' && proposal.notes && (
-            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-              <b>AI 메모</b>
-              <div>{proposal.notes}</div>
-            </div>
-          )}
+          {/* ⑥ 표 원문 — **대조할 근거는 반드시 남긴다.** 다만 접어 둔다: 결과가 맞는지
+              의심될 때만 펴면 되고, 늘 펼쳐 두면 카드가 길어져 결론이 안 보인다.
+              GFM 표로 안 읽히는 원문은 그리지 않고 원문 그대로 둔다(잘못 잘라 보여주는
+              것보다 파이프가 보이는 편이 낫다). */}
+          <details className="pd-fold">
+            <summary>
+              문서 원문 대조 <span className="text-meta">{pageLabel}</span>
+            </summary>
+            {parsedTable && (
+              <button className="btn sm" style={{ marginBottom: 8 }} onClick={() => setRaw((v) => !v)}>
+                {raw ? '표로 보기' : '마크다운 원문'}
+              </button>
+            )}
+            {raw || !parsedTable
+              ? <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
+              : <div className="pd-md-table"><Markdown source={proposal.rawMarkdown} /></div>}
+          </details>
 
-          {/* ② 지금 누르면 걸릴 문제 — 누른 뒤가 아니라 누르기 전에. */}
-          {proposal.status === 'PENDING' && proposal.problems.length > 0 && (
-            <div className="note" style={{ borderColor: 'var(--tone-amber)', color: 'var(--tone-amber)' }}>
-              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                <AlertTriangle size={13} /> <b>이대로는 승인할 수 없어요</b>
+          {/* ⑦ 손볼 칸 — 개발자 어휘(key·축·payload)는 여기 모아 접는다. 대부분의 승인은
+              고칠 것이 없고, 늘 펼쳐 두면 「무엇을 승인하는가」보다 「어떻게 저장되는가」가
+              화면을 차지한다. */}
+          {proposal.status !== 'SKIPPED' && (
+            <details className="pd-fold" open={proposal.problems.length > 0}>
+              <summary>값 고치기 <span className="text-meta">key · 축 · 표 내용 · 시행일</span></summary>
+
+              <div className="pd-field">
+                <label>표 key</label>
+                <input value={draft.key} disabled={locked}
+                       onChange={(e) => setDraft({ ...draft, key: e.target.value })} />
+                <div className="text-meta">
+                  판정에서 <code>policy.{(draft.key || '').replace(/_table$/, '')}</code> 로 쓰입니다
+                </div>
               </div>
-              {proposal.problems.map((p, i) => <div key={i} style={{ marginTop: 4 }}>· {p}</div>)}
-            </div>
+
+              <div className="pd-field">
+                <label>표 이름</label>
+                <input value={draft.title} disabled={locked}
+                       onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+              </div>
+
+              <div className="pd-field">
+                <label>축 — 이 표가 무엇으로 값을 고르는가</label>
+                <AxisPicker axes={draft.keyAxes} options={axisOptions} disabled={locked}
+                            onChange={(keyAxes) => setDraft({ ...draft, keyAxes })} />
+              </div>
+
+              <div className="pd-field">
+                <label>표 내용</label>
+                <PayloadEditor value={draft.payload} disabled={locked}
+                               onChange={(payload) => setDraft({ ...draft, payload })} />
+              </div>
+
+              <div className="row" style={{ gap: 16, flexWrap: 'wrap' }}>
+                <div className="pd-field" style={{ flex: '0 0 auto' }}>
+                  <label>시행일</label>
+                  <input type="date" value={draft.effectiveDate ?? ''} disabled={locked}
+                         onChange={(e) => setDraft({ ...draft, effectiveDate: e.target.value })} />
+                </div>
+                <label className="row" style={{ gap: 6, alignItems: 'center' }}>
+                  <input type="checkbox" checked={draft.strictKeys} disabled={locked}
+                         onChange={(e) => setDraft({ ...draft, strictKeys: e.target.checked })} />
+                  <span>축 값을 모르면 해소하지 않음
+                    <span className="text-meta"> (금지 목록처럼 「모르면 안전」이라 할 수 없는 표)</span>
+                  </span>
+                </label>
+              </div>
+            </details>
           )}
-
-          <div className="pd-field">
-            <label>표 key</label>
-            <input value={draft.key} disabled={locked}
-                   onChange={(e) => setDraft({ ...draft, key: e.target.value })} />
-            <div className="text-meta">
-              판정에서 <code>policy.{(draft.key || '').replace(/_table$/, '')}</code> 로 쓰입니다
-            </div>
-          </div>
-
-          <div className="pd-field">
-            <label>표 이름</label>
-            <input value={draft.title} disabled={locked}
-                   onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
-          </div>
-
-          <div className="pd-field">
-            <label>축 — 이 표가 무엇으로 값을 고르는가</label>
-            <AxisPicker axes={draft.keyAxes} options={axisOptions} disabled={locked}
-                        onChange={(keyAxes) => setDraft({ ...draft, keyAxes })} />
-          </div>
-
-          <div className="pd-field">
-            <label>표 내용</label>
-            <PayloadEditor value={draft.payload} disabled={locked}
-                           onChange={(payload) => setDraft({ ...draft, payload })} />
-          </div>
-
-          <div className="row" style={{ gap: 16, flexWrap: 'wrap' }}>
-            <div className="pd-field" style={{ flex: '0 0 auto' }}>
-              <label>시행일</label>
-              <input type="date" value={draft.effectiveDate ?? ''} disabled={locked}
-                     onChange={(e) => setDraft({ ...draft, effectiveDate: e.target.value })} />
-            </div>
-            <label className="row" style={{ gap: 6, alignItems: 'center' }}>
-              <input type="checkbox" checked={draft.strictKeys} disabled={locked}
-                     onChange={(e) => setDraft({ ...draft, strictKeys: e.target.checked })} />
-              <span>축 값을 모르면 해소하지 않음
-                <span className="text-meta"> (금지 목록처럼 「모르면 안전」이라 할 수 없는 표)</span>
-              </span>
-            </label>
-          </div>
 
           {error && (
             <div className="note" style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)', whiteSpace: 'pre-wrap' }}>

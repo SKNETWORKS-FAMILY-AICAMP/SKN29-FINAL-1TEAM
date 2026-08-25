@@ -480,21 +480,28 @@ _TABLE_SYSTEM = """당신은 회사 규정의 **별표(한도표)** 를 읽고, 
 - comment: 담당자에게 **한국어 두세 문장**으로 설명하세요 — 이 표에서 무엇을 읽었고
   승인 전에 무엇을 눈으로 확인해야 하는지. 전문용어(축·payload·스칼라)는 쓰지 마세요.
 
-**한 표에 값 열이 여러 개면**(예: 일비·식비·숙박비가 한 행에) 그중 **하나만** 고르고
-나머지는 notes에 "별도 표로 나눠야 함: …"이라고 적으세요. 판정 엔진은 표 하나에서
-값 하나를 꺼내므로, 여러 열을 한 payload에 섞으면 쓸 수 없습니다.
+**한 표에 값 열이 여러 개면**(예: 일비·식비·숙박비가 한 행에) **열마다 하나씩 나눠서
+tables 배열에 담으세요.** 판정 엔진은 표 하나에서 값 하나를 꺼내므로, 여러 열을 한
+payload에 섞으면 쓸 수 없습니다. 각각 다른 key를 주고(`daily_allowance_table`,
+`lodging_limit_table` …) title에 어느 열인지 밝히세요.
 
-**이 표가 임계값 표가 아니면**(조직도·서식·절차 흐름·승인권자 표 등) is_threshold_table을
-false로 두고 **skip_reason에 그 이유를 한국어 한 문장**으로 적으세요. 억지로 만들지
+**축이 서로 다른 구간이 한 별표에 있으면**(예: 앞쪽은 직책별, 뒤쪽은 지역별) 그것도
+나눕니다. tables는 **원문 표 하나당 한 개가 아니라, 판정이 쓸 값 하나당 한 개**입니다.
+
+값 열이 하나뿐인 평범한 표는 tables에 항목 1개만 담으면 됩니다.
+
+**이 표가 임계값 표가 아니면**(조직도·서식·절차 흐름·승인권자 표 등) **tables를 빈
+배열로 두고** skip_reason에 그 이유를 한국어 한 문장으로 적으세요. 억지로 만들지
 마세요 — 승인하는 사람의 시간을 뺏습니다.
 
 숫자를 지어내지 마세요. 표에 없는 값은 넣지 않습니다."""
 
-_TABLE_SCHEMA = {
+#: 한 별표에서 **표 여러 개**가 나온다. 실측 2026-08-25: 출장비 별표1·2가 한 행에
+#  일비·식비·숙박비를 함께 담고 있어, 단건 스키마로는 어느 하나만 살리고 나머지를
+#  notes에 적어 버릴 수밖에 없었다(사람이 손으로 다시 만들어야 했다).
+_TABLE_ITEM = {
     "type": "object",
     "properties": {
-        "is_threshold_table": {"type": "boolean"},
-        "skip_reason": {"type": "string"},
         "key": {"type": "string"},
         "title": {"type": "string"},
         "key_axes": {"type": "array", "items": {"type": "string"}},
@@ -504,8 +511,19 @@ _TABLE_SCHEMA = {
         "notes": {"type": "string"},
         "comment": {"type": "string"},
     },
-    "required": ["is_threshold_table", "skip_reason", "key", "title", "key_axes",
-                 "payload_json", "strict_keys", "confidence", "notes", "comment"],
+    "required": ["key", "title", "key_axes", "payload_json", "strict_keys",
+                 "confidence", "notes", "comment"],
+    "additionalProperties": False,
+}
+
+_TABLE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tables": {"type": "array", "items": _TABLE_ITEM},
+        "skip_reason": {"type": "string"},
+        "comment": {"type": "string"},
+    },
+    "required": ["tables", "skip_reason", "comment"],
     "additionalProperties": False,
 }
 
@@ -527,17 +545,20 @@ _SHOTS: list[tuple[str, str]] = [
         "| 항목 | 기준액 |\n|---|---|\n| 식음료 | 30,000원 |\n| 기념품 | 50,000원 |\n"
         "| 경조 화환 | 100,000원 |",
         json.dumps({
-            "is_threshold_table": True, "skip_reason": "",
-            "key": "item_evidence_threshold_table",
-            "title": "별표3. 항목별 증빙 기준액",
-            "key_axes": ["category.item_type"],
-            "payload_json": json.dumps(
-                {"식사": 30000, "선물": 50000, "경조사": 100000}, ensure_ascii=False),
-            "strict_keys": False, "confidence": 0.9,
-            "notes": "표 머리글을 값 어휘로 옮겼습니다: 식음료→식사, 기념품→선물, 경조 화환→경조사.",
-            "comment": "항목별로 적격증빙이 필요해지는 금액입니다. 세 행의 표기를 시스템 어휘로"
-                       " 바꿔 담았으니, 원문의 「식음료·기념품·경조 화환」과 같은 뜻이 맞는지"
-                       " 확인해 주세요.",
+            "skip_reason": "",
+            "comment": "항목별로 적격증빙이 필요해지는 금액입니다.",
+            "tables": [{
+                "key": "item_evidence_threshold_table",
+                "title": "별표3. 항목별 증빙 기준액",
+                "key_axes": ["category.item_type"],
+                "payload_json": json.dumps(
+                    {"식사": 30000, "선물": 50000, "경조사": 100000}, ensure_ascii=False),
+                "strict_keys": False, "confidence": 0.9,
+                "notes": "표 머리글을 값 어휘로 옮겼습니다: 식음료→식사, 기념품→선물,"
+                         " 경조 화환→경조사.",
+                "comment": "값 열이 하나뿐이라 표 한 개로 담았습니다. 원문의"
+                           " 「식음료·기념품·경조 화환」이 각각 같은 뜻이 맞는지 확인해 주세요.",
+            }],
         }, ensure_ascii=False),
     ),
     (
@@ -551,19 +572,32 @@ _SHOTS: list[tuple[str, str]] = [
         "| 해외 | 1급지 | 실비 | 200,000원 | 70,000원 |\n"
         "| 해외 | 2급지 | 실비 | 140,000원 | 50,000원 |",
         json.dumps({
-            "is_threshold_table": True, "skip_reason": "",
-            "key": "overseas_lodging_limit_table",
-            "title": "별표1. 출장 구분·지역별 지급 기준(숙박비)",
-            "key_axes": ["trip.trip_type", "trip.region_grade"],
-            "payload_json": json.dumps(
-                {"해외": {"A": 200000, "B": 140000}}, ensure_ascii=False),
-            "strict_keys": False, "confidence": 0.85,
-            "notes": "값 열이 셋이라 숙박비만 담았습니다. 별도 표로 나눠야 함: 일비(해외 A 70,000원,"
-                     " B 50,000원), 교통비(실비라 임계값 없음)."
-                     " 지역 표기 1급지→A, 2급지→B로 옮겼습니다. C급지는 표에 없어 비웠습니다.",
-            "comment": "해외출장 숙박비 상한입니다. 한 행에 교통비·숙박비·일비가 함께 있어"
-                       " 숙박비만 옮겼고, 일비는 별도 표로 만들어야 합니다. 「1급지/2급지」를"
-                       " A/B로 본 것이 맞는지 확인해 주세요.",
+            "skip_reason": "",
+            "comment": "해외출장 여비 기준입니다. 한 행에 교통비·숙박비·일비가 함께 있어"
+                       " **값 열마다 표를 나눴습니다.** 「1급지/2급지」를 A/B로 본 것이"
+                       " 맞는지 확인해 주세요.",
+            "tables": [
+                {
+                    "key": "overseas_lodging_limit_table",
+                    "title": "별표1. 해외출장 숙박비 상한",
+                    "key_axes": ["trip.trip_type", "trip.region_grade"],
+                    "payload_json": json.dumps(
+                        {"해외": {"A": 200000, "B": 140000}}, ensure_ascii=False),
+                    "strict_keys": False, "confidence": 0.85,
+                    "notes": "지역 표기 1급지→A, 2급지→B로 옮겼습니다. C급지는 표에 없어 비웠습니다.",
+                    "comment": "1박당 숙박비 상한입니다.",
+                },
+                {
+                    "key": "overseas_daily_allowance_table",
+                    "title": "별표1. 해외출장 일비",
+                    "key_axes": ["trip.trip_type", "trip.region_grade"],
+                    "payload_json": json.dumps(
+                        {"해외": {"A": 70000, "B": 50000}}, ensure_ascii=False),
+                    "strict_keys": False, "confidence": 0.85,
+                    "notes": "교통비 열은 「실비」라 임계값이 없어 표로 만들지 않았습니다.",
+                    "comment": "1일당 일비입니다.",
+                },
+            ],
         }, ensure_ascii=False),
     ),
     (
@@ -573,11 +607,9 @@ _SHOTS: list[tuple[str, str]] = [
         "| 단계 | 담당 | 처리 기한 |\n|---|---|---|\n"
         "| 1차 | 기안 부서장 | 2영업일 |\n| 2차 | 재무팀 | 3영업일 |",
         json.dumps({
-            "is_threshold_table": False,
+            "tables": [],
             "skip_reason": "결재 단계별 담당과 처리 기한을 적은 절차 표이고, 정산 판정이 비교할"
                            " 금액 임계값이 없습니다.",
-            "key": "", "title": "", "key_axes": [], "payload_json": "{}",
-            "strict_keys": False, "confidence": 0.95, "notes": "",
             "comment": "결재 절차를 설명하는 표라 판정 임계값으로 만들지 않았습니다."
                        " 처리 기한(2·3영업일)은 금액 기준이 아니라 업무 규칙입니다.",
         }, ensure_ascii=False),
@@ -737,6 +769,15 @@ def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[st
             "값 자리에 객체가 남아 있습니다 — 값 열이 여러 개면 하나만 고르고 나머지는"
             " notes에 적으세요."
         )
+    #  **`null` 리프는 표 전체를 무력화한다.** core `_exposes_scalar`가 「리프가 전부
+    #  스칼라인가」를 보고 `ctx.policy.*` 등재를 결정하므로, `{"*": null}` 하나 때문에
+    #  나머지 값까지 판정에 안 올라간다 — 승인은 되는데 아무 데도 안 쓰이는 표가 된다.
+    if any(v is None for v in leaves):
+        problems.append(
+            "값이 비어 있는 항목이 있습니다 — 모르는 값은 `null`로 두지 말고 그 키를 빼세요"
+            " (빠진 키는 축 값을 모를 때 `*`로 떨어지고, `null` 하나가 표 전체를"
+            " 판정에서 빠지게 만듭니다)."
+        )
 
     #  **원문에 근거 없는 항목 탐지.** 실측 2026-08-25: 「키를 값 목록의 표기로 쓰라」를
     #  모델이 **어휘 전체를 채우라**로 읽어 `{"회식":50000,"회의":50000,…}`를 냈고 다른
@@ -748,7 +789,19 @@ def _check(data: dict[str, Any], payload: Any, axes: list[str], dropped: list[st
     if axes:
         keys = [k for k in _keys_at(payload, 0) if k != "*"]
         anchorless = [k for k in keys if k not in raw]
-        if keys and len(anchorless) * 2 > len(keys):
+        choices = (vocab or {}).get(axes[0]) or []
+        #  **어휘가 있는 축에서는 원문과 다른 것이 정상이다.** 「국내출장(당일)」을
+        #  「국내당일」로 옮기는 것이 이 검사가 시키는 일인데, 그걸 다시 「원문에 없다」고
+        #  잡으면 맞는 값을 틀렸다고 하는 셈이다(실측 2026-08-25에 그렇게 났다).
+        #
+        #  그 축에서 잡아야 하는 것은 **어휘를 통째로 베껴 넣은 경우**뿐이다 —
+        #  `{"회식":50000,"회의":50000,…}`처럼 값 어휘 전부를 같은 값으로 채우면 축 검사·
+        #  깊이 검사·숫자 검사를 모두 통과하면서 축은 아무것도 가르지 못한다.
+        filled_whole_vocab = bool(choices) and set(keys) >= set(choices)
+        suspicious = (
+            filled_whole_vocab if choices else (bool(keys) and len(anchorless) * 2 > len(keys))
+        )
+        if suspicious and anchorless:
             problems.append(
                 "표에서 찾을 수 없는 항목이 대부분입니다: " + ", ".join(anchorless[:6])
                 + " — 축의 값 목록은 **표기를 맞추는 용도**이지 채워 넣을 목록이 아닙니다."
@@ -786,6 +839,65 @@ def _usage_note(key: str, axes: list[str], strict: bool) -> str:
         if strict else " 축 값을 모르면 `*` 기본값이 쓰입니다."
     )
     return f"승인하면 판정 사실 `policy.{field}`가 되어 룰이 이 값과 비교합니다. {pick}{tail}"
+
+
+
+def _parse_tables(data: dict[str, Any], allowed: set[str], raw: str,
+                  vocab: dict[str, list[str]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """모델 출력(`tables` 배열) → 검증된 후보 목록 + **재시도에 쓸 문제 목록**.
+
+    문제는 **표별로 붙여 두고**(각 후보의 `problems`) 재시도용으로는 한 뭉치로 합친다 —
+    한 표가 틀렸다고 나머지 표까지 버리면, 고쳐진 표가 다시 틀릴 기회를 주는 셈이다.
+    """
+    rows: list[dict[str, Any]] = []
+    all_problems: list[str] = []
+    seen_keys: set[str] = set()
+
+    for index, item in enumerate(data.get("tables") or []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            payload = json.loads(item.get("payload_json") or "{}")
+        except ValueError:
+            payload = {}
+        if not isinstance(payload, dict) or not payload:
+            all_problems.append(f"{index + 1}번째 표의 payload가 비어 있거나 객체가 아닙니다.")
+            continue
+
+        axes = [a for a in (item.get("key_axes") or []) if a in allowed]
+        dropped = [a for a in (item.get("key_axes") or []) if a not in allowed]
+        problems = _check(item, payload, axes, dropped, raw, vocab)
+
+        key = str(item.get("key") or "").strip()[:64]
+        if key in seen_keys:
+            #  **key는 `PolicyTable`의 식별자다.** 같은 key 둘이 승인되면 하나가 다른 하나를
+            #  개정으로 밀어낸다(`approve`가 같은 key의 구행에 `superseded_date`를 찍는다).
+            problems.append(
+                f"key `{key}`가 이 별표 안에서 중복입니다 — 표마다 다른 이름을 주세요."
+            )
+        seen_keys.add(key)
+
+        notes = str(item.get("notes") or "")
+        if dropped:
+            notes = (notes + "\n" if notes else "") + (
+                "판정 사실에 없는 축이라 제외했습니다: " + ", ".join(dropped)
+                + " — 축을 다시 고르거나, 표에 값이 하나뿐이면 축 없이 두세요."
+            )
+
+        rows.append({
+            "key": key,
+            "title": str(item.get("title") or "").strip()[:200],
+            "axes": axes,
+            "payload": payload,
+            "strict": bool(item.get("strict_keys")),
+            "confidence": float(item.get("confidence") or 0.0),
+            "notes": notes[:2000],
+            "comment": str(item.get("comment") or "")[:1000],
+            "problems": problems,
+        })
+        all_problems += [f"[{item.get('key') or index + 1}] {p}" for p in problems]
+
+    return rows, all_problems
 
 
 def extract_tables(
@@ -827,11 +939,10 @@ def extract_tables(
         head = group[0]
         label = (head.article_label or head.citation or head.chunk_id).strip()
         base = f"[사용 가능한 축]\n{axes_block}\n\n{_context_block(group, by_id)}\n\n{raw}"
+        chunk_ids = ",".join(c.chunk_id for c in group)
 
         data: dict[str, Any] = {}
-        payload: Any = {}
-        axes: list[str] = []
-        dropped: list[str] = []
+        parsed: list[dict[str, Any]] = []
         problems: list[str] = []
         for attempt in range(TABLE_ATTEMPTS):
             user = base if attempt == 0 else (
@@ -850,15 +961,7 @@ def extract_tables(
                     data = {}
                 break
             data = got
-            if not data.get("is_threshold_table"):
-                break
-            try:
-                payload = json.loads(data.get("payload_json") or "{}")
-            except ValueError:
-                payload = {}
-            axes = [a for a in (data.get("key_axes") or []) if a in allowed]
-            dropped = [a for a in (data.get("key_axes") or []) if a not in allowed]
-            problems = _check(data, payload, axes, dropped, raw, vocab)
+            parsed, problems = _parse_tables(got, allowed, raw, vocab)
             if not problems:
                 break
 
@@ -866,59 +969,67 @@ def extract_tables(
             continue
 
         base_row = {
-            "chunkId": ",".join(c.chunk_id for c in group)[:64],
+            "chunkId": chunk_ids[:64],
             "label": label[:100],
             "citation": head.citation,
             "pageStart": head.page_start,
             "pageEnd": group[-1].page_end,
             "rawMarkdown": raw,
-            "confidence": float(data.get("confidence") or 0.0),
-            "comment": str(data.get("comment") or "")[:1000],
         }
+        split_note = (
+            [{"level": "info",
+              "message": f"페이지에 걸쳐 나뉜 표 {len(group)}조각을 하나로 합쳐 읽었습니다."}]
+            if len(group) > 1 else []
+        )
 
-        if not data.get("is_threshold_table"):
-            #  **버리지 않고 남긴다** — 왜 안 만들었는지가 화면에 보여야 한다.
+        if not parsed:
+            #  **「표가 아니다」와 「만들다 실패했다」는 다른 말이다.** 모델이 표를 내려다
+            #  payload가 깨져 하나도 못 건졌는데 「임계값 표가 아니라고 판단했습니다」라고
+            #  적으면, 담당자는 AI가 검토하고 뺐다고 읽는다 — 사실은 아무도 안 봤다.
+            attempted = bool(data.get("tables"))
             out.append({
                 **base_row, "skipped": True,
-                "skipReason": str(data.get("skip_reason")
-                                  or "임계값 표가 아니라고 판단했습니다.")[:500],
+                "skipReason": (
+                    "표를 만들려 했지만 결과를 읽지 못했습니다(형식 오류). 표 원문을 보고"
+                    " 직접 만들어 주세요." if attempted else
+                    str(data.get("skip_reason") or "임계값 표가 아니라고 판단했습니다.")[:500]
+                ),
+                "comment": str(data.get("comment") or "")[:1000],
+                "confidence": 0.0,
                 "key": "", "title": "", "keyAxes": [], "payload": {}, "strictKeys": False,
-                "notes": "", "checks": [], "usageNote": "",
+                "notes": "", "checks": split_note, "usageNote": "",
             })
             continue
 
-        if not isinstance(payload, dict) or not payload:
-            continue
-
-        notes = str(data.get("notes") or "")
-        if dropped:
-            notes = (notes + "\n" if notes else "") + (
-                "판정 사실에 없는 축이라 제외했습니다: " + ", ".join(dropped)
-                + " — 축을 다시 고르거나, 표에 값이 하나뿐이면 축 없이 두세요."
-            )
-        #  재시도로도 안 풀린 문제는 **숨기지 않는다.** 승인 화면이 그대로 띄운다.
-        checks = [{"level": "warn", "message": m} for m in problems]
-        if len(group) > 1:
-            checks.append({
-                "level": "info",
-                "message": f"페이지에 걸쳐 나뉜 표 {len(group)}조각을 하나로 합쳐 읽었습니다.",
+        #  **표 하나가 여러 후보가 된다.** 그래서 `source_chunk_id`에 key를 덧붙인다 —
+        #  재색인 때 사람이 승인·반려한 것을 알아보는 키이므로 후보마다 달라야 한다
+        #  (같으면 셋 중 하나의 결정이 나머지 둘까지 덮는다).
+        for item in parsed:
+            out.append({
+                **base_row,
+                "chunkId": f"{chunk_ids}#{item['key']}"[:64],
+                "skipped": False,
+                "skipReason": "",
+                "key": item["key"],
+                "title": item["title"],
+                "keyAxes": item["axes"],
+                "payload": item["payload"],
+                "strictKeys": item["strict"],
+                "confidence": item["confidence"],
+                "notes": item["notes"],
+                "comment": item["comment"] or str(data.get("comment") or "")[:1000],
+                "usageNote": _usage_note(item["key"], item["axes"], item["strict"]),
+                "checks": [
+                    *({"level": "warn", "message": m} for m in item["problems"]),
+                    *split_note,
+                    *([] if item["problems"] else
+                      [{"level": "ok", "message": "축·중첩 깊이·값 검사를 통과했습니다."}]),
+                    *([{"level": "info",
+                        "message": f"이 별표에서 표 {len(parsed)}개를 만들었습니다"
+                                   " (값 열이 여러 개라 나눴습니다)."}]
+                      if len(parsed) > 1 else []),
+                ],
             })
-        if not problems:
-            checks.append({"level": "ok", "message": "축·중첩 깊이·값 검사를 통과했습니다."})
-
-        key = str(data.get("key") or "").strip()[:64]
-        strict = bool(data.get("strict_keys"))
-        out.append({
-            **base_row, "skipped": False, "skipReason": "",
-            "key": key,
-            "title": str(data.get("title") or "").strip()[:200],
-            "keyAxes": axes,
-            "payload": payload,
-            "strictKeys": strict,
-            "notes": notes[:2000],
-            "usageNote": _usage_note(key, axes, strict),
-            "checks": checks,
-        })
     return out
 
 

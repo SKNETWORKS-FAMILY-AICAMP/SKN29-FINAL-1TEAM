@@ -501,3 +501,26 @@
 .pd-resolved td { border: 1px solid var(--border); padding: 5px 8px; }
 .pd-resolved th { background: var(--surface-2); font-weight: 700; text-align: left; }
 .pd-resolved .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/*  **결과가 카드의 결론**이라 눈에 먼저 들어와야 한다 — 아래 코멘트·메모·원문은 그 결과를
+    설명하거나 뒷받침하는 것들이다. */
+.pd-resolved {
+  border: 1px solid var(--border-strong); border-radius: var(--radius-control);
+  padding: 10px 12px; background: var(--surface-2);
+}
+.pd-resolved-head { margin-bottom: 6px; line-height: 1.5; }
+.pd-resolved-head code {
+  font-size: 12.5px; font-weight: 700; color: var(--primary);
+  background: var(--primary-soft); padding: 1px 5px; border-radius: 4px;
+}
+.pd-resolved table { background: var(--surface); }
+
+/*  접기 — 원문 대조·값 고치기처럼 **필요한 사람만 여는 것**. 늘 펼쳐 두면 카드가 길어져
+    결론이 안 보인다(예전 상태: 결과를 보려면 여섯 블록을 지나야 했다). */
+.pd-fold { margin-top: 10px; }
+.pd-fold > summary {
+  cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted);
+  padding: 5px 0; user-select: none;
+}
+.pd-fold > summary:hover { color: var(--text); }
+.pd-fold[open] > summary { margin-bottom: 6px; }

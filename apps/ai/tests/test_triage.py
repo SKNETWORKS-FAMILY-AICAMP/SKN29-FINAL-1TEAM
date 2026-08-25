@@ -45,6 +45,26 @@ class FakeChunk:
     next_chunk_id: str | None = None
 
 
+
+def one(**item):
+    """단건 표 응답을 새 스키마(`tables` 배열)로 감싼다.
+
+    **한 별표에서 표 여러 개**가 나올 수 있게 스키마가 배열이 됐다(2026-08-25). 대부분의
+    회귀는 표 하나만 보므로 이 헬퍼로 감싼다 — 배열을 직접 쓰는 것은 「여러 개」를
+    검증하는 테스트뿐이다.
+    """
+    item.setdefault("strict_keys", False)
+    item.setdefault("confidence", 0.9)
+    item.setdefault("notes", "")
+    item.setdefault("comment", "")
+    return {"tables": [item], "skip_reason": "", "comment": ""}
+
+
+def none(reason="임계값 표가 아닙니다."):
+    """「표로 만들지 않음」 응답."""
+    return {"tables": [], "skip_reason": reason, "comment": ""}
+
+
 AXES = [
     {"path": "user.job_title", "type": "string", "desc": "직책"},
     {"path": "tx.amount", "type": "number", "desc": "결제 총액"},
@@ -205,12 +225,11 @@ def test_선별이_빠뜨린_후보는_중간_순위로_남긴다(chat):
 def test_없는_축은_제외하고_그_사실을_메모에_남긴다(chat):
     #  없는 축은 **재시도 대상**이다(목록에서 다시 고르게 한다). 모델이 같은 답을
     #  되풀이하면 그 사실을 메모로 남기고 사람에게 넘긴다.
-    chat([{
-        "is_threshold_table": True, "key": "welfare_limit_table", "title": "별표1",
-        "key_axes": ["user.job_title", "user.position"],       # 뒤엣것은 스키마에 없다
-        "payload_json": json.dumps({"부서장": 200000, "*": 100000}),
-        "strict_keys": False, "confidence": 0.8, "notes": "", "comment": "",
-    }] * 2)
+    chat([one(
+        key="welfare_limit_table", title="별표1",
+        key_axes=["user.job_title", "user.position"],       # 뒤엣것은 스키마에 없다
+        payload_json=json.dumps({"부서장": 200000, "*": 100000}), confidence=0.8,
+    )] * 2)
     #  표 원문에 값이 있어야 한다 — 없으면 「원문에 없는 숫자」 검사에 걸려 재시도한다.
     rows = triage.extract_tables(
         [FakeChunk("c1", "| 직책 | 한도 |\n| 부서장 | 200,000 |\n| 그 외 | 100,000 |")], AXES)
@@ -221,11 +240,7 @@ def test_없는_축은_제외하고_그_사실을_메모에_남긴다(chat):
 def test_임계값_표가_아니면_승인_대기에_넣지_않되_사유는_남긴다(chat):
     """**조용히 버리지 않는다** — 화면에 아무것도 안 남으면 담당자는
     「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다."""
-    chat([{
-        "is_threshold_table": False, "skip_reason": "결재 서식이라 임계값이 없습니다.",
-        "key": "", "title": "", "key_axes": [], "payload_json": "{}",
-        "strict_keys": False, "confidence": 0.1, "notes": "", "comment": "",
-    }])
+    chat([none("결재 서식이라 임계값이 없습니다.")])
     rows = triage.extract_tables([FakeChunk("c1", "| 결재 | 서명 |")], AXES)
     assert len(rows) == 1
     assert rows[0]["skipped"] is True
@@ -237,12 +252,11 @@ def test_페이지에_걸친_표는_한_덩어리로_읽는다(chat):
     """실측: `출장비_사용규정` 별표2가 A·B등급(5쪽)과 C등급(6쪽) 두 청크였다.
     따로 읽으면 **반쪽 표 두 개**가 승인 대기에 올라오고, 머리글 없는 뒷조각은
     축조차 고를 수 없다."""
-    calls = chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "lodging_limit_table",
-        "title": "별표2", "key_axes": ["user.job_title"],
-        "payload_json": json.dumps({"부장": 250000, "*": 150000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "숙박비 상한입니다.",
-    }])
+    calls = chat([one(
+        key="lodging_limit_table", title="별표2", key_axes=["user.job_title"],
+        payload_json=json.dumps({"부장": 250000, "*": 150000}),
+        comment="숙박비 상한입니다.",
+    )])
     rows = triage.extract_tables([
         FakeChunk("x2#01", "| 직책 | 상한 |\n| 부장 | 250,000 |", parent_chunk_id="x2#P",
                   page_start=5, page_end=5),
@@ -259,11 +273,10 @@ def test_페이지에_걸친_표는_한_덩어리로_읽는다(chat):
 
 def test_맥락을_함께_넘긴다(chat):
     """머리글이 "구분"뿐이면 그게 무엇의 구분인지는 **표 밖**에 있다."""
-    calls = chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-        "title": "별표1", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
-    }])
+    calls = chat([one(
+        key="daily_limit_table", title="별표1", key_axes=[],
+        payload_json=json.dumps({"value": 30000}),
+    )])
     table = FakeChunk("t1", "| 구분 | 30,000 |", chapter_title="제3장 국외출장",
                       article_title="(여비)", prev_chunk_id="p0", next_chunk_id="n0",
                       doc_name="출장비_사용규정")
@@ -279,12 +292,10 @@ def test_맥락을_함께_넘긴다(chat):
 def test_지어낸_숫자는_재시도로_되돌린다(chat):
     """원문에 없는 값이 payload에 있으면 셀을 잘못 읽었거나 만든 것이다."""
     calls = chat([
-        {"is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-         "title": "별표1", "key_axes": [], "payload_json": json.dumps({"value": 999999}),
-         "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""},
-        {"is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-         "title": "별표1", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
-         "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""},
+        one(key="daily_limit_table", title="별표1", key_axes=[],
+            payload_json=json.dumps({"value": 999999})),
+        one(key="daily_limit_table", title="별표1", key_axes=[],
+            payload_json=json.dumps({"value": 30000})),
     ])
     rows = triage.extract_tables([FakeChunk("c1", "| 한도 | 30,000원 |")], AXES)
     assert len(calls) == 2, "검사에 걸리면 문제를 적어 다시 부른다"
@@ -296,20 +307,16 @@ def test_지어낸_숫자는_재시도로_되돌린다(chat):
 def test_만원_표기는_지어낸_숫자가_아니다(chat):
     """실측 2026-08-25: 회식 별표4 원문이 "5만원"이라 payload의 50000이 「원문에 없는
     숫자」로 걸렸다 — **검사가 맞는 값을 틀렸다고 하면 사람이 검사를 안 믿게 된다.**"""
-    chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "dining_limit_table",
-        "title": "별표4", "key_axes": [], "payload_json": json.dumps({"value": 50000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
-    }])
+    chat([one(key="dining_limit_table", title="별표4", key_axes=[],
+              payload_json=json.dumps({"value": 50000}))])
     row = triage.extract_tables([FakeChunk("c1", "| 팀 회식 | 5만원 |")], AXES)[0]
     assert all(c["level"] != "warn" for c in row["checks"]), row["checks"]
 
 
 def test_고쳐지지_않은_문제는_숨기지_않는다(chat):
     """재시도로도 안 풀리면 **승인 화면이 그대로 띄운다** — 조용히 통과시키지 않는다."""
-    bad = {"is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-           "title": "별표1", "key_axes": [], "payload_json": json.dumps({"value": 999999}),
-           "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""}
+    bad = one(key="daily_limit_table", title="별표1", key_axes=[],
+              payload_json=json.dumps({"value": 999999}))
     chat([bad, bad])
     rows = triage.extract_tables([FakeChunk("c1", "| 한도 | 30,000원 |")], AXES)
     warns = [c for c in rows[0]["checks"] if c["level"] == "warn"]
@@ -326,11 +333,11 @@ def test_축의_값_어휘가_아니면_재시도한다(chat):
         {"path": "category.item_type", "type": "string", "desc": "지출 세부유형",
          "values": ["식사", "선물", "경조사", "상품권", "행사성", "숙박", "교통"]},
     ]
-    wrong = {"is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
-             "title": "별표1", "key_axes": ["category.value"],
-             "payload_json": json.dumps({"식사": 50000, "선물": 50000}),
-             "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""}
-    right = {**wrong, "key_axes": ["category.item_type"]}
+    wrong = one(key="kickback_limit_table", title="별표1", key_axes=["category.value"],
+                payload_json=json.dumps({"식사": 50000, "선물": 50000}))
+    right = one(key="kickback_limit_table", title="별표1",
+                key_axes=["category.item_type"],
+                payload_json=json.dumps({"식사": 50000, "선물": 50000}))
     calls = chat([wrong, right])
     row = triage.extract_tables(
         [FakeChunk("c1", "| 구분 | 1인당 한도 |\n| 식사 | 50,000 |\n| 선물 | 50,000 |")], axes)[0]
@@ -346,11 +353,9 @@ def test_어휘_전체를_채우면_잡는다(chat):
     ✅로 보이는, 이 검사들이 막으려던 바로 그 상태다."""
     axes = [{"path": "category.value", "type": "string", "desc": "비용분류",
              "values": ["회식", "회의", "식대", "출장", "접대", "기타"]}]
-    flat = {"is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
-            "title": "별표1", "key_axes": ["category.value"],
-            "payload_json": json.dumps({v: 50000 for v in
-                                        ["회식", "회의", "식대", "출장", "접대", "기타"]}),
-            "strict_keys": False, "confidence": 0.9, "notes": "", "comment": ""}
+    flat = one(key="kickback_limit_table", title="별표1", key_axes=["category.value"],
+               payload_json=json.dumps({v: 50000 for v in
+                                        ["회식", "회의", "식대", "출장", "접대", "기타"]}))
     chat([flat, flat])
     raw = "| 구분 | 1인당 한도 |" + '\\n' + "| 음식물 | 50,000 |" + '\\n' + "| 선물 | 50,000 |"
     row = triage.extract_tables([FakeChunk("c1", raw)], axes)[0]
@@ -363,26 +368,48 @@ def test_별표_추출은_모범_예시를_함께_보낸다(chat):
 
     예시는 **가상 표**여야 한다. 실제 규정 문장을 넣으면 모델이 그 회사 값을 기억해 다른
     문서에도 흘린다(프롬프트가 데이터를 오염시킨다)."""
-    chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-        "title": "t", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
-    }])
-    calls = chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-        "title": "t", "key_axes": [], "payload_json": json.dumps({"value": 30000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
-    }])
+    calls = chat([one(key="daily_limit_table", title="t", key_axes=[],
+                      payload_json=json.dumps({"value": 30000}))])
     triage.extract_tables([FakeChunk("c1", "| 한도 | 30,000원 |")], AXES)
     shots = calls[0]["shots"]
     assert len(shots) >= 3, "표기 매핑·다열·건너뛰기 셋은 보여줘야 한다"
     joined = " ".join(u + a for u, a in shots)
     assert "식음료" in joined and "식사" in joined, "표기 매핑 예시"
-    assert "별도 표로 나눠야 함" in joined, "값 열이 여러 개일 때의 예시"
-    assert "is_threshold_table" in joined and "skip_reason" in joined, "건너뛰기 예시"
+    #  값 열이 셋인 표를 **두 개로 나눈** 예시가 있어야 한다.
+    assert "overseas_daily_allowance_table" in joined, "값 열이 여러 개일 때의 예시"
+    assert '"tables": []' in joined and "skip_reason" in joined, "건너뛰기 예시"
     #  **실제 규정 문장이 새어 들어가면 안 된다.**
     for leaked in ("타이거", "청탁금지", "업무추진비"):
         assert leaked not in joined, leaked
+
+
+def test_null_리프는_표_전체를_무력화한다(chat):
+    """core `_exposes_scalar`가 「리프가 전부 스칼라인가」로 `ctx.policy.*` 등재를 정한다 —
+    `{"*": null}` 하나 때문에 **나머지 값까지 판정에 안 올라간다**(승인은 되는데 아무 데도
+    안 쓰이는 표가 된다). 실측 2026-08-25에 그 모양이 나왔다."""
+    axes = [{"path": "category.item_type", "type": "string", "desc": "세부유형",
+             "values": ["식사", "선물"]}]
+    bad = one(key="kickback_limit_table", title="별표1", key_axes=["category.item_type"],
+              payload_json=json.dumps({"식사": 50000, "선물": 50000, "*": None}))
+    chat([bad, bad])
+    raw = "| 식사 | 50,000 |" + chr(92) + "n| 선물 | 50,000 |"
+    row = triage.extract_tables([FakeChunk("c1", raw)], axes)[0]
+    warns = [c["message"] for c in row["checks"] if c["level"] == "warn"]
+    assert any("비어 있는 항목" in m for m in warns), warns
+
+
+def test_정당한_표기_변환은_잡지_않는다(chat):
+    """**어휘가 있는 축에서는 원문과 다른 것이 정상이다.** 「국내출장(당일)」을 「국내당일」로
+    옮기는 것이 검사가 시키는 일인데, 그걸 다시 「원문에 없다」고 잡으면 맞는 값을 틀렸다고
+    하는 셈이다(실측 2026-08-25)."""
+    axes = [{"path": "trip.trip_type", "type": "string", "desc": "출장 구분",
+             "values": ["국내당일", "국내숙박", "해외"]}]
+    chat([one(key="domestic_allowance_table", title="별표1", key_axes=["trip.trip_type"],
+              payload_json=json.dumps({"국내당일": 20000, "국내숙박": 20000}))])
+    raw = "| 구분 | 일비 |\n| 국내출장(당일) | 20,000원 |\n| 국내출장(1박 이상) | 20,000원 |"
+    row = triage.extract_tables([FakeChunk("c1", raw)], axes)[0]
+    warns = [c["message"] for c in row["checks"] if c["level"] == "warn"]
+    assert not warns, warns
 
 
 def test_축_어휘를_프롬프트에_보여준다(chat):
@@ -390,44 +417,84 @@ def test_축_어휘를_프롬프트에_보여준다(chat):
     그대로 쓰고, 그 표기는 판정에서 영영 안 맞는다."""
     axes = [{"path": "category.item_type", "type": "string", "desc": "세부유형",
              "values": ["식사", "선물", "경조사"]}]
-    calls = chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "kickback_limit_table",
-        "title": "별표1", "key_axes": ["category.item_type"],
-        "payload_json": json.dumps({"식사": 50000}),
-        "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "",
-    }])
+    calls = chat([one(key="kickback_limit_table", title="별표1",
+                      key_axes=["category.item_type"],
+                      payload_json=json.dumps({"식사": 50000}))])
     triage.extract_tables([FakeChunk("c1", "| 식사 | 50,000 |")], axes)
     assert "값: 식사 | 선물 | 경조사" in calls[0]["user"]
 
 
 def test_활용_안내를_사람_말로_붙인다(chat):
     """승인하는 사람이 판단할 것은 「이 숫자가 맞나」만이 아니라 「어디에 쓰이나」다."""
-    chat([{
-        "is_threshold_table": True, "skip_reason": "", "key": "daily_limit_table",
-        "title": "별표1", "key_axes": ["user.job_title"],
-        "payload_json": json.dumps({"부장": 200000, "*": 100000}),
-        "strict_keys": False, "confidence": 0.8, "notes": "", "comment": "직책별 한도입니다.",
-    }])
+    chat([one(key="daily_limit_table", title="별표1", key_axes=["user.job_title"],
+              payload_json=json.dumps({"부장": 200000, "*": 100000}),
+              confidence=0.8, comment="직책별 한도입니다.")])
     row = triage.extract_tables([FakeChunk("c1", "| 부장 | 200,000 | 100,000 |")], AXES)[0]
     assert "policy.daily_limit" in row["usageNote"]
     assert "user.job_title" in row["usageNote"]
     assert row["comment"] == "직책별 한도입니다."
 
 
-def test_payload가_깨지면_그_표만_버린다(chat):
+def test_payload가_깨지면_실패로_남긴다(chat):
+    """**「표가 아니다」와 「만들다 실패했다」는 다른 말이다.** 실패를 「AI가 판단해 뺐다」로
+    적으면 담당자는 누군가 검토했다고 읽는다 — 사실은 아무도 안 봤다."""
+    chat([one(key="k_table", title="t", key_axes=[],
+              payload_json="{이건 JSON이 아니다", confidence=0.5)] * 2)
+    rows = triage.extract_tables([FakeChunk("c1", "| a | b |")], AXES)
+    assert len(rows) == 1 and rows[0]["skipped"] is True
+    assert "읽지 못했습니다" in rows[0]["skipReason"]
+    assert "임계값 표가 아니" not in rows[0]["skipReason"]
+
+
+def test_한_별표에서_표_여러_개가_나온다(chat):
+    """실측 2026-08-25: 출장비 별표1·2가 한 행에 일비·식비·숙박비를 함께 담고 있었다.
+    단건 스키마로는 **어느 하나만 살리고 나머지를 notes에 적어 버릴** 수밖에 없었고,
+    사람이 손으로 다시 만들어야 했다."""
     chat([{
-        "is_threshold_table": True, "key": "k_table", "title": "t", "key_axes": [],
-        "payload_json": "{이건 JSON이 아니다", "strict_keys": False, "confidence": 0.5, "notes": "",
+        "skip_reason": "", "comment": "여비 기준입니다.",
+        "tables": [
+            {"key": "lodging_limit_table", "title": "숙박비", "key_axes": ["trip.region_grade"],
+             "payload_json": json.dumps({"A": 250000, "B": 180000}),
+             "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "1박 상한"},
+            {"key": "daily_allowance_table", "title": "일비", "key_axes": ["trip.region_grade"],
+             "payload_json": json.dumps({"A": 80000, "B": 60000}),
+             "strict_keys": False, "confidence": 0.9, "notes": "", "comment": "1일 일비"},
+        ],
     }])
-    assert triage.extract_tables([FakeChunk("c1", "| a | b |")], AXES) == []
+    raw = "| 등급 | 숙박비 | 일비 |\n| A | 250,000 | 80,000 |\n| B | 180,000 | 60,000 |"
+    rows = triage.extract_tables([FakeChunk("c1", raw)], AXES)
+    assert len(rows) == 2, "값 열마다 표가 하나씩 나와야 한다"
+    assert {r["key"] for r in rows} == {"lodging_limit_table", "daily_allowance_table"}
+    #  **후보마다 다른 `chunkId`** — 재색인 때 사람의 승인·반려를 알아보는 키다.
+    #  같으면 셋 중 하나의 결정이 나머지까지 덮는다.
+    assert rows[0]["chunkId"] != rows[1]["chunkId"]
+    assert all(any("표 2개를 만들었습니다" in c["message"] for c in r["checks"]) for r in rows)
+
+
+def test_같은_key가_둘이면_잡는다(chat):
+    """`key`는 `PolicyTable`의 식별자다 — 같은 key 둘이 승인되면 하나가 다른 하나를
+    **개정으로 밀어낸다**(`approve`가 구행에 `superseded_date`를 찍는다)."""
+    dup = {
+        "skip_reason": "", "comment": "",
+        "tables": [
+            {"key": "same_table", "title": "A", "key_axes": [],
+             "payload_json": json.dumps({"value": 100}), "strict_keys": False,
+             "confidence": 0.9, "notes": "", "comment": ""},
+            {"key": "same_table", "title": "B", "key_axes": [],
+             "payload_json": json.dumps({"value": 200}), "strict_keys": False,
+             "confidence": 0.9, "notes": "", "comment": ""},
+        ],
+    }
+    chat([dup, dup])
+    rows = triage.extract_tables([FakeChunk("c1", "| a | 100 |\n| b | 200 |")], AXES)
+    warns = [c["message"] for r in rows for c in r["checks"] if c["level"] == "warn"]
+    assert any("중복" in m for m in warns), warns
 
 
 def test_축_목록을_프롬프트에_싣는다(chat):
     """모델이 고를 수 있는 것을 안 보여주면 축을 지어내고, 그러면 승인 화면에서 되돌아온다."""
-    calls = chat([{
-        "is_threshold_table": True, "key": "k_table", "title": "t", "key_axes": [],
-        "payload_json": json.dumps({"value": 1}), "strict_keys": False, "confidence": 1, "notes": "",
-    }])
+    calls = chat([one(key="k_table", title="t", key_axes=[],
+                      payload_json=json.dumps({"value": 1}), confidence=1)])
     triage.extract_tables([FakeChunk("c1", "| a | b |")], AXES)
     assert "user.job_title" in calls[0]["user"]
 

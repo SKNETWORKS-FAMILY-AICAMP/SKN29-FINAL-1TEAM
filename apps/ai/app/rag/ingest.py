@@ -81,14 +81,27 @@ def build_clauses(chunks) -> tuple[list[dict[str, Any]], int]:
     본문은 **부모(조 전문)가 있으면 그걸** 쓴다 — 잎을 이어 붙이면 항이 잘린 자리의
     문맥이 어긋난다. 부모가 없는 짧은 조는 잎이 곧 조 전문이다.
 
-    조에 속하지 않는 청크(별표 등 조 밖 형제)는 조항 행이 되지 않는다. 검색에는 그대로
-    걸리지만 화면 목록에는 안 뜨므로, 몇 개가 그랬는지 세어 돌려준다(조용한 누락 방지).
+    **별표·부칙(`chunk_type == "annex"`)은 조항 행이 되지 않는다.** 청커가 「별표1」을
+    `article_label`로 달아 주기 때문에, 라벨 유무만 보면 별표가 조항 목록에 그대로 올라온다
+    — 별표 승인 화면과 **같은 표가 두 자리에 뜨고**, AUTO로 분류되면 룰 자동생성 질의에도
+    섞인다(실측 2026-08-25: 세 규정에서 별표·부칙 7건이 조항이 됐다).
+
+    별표의 처리 경로는 따로 있다(`triage.extract_tables` → `PolicyTableProposal`). 조항은
+    **문장으로 된 규칙**만 담는다. 조 안에 낀 표(`chunk_type == "table"`)는 그 조의 일부라
+    그대로 둔다.
+
+    검색에는 그대로 걸리지만 화면 목록에는 안 뜨므로, 몇 개가 그랬는지 세어 돌려준다
+    (조용한 누락 방지).
     """
     by_article: dict[str, dict[str, Any]] = {}
     orphans = 0
 
     for chunk in chunks:
         label = (chunk.article_label or "").strip()
+        if chunk.chunk_type == "annex":
+            #  별표에도 라벨이 있다 — 라벨 유무가 아니라 **종류**로 걸러야 한다.
+            orphans += chunk.chunk_role != "parent"
+            continue
         if not label:
             orphans += chunk.chunk_role != "parent"
             continue
