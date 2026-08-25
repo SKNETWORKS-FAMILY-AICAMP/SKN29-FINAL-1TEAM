@@ -80,6 +80,16 @@ class ValidationTests(ProposalBase):
                              payload={"부서장": {"국내": 1}})
         self.assertTrue(table_proposals.validate(deep))
 
+    def test_축을_선언하고_value_한_칸이면_거부된다(self):
+        """구조 검사만으로는 통과한다 — 축 값이 문자열 "value"인 행으로 읽히기 때문이다.
+        그러면 **승인은 되는데 영원히 해소되지 않는다**(직책이 "value"인 사람은 없다).
+        실측으로 잡았다: LLM이 축은 고르고 payload는 단일값으로 낸 제안이 200으로 통과했다."""
+        p = make_proposal(self.doc, key_axes=["user.job_title"], payload={"value": 1})
+        problems = table_proposals.validate(p)
+        self.assertTrue(any("아무 건에도 걸리지 않습니다" in x for x in problems))
+        with self.assertRaises(table_proposals.ProposalError):
+            table_proposals.approve(p)
+
     def test_축_없는_표는_value_형태여야_한다(self):
         p = make_proposal(self.doc, key_axes=[], payload={"*": 50_000})
         self.assertTrue(any("value" in x for x in table_proposals.validate(p)))

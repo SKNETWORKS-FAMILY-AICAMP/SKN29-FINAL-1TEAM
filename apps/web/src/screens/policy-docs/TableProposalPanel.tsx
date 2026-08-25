@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
+import { Markdown } from '../../components/ui/Markdown'
 
 const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: string }> = {
   PENDING: { label: '승인 대기', tone: 'var(--tone-amber)' },
@@ -97,14 +98,94 @@ function AxisPicker({ axes, options, onChange, disabled }: {
  *  오늘로 채워 두고 사람이 고치게 한다. */
 const TODAY = new Date().toISOString().slice(0, 10)
 
-export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecide }: {
+/** 승인돼 저장된 임계값 표 — 축 개수에 따라 모양이 다르다.
+ *
+ *  자유형식 JSON을 그대로 보여주면(예전 상태) 승인 뒤에 남는 게 중괄호뿐이라 "내가 뭘
+ *  승인했더라"를 확인할 길이 원문 대조밖에 없다. 축이 0~2개인 실제 모양만 그리고, 그보다
+ *  깊으면 **접지 않고 JSON을 보여준다** — 잘못 접어 보여주느니 날것이 낫다.
+ */
+function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
+  const axes = proposal.keyAxes ?? []
+  const payload = (proposal.payload ?? {}) as Record<string, unknown>
+  const label = (key: string) => (key === '*' ? '그 외(기본값)' : key)
+  const cell = (v: unknown) =>
+    typeof v === 'number' ? v.toLocaleString() : String(v ?? '—')
+
+  if (axes.length === 0) {
+    return (
+      <div className="pd-resolved">
+        <div className="text-meta">축 없음 — 모든 건에 같은 값</div>
+        <b style={{ fontSize: 15 }}>{cell(payload.value)}</b>
+      </div>
+    )
+  }
+
+  if (axes.length === 1) {
+    return (
+      <div className="pd-resolved">
+        <table className="table">
+          <thead><tr><th>{axes[0]}</th><th className="num">값</th></tr></thead>
+          <tbody>
+            {Object.entries(payload).map(([k, v]) => (
+              <tr key={k}>
+                <td>{label(k)}</td>
+                <td className="num">{cell(v)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  if (axes.length === 2) {
+    //  두 번째 축의 값들을 열로 편다 — 행마다 열이 다를 수 있어 합집합을 쓴다.
+    const cols = [...new Set(
+      Object.values(payload).flatMap((row) =>
+        row && typeof row === 'object' ? Object.keys(row as object) : []),
+    )]
+    return (
+      <div className="pd-resolved" style={{ overflowX: 'auto' }}>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{axes[0]} \ {axes[1]}</th>
+              {cols.map((c) => <th key={c} className="num">{label(c)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(payload).map(([k, row]) => (
+              <tr key={k}>
+                <td>{label(k)}</td>
+                {cols.map((c) => (
+                  <td key={c} className="num">
+                    {cell((row as Record<string, unknown>)?.[c])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  return <pre className="pd-json">{JSON.stringify(payload, null, 2)}</pre>
+}
+
+
+export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecide, error }: {
   proposal: PolicyTableProposal
   axisOptions: AxisOption[]
   busy: boolean
   onSave: (patch: Record<string, unknown>) => void
   onDecide: (action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>) => void
+  /** 이 제안의 결정 실패 사유. 카드 안에서 보여준다(상단 배너는 화면 밖일 수 있다). */
+  error?: string
 }) {
   const [open, setOpen] = useState(false)
+  //  기본은 표. 원문은 렌더가 잘못 접혔는지 확인할 때만 편다.
+  const [raw, setRaw] = useState(false)
   const [draft, setDraft] = useState({
     key: proposal.key,
     title: proposal.title,
@@ -156,9 +237,22 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
 
       {open && (
         <div className="pd-clause-body">
-          {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다. */}
-          <div className="text-meta">문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})</div>
-          <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
+          {/* ① 표 원문 — 대조 없이 승인하면 이 단계가 형식이 된다.
+              **마크다운 표로 그린다.** 파이프 문자가 그대로 보이면 셀 경계를 눈으로 세어야
+              해서, 아래 추출 결과와 대조하는 데 시간이 걸린다(그러면 대충 누르게 된다).
+              원문 그대로도 볼 수 있게 남긴다 — 렌더가 표를 잘못 접었을 때 확인할 길이
+              없으면 안 된다. */}
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="text-meta">
+              문서에 있는 표 원문 (p.{proposal.pageStart}~{proposal.pageEnd})
+            </span>
+            <button className="btn sm" onClick={() => setRaw((v) => !v)}>
+              {raw ? '표로 보기' : '원문 보기'}
+            </button>
+          </div>
+          {raw
+            ? <pre className="pd-markdown">{proposal.rawMarkdown}</pre>
+            : <div className="pd-md-table"><Markdown source={proposal.rawMarkdown} /></div>}
 
           {/* AI가 표가 아니라고 본 건 여기서 끝난다 — 편집·승인 UI를 띄우지 않는다. */}
           {proposal.status === 'SKIPPED' && (
@@ -259,11 +353,23 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
             </label>
           </div>
 
+          {error && (
+            <div className="note" style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)', whiteSpace: 'pre-wrap' }}>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <AlertTriangle size={13} /> <b>처리하지 못했습니다</b>
+              </div>
+              <div style={{ marginTop: 4 }}>{error}</div>
+            </div>
+          )}
+
           {proposal.status === 'PENDING' && !rejecting && (
             <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn" disabled={busy} onClick={() => onSave({ ...draft, effectiveDate: draft.effectiveDate || null })}>
                 수정 저장
               </button>
+              {/* ⚠️ 실패 사유를 **버튼 옆에** 둔다. 페이지 상단 배너로만 띄우면 목록을
+                  스크롤해 내려온 사람에게는 화면 밖에서 뜬다 — "승인을 눌러도 아무 반응이
+                  없다"로 보고된 증상이 그것이었다(서버는 400과 사유를 주고 있었다). */}
               {/* 고친 값을 결정과 함께 보낸다 — 수정 저장을 잊어도 승인이 막히지 않는다. */}
               <button className="btn primary" disabled={busy}
                       onClick={() => onDecide('APPROVE', note,
@@ -298,10 +404,15 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
                 {proposal.reviewNote && <> · {proposal.reviewNote}</>}
                 {proposal.reviewedBy && <span className="text-meta"> · {proposal.reviewedBy}</span>}
                 {proposal.status === 'APPROVED' && (
-                  <div className="text-meta">
-                    판정 변수 <code>{proposal.policyVar}</code> 로 사용 중입니다.
-                    값을 바꾸려면 개정(새 시행일)으로 등록하세요.
-                  </div>
+                  <>
+                    <div className="text-meta">
+                      판정 변수 <code>{proposal.policyVar}</code> 로 사용 중입니다.
+                      값을 바꾸려면 개정(새 시행일)으로 등록하세요.
+                    </div>
+                    {/* **무엇이 저장됐는지**를 보여준다. 승인 뒤에 남는 게 한 줄 문장뿐이면
+                        "내가 뭘 승인했더라"를 확인할 길이 원문 대조밖에 없다. */}
+                    <ResolvedTable proposal={proposal} />
+                  </>
                 )}
               </div>
             </div>
