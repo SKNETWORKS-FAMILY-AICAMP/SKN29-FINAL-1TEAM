@@ -68,6 +68,10 @@
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
   --accent-green: #22c55e;
+
+  /* 그림자 — border-only 원칙이라 그림자는 hover 부상·팝오버 같은 보조 용도로만.
+     (기존에 참조만 있고 정의가 없어 box-shadow가 조용히 무시되고 있었다.) */
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08);
 }
 
 * { box-sizing: border-box; }
@@ -576,6 +580,32 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .row { display: flex; gap: var(--space-2); align-items: center; }
 .spacer { flex: 1; }
 .note { font-size: var(--text-meta); color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); }
+/* 긴 텍스트 한 줄 말줄임 — 쓰는 쪽에서 title 속성으로 전문을 함께 건다 */
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* 넓은 테이블은 자체 컨테이너 안에서만 가로 스크롤 — 페이지 몸통이 가로로 흐르지 않게 */
+.table-scroll { overflow-x: auto; }
+
+/* ── 로딩 스켈레톤 ─────────────────────────────
+   불변식(§settlement-ui-rules 2): 빈 상태에서도 레이아웃은 한 벌 — 로딩 중에도 실제
+   내용과 같은 골격을 자리표시자로 채운다. 텍스트 한 줄("불러오는 중…")은 내용이 오는
+   순간 화면이 펴지며 눌러야 할 자리가 바뀐다. */
+@keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.skeleton {
+  display: block; border-radius: var(--radius-chip);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%; animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line { height: 12px; }
+.skeleton-line + .skeleton-line { margin-top: var(--space-2); }
+
+/* 데이터 영역 불러오기 실패 — 「데이터가 없다」와 「불러오지 못했다」는 다른 상태다.
+   조용히 삼킨 catch가 이 둘을 한 덩어리로 뭉치게 두지 않는다. */
+.load-error {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); border: 1px solid #f3c9c5; border-radius: var(--radius-control);
+  background: var(--tone-red-bg); color: var(--tone-red); font-size: var(--text-body);
+}
+.load-error .btn { margin-left: auto; flex-shrink: 0; }
 
 /* 반응형 */
 /* 3열이 나란히 놓이려면 사이드바(접힘 기본값 118px)를 빼고도 1300px+380px = 1680px는 있어야
@@ -603,6 +633,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .btn, .sidebar-nav a, .x-btn, .table tbody tr { transition: none; }
   .btn:active:not(:disabled) { transform: none; }
   .modal-backdrop, .modal { animation: none; }
+  .skeleton { animation: none; background: var(--surface-2); }
 }
 
 /* ── 인증(O-1) · 역할선택(R-0) · 온보딩(EMP/ACC/EXE) ───── */
