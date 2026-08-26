@@ -61,7 +61,7 @@ from domain.erp.models import ErpVoucher
 from domain.notifications.models import Notification
 from domain.policies.models import PolicyTable, RuleGraph, RuleHit
 from domain.policies.tiger_tables import upsert_all as upsert_policy_tables
-from domain.risk.models import RiskReview
+from domain.risk.models import DecisionCase, RiskReview
 from domain.settlements.attachments import Attachment, AttachmentKind, ExtractionStatus
 from domain.settlements import risk_review as risk_review_module
 from domain.settlements import services as settlement_services
@@ -123,6 +123,19 @@ class Spend:
     #: 검토로 간 건에 붙일 이상탐지 대역값(0~1). 없으면 등급만 낮게 잡는다.
     anomaly: float = 0.0
     anomaly_reasons: list[str] = field(default_factory=list)
+    #: **AI가 권고한 처리**(`RiskReview.ai_recommendation`). 비면 결말에 맞춘다 — 그러면
+    #  사람과 기계가 같은 결론이라 사례가 남지 않는다(`decision_cases.record`는 다를 때만
+    #  기록한다). 사례를 만들려면 여기에 **사람과 다른 값**을 적는다.
+    ai_recommends: str = ""
+    #: 회계 담당자가 쓴 결정 사유. **이 문장이 사례의 본체다** — 임베딩되는 `text`의 끝에
+    #  그대로 실리고, 다음 건의 2차 검증이 이걸 근거로 끌어온다. 비면 기본 문장을 쓴다.
+    reason: str = ""
+    #: 사례 패턴 라벨(보고용). 사례로 의도한 건인지 끝에서 대조한다.
+    case_pattern: str = ""
+    #: 보완 후 재제출 때 **실제로 채워지는 값**. 상태만 되돌리고 사실을 그대로 두면
+    #  재판정이 같은 사유로 또 걸려 「보완했는데 여전히 검토 중」으로 남는다.
+    fix_purpose: str = ""
+    fix_industry: str = ""
 
 
 # ── 가맹점 사전 ────────────────────────────────────────────────────────────
@@ -184,6 +197,262 @@ PURPOSES: dict[str, list[str]] = {
 }
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  결정 사례 — 회계 담당자가 기계와 **다르게** 판단한 건
+# ════════════════════════════════════════════════════════════════════════════
+#  `decision_cases.record()`는 사람의 결정이 AI 권고(또는 룰 판정)와 **다를 때만** 사례를
+#  남긴다. 그래서 시드가 사례를 만들려면 `ai_recommends`에 사람과 다른 값을 적어야 한다 —
+#  예전엔 AI 권고를 결말에서 뽑아 써서 둘이 항상 같았고, 185건을 돌려도 사례가 **0건**이었다.
+#
+#  ## 왜 세 패턴인가 — 서로 다른 것을 가르친다
+#
+#    A **소명 확인** (AI 반려 → 사람 승인)  … 형식 신호는 위반인데 맥락이 정당했다.
+#      가르치는 것: **오탐 교정.** 같은 신호가 또 와도 그것만으로 반려하지 않는다.
+#    B **놓친 실질** (AI 승인 → 사람 보완·반려) … 형식은 다 맞는데 실질이 어긋났다.
+#      가르치는 것: **미탐 교정.** 통과 신호가 곧 정상이 아니다.
+#    C **수위 조정** (AI 반려 → 사람 보완요청) … 위반은 맞지만 고칠 수 있는 것이었다.
+#      가르치는 것: **처리 등급.** `REJECT`는 최종반려라 재제출이 막힌다 — 고칠 수 있으면
+#      보완이다. 이건 규정이 아니라 **이 회사가 일하는 방식**이라 문서에서 못 뽑는다.
+#
+#  A는 판정을 낮추고, B는 올리고, C는 **같은 위반을 다른 등급으로** 처리한다. 하나만
+#  쌓으면 검색이 한쪽으로 쏠린다.
+#
+#  ## 사실은 「엔진이 실제로 REVIEW를 내는 것」에서만 고른다
+#
+#  사례는 검토를 거쳐야 생긴다(`services.review()`가 남긴다). 그래서 조리법은 **ACTIVE
+#  그래프를 실측해서** 골랐다 — 그럴듯한 위반이 아니라 실제로 `REVIEW`가 나오는 사실이다.
+#  실측(2026-08-26)에서 **회식 1인당 한도 초과는 `RETURN`이고**(M-01) **심야·주말 룰은
+#  게이트에 없다**(v7). 그럴듯해 보여서 썼다가 사례가 21건 증발했다.
+#
+#  ## 사유 문장이 사례의 본체다
+#
+#  임베딩되는 `text`는 `상황 + "AI 권고는 X였으나 담당자는 Y로 판단" + 사유`다. 앞의 둘은
+#  코드가 조립하므로 **값어치는 전부 `reason`에 있다.** 무엇을 확인했는지·어느 조항인지를
+#  문장 안에 담는다 — "확인했으므로 승인함"은 검색돼도 쓸모없다.
+
+#: 조리법 — 엔진이 `REVIEW`를 내는 사실 묶음. 값은 `_plan_month.spend()`에 넘길 인자다.
+#  세 경로 모두 ACTIVE 그래프에서 확인했다.
+CASE_RECIPES = {
+    #  E-03 청탁금지법 대상자 참석 + 1인당 법정 한도 초과 → REVIEW.
+    #  **법률 리스크라 룰이 자동 처리하지 않는다** — 이 제품에서 REVIEW의 정석이다.
+    "entertain_kickback": dict(
+        team="영업팀", category=C.ENTERTAIN, amount=(185_000, 275_000), headcount=4,
+        external_headcount=2, kickback_target=True, pre_approved=True,
+        anomaly=(0.62, 0.82), anomaly_reasons=["청탁금지법 대상자 참석", "1인당 법정 한도 초과"],
+    ),
+    #  업종을 정본 어휘로 접지 못한 가맹점 → `merchant.merchant_info_resolved=False` →
+    #  공통 게이트의 화이트리스트(G-PASS)를 못 넘어 G-REVIEW.
+    #  **`기타`로 밀지 않는 설계가 그대로 드러나는 자리다**(CLAUDE.md §2) — 모르면 모른다고
+    #  하고 사람에게 넘긴다. 신규 개업·해외 결제·상호 변경에서 실제로 자주 난다.
+    "merchant_unknown": dict(
+        team="영업팀", category=C.MEAL, amount=(45_000, 180_000), industry="",
+        anomaly=(0.35, 0.6), anomaly_reasons=["가맹점 업종 미확인"],
+    ),
+    #  목적란이 비어 `evidence.expense_purpose_missing=True` → 같은 화이트리스트에서 탈락.
+    "purpose_missing": dict(
+        team="AI·개발팀", category=C.MEETING, amount=(30_000, 140_000), purpose="",
+        anomaly=(0.3, 0.52), anomaly_reasons=["지출 목적 미기재"],
+    ),
+}
+
+#: 사례 30건. `month`는 몇 번째 달인가(0=가장 오래된 달).
+#  **달을 앞쪽에 몰았다** — 도입 1개월차엔 사람이 많이 뒤집고, 룰이 쌓일수록 준다. 그게
+#  이 제품의 진척도 서사 그대로이고(CLAUDE.md §2 「회계가 규칙을 쌓을수록 확정이 늘고
+#  검토가 준다」), 세 달에 고르게 펴면 그 곡선이 안 보인다.
+#  `fix_*`는 보완 후 재제출 때 **실제로 고쳐지는 값**이다(`_remediate`) — 상태만 되돌리고
+#  사실을 그대로 두면 재판정이 같은 사유로 또 걸린다.
+CASES: list[dict] = [
+    # ══ A · 소명 확인 (AI 반려 권고 → 담당자 승인) ═══════════════════════════
+    dict(pattern="A", recipe="entertain_kickback", month=0, ai="REJECT", outcome="approve",
+         purpose="공개 기술세미나 다과",
+         reason="공공기관 담당자가 참석자 명단에 있으나 불특정 다수를 대상으로 한 공개 "
+                "세미나의 다과이고 참석자 전원에게 동일하게 제공됐습니다. 청탁금지법 "
+                "제8조③1호의 예외에 해당해 1인당 한도 계산 대상이 아닙니다. 세미나 공지와 "
+                "참석자 명단으로 확인했습니다."),
+    dict(pattern="A", recipe="entertain_kickback", month=0, ai="REJECT", outcome="approve",
+         purpose="계약 체결 후 사업 협의",
+         reason="외부 참석자를 다시 세어(2명→3명) 1인당 금액을 재계산한 결과 법정 한도 "
+                "이하입니다. 계약서와 참석자 명단으로 인원을 확인했고, 상대방은 청탁금지법 "
+                "적용 대상이 아닌 민간 기업 담당자였습니다. AI 권고는 신고 인원 기준 "
+                "계산에 따른 것입니다."),
+    dict(pattern="A", recipe="merchant_unknown", month=0, ai="REJECT", outcome="approve",
+         merchant="성수 브런치랩", category=C.MEAL, purpose="현장 근무 식대",
+         reason="업종이 확인되지 않아 판정이 보류됐으나, 사업자등록증으로 일반음식점임을 "
+                "확인했습니다. 신규 개업 가맹점이라 업종 데이터가 아직 없는 것이지 "
+                "금지업종이 아닙니다. 가맹점 정보를 등록했으니 다음 건부터는 자동 "
+                "판정됩니다."),
+    dict(pattern="A", recipe="merchant_unknown", month=0, ai="REJECT", outcome="approve",
+         merchant="TOKYO STATION HOTEL", category=C.TRIP, amount=(150_000, 240_000),
+         purpose="해외 출장 숙박",
+         reason="해외 가맹점이라 국내 업종 분류에 걸리지 않은 건입니다. 출장 품의서의 "
+                "일정·지역과 결제일이 일치하고 숙박비는 별표3의 해당 지역등급 상한 "
+                "이내입니다. 업종 미확인은 해외 결제에서 정상적으로 발생합니다."),
+    dict(pattern="A", recipe="purpose_missing", month=0, ai="REJECT", outcome="approve",
+         reason="목적란이 비어 있으나 첨부된 회의록에 안건·참석자·일시가 모두 있습니다. "
+                "ERP에서 자동 수집된 건이라 목적란이 비어 들어온 것이고, 지출 자체의 "
+                "문제가 아닙니다. 회의록으로 업무 관련성이 확인되므로 승인합니다."),
+    dict(pattern="A", recipe="entertain_kickback", month=1, ai="REJECT", outcome="approve",
+         purpose="해외 파트너사 임원 접견",
+         reason="상대방이 외국 민간 기업 임원으로 청탁금지법 적용 대상이 아닙니다. 명함과 "
+                "사업자등록 정보로 소속을 확인했습니다. 「공공기관 담당자」로 분류된 것은 "
+                "가맹점 인근 기관명이 목적란에 적혀 생긴 오인입니다."),
+    dict(pattern="A", recipe="merchant_unknown", month=1, ai="REJECT", outcome="approve",
+         merchant="(주)오피스온라인", category=C.OTHER, purpose="제안서 인쇄 용지",
+         reason="온라인 결제대행 상호로 잡혀 업종이 확인되지 않았습니다. 주문 내역상 실제 "
+                "구매 품목은 사무용 인쇄 용지이고 세금계산서도 문구·사무용품으로 "
+                "발행됐습니다. 결제대행 상호는 업종 판정의 한계이지 지출의 문제가 "
+                "아닙니다."),
+    dict(pattern="A", recipe="entertain_kickback", month=1, ai="REJECT", outcome="approve",
+         purpose="공공 발주 사업 착수 협의",
+         reason="발주기관 담당자가 참석했으나 계약 이행을 위한 공식 착수회의이고 식사는 "
+                "회의 시간대에 제공된 것입니다. 청탁금지법 제8조③2호의 공식적 행사 "
+                "범위로 판단합니다. 회의록과 착수계로 확인했습니다."),
+    dict(pattern="A", recipe="merchant_unknown", month=2, ai="REJECT", outcome="approve",
+         merchant="더블유커피 역삼", category=C.MEETING, purpose="스프린트 회고 다과",
+         reason="가맹점이 상호를 변경해 업종 캐시가 비었습니다. 사업자등록번호가 기존 "
+                "거래처(카페)와 동일한 법인이며 위치도 같습니다. 상호 변경은 업종 미확인의 "
+                "흔한 원인이므로 이것만으로 반려할 사유가 되지 않습니다."),
+    dict(pattern="A", recipe="purpose_missing", month=2, ai="REJECT", outcome="approve",
+         reason="목적이 비어 있으나 같은 날 같은 팀의 회의 일정이 캘린더에 등록돼 있고 "
+                "참석자와 결제 시각이 일치합니다. 목적 미기재는 기재 누락이지 업무 관련성 "
+                "부재가 아닙니다. 지출자에게 다음부터 목적을 적도록 안내하고 승인합니다."),
+
+    # ══ B · 놓친 실질 (AI 승인 권고 → 담당자 보완요청·반려) ══════════════════
+    dict(pattern="B", recipe="entertain_kickback", month=0, ai="APPROVE", outcome="review_return",
+         purpose="거래처 상담",
+         reason="신고 인원은 4명인데 첨부된 참석자 명단에는 2명만 적혀 있습니다. 1인당 "
+                "법정 한도는 확인 인원으로 계산하므로 이 차이가 판정을 뒤집습니다. 실제 "
+                "참석자로 명단을 다시 작성해 재제출해 주십시오. AI 권고는 신고값만 보고 "
+                "판단한 것입니다."),
+    dict(pattern="B", recipe="entertain_kickback", month=0, ai="APPROVE", outcome="review_reject",
+         purpose="신규 거래처 상담",
+         reason="업무 관련성을 확인할 수 없습니다. 목적란의 거래처와 계약·견적 이력이 없고 "
+                "결제 시각(20:50)과 장소가 담당 업무 구역과 무관합니다. 소명 요청에 추가 "
+                "자료가 제출되지 않아 최종 반려하며, 해당 금액은 회수 대상입니다."),
+    dict(pattern="B", recipe="merchant_unknown", month=0, ai="APPROVE", outcome="review_return",
+         merchant="라운지 클럽하우스", category=C.ENTERTAIN, amount=(210_000, 320_000),
+         purpose="거래처 접대",
+         reason="업종이 확인되지 않은 상태에서 상호와 결제 시각(22시 이후), 금액대가 "
+                "유흥업종 가능성을 시사합니다. 법인카드 사용규정 제5조는 유흥업종 사용을 "
+                "금지합니다. 업종 확인이 가능한 영수증 원본과 참석자 명단을 제출해 "
+                "주십시오."),
+    dict(pattern="B", recipe="purpose_missing", month=0, ai="APPROVE", outcome="review_return",
+         reason="목적이 비어 있고 회의록·참석자 명단 등 업무 관련성을 확인할 첨부도 "
+                "없습니다. 금액이 작아 형식 요건은 통과하지만 지출 근거가 전혀 없는 "
+                "상태입니다. 목적을 기재하거나 관련 자료를 첨부해 재제출해 주십시오."),
+    dict(pattern="B", recipe="entertain_kickback", month=1, ai="APPROVE", outcome="review_return",
+         purpose="재계약 협의 식사",
+         reason="같은 금액·같은 가맹점의 정산이 지난달에도 청구돼 있습니다. 중복 청구인지 "
+                "별개 회차인지 확인이 필요합니다. 두 건의 면담 기록을 각각 제출해 "
+                "주십시오. 단건만 보면 정상이라 이력을 보지 않으면 걸러지지 않습니다."),
+    dict(pattern="B", recipe="merchant_unknown", month=1, ai="APPROVE", outcome="review_return",
+         merchant="편의점 GS25 도곡", category=C.MEAL, amount=(48_000, 92_000),
+         purpose="야근 식대",
+         reason="같은 가맹점에서 최근 3주간 평일 저녁마다 유사 금액대 결제가 반복됩니다. "
+                "단건으로는 정상이지만 이력을 보면 야근 기록이 없는 회차가 섞여 있습니다. "
+                "해당 일자의 근무 기록을 첨부해 주십시오."),
+    dict(pattern="B", recipe="entertain_kickback", month=1, ai="APPROVE", outcome="review_return",
+         purpose="공공기관 담당자 사업 협의",
+         reason="상대방 소속과 직위가 기재되지 않아 청탁금지법 적용 대상 여부를 판단할 수 "
+                "없습니다. 업무추진비 규정 제12조③은 접대 상대방의 소속·직위 기재를 "
+                "요구합니다. 명함 또는 면담 기록을 첨부해 재제출해 주십시오."),
+    dict(pattern="B", recipe="merchant_unknown", month=2, ai="APPROVE", outcome="review_return",
+         merchant="한빛상사", category=C.OTHER, amount=(120_000, 180_000),
+         purpose="개발 장비 소모품",
+         reason="결제 금액이 첨부된 견적서 금액과 다릅니다(견적 98,000원). 차액의 구성이 "
+                "확인되지 않으니 최종 세금계산서와 품목 내역을 제출해 주십시오. 업종 "
+                "미확인이라 품목으로 검증할 다른 경로도 없습니다."),
+    dict(pattern="B", recipe="purpose_missing", month=2, ai="APPROVE", outcome="review_return",
+         reason="팀 공용카드로 결제됐는데 실사용자와 정산 제출자가 다르고 그 사유가 "
+                "기재되지 않았습니다. 목적란까지 비어 있어 누가 무엇을 위해 썼는지 확인할 "
+                "수 없습니다. 법인카드 사용규정 제6조②에 따라 실사용자를 지정하고 목적을 "
+                "적어 재제출해 주십시오."),
+    dict(pattern="B", recipe="entertain_kickback", month=2, ai="APPROVE", outcome="review_return",
+         purpose="협력사 담당자 상담",
+         reason="참석자 명단의 외부 인원 2명이 모두 같은 공공기관 소속이고, 같은 분기에 "
+                "같은 상대방과의 접대가 3회째입니다. 회차별로는 한도 이내지만 청탁금지법은 "
+                "동일인 기준 누적으로도 봅니다. 분기 누적 내역을 정리해 제출해 주십시오."),
+
+    # ══ C · 수위 조정 (AI 반려 권고 → 담당자 보완요청) ═══════════════════════
+    dict(pattern="C", recipe="entertain_kickback", month=0, ai="REJECT", outcome="review_fix",
+         purpose="공공기관 담당자 포함 사업 협의",
+         reason="상대방 소속·직위가 없어 법 위반 소지가 있다는 AI 권고는 타당하나, 이는 "
+                "기재 누락이라 보완이 가능합니다. 최종 반려는 재제출을 막으므로 위반이 "
+                "확정된 건에만 씁니다. 상대방 정보를 채워 다시 올려 주십시오."),
+    dict(pattern="C", recipe="merchant_unknown", month=0, ai="REJECT", outcome="review_fix",
+         merchant="대성상회", category=C.OTHER, purpose="사무 비품 구매",
+         fix_industry="문구/사무용품",
+         reason="업종을 확인할 수 없다는 것과 금지업종이라는 것은 다릅니다. 확인이 안 되는 "
+                "단계에서 최종 반려하면 지출자가 소명할 기회가 사라집니다. 사업자등록증 "
+                "또는 품목이 보이는 영수증을 첨부하면 판정이 다시 돌아가므로 보완요청으로 "
+                "처리합니다."),
+    dict(pattern="C", recipe="purpose_missing", month=0, ai="REJECT", outcome="review_fix",
+         fix_purpose="주간 스프린트 회고 다과",
+         reason="목적 미기재만으로 반려하지 않습니다. 목적란은 화면에서 바로 채울 수 있고 "
+                "채우면 자동 재판정되는 항목이라, 반려로 닫으면 그 경로가 막힙니다. 어떤 "
+                "업무의 회의였는지 적어 재제출해 주십시오."),
+    dict(pattern="C", recipe="entertain_kickback", month=0, ai="REJECT", outcome="review_fix",
+         purpose="거래처 계약 협의",
+         reason="사전승인 없이 집행된 건입니다. 업무추진비 규정 제8조는 사전승인을 원칙으로 "
+                "하되 긴급한 경우 사후 품의를 허용합니다. 사후 품의를 올려 승인받은 뒤 "
+                "재제출해 주십시오 — 절차 위반이지 지출 자체의 위반이 아닙니다."),
+    dict(pattern="C", recipe="merchant_unknown", month=1, ai="REJECT", outcome="review_fix",
+         merchant="바른한우 논현", category=C.MEAL, amount=(90_000, 170_000),
+         purpose="현장 근무 식대", fix_industry="일반음식점",
+         reason="간이영수증만 첨부돼 업종도 품목도 확인되지 않습니다. 적격증빙이 아니어서 "
+                "그대로는 손금 처리가 어렵지만 가맹점에 신용카드 매출전표 재발급을 요청할 "
+                "수 있습니다. 재발급분을 첨부해 재제출해 주십시오."),
+    dict(pattern="C", recipe="purpose_missing", month=1, ai="REJECT", outcome="review_fix",
+         fix_purpose="분기 로드맵 검토 회의 다과",
+         reason="목적란이 비어 있어 업무 관련성을 판단할 근거가 없다는 지적은 맞습니다. "
+                "다만 회의 참석자가 사내 인원뿐이고 금액도 소액이라 위반이 확정된 건이 "
+                "아닙니다. 회의명과 참석 범위를 적어 재제출해 주십시오."),
+    dict(pattern="C", recipe="entertain_kickback", month=1, ai="REJECT", outcome="review_fix",
+         purpose="신규 거래처 상담",
+         reason="참석자 명단에 외부 인원 수만 있고 이름이 없습니다. 청탁금지법 적용 대상 "
+                "여부를 가리려면 개인 식별이 필요하지만, 이는 제출로 해소되는 항목이라 "
+                "보완요청합니다."),
+    dict(pattern="C", recipe="merchant_unknown", month=2, ai="REJECT", outcome="review_fix",
+         merchant="아이티몰", category=C.OTHER, amount=(100_000, 180_000),
+         purpose="개발 장비 소모품", fix_industry="전자/가전",
+         reason="비용분류가 「기타」로 올라왔으나 품목상 소모품 구매가 맞습니다. 분류 "
+                "오기재는 지출 자체의 문제가 아니므로 보완으로 처리합니다. 업종 확인 자료와 "
+                "함께 분류를 바로잡아 재제출해 주십시오."),
+    dict(pattern="C", recipe="entertain_kickback", month=2, ai="REJECT", outcome="review_fix",
+         purpose="협력사 임원 면담",
+         reason="1인당 법정 한도를 넘었지만 참석자 명단이 신고 인원보다 적어 계산 자체가 "
+                "확정되지 않았습니다. 명단을 정확히 채우면 한도 이내일 수 있으므로 "
+                "보완요청으로 처리합니다 — 확정되지 않은 위반으로 최종 반려할 수 없습니다."),
+    dict(pattern="C", recipe="purpose_missing", month=2, ai="REJECT", outcome="review_fix",
+         fix_purpose="고객사 방문 전 사전 미팅",
+         reason="목적이 비어 있고 금액도 평소보다 큽니다. 다만 결제 시각·장소가 같은 날 "
+                "고객사 방문 일정과 이어지므로 사적 사용으로 단정할 수 없습니다. 방문 "
+                "일정과 목적을 적어 재제출해 주십시오."),
+]
+
+
+#: **일부러 비워 둔** 미해소 사실. 업종을 못 접은 가맹점(`merchant_unknown` 조리법)은
+#  금지업종 여부도 알 수 없다 — 그게 설계다(모르면 `기타`로 밀지 않고 사람에게 넘긴다,
+#  CLAUDE.md §2). 경고 목록에 남기되 「시드가 못 채운 것」과 갈라 표시한다.
+INTENTIONAL_UNRESOLVED = {
+    "UNRESOLVED_FACT:merchant.forbidden": "업종 미확인 사례가 의도적으로 만든 것",
+}
+
+#: `outcome` → 회계 담당자의 검토 결정. `fix`는 **룰이** 보완요청한 건이라 여기 없다
+#  (사람이 결정한 게 아니다). `review_*`는 사람이 검토에서 내린 결정이다.
+REVIEW_DECISION = {
+    "approve": "APPROVE", "reject": "REJECT",
+    "review_return": "RETURN", "review_reject": "REJECT", "review_fix": "RETURN",
+}
+
+#: 사례가 아닌 건의 기본 사유. 사례 건은 `Spend.reason`이 이걸 덮는다.
+DEFAULT_REVIEW_REASON = {
+    "APPROVE": "소명 확인 완료 — 승인합니다.",
+    "RETURN": "판단에 필요한 자료가 부족합니다 — 보완 후 재제출해 주십시오.",
+    "REJECT": "업무 관련성을 소명하지 못해 최종 반려합니다.",
+}
+
+
 class Command(BaseCommand):
     help = "시연용 적용 완료 상태: 직전 3개월 정산이 실제로 흘러간 회사"
 
@@ -234,6 +503,11 @@ class Command(BaseCommand):
             risk_review_module.AUTO_SCHEDULE = previous
 
         self._budgets(teams)
+        #  ⑤ 규정 문서 — **시드가 만들 수 없는 것**이라 얼려 둔 실제 적재 결과를 얹는다.
+        #     파싱·청킹·임베딩·조항 분류·별표 추출이 다 돌아야 생기고 그중 둘은 LLM 호출이다.
+        #     손으로 적으면 `chunk_ids`가 실제 청크를 안 가리켜 근거 링크가 끊긴다.
+        #     덤프가 없으면 조용히 넘어간다(문서 없이도 나머지 화면은 다 산다).
+        call_command("load_policy_docs", quiet_missing=True, verbosity=self.verbosity)
         self._prune_notifications()
         self._report(mismatched)
 
@@ -337,9 +611,10 @@ class Command(BaseCommand):
 
         cards = self._cards_by_team()
         spends: list[Spend] = []
-        for year, month in self.months:
+        for index, (year, month) in enumerate(self.months):
             current = (year, month) == (self.today.year, self.today.month)
-            spends.extend(self._plan_month(year, month, members, cards, current))
+            spends.extend(self._plan_month(year, month, members, cards, current, index))
+        self.expected_cases = Counter(row.case_pattern for row in spends if row.case_pattern)
         return spends
 
     def _cards_by_team(self) -> dict[str, dict[str, Card]]:
@@ -353,7 +628,7 @@ class Command(BaseCommand):
                 out["*"]["post_paid"] = card
         return out
 
-    def _plan_month(self, year, month, members, cards, current: bool) -> list[Spend]:
+    def _plan_month(self, year, month, members, cards, current: bool, index: int = 0) -> list[Spend]:
         last_day = self._last_day(year, month)
         rows: list[Spend] = []
 
@@ -378,15 +653,25 @@ class Command(BaseCommand):
         def spend(team_name: str, category: str, **over) -> Spend:
             user = over.pop("owner", None) or pick(team_name)
             merchant, industry, item_type = self.rng.choice(MERCHANTS[category])
+            #  사례는 가맹점·업종을 지정한다 — 업종을 못 접는 상황(`industry=""`)이
+            #  게이트 화이트리스트를 못 넘는 REVIEW 경로라, 사전에 있는 가맹점으로는
+            #  만들 수 없다. `""`도 유효한 값이라 `or`가 아니라 기본값으로 받는다.
+            merchant = over.pop("merchant", None) or merchant
+            industry = over.pop("industry", industry)
+            item_type = over.pop("item_type", None) or item_type
             low, high = AMOUNTS[category]
             amount = over.pop("amount", None) or self.rng.randrange(low, high, 500)
             card = over.pop("card", None) or card_for(user, category)
+            #  목적도 마찬가지 — **빈 목적이 곧 판정 사실**이다(`expense_purpose_missing`).
+            purpose = over.pop("purpose", None)
+            if purpose is None:
+                purpose = self.rng.choice(PURPOSES[category])
             row = Spend(
                 owner=user, merchant=merchant, industry=industry, category=category,
                 item_type=item_type, amount=amount, card=card,
                 year=year, month=month,
                 day=over.pop("day", None) or day(), hour=over.pop("hour", None) or self.rng.randint(9, 19),
-                purpose=over.pop("purpose", None) or self.rng.choice(PURPOSES[category]),
+                purpose=purpose,
                 **over,
             )
             self._fill_category_facts(row)
@@ -395,13 +680,16 @@ class Command(BaseCommand):
         # ── ① 평범한 지출 — 이게 대부분이다 ──────────────────────────
         #  적용이 끝난 회사의 정상 분포는 "거의 다 자동 통과"다. 검토 큐가 매달 절반씩
         #  쌓이면 그건 적용 완료가 아니라 도입 실패다.
+        #  **자동 통과 건은 사례를 늘린 만큼 같이 늘어나야 한다.** 사례 30건은 전부
+        #  검토를 거치므로, 분모를 그대로 두면 자동처리율이 89%에서 82%로 내려앉는다 —
+        #  화면은 그대로인데 지표만 나빠져 "도입이 후퇴한 회사"로 읽힌다.
         plan = [
-            ("영업팀", C.MEAL, 6), ("영업팀", C.MEETING, 4), ("영업팀", C.TRIP, 5),
-            ("영업팀", C.OTHER, 3), ("영업팀", C.ENTERTAIN, 2), ("영업팀", C.GATHERING, 1),
-            ("AI·개발팀", C.MEAL, 5), ("AI·개발팀", C.MEETING, 4), ("AI·개발팀", C.OTHER, 4),
-            ("AI·개발팀", C.TRIP, 2), ("AI·개발팀", C.GATHERING, 1),
-            ("재무회계팀", C.MEAL, 4), ("재무회계팀", C.MEETING, 3), ("재무회계팀", C.OTHER, 3),
-            ("재무회계팀", C.TRIP, 2), ("재무회계팀", C.OTHER, 2),
+            ("영업팀", C.MEAL, 9), ("영업팀", C.MEETING, 6), ("영업팀", C.TRIP, 7),
+            ("영업팀", C.OTHER, 5), ("영업팀", C.ENTERTAIN, 3), ("영업팀", C.GATHERING, 2),
+            ("AI·개발팀", C.MEAL, 8), ("AI·개발팀", C.MEETING, 6), ("AI·개발팀", C.OTHER, 6),
+            ("AI·개발팀", C.TRIP, 3), ("AI·개발팀", C.GATHERING, 2),
+            ("재무회계팀", C.MEAL, 6), ("재무회계팀", C.MEETING, 5), ("재무회계팀", C.OTHER, 5),
+            ("재무회계팀", C.TRIP, 3), ("재무회계팀", C.OTHER, 3),
         ]
         for team_name, category, count in plan:
             for _ in range(count):
@@ -409,12 +697,18 @@ class Command(BaseCommand):
 
         # ── ② 검토를 거쳐 승인된 건 ────────────────────────────────
         #  금액은 달마다 흔든다 — 세 달이 같은 숫자면 "복사한 데이터"로 읽힌다.
-        #  1인당 한도 초과(M-001) — 회식비는 총액이 아니라 1인당으로 본다.
+        #
+        #  **여기 있던 두 건은 기대값이 낡아 있었다**(2026-08-26 실측). 회식 1인당 한도
+        #  초과는 M-01이 `RETURN`을 내고(검토가 아니라 보완요청이다), 심야·주말은 게이트
+        #  v7에 그런 룰이 아예 없어 `PASS`로 빠졌다. 「검토를 거쳐 승인」이라는 서사가
+        #  실제로는 두 달 내내 성립하지 않았고, 시드는 매번 경고를 냈지만 그 경고가
+        #  **12줄에서 잘려** 보이지 않았다. 사실을 실제 REVIEW 경로로 바꿔 붙인다.
+        #
+        #  1인당 한도 초과(M-01) — 룰이 보완요청을 내는 건이라 「고쳐서 다시 올린」 결말이다.
         rows.append(spend("영업팀", C.GATHERING,
                           amount=self.rng.randrange(560_000, 760_000, 5_000), headcount=8,
-                          expect="REVIEW", outcome="approve",
-                          purpose="분기 마감 팀 회식", anomaly=round(self.rng.uniform(0.55, 0.7), 2),
-                          anomaly_reasons=["1인당 한도 초과", "주류 포함"]))
+                          expect="RETURN", outcome="fix",
+                          purpose="분기 마감 팀 회식"))
         #  청탁금지법 대상자 참석(E-003) — 법률 리스크라 룰이 자동 처리하지 않는다.
         rows.append(spend("영업팀", C.ENTERTAIN,
                           amount=self.rng.randrange(190_000, 265_000, 1_000),
@@ -423,16 +717,14 @@ class Command(BaseCommand):
                           purpose="공공기관 담당자 포함 사업 협의",
                           anomaly=round(self.rng.uniform(0.66, 0.78), 2),
                           anomaly_reasons=["청탁금지법 대상자 참석", "1인당 법정 한도 초과"]))
-        #  심야 + 주말(R-006) — 두 사실이 겹쳐야 걸린다. 소명되면 승인이다.
+        #  주말 심야 근무 식대 — 게이트에 시각 룰이 없어 자동 통과한다. **그게 정상이다**
+        #  (심야라는 사실만으로 사람을 부르지 않는다). 서사만 남기고 판정은 엔진에 맡긴다.
         weekend = self._weekend_day(year, month, last_day)
         if weekend:
             rows.append(spend("AI·개발팀", C.MEAL,
                               amount=self.rng.randrange(62_000, 96_000, 1_000),
                               day=weekend, hour=23,
-                              expect="REVIEW", outcome="approve",
-                              purpose="장애 대응 주말 야간 근무 식대",
-                              anomaly=round(self.rng.uniform(0.5, 0.63), 2),
-                              anomaly_reasons=["심야 결제", "주말 결제"]))
+                              purpose="장애 대응 주말 야간 근무 식대"))
 
         # ── ③ 보완요청 후 고쳐서 다시 올라온 건 ─────────────────────
         #  적격증빙 누락(E-001). 지출자가 영수증을 첨부해 재제출하면 통과한다.
@@ -471,30 +763,68 @@ class Command(BaseCommand):
             def recent() -> int:
                 return self.rng.randint(max(1, last_day - 5), last_day)
 
-            rows.append(spend("AI·개발팀", C.GATHERING, amount=595_000, headcount=7,
+            #  **검토 큐에 남길 건은 실제로 REVIEW가 나오는 사실이어야 한다.** 회식 1인당
+            #  초과·심야는 각각 RETURN·PASS라 여기 두면 큐가 빈다(실측 2026-08-26).
+            rows.append(spend("AI·개발팀", C.MEAL, amount=138_000, industry="",
+                              merchant="위드플레이트 판교",
                               expect="REVIEW", outcome="inflight_review", day=recent(),
-                              purpose="런칭 기념 팀 회식", anomaly=0.66,
-                              anomaly_reasons=["1인당 한도 초과", "주류 포함"]))
+                              purpose="런칭 대응 야간 근무 식대", anomaly=0.52,
+                              anomaly_reasons=["가맹점 업종 미확인"]))
             rows.append(spend("영업팀", C.ENTERTAIN, amount=272_000, headcount=4,
                               external_headcount=2, kickback_target=True, pre_approved=True,
                               expect="REVIEW", outcome="inflight_review", day=recent(),
                               purpose="신규 거래처 임원 상담", anomaly=0.74,
                               anomaly_reasons=["청탁금지법 대상자 참석", "고액 접대"]))
-            rows.append(spend("재무회계팀", C.GATHERING, amount=486_000, headcount=6,
+            rows.append(spend("재무회계팀", C.MEETING, amount=86_000,
                               expect="REVIEW", outcome="inflight_review", day=recent(),
-                              purpose="결산 마감 팀 회식", anomaly=0.57,
-                              anomaly_reasons=["1인당 한도 초과"]))
+                              purpose="", anomaly=0.44,
+                              anomaly_reasons=["지출 목적 미기재"]))
             night = self._weekend_day(year, month, last_day)
             if night:
-                rows.append(spend("영업팀", C.MEAL, amount=74_000, day=night, hour=23,
+                rows.append(spend("영업팀", C.OTHER, amount=164_000, day=night,
+                                  merchant="글로벌테크몰", industry="",
                                   expect="REVIEW", outcome="inflight_review",
-                                  purpose="주말 제안 마감 근무 식대", anomaly=0.61,
-                                  anomaly_reasons=["심야 결제", "주말 결제"]))
+                                  purpose="주말 마감 대응 장비 구매", anomaly=0.58,
+                                  anomaly_reasons=["가맹점 업종 미확인"]))
             #  아직 개인이 들고 있는 건.
             for _ in range(3):
                 rows.append(spend("영업팀", self.rng.choice([C.MEAL, C.TRIP]),
                                   outcome="inflight_draft", day=self.rng.randint(max(1, last_day - 3), last_day)))
 
+        # ── ⑤ 결정 사례 — 사람이 기계와 다르게 판단한 건 ────────────
+        rows.extend(self._plan_cases(index, spend, year, month, last_day))
+        return rows
+
+    def _plan_cases(self, index: int, spend, year: int, month: int, last_day: int) -> list[Spend]:
+        """이 달에 해당하는 `CASES`를 사실로 펼친다.
+
+        조리법이 정하는 건 **엔진이 REVIEW를 내게 하는 사실**뿐이고, 사례를 가르는 건
+        `ai_recommends`(기계의 결론)와 `outcome`(사람의 결론)의 차이다. 둘이 같으면
+        `decision_cases.record()`가 사례를 만들지 않는다 — 그래서 여기서 어긋나게 둔다.
+        """
+        rows: list[Spend] = []
+        for case in CASES:
+            if case["month"] != index:
+                continue
+            recipe = dict(CASE_RECIPES[case["recipe"]])
+            #  사례가 조리법을 덮어쓸 수 있다(가맹점·과목·금액대). 사실의 종류가 아니라
+            #  **판단의 종류**로 패턴을 가르므로, 같은 조리법이 여러 과목으로 나온다.
+            recipe.update({k: v for k, v in case.items()
+                           if k not in ("pattern", "recipe", "month", "ai", "outcome",
+                                        "reason", "fix_purpose", "fix_industry")})
+            team = recipe.pop("team")
+            low, high = recipe.pop("amount")
+            anomaly_low, anomaly_high = recipe.pop("anomaly")
+            rows.append(spend(
+                team, recipe.pop("category"),
+                amount=self.rng.randrange(low, high, 1_000),
+                expect="REVIEW", outcome=case["outcome"],
+                anomaly=round(self.rng.uniform(anomaly_low, anomaly_high), 2),
+                ai_recommends=case["ai"], reason=case["reason"], case_pattern=case["pattern"],
+                fix_purpose=case.get("fix_purpose", ""),
+                fix_industry=case.get("fix_industry", ""),
+                **recipe,
+            ))
         return rows
 
     def _weekend_day(self, year: int, month: int, last_day: int) -> int | None:
@@ -611,11 +941,34 @@ class Command(BaseCommand):
                     self._stamp(settlement, base + timedelta(minutes=10), judged_at=submitted_at)
                     continue
                 minutes = self.rng.randint(4, 46)   # 평균 검토시간 지표의 근거가 된다
-                decision = "REJECT" if row.outcome == "reject" else "APPROVE"
-                reason = ("업무 관련성을 소명하지 못해 최종 반려합니다."
-                          if decision == "REJECT" else "소명 확인 완료 — 승인합니다.")
+                decision = REVIEW_DECISION.get(row.outcome, "APPROVE")
+                reason = row.reason or DEFAULT_REVIEW_REASON[decision]
                 settlement_services.review(settlement, decision, accountant, reason)
-                marker = self._stamp_events(settlement, marker, submitted_at + timedelta(minutes=minutes))
+                reviewed_at = submitted_at + timedelta(minutes=minutes)
+                marker = self._stamp_events(settlement, marker, reviewed_at)
+
+                #  검토에서 보완요청이 나온 건은 **끝난 달이면 닫는다.** 지난달에 보완요청이
+                #  났으면 지금쯤 처리됐을 것이고, 안 닫으면 "3개월째 밀린 회사"가 된다
+                #  (이 시드가 보여주려는 것의 정반대다). 이번 달 것만 열어 둬 회계 화면에
+                #  「지금 기다리는 일」로 남긴다.
+                past_month = (row.year, row.month) != (self.today.year, self.today.month)
+                if settlement.status == S.RETURNED and (row.outcome == "review_fix" or past_month):
+                    self._remediate(settlement, row)
+                    refixed_at = reviewed_at + timedelta(days=1, hours=2)
+                    settlement_services.submit(settlement, row.owner)
+                    settlement_services.judge(settlement, accountant)
+                    marker = self._stamp_events(settlement, marker, refixed_at)
+                    submitted_at = refixed_at
+                    if settlement.status == S.IN_REVIEW:
+                        #  보완이 됐어도 사실이 그대로면(예: 청탁금지법 대상자 참석) 다시
+                        #  검토로 온다. 이번엔 **AI도 승인 권고**라 사례가 남지 않는다 —
+                        #  같은 건으로 사례가 두 번 쌓이면 코퍼스가 한 사건에 쏠린다.
+                        self._write_risk_review(settlement, row, recommends="APPROVE")
+                        settlement_services.review(
+                            settlement, "APPROVE", accountant,
+                            "보완 자료를 확인했습니다 — 승인합니다.")
+                        marker = self._stamp_events(
+                            settlement, marker, refixed_at + timedelta(minutes=self.rng.randint(4, 30)))
 
             if settlement.status == S.PENDING_CONFIRM:
                 if row.outcome == "inflight_pending":
@@ -745,6 +1098,17 @@ class Command(BaseCommand):
             settlement.actual_user = settlement.submitted_by
         fields = ["pre_approved", "actual_user_recorded", "actual_user", "updated_at"]
 
+        #  검토에서 보완요청이 나온 건은 **그 사유를 실제로 해소한다**. 목적을 안 채우면
+        #  `expense_purpose_missing`이 그대로라 재판정이 또 게이트 화이트리스트에서 떨어지고,
+        #  업종도 마찬가지다 — 화면에서 사람이 하는 보완을 그대로 흉내낸다.
+        if row.fix_purpose and not settlement.purpose:
+            settlement.purpose = row.fix_purpose
+            fields.append("purpose")
+        if row.fix_industry and not settlement.merchant_industry:
+            code, label = industry_vocab.resolve(row.fix_industry)
+            settlement.merchant_industry_code, settlement.merchant_industry = code, label
+            fields += ["merchant_industry_code", "merchant_industry"]
+
         #  **1인당 한도 초과는 인원을 다시 세어 고친다.** 회식 M-01은 참석 인원으로 나눈
         #  값을 보므로, 명단을 빠뜨린 사람을 채워 넣으면 한도 아래로 내려간다 — 화면에서
         #  실제로 할 수 있는 보완이다. 이 보정이 없으면 재판정이 같은 사유로 또 걸려
@@ -762,7 +1126,8 @@ class Command(BaseCommand):
 
         settlement.save(update_fields=fields)
 
-    def _write_risk_review(self, settlement: Settlement, row: Spend) -> None:
+    def _write_risk_review(self, settlement: Settlement, row: Spend,
+                           recommends: str = "") -> None:
         """검토로 넘어간 건의 이상탐지 결과 — **시연용 대역값이다.**
 
         진짜는 Risk Review Agent가 만든다(`risk_review.run`). 수백 건을 한 번에 돌리는
@@ -772,7 +1137,11 @@ class Command(BaseCommand):
         """
         if row.anomaly <= 0:
             return
-        recommendation = "REJECT" if row.outcome == "reject" else "APPROVE"
+        #  **AI 권고와 사람의 결정은 별개 축이다.** 예전엔 권고를 결말에서 뽑아 써서
+        #  둘이 항상 같았고, 그래서 185건을 돌려도 `DecisionCase`가 **0건**이었다
+        #  (`decision_cases.record`는 다를 때만 남긴다). 사례 건은 `ai_recommends`가 채운다.
+        recommendation = (recommends or row.ai_recommends
+                          or ("REJECT" if row.outcome == "reject" else "APPROVE"))
         tier = self._risk_tier(row.anomaly)
         #  근거는 **판정이 실제로 붙인 사유**에서 만든다 — 시드가 조문을 지어내면 화면의
         #  인용문과 룰이 건 사유가 서로 다른 말을 한다.
@@ -799,7 +1168,7 @@ class Command(BaseCommand):
             stage2_verdict={
                 "violation_verdict": "VIOLATION" if recommendation != "APPROVE" else "NO_VIOLATION",
                 "review_reasons": row.anomaly_reasons,
-                "recommendation": "REJECT" if recommendation == "REJECT" else "APPROVE",
+                "recommendation": recommendation,
                 "citations": [], "similar_cases": [],
             },
         )
@@ -829,10 +1198,11 @@ class Command(BaseCommand):
         return {
             "summary": (
                 f"{head} 사유로 검토가 필요한 건입니다. "
-                + ("규정 위반 소지가 있어 반려를 권장합니다."
-                   if recommendation == "REJECT" else "소명이 확인되면 승인 가능합니다.")
+                + {"REJECT": "규정 위반 소지가 있어 반려를 권장합니다.",
+                   "RETURN": "판단에 필요한 자료가 없어 보완을 권장합니다."}.get(
+                       recommendation, "소명이 확인되면 승인 가능합니다.")
             ),
-            "recommendation": "REJECT" if recommendation == "REJECT" else "APPROVE",
+            "recommendation": recommendation,
             "highlights": [
                 f"{row.merchant} · {amount:,}원{per_person}",
                 f"결제 {row.hour:02d}시 · {row.category}",
@@ -935,13 +1305,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(
                 f"\n[경고] 시드가 기대한 판정과 엔진 결과가 다른 건 {len(mismatched)}개:"
             ))
-            for row, actual in mismatched[:12]:
+            for row, actual in mismatched[:20]:
+                #  사례 건은 표시해 둔다 — 이게 어긋나면 사례가 통째로 안 생긴다.
+                tag = f" [사례 {row.case_pattern}]" if row.case_pattern else ""
                 self.stdout.write(
                     f"  - {row.category} {row.merchant} {row.amount:,}원 "
-                    f"기대={row.expect} 실제={actual}"
+                    f"기대={row.expect} 실제={actual}{tag} · {row.purpose}"
                 )
             self.stdout.write("  사실(Spend)을 고치거나 기대값을 갱신할 것.")
 
+        self._report_cases()
         self._warn_unresolved_facts()
         if not self.verbosity:
             return
@@ -966,6 +1339,36 @@ class Command(BaseCommand):
         ))
         for status, count in sorted(by_status.items(), key=lambda kv: -kv[1]):
             self.stdout.write(f"    {status:<24}{count:>5}")
+
+    def _report_cases(self) -> None:
+        """사례가 **의도한 수만큼 실제로 남았는지** 대조한다.
+
+        사례는 시드가 직접 쓰는 게 아니라 `services.review()`가 「사람의 결정이 기계와
+        다르다」고 판단해서 남기는 것이다. 그래서 사이에 있는 어느 고리가 끊겨도
+        (엔진이 REVIEW를 안 내거나 · 검토를 안 거치거나 · 사유가 비거나) 사례는 **조용히
+        0건이 된다** — 실제로 그랬다(이 시드는 오랫동안 사례를 한 건도 안 만들었다).
+        그래서 판정 불일치와 같은 급으로 경고한다.
+        """
+        expected = getattr(self, "expected_cases", Counter())
+        if not expected:
+            return
+        actual = DecisionCase.objects.count()
+        want = sum(expected.values())
+        if actual != want:
+            self.stdout.write(self.style.WARNING(
+                f"\n[경고] 결정 사례 기대 {want}건 / 실제 {actual}건. "
+                "엔진이 REVIEW를 안 냈거나(위 판정 불일치 참조) 사람의 결정이 "
+                "AI 권고와 같아진 것이다."
+            ))
+        if not self.verbosity:
+            return
+        by_pattern = " · ".join(f"{k} {v}건" for k, v in sorted(expected.items()))
+        indexed = DecisionCase.objects.exclude(indexed_at=None).count()
+        self.stdout.write(
+            f"  결정 사례 {actual}건 ({by_pattern}) / Chroma 적재 {indexed}건"
+            + ("" if indexed == actual else
+               "\n    ※ 미적재분은 ai 기동 후 `manage.py reindex_cases`로 올린다")
+        )
 
     def _warn_unresolved_facts(self) -> None:
         """**룰이 참조하는데 시드가 못 채운 사실**을 끝에 나열한다.
@@ -992,7 +1395,9 @@ class Command(BaseCommand):
             #  em dash를 쓰지 않는다 — 윈도우 콘솔(cp949)에서 UnicodeEncodeError로 죽는다.
             #  이 경고는 룰이 못 채운 사실이 있을 때만 뜨므로, 평소엔 안 보이다가
             #  그래프를 고친 순간 시드 전체를 죽인다(실측 2026-08-25).
-            self.stdout.write(f"  - {flag} : {n}건 강등")
+            note = f"  ({INTENTIONAL_UNRESOLVED[flag]})" if flag in INTENTIONAL_UNRESOLVED else ""
+            self.stdout.write(f"  - {flag} : {n}건 강등{note}")
         self.stdout.write(
-            "  판정이 「정보 부족」으로 떨어진다. 그 사실을 만드는 첨부·컬럼을 시드에 추가할 것."
+            "  판정이 「정보 부족」으로 떨어진다. 그 사실을 만드는 첨부·컬럼을 시드에 추가할 것"
+            "(괄호가 붙은 줄은 시드가 일부러 비워 둔 것이다)."
         )
