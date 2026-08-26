@@ -22,63 +22,184 @@
 ## 1. 빠른 시작
 
 ```bash
-cp .env.example .env          # OPENAI_API_KEY 등은 §7 참고 — 없어도 부팅은 된다
+cp .env.example .env          # OPENAI_API_KEY 등은 §6 참고 — 없어도 부팅은 된다
 docker compose up --build     # 최초 빌드는 수 분
+```
 
-docker compose exec core python manage.py seed --fresh   # 시연 데이터 (§2)
+`core`는 기동 시 `migrate`를 자동 수행한다. 그 다음 **무엇을 보여줄 것인지 골라 시드를 넣는다**
+— 이게 이 프로젝트의 세팅에서 가장 중요한 선택이다(§2).
+
+```bash
+# ① 초기 상태 — 회사 조직과 기본 게이트만. 규정 업로드 → 룰 생성 흐름을 처음부터 시연
+docker compose exec core python manage.py seed_clean
+
+# ② 적용 완료 — 룰이 완성되고 3개월 정산 이력이 쌓인 회사. 정산 흐름과 판정을 시연
+docker compose exec core python manage.py seed_adopted
 ```
 
 → http://localhost:5173 에서 `kim` / `pass1234` 로그인.
 프론트를 **실제 백엔드에 붙이려면** `.env`의 `VITE_USE_MOCK=false` (기본값은 `true` = 목업).
 
-`core`는 기동 시 `migrate`를 자동 수행한다.
+전체 세팅을 처음부터 끝까지 밟는 순서는 **§2.4 전체 세팅 순서**에 있다.
 
 ---
 
-## 2. 시드 데이터 — 목적이 정반대인 둘
+## 2. 시드 데이터 — 회사의 "언제"를 고른다
 
-**둘 중 무엇을 보여줄 것인지 먼저 정하고 고른다.** 서로 상대의 데이터를 지운다.
+이 제품의 핵심 서사는 **"규정 문서를 올리면 룰이 자라나고, 룰이 쌓일수록 자동 확정이 는다"**이다.
+그래서 시연 데이터도 화면 단위가 아니라 **회사가 어느 시점에 있는가**로 나뉜다.
 
-| | `seed` | `seed_clean` |
+| | `seed_clean` — 초기 적용 | `seed_adopted` — 적용 완료 |
 |---|---|---|
-| 만드는 상태 | **시연용 회사** — 데이터가 가득 찬 운영 중 조직 | **막 설치한 회사** — 사람과 기본 게이트만 |
-| 정산 | 87건 (전 상태 분포 · 검토 대기 30 · 이전 처리 10 · 하이라이트 3) | 0건 |
-| 룰 그래프 | 4계열 (GLOBAL v1~v3 · 기업업무추진비 v1~v2 · 회식비 활성+초안 · 출장비 승인대기) + TEST | **`DEFAULT GATE` 1개만** |
-| 규정 문서 | 없음(적재는 §4에서 별도) | 0건 |
-| 팀 예산 | 6개 과목 전부 | 없음 |
-| 이럴 때 쓴다 | 화면을 채워 보여줄 때 — 검토 워크스페이스·버전 이력·롤백·시뮬레이션 | **규정 업로드 → Rule Agent가 룰을 만드는 흐름**을 처음부터 시연할 때 |
+| **무엇을 시연하나** | **규정 업로드 → Rule Agent가 룰을 만드는 흐름** | **실제 정산 흐름과 판정** |
+| 회사의 시점 | 방금 도입해 세팅만 끝난 상태 | 3개월째 굴러가는 상태 |
+| 사용자·팀·카드 | 5명 / 3팀 / 카드 10장 | + 팀원 10명 (직책이 흩어져 있다) |
+| 룰 그래프 | **`DEFAULT GATE` 하나뿐** | GLOBAL 게이트 v7 + 접대·회식·출장 그래프 (`DEFAULT GATE`는 ARCHIVED로 물러남) |
+| 규정 별표(한도표) | 없음 | 11행 |
+| 정산 | **0건** | **299건** (직전 3개월, 전표 278) |
+| 결정 사례 | 없음 | **30건** (§2.2) |
+| 예산 | 한도만 | 한도 + 3개월 실사용액 |
+| 이 시드로 살아나는 화면 | 규정 문서 관리 · 룰 콘솔(빈 상태에서 시작) | 팀 취합 · 검토 워크스페이스 · 예산 · 거버넌스 · ERP 전표 |
 
-> 제품이 미리 제공하는 룰은 **`DEFAULT GATE` 하나뿐**이다. 과목별 세부 룰은 고객이 자기 규정
-> 문서를 올리면 Rule Agent가 만든다. `seed`의 4계열은 **시연용 예시**지 기본 제공물이 아니다.
-
-### 명령
+> **둘은 서로의 데이터를 지운다.** `seed_adopted`는 안에서 `seed_clean`을 먼저 부른 뒤 그 위에
+> 3개월을 얹는다 — 그래서 **로그인 계정은 둘이 같다.**
 
 ```bash
-# ── 시연 데이터 한가득 ───────────────────────────────────────────
-docker compose exec core python manage.py seed --fresh
-#   --fresh 없이 돌리면 기존 데이터 위에 얹는다. 보통은 --fresh를 쓴다.
-#   내부적으로 seed_rules + PolicyTable 적재까지 함께 수행한다.
-
-# ── 막 설치한 회사 상태 ─────────────────────────────────────────
 docker compose exec core python manage.py seed_clean --dry-run   # 지울 건수만 보고 멈춤
 docker compose exec core python manage.py seed_clean
 
-# ── 3개월치 정산 완료이력 상태 ─────────────────────────────────────────
-docker compose exec core python manage.py seed_adopted
-
-# ── 부분 시드 (위 둘이 내부에서 호출하지만 단독 실행도 된다) ──────
-docker compose exec core python manage.py seed_rules [--no-test]   # 룰 그래프만
-docker compose exec core python manage.py seed_policy_tables       # 규정 별표(임계값)만
-
-# ── 계정 ────────────────────────────────────────────────────────
-docker compose exec core python manage.py createsuperuser
-docker compose exec core python manage.py ensure_service_account          # ai → core 쓰기 계정
-docker compose exec core python manage.py ensure_service_account --check  # 401 날 때 진단
+docker compose exec core python manage.py seed_adopted           # 2~3분
 ```
 
-### 로그인 계정 (두 시드 공통, pw `pass1234`)
+### 2.1 무엇이 "진짜"인가 — `seed_adopted`의 규율
 
-시드를 갈아끼워도 헤매지 않도록 `seed`와 `seed_clean`이 같은 계정을 만든다.
+**판정을 손으로 박지 않는다.** 상태·판정로그·전표·검토 이력은 전부 실제 상태 전이를 태워서
+나온 결과다(`raise_to_team → submit → judge → review/confirm`). 시드는 **사실만 정하고 판정은
+기대만 적으며**, 엔진이 다른 답을 내면 끝에 **불일치 목록을 출력한다.**
+
+```
+[경고] 시드가 기대한 판정과 엔진 결과가 다른 건 3개:
+  - 회식 호프 갈매기 739,000원 기대=REVIEW 실제=RETURN [사례 A] · 창립기념 전사 회식
+```
+
+이 경고가 실제로 일을 했다. 「검토를 거쳐 승인」 시나리오 몇 건이 두 달 내내 성립하지 않고
+있었는데(회식 1인당 한도 초과는 `REVIEW`가 아니라 `RETURN`이고, 심야·주말 룰은 게이트에서
+사라졌다) 그게 이 목록으로 드러났다. **룰이 바뀌면 시드가 그 자리에서 알려준다.**
+
+손으로 만드는 것은 둘뿐이고 둘 다 이유가 있다.
+  · **시각** — `created_at`이 `auto_now_add`라 지난달 이력이 전부 오늘로 찍힌다. 결제일 기준으로 되돌린다.
+  · **이상탐지 결과·AI 보고서** — Risk Review Agent를 수백 번 부르면 시연 준비에 수십 분과
+    토큰이 든다. **모양은 실제 산출물과 같게** 맞춘 대역값이다.
+
+끝에 나오는 지표(실측):
+
+```
+정산 299건 / 판정로그 419행 / 전표 278건 / 별표 11행
+자동처리율 87.2% (판정 296건 중 사람 검토 38건)
+결정 사례 30건 (A 10건 · B 10건 · C 10건)
+```
+
+### 2.2 결정 사례 30건 — RAG `case_history`의 원천
+
+**회계 담당자가 AI 권고와 다르게 판단한 건**만 사례로 남는다(일치 건까지 넣으면 검색 상위가
+다수결에 묻혀 정작 봐야 할 예외가 밀려난다). 세 패턴이 서로 다른 것을 가르친다.
+
+| 패턴 | 전이 | 가르치는 것 |
+|---|---|---|
+| **A 소명 확인** | AI 반려 → 사람 승인 | **오탐 교정** — 형식 신호가 곧 위반이 아니다 |
+| **B 놓친 실질** | AI 승인 → 사람 보완·반려 | **미탐 교정** — 통과 신호가 곧 정상이 아니다 |
+| **C 수위 조정** | AI 반려 → 사람 보완요청 | **처리 등급** — `REJECT`는 재제출을 막는다. 고칠 수 있으면 보완이다 |
+
+사례도 손으로 쓰지 않는다 — 검토를 실제로 태우면 `services.review()`가 「사람이 기계와 다르게
+판단했다」고 보고 남긴다. 그래서 **중간 고리가 하나만 끊겨도 조용히 0건이 되고**(실제로 오랫동안
+0건이었다), 지금은 끝에서 수를 대조해 어긋나면 경고한다.
+
+사례 본문은 Chroma `case_history`에 올라간다. **ai가 꺼져 있으면 적재만 밀린다**(결정은 이미
+확정됐다) — 나중에 되살린다:
+
+```bash
+docker compose exec core python manage.py reindex_cases --list   # 밀린 목록만
+docker compose exec core python manage.py reindex_cases          # 적재
+```
+
+### 2.3 규정 문서 — 시드가 만들 수 없는 것
+
+`seed_clean`도 `seed_adopted`도 **규정 문서를 하나도 만들지 않는다.** 문서 하나가 화면에 뜨려면
+파싱·프로파일 판정·조 단위 청킹·임베딩·Chroma upsert·조항 분류·별표 추출이 차례로 돌아야 하고
+**그중 둘은 LLM 호출**이며 청킹 결과는 파서 버전에 딸려 있다. 손으로 적으면 조항의 `chunk_ids`가
+실제 청크를 안 가리켜 **근거 링크가 조용히 끊긴다.**
+
+그래서 **한 번 진짜로 돌리고, 그 결과를 얼려서 재생한다.**
+
+```bash
+# ① 화면(/policy-docs)에서 규정 PDF를 올려 적재를 끝낸다  → §4
+# ② 그 결과를 얼린다 — 절반이 둘이라 같은 시점에 둘 다 뜬다
+docker compose exec core python manage.py dump_policy_docs                                     # 관계형
+docker compose exec ai   python -m app.rag.embedding.snapshot dump --out /data/rag_snapshot    # 벡터
+```
+
+| 절반 | 무엇이 | 어디에 |
+|---|---|---|
+| 관계형 | 문서 메타 · 조항 · 조항 분류 · 별표와 승인 제안 | Postgres |
+| 벡터 | 검색이 실제로 매칭하는 청크 | Chroma (별개 저장소) |
+
+> ⚠️ **한쪽만 옮기면 에러 없이 반쪽이 된다.** 문서 화면은 멀쩡히 뜨는데 그 조항을 근거로
+> 끌어오는 검색만 빈손이 된다. 덤프에 컬렉션과 `doc_id`를 적어 두고, 복원할 때 무엇을 더
+> 되살려야 하는지 출력한다.
+
+복원은 `seed_adopted`가 자동으로 절반을 하고(덤프가 있을 때만), 벡터는 직접 넣는다:
+
+```bash
+docker compose exec ai python -m app.rag.embedding.snapshot restore --in /data/rag_snapshot
+docker compose exec core python manage.py load_policy_docs    # 시드를 안 돌릴 때만 직접
+```
+
+### 2.4 전체 세팅 순서
+
+처음부터 끝까지. **①~③이면 화면은 다 산다** — ④는 RAG·Agent 근거 검색까지 살릴 때다.
+
+```bash
+# ① 기동
+cp .env.example .env && docker compose up --build
+
+# ② 서비스 계정 (ai → core 쓰기). .env의 AI_SERVICE_PASSWORD를 채운 뒤
+docker compose up -d --force-recreate core ai      # env를 고쳤으면 재생성이 먼저다
+docker compose exec core python manage.py ensure_service_account
+
+# ③ 시드 — 둘 중 하나
+docker compose exec core python manage.py seed_clean       # 초기 적용 시연
+docker compose exec core python manage.py seed_adopted     # 적용 완료 시연
+
+# ④ RAG (선택) — 규정 검색·Rule Agent 근거·Risk Review 2차가 실제 결과를 내려면
+docker compose exec ai python -m app.rag.embedding.snapshot restore --in /data/rag_snapshot
+docker compose exec core python manage.py reindex_cases    # 결정 사례 적재
+#   스냅샷이 없으면 §4의 두 경로 중 하나로 처음 적재한다
+
+# ⑤ 관리자 계정 (선택)
+docker compose exec core python manage.py createsuperuser
+```
+
+### 2.5 옛 시연 시드 (`seed`)
+
+화면별 상태를 골고루 흩어 놓은 **이전 시연 데이터**. 이번 달 안에 온갖 상태를 배치해 한 화면씩
+채워 보여주는 용도라, 위 둘과 달리 **회사의 시점이라는 서사가 없다.** 룰 4계열·정산 87건·검토
+대기 30건. 새로 시연을 짠다면 `seed_clean`/`seed_adopted`를 쓴다.
+
+```bash
+docker compose exec core python manage.py seed --fresh
+```
+
+### 2.6 부분 시드·계정
+
+```bash
+docker compose exec core python manage.py seed_rules [--no-test]   # 룰 그래프만
+docker compose exec core python manage.py seed_policy_tables       # 규정 별표(임계값)만
+docker compose exec core python manage.py ensure_service_account --check   # 401 날 때 진단
+```
+
+### 로그인 계정 (세 시드 공통, pw `pass1234`)
+
+시드를 갈아끼워도 헤매지 않도록 셋이 같은 계정을 만든다.
 
 | 계정 | 역할 | 기본 Capability | 볼 수 있는 것 |
 |---|---|---|---|
@@ -88,6 +209,9 @@ docker compose exec core python manage.py ensure_service_account --check  # 401 
 | `acclead` | 회계팀장 | + `rule_activate`, `ai_lab` | 룰 ACTIVE 승인·롤백 · AI-LAB |
 | `exec` | 운영진 | `governance_view` | 거버넌스 대시보드 |
 
+`seed_adopted`는 여기에 팀원 10명(`emp1`~`emp10`)을 더한다 — 팀 통계가 사람 한둘로 채워지지
+않도록, 그리고 **직책을 흩어 놓아야** 직책별로 판정이 갈리는지 확인할 수 있어서다.
+
 > **인가는 역할이 아니라 Capability로 판정**한다 — `유효능력 = 역할 기본값 ∪ 개인 추가부여`.
 > Django Admin에서 사용자별 `extra_capabilities`를 체크박스로 더 줄 수 있다.
 > 백엔드에서도 강제된다(DRF `HasCapability`). 회원가입 화면은 없다 — 계정은 CLI/Admin에서만.
@@ -95,15 +219,9 @@ docker compose exec core python manage.py ensure_service_account --check  # 401 
 ### 서비스 계정 (ai → core 쓰기)
 
 룰 그래프 DRAFT 저장·규정 적재 결과 회신은 사람 세션이 없으므로 전용 계정 하나(`rule-agent`,
-capability `rule_view`만)로 JWT를 받는다.
+capability `rule_view`만)로 JWT를 받는다. **`.env` 변경 뒤 컨테이너 재생성을 건너뛰면** core만
+옛 env로 돌아 **원인과 동떨어진 401**이 난다.
 
-```bash
-# .env에 AI_SERVICE_PASSWORD를 채운 뒤 ─ env 변경은 컨테이너 재생성이 먼저다
-docker compose up -d --force-recreate core ai
-docker compose exec core python manage.py ensure_service_account
-```
-
-재생성을 건너뛰면 core만 옛 env로 돌아 **원인과 동떨어진 401**이 난다.
 
 ---
 
@@ -174,6 +292,19 @@ docker compose exec ai python -m app.rag.embedding.index --peek
 > ⚠️ 같은 문서를 ①과 ② 두 경로로 번갈아 넣지 말 것. `doc_id`가 각각 파일 해시 / `dump:<이름>`이라
 > **같은 내용이 다른 id로 두 벌** 들어간다.
 
+### ③ 스냅샷 복원 (시연 재현용 — 재임베딩 0회)
+
+이미 적재해 둔 벡터를 **그대로** 옮긴다. OpenAI 호출 0회·과금 0·재현 100%.
+
+```bash
+docker compose exec ai python -m app.rag.embedding.snapshot dump    --out /data/rag_snapshot
+docker compose exec ai python -m app.rag.embedding.snapshot restore --in  /data/rag_snapshot
+#   복원은 upsert다(기존을 지우지 않는다). 깨끗한 상태가 필요하면 --reset을 명시.
+```
+
+시연 데이터를 확정하려면 벡터도 함께 고정돼야 한다 — 원문을 다시 파싱·임베딩하면 파서·청커·모델이
+바뀔 때 **어제 보던 검색 결과가 오늘 달라진다.** 관계형 절반과 짝이므로 §2.3과 같이 읽는다.
+
 ### 데이터는 어디에 남나
 
 Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재부팅·`up --build`로는
@@ -189,17 +320,20 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
 | 룰 엔진 (EvalContext 조립 → 그래프 선택 → 결정론적 순회) | ✅ | 제출이 판정을 자동으로 이어 돌린다 |
 | 룰 콘솔 (S-04) 3개 탭 | ✅ 실 API | 초안 편집·시뮬레이션·ACTIVE 승인·버전 롤백·대화형 수정 |
 | Rule Agent (규정 → 룰 그래프 DRAFT) | ✅ | RAG → LLM 툴콜링 → 결정론적 조립 → 저장 |
-| Draft Agent (초안 작성) | ✅ (비전 제외) | 가맹점 업종 구분 연동 완료 |
+| Draft Agent (초안 작성) | ✅ v2 | 저장 먼저 → 비전 판독 → 초안. **판정은 LLM이 예측하지 않고 엔진 dry-run 결과를 서술**한다 |
 | Risk Review Agent (① 이상탐지 → ② RAG 내규 검증) | ✅ 실동작 | **①은 학습된 모델 파일이 있어야 실값** — §6 참고 |
 | 규정 문서 업로드 → 인덱싱 → 룰 트리거 | ✅ | §4-① |
 | RAG 파싱·청킹·임베딩 전략 | ✅ 구현+평가 완료 | 채점 노트북은 `docling_eval/` |
-| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | 🔶 **미머지** | `feature/context-build-tool` 브랜치에만 있다 — §6.6 |
+| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | ✅ P0 | DSL·EvalContext 경로·별표 축·판정 선택지·플래그를 live 모델에서 조립해 프롬프트에 주입 |
+| 결정 사례 적재 (`case_history`) | ✅ | 사람이 AI와 다르게 판단한 건만. `seed_adopted` 30건 + 결정 시 자동 적재 |
+| 알림 11종 · 규정문서 덤프/복원 | ✅ | 상태 전이·비동기 완료·룰 콘솔 사건 / `dump_policy_docs`·`load_policy_docs` |
 | 검토 워크스페이스(S-03) · 규정 문서 관리(S-05) · 팀 취합(S-02) | ✅ 실 API | |
 | 내 지출(S-01) · 내역 불러오기 | ✅ 실 API | ERP 결제기록 수집 → DRAFT 생성 |
 | 예산 관리(S-08) · 카드 관리(S-09) · ERP 전표(안) 확인 | ✅ 실 API | 2026-08-21 연동 |
 | 증빙 첨부 업로드 → 비전 판독 → EvalContext | ✅ 실동작 | 업로드가 곧 판독 트리거. §6.4 |
 | 거버넌스 대시보드 | 🚧 목업 | §6.2 |
-| 증빙자료 추출 Agent | 🔲 미착수 | 저장 구조(`Attachment`)와 조립기 연결만 완료 |
+| 예산 관리(S-08) 다개월 추세 | ✅ 실 데이터 | 사용액 정의는 한 곳(`settlements/budget.py`). 정산 없는 달은 `0`이 아니라 `null` |
+| 증빙자료 추출 Agent | ✅ | 업로드가 곧 판독 트리거. 신뢰도 0.6 미만은 EvalContext에 안 올린다 |
 
 ---
 
@@ -217,8 +351,10 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
   ```
   기존 pkl을 얹어 쓸 경우 `feature_columns` 개수(현재 24)와 sklearn 버전이 맞는지 확인할 것 —
   옛 pkl은 `feature_stats`가 없어 **feature 기여도가 빈 배열**로 나온다.
-- **`case_history`(유사 과거 사례) 컬렉션은 골든 시드 10건뿐**이다. 실 결정이력을 적재하는
-  파이프라인이 없다. `docker compose exec ai python -m app.rag.case_store --upsert`로 넣는다.
+- **`case_history`는 ai가 떠 있어야 적재된다.** 결정 시 자동 적재되지만 그때 ai가 꺼져 있었거나
+  임베딩이 실패하면 `indexed_at`이 빈 채로 남는다(결정 자체는 확정됐다 — 적재 실패로 되돌리지
+  않는다). `manage.py reindex_cases`로 되살린다. 골든 시드는
+  `docker compose exec ai python -m app.rag.case_store --upsert`.
 - **`OPENAI_API_KEY`가 없으면** Draft/Rule/Risk Agent와 임베딩이 전부 멈춘다(부팅은 된다).
 - **`KAKAO_REST_API_KEY`가 없으면** 캐시에 없는 가맹점은 업종 미확정으로 남고, 금지업종·주의업종
   룰이 판정할 근거가 사라진다(경고 로그 1회 후 조용히 건너뜀).
@@ -230,7 +366,6 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
 | 화면 | 상태 |
 |---|---|
 | 거버넌스 대시보드 (`GovernanceDashboard`) | 차트·KPI 전부 목데이터. `/api/dashboard/EXECUTIVE/`는 일부 집계만 반환 |
-| 알림 패널 (`NotificationPanel`) | `data/mock`의 고정 목록 |
 | 예산 **수정** (S-08 Frame 22) | 조회는 실 API. 쓰기 API가 없고 "누가 고칠 수 있는가"가 미정이라 버튼은 비활성 |
 
 ### 6.3 연동 gap (`VITE_USE_MOCK=false`로 붙일 때)
@@ -249,17 +384,17 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
   (`업로드 → /agent/extract-evidence → Attachment.extracted → EvalContext`), 영수증에서 읽은
   **가맹점·금액·품목**은 `Attachment`에 담을 자리가 없어 버려진다 — 판정 사실
   (`dining.includes_alcohol` 등)만 남는다. 금액·가맹점 자동 채움은 여전히 Draft Agent 경로다.
-- **Draft Agent가 아직 비전을 안 쓴다.** 「영수증 업로드(자동 분석)」 버튼은 파일을 실제로
-  올리지 않고 Draft Agent만 부른다. 판독을 원하면 아래 증빙 첨부에 `영수증·카드전표`로 올린다.
-- **EvalContext 사실 조립이 부분적이다.** 47개 경로 중 조립되는 건 절반가량 —
-  참조한 경로가 `null`이면 미해소 가드가 판정을 「검토 필요」로 낮춘다(조용한 통과는 없다).
+- **EvalContext 사실 조립에 빈칸이 남아 있다.** 56개 경로(v6) 중 룰이 참조하는데 화면 입력칸이
+  없는 것이 하나 있다(`trip.*` — 첨부 추출은 되는데 입력 UI가 없어 0%). 참조한 경로가 `null`이면
+  미해소 가드가 판정을 「검토 필요」로 낮춘다(조용한 통과는 없다).
 - **가맹점 업종 구분이 Draft에만 붙어 있다.** Risk Review 연동은 미착수.
 - **`/submit`이 팀 동일성을 강제하지 않는다.**
-- **Rule Agent가 기존 계열에 버전을 얹지 못한다** — 항상 새 계열(v1) DRAFT를 만든다.
-- **별표 축 정합 결함 2건**(2026-08-20 발견, 미해결): 로컬 DB의 한도 별표 3종 축이
-  `user.position`(스키마에서 사라진 경로)이라 직책과 무관하게 와일드카드 기본값으로 떨어진다
-  (재시드로 해소) / `dining_per_person_limit_table`의 축 `category.scope`는 코드에 있는데
-  스키마에 없다.
+- **`merchant.forbidden`이 채워지는데 참조되지 않는다.** 게이트가 리터럴로 직접 비교해 선해소
+  목적이 사라졌다 — 게이트를 고치거나 선해소를 빼거나 정해야 한다.
+- **`anomaly.pkl` 재학습 필요.** 배포 pkl에 `feature_stats`가 없어 기여도가 빈 배열이고
+  sklearn 버전이 어긋난다(1.8.0 vs 1.5.2).
+- **알림 딥링크가 없다.** 지금은 페이지 이동까지다 — `?open=`/`?graph=`를 만드는 코드는 있는데
+  읽는 코드가 없어 이미 죽어 있다.
 
 ### 6.5 최근 고친 것 / 주의
 
@@ -272,13 +407,10 @@ Chroma는 named volume `skn-settlement_chromadata`. `docker compose down`·재�
   for f in $(git ls-files '*.py'); do python -m py_compile "$f" || echo "BROKEN: $f"; done
   ```
 
-### 6.6 아직 main에 없는 브랜치 작업
+### 6.6 브랜치
 
-| 브랜치 | 내용 |
-|---|---|
-| `feature/context-build-tool` | **에이전트 컨텍스트 툴 P0** — DSL 연산자·EvalContext 경로(타입·설명 포함)·별표 축과 적재여부·판정 선택지·플래그 어휘를 live 모델에서 조립해 Rule Agent 프롬프트에 주입. `domain/context` + `app/context`, 회귀 23건. 위 §6.4의 별표 축 결함 2건도 이 작업에서 발견됐다. 캐논은 브랜치의 `llm_wiki/_context/agent-context-tool.md` |
-
-다른 `feature/*` 브랜치도 여럿 남아 있다 — `git log --oneline main..<브랜치>`로 확인할 것.
+`feature/*` 브랜치가 여럿 남아 있다 — `git log --oneline main..<브랜치>`로 확인할 것.
+에이전트 컨텍스트 툴(`feature/context-build-tool`)은 반영 완료(§5).
 
 ---
 
@@ -303,6 +435,11 @@ npm install --prefix apps/web
 npm run dev   --prefix apps/web       # Vite dev
 npm run build --prefix apps/web       # tsc 타입체크 + vite build
 
+# ── 시연 데이터 얼리기·되살리기 (§2.3) ──────────────
+docker compose exec core python manage.py dump_policy_docs      # 규정문서 관계형 절반
+docker compose exec ai python -m app.rag.embedding.snapshot dump --out /data/rag_snapshot   # 벡터 절반
+docker compose exec core python manage.py reindex_cases         # 밀린 결정 사례 적재
+
 # ── 기타 ─────────────────────────────────────────────
 docker compose config                 # compose 문법 검증
 docker compose up --build core        # 개별 재빌드
@@ -321,6 +458,9 @@ docker compose down [-v]              # 종료 (-v: 볼륨까지 삭제)
 | 규정 PDF 업로드가 413 | nginx `client_max_body_size` — 기본 1MB로는 규정 PDF가 곧바로 막힌다(현재 50m로 설정돼 있음) |
 | `down -v` 후 아무것도 안 보임 | DB·Chroma 볼륨이 삭제됐다. `migrate` → `seed` → RAG 적재를 다시 |
 | 한글 경로 파일 작업이 깨진다 | Git Bash의 cp949 mojibake. PowerShell + 절대경로 사용 |
+| 규정 문서는 뜨는데 검색이 못 찾는다 | **두 절반 중 벡터만 빠졌다**(§2.3). `snapshot restore`를 같이 돌릴 것 — 조항의 `chunk_ids`는 살아 있어도 그 청크가 Chroma에 없으면 에러 없이 빈손이 된다 |
+| `seed_adopted`가 판정 불일치를 경고한다 | 룰이 바뀌었는데 시드의 기대값이 안 따라온 것이다. **정상 동작이다** — 사실(`Spend`)을 고치거나 기대값을 갱신한다 |
+| 결정 사례가 0건 | `ai`가 꺼져 있으면 적재만 밀린다(결정은 확정됐다). `reindex_cases`로 되살린다. 시드 끝의 「기대 30건 / 실제 N건」 경고를 먼저 볼 것 |
 
 ---
 
