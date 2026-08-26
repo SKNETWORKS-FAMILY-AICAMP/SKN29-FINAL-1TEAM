@@ -194,6 +194,13 @@ RULE_FLAGS: list[tuple[str, str, str, str, str, str]] = [
     #  있었다"는 이유로 삭제된 필드다. 룰 그래프가 조합해 내놓는 **출력**으로는 여기가 제자리다.
     ("PERSONAL_USE_SUSPECTED", "사적 사용 의심", _C.JUDGEMENT, _S.HIGH, _O.ACCOUNTING,
      "여러 신호가 겹쳐 업무 외 사용으로 의심된다."),
+    #  ── 화이트리스트 게이트가 붙이는 것 ──────────────────────────
+    #  **「잘못됐다」가 아니라 「규칙만으로 승인 결정을 내리기엔 근거가 부족하다」**는 뜻이다.
+    #  검토는 실패가 아니므로 심각도를 낮게 둔다([[rule-engine-semantics]] §1).
+    ("AUTO_PASS_NOT_MET", "자동 통과 요건 미충족", _C.JUDGEMENT, _S.LOW, _O.ACCOUNTING,
+     "자동 통과 요건을 다 채우지 못해 사람이 확인한다. 위반이라는 뜻이 아니다."),
+    ("ACTUAL_USER_UNKNOWN", "실사용자 확인 불가", _C.JUDGEMENT, _S.LOW, _O.ACCOUNTING,
+     "공용·팀 카드인지, 실사용자를 적었는지조차 알 수 없다. 모르는 것을 통과시키지 않는다."),
 ]
 
 

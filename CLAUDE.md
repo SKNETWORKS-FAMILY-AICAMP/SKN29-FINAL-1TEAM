@@ -34,6 +34,7 @@ daily_scrum/  주차별 진행 보고
 - 영수증은 별도 OCR 없이 **OpenAI 비전**으로 직접 판독. Rule 적용은 결정론적 엔진, LLM은 Rule 생성 단계에서만.
 - **가맹점 업종 = 정본 1곳**: 캐시(TTL 30일) → 카카오 원시조회 → **LLM이 우리 서비스 어휘로 재분류**(카카오 group code는 장소·마케팅 분류라 그대로 안 쓴다). 어휘 정본은 `domain/transactions/industry.py` 15종이고 ai는 미러 — 이 라벨이 곧 판정 사실 `merchant.merchant_type`이라 룰 DSL·금지업종 별표와 **같은 표기**여야 한다. **접히지 않으면 `기타`가 아니라 미확정**(`기타`로 밀면 별표가 "금지 아님"으로 단정한다). 비용분류 **보조 힌트**일 뿐 세무 판단이 아니고, MCC는 post-MVP. → `_context/merchant-industry-vocabulary.md` / 기술 §7-1
 - **룰은 사전 탑재하지 않는다 — 기본 게이트 1개 + 문서에서 생성**: 제품이 미리 준비해 제공하는 것은 **`DEFAULT GATE` 하나**뿐이며, 특정 회사 규정에 종속되지 않는 **범용 default 룰**로 고도화한다. **카테고리별 세부 룰은 고객이 자사 규정 문서를 업로드하면 Rule Agent가 생성**한다(RAG 조항 추출 → 초안 → 시뮬레이션 → ACTIVE 승인). `docs/RULE_명세서.md`의 76 RULE과 `seed_rules`의 4개 계열 그래프는 **참고용 예시·시연용**이지 기본 제공물이 아니다.
+- **룰엔진은 분류기다 — 검토는 실패가 아니다**: 확실한 건만 분류(`PASS`=승인대기 · `RETURN`/`REJECT`=보완·반려)하고 나머지는 `REVIEW`로 사람에게 넘긴다. **자동처리 = 확정한 것 전부**(1 − 검토/전체)이지 `PASS` 비율이 아니다 — `RETURN`을 빼면 룰을 더할수록 지표가 나빠진다. **`PASS`는 「이런 기준을 만족했으니 승인해도 된다」는 적극적 결정이라 디폴트가 되면 안 된다**(블랙리스트 금지, 화이트리스트로). 오탐=틀리게 확정, 미탐=확정 가능한데 검토로 넘김. 회계가 규칙을 쌓을수록 확정이 늘고 검토가 준다 — 그게 도입 진척도다. 게이트는 **화이트리스트**다(`rule_timeline.py`가 정본, 7단계 도입 타임라인). 검증셋 300건 실측: **자동처리율 26%→100% · 오탐 0%** (→ `docs/qa/rule-engine-qa.md`). → [[rule-engine-semantics]]
 - **룰 도메인 = 그래프(트리)**: 단건 룰은 `condition+action+next_routings` 노드, 조립된 **룰 그래프(RuleGraph)** 가 최종 상태 도메인. **ACTIVE·버전관리·시뮬레이션·롤백은 그래프 단위**. (기술 §3.1·§4.2 / 요구사항 FR-RB·FR-RV·FR-RA)
 - **룰엔진 = 3단 파이프라인**: ① `build_rule_context(tx_id)`로 **EvalContext(facts 스냅샷)** 조립(모든 I/O·데이터 접근은 여기서만) → ② 그래프 선택(**필수 게이트 GLOBAL → 계정과목별 scope**) → ③ **결정론적 순회**(엔진은 EvalContext만 참조, 외부 I/O 0). 조건은 **JSON-Logic류 DSL**(임의코드 금지). context는 `rule_hits.eval_context`에 스냅샷 저장 → 재현·감사. 상세: `llm_wiki/_context/rule-engine.md`. (기술 §4.2(d) / 요구사항 FR-RA-08~10)
 - **비용분류 어휘 = 서버가 내려준다**: 정본 `settlements.Category` 6종(회식·회의·식대·출장·접대·**기타**), 창구는 `GET /api/meta/categories/` 하나. 화면(`useCategories()`)·ai(`core_client.get_categories()`)가 런타임에 받아 쓰고 **저장 검증은 서버가 한다**(목록 밖 값은 400). **`기타` ≠ 미기재** — `기타`는 "어디에도 안 맞는다"는 확정, `""`는 "아직 못 정했다"(게이트가 `CATEGORY_MISSING`으로 잡는다). → `_context/category-vocabulary.md`
@@ -65,7 +66,7 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | 룰 그래프(트리) 도메인 | ✅ | scope별 버전·DRAFT 복제/원복·DSL 쉽게보기·검증 시뮬레이션·승인 흐름·롤백. 구조 시각화는 플로우차트(순환 감지) |
-| 룰 엔진 판정 | ✅ | 게이트 우선(GLOBAL→scope) · 그래프당 `rule_hits` 1행 · **엔진은 최종반려를 만들지 않는다**(REJECT여도 상태는 RETURNED) · 제출이 판정을 이어 돌린다. → [[rule-engine]] |
+| 룰 엔진 판정 | ✅ + 버전 채점 | 게이트 우선(GLOBAL→scope) · 그래프당 `rule_hits` 1행 · **엔진은 최종반려를 만들지 않는다**(REJECT여도 상태는 RETURNED) · 제출이 판정을 이어 돌린다. **`rule_eval`로 버전별 자동처리율·오탐·미탐을 실측**(→ `.personal/RULE_EVOLUTION.md`) — 없는 사실을 참조하는 룰은 검토 큐 생성기다(출장 v1이 오탐 22%, `is_null` 선분기로 5.6% 복구). → [[rule-engine]] |
 | 네임드 플래그 | ✅ | 2계층(닫힌 `SystemFlag` / 열린 `RuleFlag`). **불변식: 플래그는 상태머신을 움직이지 않는다.** `code`는 데이터 계약. → [[rule-flags]] |
 | EvalContext | ✅ v6 (56필드) | 원자 사실만, 판단은 그래프가 조합. 미해소 가드(`UNRESOLVED_*`) → REVIEW 강등. 파생 불린 4건 제거·상수는 룰에 허용(§2). **참석 인원은 신고(화면)와 확인(문서 추출)을 다른 필드로 가른다**. **값 어휘(enum) 8경로**는 서버 정본에서 나와 별표 축·증빙 추출을 같이 제약한다. `dining.gathering_unit`·`gathering_type`은 **증빙 서식에서만** 오고 저장 컬럼이 없다. → [[eval-context-sourcing]] §15~18 |
 | 규정 임계값(policy) | ✅ 동적화 완료 | 저장층 `PolicyTable`(자유 JSON+`key_axes`) → 소비층 `ctx.policy.*`. **적재된 표에서 파생**(코드 상수 아님), `RESOLVERS`는 이름 override로만. 축 정합 검사(`check_table_axes`, DB 행 대조). → [[policy-domain]] §3 |
@@ -121,7 +122,7 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | `seed_clean` (초기 적용) | ✅ | 막 설치한 회사 — 사용자·팀 + **사람·팀에 배정된 카드 10장** + `DEFAULT GATE` 1개. 팀 예산은 한도만. → [[default-gate]] §6 |
-| `seed_adopted` (적용 완료) | ✅ | 3개월째 굴러가는 회사 — 직전 3개월 정산 ~185건이 **실제 전이를 타고** 흘러간 상태(전표 168·자동처리율 ~89%·평균 검토 ~27분). 시각은 결제일로 되돌리고, 종결 건 알림은 지운다 |
+| `seed_adopted` (적용 완료) | ✅ + 채점 | 3개월째 굴러가는 회사 — 직전 3개월 정산 ~185건이 **실제 전이를 타고** 흘러간 상태(전표 168·자동처리율 ~89%·평균 검토 ~27분). 시각은 결제일로 되돌리고, 종결 건 알림은 지운다. **골든 라벨을 남긴다**(`var/adopted_golden.json` — 사람의 결정이라 룰과 독립) → `rule_eval`이 그걸로 룰 버전을 채점한다 |
 | `seed` (화면별 시연) | ✅ | 룰 4계열·정산 87건·검토 30건·RAG 하이라이트 3건. 거래일자는 이번 달 안에 배치. 회식 시연 3건은 **실제 `services.judge()`** 로 판정 |
 | 로그 | ✅ | `logs/core.log`·`logs/ai.log` (5MB×3 로테이션, git 미추적). 디버깅은 여기부터 |
 

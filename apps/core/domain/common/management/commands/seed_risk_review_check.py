@@ -253,7 +253,7 @@ class Command(BaseCommand):
         Transaction.objects.filter(id__in=tx_ids).delete()
 
     def _report(self, results):
-        self.stdout.write(self.style.SUCCESS(f"\n생성·판정 완료 — {len(results)}건\n"))
+        self.stdout.write(self.style.SUCCESS(f"\n생성·판정 완료 : {len(results)}건\n"))
         header = f"{'가맹점':<20} {'팀':<10} {'분류':<6} {'룰판정':<8} {'상태':<16} {'anomaly':>9} {'등급':<6} {'권고':<10}"
         self.stdout.write(header)
         self.stdout.write("-" * len(header))

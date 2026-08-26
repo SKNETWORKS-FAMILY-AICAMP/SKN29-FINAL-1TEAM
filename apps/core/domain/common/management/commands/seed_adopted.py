@@ -42,12 +42,15 @@ from __future__ import annotations
 
 import calendar
 import datetime as dt
+import json
 import random
-from collections import defaultdict
+from pathlib import Path
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import timedelta
 
 from django.core.management import call_command
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 from django.utils import timezone
@@ -529,6 +532,12 @@ class Command(BaseCommand):
                 row.verified_headcount = row.headcount
             if row.category == C.GATHERING:
                 row.external_headcount = 0
+                if row.verified_headcount is None:
+                    #  **회식도 참석자 명단이 있는 게 정상이다.** 1인당 한도 룰(M-01)이
+                    #  신고값이 아니라 **확인값**을 본다 — 본인이 적은 인원으로 나누면
+                    #  인원을 부풀리는 것만으로 한도를 피할 수 있어서다(접대 E-03과 같은 이유).
+                    #  명단이 없으면 전건이 「판정 정보 부족」으로 강등된다.
+                    row.verified_headcount = row.headcount
                 if row.is_secondary_venue is None:
                     row.is_secondary_venue = False
                 if row.includes_alcohol is None:
@@ -549,8 +558,19 @@ class Command(BaseCommand):
         accountant = actors.get("acc")
         mismatched: list[tuple[Spend, str]] = []
 
+        golden: list[dict] = []
         for row in spends:
             settlement = self._create(row)
+            #  **골든 라벨을 남긴다.** `outcome`은 시드가 정한 「사람이 무엇을 했는가」이고
+            #  룰과 독립이다 — 룰 버전을 바꿔 가며 채점하려면 이 라벨이 필요하다.
+            #  최종 상태로는 대신할 수 없다: `fix`(보완 후 재제출) 건도 결국 CONFIRMED로
+            #  끝나므로, 상태만 보면 「룰이 잡았어야 할 건」이 승인 건으로 둔갑한다.
+            golden.append({
+                "settlementId": settlement.id, "category": row.category,
+                "outcome": row.outcome, "expect": row.expect,
+                "label": ("보완반려" if row.outcome in ("fix", "reject") else
+                          "미결" if row.outcome.startswith("inflight") else "승인"),
+            })
             #  **판정 전에 붙여야 한다.** 첨부에서 나온 사실이 EvalContext에 실리려면
             #  `judge()`보다 먼저 존재해야 한다 — 뒤에 붙이면 이미 끝난 판정에 안 들어간다.
             self._attach_participant_list(settlement, row, settlement.transaction.ts)
@@ -606,7 +626,23 @@ class Command(BaseCommand):
 
             self._stamp(settlement, base + timedelta(minutes=10), judged_at=submitted_at)
 
+        self._write_golden(golden)
         return mismatched
+
+    def _write_golden(self, rows: list[dict]) -> None:
+        """골든 라벨을 파일로 남긴다 — `rule_eval`이 이걸로 룰 버전을 채점한다.
+
+        DB 컬럼을 만들지 않는 이유: 이건 **시연 데이터의 정답지**이지 도메인 사실이 아니다.
+        운영 스키마에 넣으면 판정이 정답지를 참조할 수 있게 되고, 그 순간 채점이 의미를 잃는다.
+        """
+        path = Path(settings.BASE_DIR) / "var" / "adopted_golden.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+        counts = Counter(r["label"] for r in rows)
+        self.stdout.write(
+            f"  골든 라벨 {len(rows)}건 → {path.name} "
+            f"(승인 {counts['승인']} · 보완반려 {counts['보완반려']} · 미결 {counts['미결']})"
+        )
 
     def _team_lead(self, user: User) -> User | None:
         """같은 팀의 팀 취합 담당자.
@@ -659,11 +695,17 @@ class Command(BaseCommand):
     #  내는 dot-path·신뢰도 형식 그대로) — 다르면 조립기가 못 읽는다.
     PARTICIPANT_CONFIDENCE = 0.92
 
-    def _attach_participant_list(self, settlement: Settlement, row: Spend, when) -> None:
-        """확인 인원이 정해진 건에 참석자 명단 첨부를 만든다."""
-        verified = row.verified_headcount
+    def _attach_participant_list(self, settlement: Settlement, row: Spend, when,
+                                 verified: int | None = None) -> None:
+        """확인 인원이 정해진 건에 참석자 명단 첨부를 만든다.
+
+        `verified`를 넘기면 그 값으로 다시 만든다 — 보완(`_remediate`)에서 명단을
+        고쳐 올리는 경우다.
+        """
+        verified = verified if verified is not None else row.verified_headcount
         if not verified:
             return
+        settlement.attachments.filter(kind=AttachmentKind.PARTICIPANT_LIST).delete()
         extracted = {"participants.verified_participant_count": verified}
         if row.external_headcount is not None:
             extracted["participants.verified_external_count"] = row.external_headcount
@@ -701,7 +743,24 @@ class Command(BaseCommand):
         if settlement.actual_user_recorded is False:
             settlement.actual_user_recorded = True
             settlement.actual_user = settlement.submitted_by
-        settlement.save(update_fields=["pre_approved", "actual_user_recorded", "actual_user", "updated_at"])
+        fields = ["pre_approved", "actual_user_recorded", "actual_user", "updated_at"]
+
+        #  **1인당 한도 초과는 인원을 다시 세어 고친다.** 회식 M-01은 참석 인원으로 나눈
+        #  값을 보므로, 명단을 빠뜨린 사람을 채워 넣으면 한도 아래로 내려간다 — 화면에서
+        #  실제로 할 수 있는 보완이다. 이 보정이 없으면 재판정이 같은 사유로 또 걸려
+        #  **지난달에 보완요청이 미결로 남는다**(실측 2026-08-25).
+        flags = (settlement.rule_judgement or {}).get("flags") or []
+        if "PER_PERSON_LIMIT_OVER" in flags:
+            limit = 50_000
+            amount = int(settlement.transaction.amount)
+            needed = amount // limit + 1
+            if (settlement.headcount or 0) < needed:
+                settlement.headcount = needed
+                fields.append("headcount")
+            self._attach_participant_list(
+                settlement, row, settlement.transaction.ts, verified=needed)
+
+        settlement.save(update_fields=fields)
 
     def _write_risk_review(self, settlement: Settlement, row: Spend) -> None:
         """검토로 넘어간 건의 이상탐지 결과 — **시연용 대역값이다.**
@@ -930,7 +989,10 @@ class Command(BaseCommand):
             f"\n[경고] 룰이 참조하는데 시드가 못 채운 사실 {len(counts)}종:"
         ))
         for flag, n in sorted(counts.items(), key=lambda kv: -kv[1]):
-            self.stdout.write(f"  - {flag} — {n}건 강등")
+            #  em dash를 쓰지 않는다 — 윈도우 콘솔(cp949)에서 UnicodeEncodeError로 죽는다.
+            #  이 경고는 룰이 못 채운 사실이 있을 때만 뜨므로, 평소엔 안 보이다가
+            #  그래프를 고친 순간 시드 전체를 죽인다(실측 2026-08-25).
+            self.stdout.write(f"  - {flag} : {n}건 강등")
         self.stdout.write(
             "  판정이 「정보 부족」으로 떨어진다. 그 사실을 만드는 첨부·컬럼을 시드에 추가할 것."
         )

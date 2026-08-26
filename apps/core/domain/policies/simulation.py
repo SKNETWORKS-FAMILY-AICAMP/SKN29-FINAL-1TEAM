@@ -31,9 +31,13 @@ from .snapshot import graph_snapshot as _graph_snapshot
 from .snapshot import snapshot_hash as _snapshot_hash
 
 HISTORY_LIMIT = 40
+#: **룰이 결론을 못 낸 것.** 자동처리에서 빠지는 것은 이것뿐이다.
 REVIEW_DECISIONS = {"REVIEW"}
+#: 화면에서 「눈여겨볼 건」으로 묶는 판정. **자동처리 여부와는 다른 축**이다 —
+#  `RETURN`은 룰이 확정한 것이라 자동처리이면서 동시에 위험 표시 대상이다.
 RISK_DECISIONS = {"REVIEW", "RETURN", "REJECT"}
-# 사람 손이 필요했던(=자동처리되지 못한) 상태. 자동처리율 계산에서 제외한다.
+#  ⚠️ 더는 자동처리율에 쓰지 않는다(아래 `_result_row` 참조). 남겨 둔 이유는 이력 행의
+#  「사람 손을 탔는가」를 따로 보여줄 자리가 생길 수 있어서다.
 MANUAL_STATUSES = {
     SettlementStatus.IN_REVIEW, SettlementStatus.SUBMITTED, SettlementStatus.RPA_JUDGED,
     SettlementStatus.RETURNED, SettlementStatus.TEAM_RETURNED,
@@ -170,8 +174,18 @@ def _run_rows(snapshot: dict, cases: list[dict[str, Any]], source: str) -> list[
             "matchedExpectation": (expected == result.decision) if expected else None,
             "risk": result.decision in RISK_DECISIONS or (bool(expected) and expected != result.decision)
             or verdict in ("risk", "reversal"),
-            # 자동처리 = 그래프가 통과로 끝냈고, 사람 손이 필요한 상태도 아니었던 건
-            "auto": result.decision == "PASS" and status not in MANUAL_STATUSES,
+            #  **자동처리 = 룰이 결론을 낸 것 전부.** `PASS`(승인대기)만이 아니라
+            #  `RETURN`(보완요청)·`REJECT`도 규칙이 「이 건은 이렇다」고 확정한 것이라
+            #  사람이 규칙을 대신 판단해 줄 필요가 없다.
+            #
+            #  예전엔 `PASS`만 셌다. 그러면 **룰을 더해 보완요청을 더 잘 잡을수록
+            #  자동처리율이 떨어진다** — 회계가 규칙을 촘촘히 만들수록 지표가 나빠지는,
+            #  정반대 신호를 룰 콘솔이 주고 있었다. → [[rule-engine-semantics]] §1
+            #
+            #  실제 상태(`status`)도 안 본다. 그건 **사람이 나중에 무엇을 했는가**이지
+            #  룰이 확정했는가가 아니다(룰이 통과시킨 건을 회계가 되돌릴 수 있고, 그건
+            #  룰의 자동처리 실패가 아니라 오탐으로 따로 센다).
+            "auto": result.decision not in REVIEW_DECISIONS,
             "testCaseId": case.get("testCaseId"),
             "settlementId": case.get("settlementId"),
         })
@@ -471,7 +485,7 @@ def _stats(test_rows: list[dict], history_rows: list[dict], shape: dict,
            previous_auto_rate: float | None, previous_label: str) -> dict[str, Any]:
     history_total = len(history_rows)
     review_count = sum(1 for row in history_rows if row["decision"] in REVIEW_DECISIONS)
-    # 자동처리율 = 사람 검토(IN_REVIEW 등)로 빠지지 않고 그래프가 통과로 끝낸 비율.
+    #: 자동처리율 = 1 − (검토 / 전체). **룰이 결론 낸 비율**이지 통과시킨 비율이 아니다.
     auto_count = sum(1 for row in history_rows if row["auto"])
     auto_rate = round(auto_count / history_total, 4) if history_total else 0.0
     visited = {key for row in test_rows + history_rows for key in row["path"]}
@@ -620,7 +634,9 @@ def _narrative_facts(graph, shape, stats, grades, test_rows, history_rows,
         )
     if stats["autoRate"] < 0.5 and stats["historyTotal"]:
         watch.append(
-            f"**낮은 자동처리율({percent(stats['autoRate'])})** — 검토(REVIEW)로 빠지는 노드의 "
+            f"**낮은 자동처리율({percent(stats['autoRate'])})** — 규칙으로 결론이 안 나 "
+            f"검토(REVIEW)로 넘어가는 건이 많습니다. 검토는 실패가 아니라 아직 정의하지 않은 "
+            f"영역이므로, 그 구간을 규칙으로 덮으면 이 수치가 오릅니다. 검토로 빠지는 노드의 "
             "임계값이 과도하게 촘촘하지 않은지 살펴보세요. 자동화 효과가 제한적입니다."
         )
 

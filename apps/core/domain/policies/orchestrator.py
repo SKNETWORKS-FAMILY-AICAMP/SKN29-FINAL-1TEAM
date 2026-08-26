@@ -159,8 +159,17 @@ def _combine(runs: list[GraphRun], scope: str, gate_passed: bool,
         )
 
     decision = runs[-1].result.decision
-    # 게이트만 돌고 통과했는데 과목 그래프가 없었던 경우 — 통과는 유지하되 사실을 남긴다.
-    # (판정을 뒤집지 않는 이유: GLOBAL 게이트가 필수 검사를 이미 전부 봤다.)
+    #  과목 그래프가 없어도 게이트의 `PASS`를 유지한다 — 다만 **이건 게이트가
+    #  화이트리스트일 때만 성립하는 계약**이다.
+    #
+    #  `PASS`는 「이런 기준을 만족했으므로 승인해도 된다」는 적극적 결정이지 「위반을 못
+    #  찾았다」가 아니다([[rule-engine-semantics]] §2). DEFAULT GATE는 `n_auto_pass`
+    #  화이트리스트를 다 만족해야만 통과시키므로 그 결정을 낼 자격이 있고, 그래서 과목
+    #  그래프가 없는 식대·회의도 게이트 단독으로 승인대기까지 간다.
+    #
+    #  ⚠️ **게이트를 블랙리스트(위반 나열 → 안 걸리면 PASS)로 바꾸면 이 줄이 곧
+    #  디폴트 PASS가 된다** — 규칙이 보지 않은 과목이 전부 승인된다. 게이트를 고칠 때
+    #  이 전제를 함께 본다.
     if gate_passed and len(runs) == 1 and runs[0].scope == GLOBAL and scope and scope != GLOBAL:
         flags.append(NO_SCOPE_GRAPH_FLAG)
 

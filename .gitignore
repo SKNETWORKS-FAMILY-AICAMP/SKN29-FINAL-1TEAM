@@ -42,6 +42,8 @@ apps/core/staticfiles/
 
 # FastAPI(ai) — 로컬 모델/벡터 산출물
 apps/ai/var/
+#  시드가 남기는 골든 라벨·채점 산출물 — 데이터이지 코드가 아니다(재현은 시드로).
+apps/core/var/
 *.pkl
 *.joblib
 # Chroma 로컬 영속 클라이언트 산출물(docker 없이 돌릴 때). 벡터 DB는 커밋하지 않는다.

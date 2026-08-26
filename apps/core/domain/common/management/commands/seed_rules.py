@@ -375,6 +375,35 @@ TRIP_V1 = {
     "note": "최초 작성 — 숙박비 한도 1종(출장 도메인 확보 후 확장)",
 }
 
+#: **미해소 오탐을 없앤 판.** v1은 숙박비(`trip.lodging_amount_per_night`)를 값 비교로만
+#  썼는데, 그 사실은 출장계획서 첨부에서만 오고 화면 입력칸이 없어 **거의 전건 null**이다.
+#  미해소 가드가 그런 건을 REVIEW로 강등하므로 숙박이 없는 당일 출장까지 전부 사람에게
+#  갔다 — 실측: 출장 그래프를 켜는 순간 오탐이 1.9%→22.2%로 뛰었다(멀쩡한 36건).
+#
+#  `is_null` 선분기로 **모른다는 사실을 먼저 가른다**(DEFAULT GATE의 `n_actual_user_unknown`
+#  과 같은 처방 — [[default-gate]] §4.1). `dsl.guarded_vars`가 이 경로를 가드에서 면제한다.
+#  숙박 정보가 없다고 통과시켜도 되는 이유: **숙박비를 청구하지 않은 건**이고, 청구했다면
+#  첨부에서 값이 나온다(청구했는데 값이 없으면 그건 첨부 누락이라 증빙 룰이 잡는다).
+T_NO_LODGING = node(
+    "T-101", "숙박비 청구 없음", {"is_null": {"var": "trip.lodging_amount_per_night"}},
+    "PASS", "숙박비를 청구하지 않은 출장이라 1박 한도 검사를 건너뜁니다.", 0,
+    clause=f"{REG} 제17조②", severity="LOW", status="VERIFIED",
+    note="당일 출장이거나 숙박비를 청구하지 않은 건입니다.",
+    ai_reason="숙박 사실이 없는 건까지 한도 검사에 걸어 검토로 보내면, 검토 큐가 출장 건으로 "
+              "가득 차고 정작 봐야 할 것이 묻힌다.",
+    approver="—",
+    when="출장인데 숙박비 청구가 없을 때(당일 출장 등)",
+    then="숙박비 한도 검사를 건너뛰고 통과시킵니다. 청구하지 않은 비용에 한도를 적용할 수 없습니다.",
+)
+TRIP_V2 = {
+    "nodes": [T_NO_LODGING, *TRIP_V1["nodes"]],
+    #  MATCH(=숙박 없음)면 이 노드의 액션(PASS)으로 종결, NO_MATCH면 한도 검사로 내려간다.
+    "routings": [*branch("T-101", "", "T-102"), *branch("T-102", "", "T-PASS")],
+    #  **진입점이 바뀐다** — 선분기를 앞에 붙였으므로 T-101부터 시작한다.
+    "entry": "T-101",
+    "note": "숙박 미청구 선분기(T-101) 추가 — 미해소 오탐 제거",
+}
+
 TRIP_REVIEW_COMMENT = """## 검토 의견
 
 출장비 그래프 v1을 검증셋 5건과 직전 기간 실제 내역으로 시뮬레이션한 결과, 판정 분포가
@@ -643,6 +672,24 @@ TRIP_CHAT = [
 ]
 
 
+# ════════════════════════════════════════════════════════════════
+#  ⑥ 도입 타임라인 — `domain/policies/rule_timeline.py`가 정의를 갖는다
+# ════════════════════════════════════════════════════════════════
+#: 타임라인 계열은 **기존 시연 그래프와 다른 family**다. 섞으면 버전 번호가 엉키고,
+#  어느 것이 도입 서사이고 어느 것이 화면 시연용인지 구분이 사라진다.
+TIMELINE_GATE_KEY = uuid.UUID("5c9a2e71-3f84-4d16-a207-8b6e15d3c740")
+TIMELINE_SCOPE_KEYS = {
+    "접대": uuid.UUID("6d0b3f82-4095-4e27-b318-9c7f26e4d851"),
+    "회식": uuid.UUID("7e1c4093-51a6-4f38-c429-ad8037f5e962"),
+    "출장": uuid.UUID("8f2d51a4-62b7-4049-d53a-be9148061a73"),
+}
+TIMELINE_SCOPE_CLAUSE = {
+    "접대": "업무추진비 사용 규정 제11조·제12조·별표1",
+    "회식": "회식 운영규정 제5조·제7조·별표4",
+    "출장": "출장비 사용 규정 제17조·별표1·2",
+}
+
+
 class Command(BaseCommand):
     help = "시연용 룰 그래프 시드 — GLOBAL(v3)·기업업무추진비(v2)·회식비(v1+초안)·출장비(승인대기) + TEST 그래프"
 
@@ -660,6 +707,7 @@ class Command(BaseCommand):
         self._seed_dining(lead, acc)
         self._seed_trip(lead, acc)
         if not options.get("no_test"):
+            self._seed_timeline(acc)
             self._seed_test_graph()
 
     # ── 계열 공통 ────────────────────────────────────────────────
@@ -755,14 +803,28 @@ class Command(BaseCommand):
 
     # ── ④ 출장비 ────────────────────────────────────────────────
     def _seed_trip(self, lead, acc):
-        graph = self._upsert(
+        """v1(보관) → **v2(활성)**.
+
+        v1을 활성으로 두면 출장 건이 **전부 검토로 간다** — 숙박비가 첨부에서만 오는데
+        화면 입력칸이 없어 거의 전건 null이고, 미해소 가드가 그걸 REVIEW로 강등한다.
+        실측(`rule_eval`): 출장 그래프를 켜는 순간 오탐이 1.9%→22.2%로 뛰었고, v2의
+        `is_null` 선분기를 넣자 5.6%로 돌아왔다(자동처리율 74.6%→90.5%).
+        """
+        old = self._upsert(
             TRIP_FAMILY_KEY, 1, name="출장비 검증 그래프", scope="출장", entry="T-102",
             clause=f"{REG} 제16조·제17조", status=RuleGraphStatus.SIMULATED, spec=TRIP_V1,
             reviewer=acc, review_comment=TRIP_REVIEW_COMMENT, days_ago=2,
         )
-        self._messages(graph, TRIP_CHAT)
+        self._messages(old, TRIP_CHAT)
+        self._seed_trip_simulation(old, acc)
+        graph = self._upsert(
+            TRIP_FAMILY_KEY, 2, name="출장비 검증 그래프", scope="출장", entry="T-101",
+            clause=f"{REG} 제16조·제17조", status=RuleGraphStatus.ACTIVE, spec=TRIP_V2,
+            reviewer=acc, days_ago=1,
+        )
         self._seed_trip_simulation(graph, acc)
-        self.stdout.write(self.style.SUCCESS("출장비 v1(승인대기) + 검토보고서·검증셋·시뮬레이션 시드 완료"))
+        self.stdout.write(self.style.SUCCESS(
+            "출장비 v1(승인대기·검토보고서) → v2(활성, 숙박 미청구 선분기) 시드 완료"))
 
     def _seed_trip_simulation(self, graph, actor):
         """검증셋을 저장하고 실제 엔진으로 시뮬레이션을 1회 돌려 보고서를 남긴다."""
@@ -776,6 +838,48 @@ class Command(BaseCommand):
         ], actor)
         graph.simulation_runs.all().delete()
         simulation.run_and_save(graph, simulation.test_cases_of(graph), actor)
+
+
+    # ── ⑥ 도입 타임라인 ─────────────────────────────────────────
+    def _seed_timeline(self, approver):
+        """**회계가 규칙을 쌓아 온 기록**을 실제 버전으로 심는다.
+
+        `rule_timeline.TIMELINE`이 정본이고 여기서는 DB에 옮기기만 한다 —
+        `rule_eval`이 채점하는 그래프와 화면에 뜨는 그래프가 **같은 정의**여야
+        「측정한 것」과 「도는 것」이 갈리지 않는다.
+
+        각 버전의 `activated_at`을 단계별 D-N으로 찍으므로 룰 콘솔의 버전 이력이
+        곧 도입 서사가 된다. 마지막 단계만 ACTIVE이고 나머지는 ARCHIVED다.
+        """
+        from domain.policies import rule_timeline as T
+
+        last = len(T.TIMELINE) - 1
+        for index, stage in enumerate(T.TIMELINE):
+            label, note, gate_spec, scoped, days = stage
+            version = index + 1
+            active = index == last
+            status = RuleGraphStatus.ACTIVE if active else RuleGraphStatus.ARCHIVED
+            self._upsert(
+                TIMELINE_GATE_KEY, version,
+                name="법인카드 공통 게이트", scope="GLOBAL", entry=gate_spec["entry"],
+                clause=f"{T.REG_CARD} 제5조·제9조·제11조", status=status, spec=gate_spec,
+                activated=True, approver=approver, days_ago=days,
+                review_comment=f"[{label}] {note}",
+            )
+            for scope, spec in scoped.items():
+                #  과목 그래프는 **그 과목이 처음 생긴 단계부터** 버전이 올라간다.
+                key = TIMELINE_SCOPE_KEYS[scope]
+                self._upsert(
+                    key, version,
+                    name=f"{scope} 검증 그래프", scope=scope, entry=spec["entry"],
+                    clause=TIMELINE_SCOPE_CLAUSE[scope], status=status, spec=spec,
+                    activated=True, approver=approver, days_ago=days,
+                    review_comment=f"[{label}] {note}",
+                )
+
+        stages = " → ".join(row[0] for row in T.TIMELINE)
+        self.stdout.write(self.style.SUCCESS(
+            f"도입 타임라인 시드 완료: {stages} (마지막만 ACTIVE, 나머지 ARCHIVED)"))
 
     # ── ⑤ TEST 그래프 ───────────────────────────────────────────
     def _seed_test_graph(self):
