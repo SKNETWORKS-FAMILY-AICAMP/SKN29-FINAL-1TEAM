@@ -15,6 +15,7 @@
 |---|---|---|
 | [`rule-engine-qa.md`](rule-engine-qa.md) | **룰엔진** — 도입 타임라인 7단계 | 검증셋 300건 · 자동처리율 26%→100% · 오탐 0% |
 | [`isolation-forest-report.md`](isolation-forest-report.md) | **이상탐지 모델** — Risk Review 1단계 | 비지도 11종 비교 · PR-AUC 0.5865 · LOW 위험 0%/HIGH 11% |
+| [`agent-harness-report.md`](agent-harness-report.md) | **에이전트 하네스** — LLM을 쓰는 5개 지점 | 별표 추출 표 5~6→12·경고 3~4→0 · 증빙 판독 20/20 |
 
 ## 규약
 

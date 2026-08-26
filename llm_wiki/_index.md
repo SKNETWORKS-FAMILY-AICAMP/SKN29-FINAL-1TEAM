@@ -31,6 +31,7 @@ llm_wiki/
 | `docs/report/` | — | **결과 보고서** — 각 파트가 무엇을 만들었고 얼마나 검증됐는지. 발표·인수인계용 (`_index.md` 참조) | 확정 |
 | `docs/report/rule-engine-qa.md` | 2026-08-25 | **룰엔진 검증** — 도입 타임라인 7단계 × 검증셋 300건. 자동처리율 26%→100% · 오탐 0% | 확정 |
 | `docs/report/isolation-forest-report.md` | 2026-08-26 | **이상탐지 모델** — 콜드스타트 전제·비지도 11종 비교·컷오프 근거·개선 계획 | 확정 |
+| `docs/report/agent-harness-report.md` | 2026-08-26 | **에이전트 하네스** — 컨텍스트 카탈로그·값 어휘 강제·검사/재시도 루프 8종. 적용 지점과 개선 수치 | 확정 |
 | `docs/agent_test_result.md` | 2026-08-24 | Rule Agent·Risk Review Agent 실측 검증 결과 요약(발표용) — 정량 지표·발견한 결함·조치. 상세 데이터는 `docs/qa/` | 확정 |
 | `화면설계서/` | Rev.1 v1.1 | 6개 화면(S-01~06)·역할·상태머신 화면매핑 (압축해제 .docx) | 프론트 구현 기준 |
 
