@@ -211,8 +211,8 @@ export function TeamAggregation() {
           <div style={{ fontSize: 22, fontWeight: 700, color: budgetTone, marginBottom: 8 }}>
             {budgetRemaining < 0 ? `초과 ${won(Math.abs(budgetRemaining))}` : won(budgetRemaining)}
           </div>
-          <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 20 }}>
-            <div style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), height: '100%', background: budgetTone }} />
+          <div className="meter lg" style={{ marginBottom: 20 }}>
+            <span style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), background: budgetTone }} />
           </div>
 
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
@@ -242,8 +242,8 @@ export function TeamAggregation() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: barColor, marginBottom: 6 }}>
                     {remaining < 0 ? `초과 ${won(Math.abs(remaining))}` : `잔여 ${won(remaining)}`}
                   </div>
-                  <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ width: pct(Math.max(0, Math.min(remainingRate, 1))), height: '100%', background: barColor, transition: 'width 0.3s' }} />
+                  <div className="meter" style={{ marginBottom: 4 }}>
+                    <span style={{ width: pct(Math.max(0, Math.min(remainingRate, 1))), background: barColor }} />
                   </div>
                   <div className="text-meta" style={{ fontSize: 10 }}>예산 {won(c.limit)}</div>
                 </div>

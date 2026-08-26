@@ -203,7 +203,7 @@ export function EvidenceAttachments({
             )}
 
             {error && (
-              <div className="note" style={{ background: 'var(--tone-red-bg)', border: '1px solid #e8c0c0', marginTop: 10 }}>
+              <div className="note error" style={{ marginTop: 10 }}>
                 {error}
               </div>
             )}

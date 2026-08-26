@@ -74,8 +74,8 @@ export function LabeledBar({
   return (
     <div className="row" style={{ gap: 12 }}>
       <div style={{ width: labelWidth }} className="text-meta">{label}</div>
-      <div style={{ flex: 1, height: 10, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
-        <div style={{ width: pct(Math.min(value, 1)), height: '100%', background: color }} />
+      <div className="meter lg" style={{ flex: 1 }}>
+        <span style={{ width: pct(Math.min(value, 1)), background: color }} />
       </div>
       <div style={{ width: 44, fontSize: 12, fontWeight: 700 }} className="right">
         {pct(value)}

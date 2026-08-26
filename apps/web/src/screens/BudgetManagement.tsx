@@ -18,6 +18,7 @@ import { RefreshCw } from 'lucide-react'
 import { won, pct } from '../lib/format'
 import { endpoints } from '../api/client'
 import { Sparkline, DeltaText } from '../components/ui/GovCharts'
+import { SkeletonLines, SkeletonRows } from '../components/ui/Skeleton'
 
 interface BudgetCategory { label: string; limit: number; used: number }
 interface TeamBudgetRow {
@@ -209,15 +210,15 @@ export function BudgetManagement() {
 
       <div className="page-inner">
         {error && (
-          <div className="note" style={{ background: 'var(--tone-red-bg)', border: '1px solid #e8c0c0', marginBottom: 16 }}>
-            {error} <button className="btn sm" style={{ marginLeft: 8 }} onClick={() => void load()}><RefreshCw size={12} /> 다시 시도</button>
+          <div className="load-error" style={{ marginBottom: 16 }}>
+            {error} <button className="btn sm" onClick={() => void load()}><RefreshCw size={12} /> 다시 시도</button>
           </div>
         )}
 
         <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <button
-            type="button" className="btn"
-            style={selected === ALL ? { background: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 700 } : undefined}
+            type="button"
+            className={'btn' + (selected === ALL ? ' toggled' : '')}
             onClick={() => setSelected(ALL)}
           >
             전체
@@ -226,8 +227,7 @@ export function BudgetManagement() {
             <button
               key={t.id}
               type="button"
-              className="btn"
-              style={selected === t.id ? { background: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 700 } : undefined}
+              className={'btn' + (selected === t.id ? ' toggled' : '')}
               onClick={() => setSelected(t.id)}
             >
               {t.name}
@@ -243,8 +243,8 @@ export function BudgetManagement() {
           <div className="kpi">
             <div className="label">집행률</div>
             <div className="value">{Math.round(totals.rate * 100)}<small>%</small></div>
-            <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginTop: 8 }}>
-              <div style={{ width: pct(Math.min(totals.rate, 1)), height: '100%', background: 'var(--primary)' }} />
+            <div className="meter" style={{ marginTop: 8 }}>
+              <span style={{ width: pct(Math.min(totals.rate, 1)) }} />
             </div>
           </div>
         </div>
@@ -257,7 +257,7 @@ export function BudgetManagement() {
               <div className="card-head"><h3>이번달 팀별 예산 소진율</h3></div>
               <div className="card-body">
                 {teamBurnRates.length === 0 ? (
-                  <div className="text-meta">{loading ? '불러오는 중…' : '팀이 없습니다.'}</div>
+                  loading ? <SkeletonLines rows={4} /> : <div className="text-meta">팀이 없습니다.</div>
                 ) : (
                   <div className="team-burn-bars">
                     {teamBurnRates.map((t) => {
@@ -342,21 +342,20 @@ export function BudgetManagement() {
 
         {/* 예산 행이 없는 과목의 지출 — 숨기면 "항목 합 ≠ 총 사용액"이 원인 없이 어긋나 보인다. */}
         {team.unbudgetedUsed > 0 && (
-          <div className="note" style={{ background: 'var(--tone-amber-bg)', border: '1px solid #ead9ad', margin: '16px 0' }}>
+          <div className="note caution" style={{ margin: '16px 0' }}>
             예산 행이 없는 과목의 지출 {won(team.unbudgetedUsed)} — 아래 항목 합계에는 포함되지 않습니다
             ({Object.entries(team.unbudgeted).map(([k, v]) => `${k || '분류 미지정'} ${won(v)}`).join(' · ')}).
           </div>
         )}
 
-        <div className="note" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          background: 'var(--tone-amber-bg)', border: '1px solid #ead9ad', margin: '16px 0',
+        <div className="note caution" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '16px 0',
         }}>
           <span>예산 수정 권한이 없습니다. 관리자에게 권한을 요청하세요.</span>
           <button className="btn sm" disabled>권한 요청</button>
         </div>
 
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>계정과목별 예산 현황</div>
+        <div className="section-title">계정과목별 예산 현황</div>
         <div className="text-meta" style={{ marginBottom: 8 }}>{team.name} 예산</div>
         <div className="card" style={{ marginBottom: 24 }}>
           <table className="table">
@@ -379,8 +378,8 @@ export function BudgetManagement() {
                     <td className="num" style={remaining < 0 ? { color: 'var(--tone-red)' } : undefined}>{won(remaining)}</td>
                     <td>
                       <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                        <div style={{ width: 90, height: 6, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
-                          <div style={{ width: pct(Math.min(rate, 1)), height: '100%', background: TONE_COLOR[tone] }} />
+                        <div className="meter" style={{ width: 90 }}>
+                          <span style={{ width: pct(Math.min(rate, 1)), background: TONE_COLOR[tone] }} />
                         </div>
                         <span className="text-meta">{Math.round(rate * 100)}%</span>
                       </div>
@@ -390,17 +389,18 @@ export function BudgetManagement() {
                   </tr>
                 )
               })}
-              {team.categories.length === 0 && (
-                <tr><td colSpan={7} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>
-                  {loading ? '불러오는 중…' : '이 팀·이번 달에 배정된 예산이 없습니다.'}
-                </td></tr>
+              {team.categories.length === 0 && (loading
+                ? <SkeletonRows rows={4} cols={7} />
+                : <tr><td colSpan={7} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>
+                    이 팀·이번 달에 배정된 예산이 없습니다.
+                  </td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         {/* 계정과목별 지출 추세 — 실 데이터. 팀 탭을 따라간다(`selected`가 바뀌면 다시 받는다). */}
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+        <div className="section-title">
           계정과목별 지출 추세{selected !== ALL ? ` · ${team.name}` : ''}
         </div>
         <div className="text-meta" style={{ marginBottom: 8 }}>

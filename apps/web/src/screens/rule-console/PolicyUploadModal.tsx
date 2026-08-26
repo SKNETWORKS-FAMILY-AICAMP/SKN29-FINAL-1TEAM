@@ -65,8 +65,9 @@ export function PolicyUploadModal({ onClose }: { onClose: () => void }) {
           <FileText size={18} color="var(--tone-red)" />
           <div style={{ minWidth: 220 }}>
             <div style={{ fontSize: 12.5, fontWeight: 500 }}>{POLICY_UPLOAD_PROGRESS.fileName}</div>
-            <div style={{ height: 4, background: 'var(--border)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', margin: '4px 0' }}>
-              <div style={{ width: `${POLICY_UPLOAD_PROGRESS.percent}%`, height: '100%', background: 'var(--primary)' }} />
+            {/* 행 배경이 surface-2라 기본 트랙이 묻힌다 — 트랙만 border 색으로 올린다 */}
+            <div className="meter sm" style={{ margin: '4px 0', background: 'var(--border)' }}>
+              <span style={{ width: `${POLICY_UPLOAD_PROGRESS.percent}%` }} />
             </div>
           </div>
         </div>

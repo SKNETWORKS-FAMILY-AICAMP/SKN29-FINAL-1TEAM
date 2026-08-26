@@ -146,7 +146,7 @@ export function DecisionReasonModal({
     <Modal title={TITLE[decision]} onClose={onClose} footer={footer}>
       {/* **무엇과 다른 판단인지 먼저 보여준다.** 사유를 왜 받는지 모르면 형식적으로 채워진다. */}
       {divergence?.diverges && (
-        <div className="note" style={{ background: 'var(--tone-amber-bg)', border: '1px solid #ead9ad', marginBottom: 16 }}>
+        <div className="note caution" style={{ marginBottom: 16 }}>
           {divergence.expectedFrom === 'AI' ? 'AI 권고' : '룰 판정'}는(은){' '}
           <b>{EXPECTED_LABEL[divergence.expected] ?? divergence.expected}</b>였습니다 —
           다르게 판단하시는 <b>이유</b>를 남겨주세요.

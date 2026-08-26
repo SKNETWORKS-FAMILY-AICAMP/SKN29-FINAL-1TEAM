@@ -484,6 +484,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .btn.reject { background: var(--tone-red); border-color: var(--tone-red); color: #fff; }
 .btn.sm { padding: var(--space-1) var(--space-2); font-size: var(--text-meta); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 위험 동작 보조 버튼(회수·정지·삭제) — 채움 버튼(.reject)만큼 무겁지 않은 아웃라인 표현 */
+.btn.outline-danger { border-color: var(--tone-red); color: var(--tone-red); }
+.btn.outline-danger:hover:not(:disabled) { background: var(--tone-red-bg); }
+/* 선택 상태의 토글·옵션 버튼(필터 탭, 모달 선택지) */
+.btn.toggled { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+.btn.toggled:hover:not(:disabled) { background: var(--primary-soft); }
 
 /* 카드 헤더 오른쪽 끝의 아이콘 버튼(기본 내역의 「AI로 다시 작성」).
    제목과 같은 줄에 앉되 제목을 밀지 않도록 정사각으로 고정한다. */
@@ -580,6 +586,23 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .row { display: flex; gap: var(--space-2); align-items: center; }
 .spacer { flex: 1; }
 .note { font-size: var(--text-meta); color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); }
+/* 주의(amber)·오류(red) 톤 노트 — 화면마다 인라인으로 색을 박던 것을 한 곳으로 */
+.note.caution { background: var(--tone-amber-bg); border: 1px solid #ead9ad; color: var(--text); }
+.note.error { background: var(--tone-red-bg); border: 1px solid #e8c0c0; color: var(--text); }
+
+/* 가로 게이지(잔여율·소진율·진행률 공용) — 트랙은 공통, 채움 색·너비는 쓰는 쪽이 정한다
+   (같은 비율이라도 화면마다 뜻이 달라 색 규칙까지 여기로 끌어오지 않는다). */
+.meter { height: 6px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--primary); transition: width 300ms ease; }
+.meter.lg { height: 8px; }
+.meter.sm { height: 4px; }
+
+/* 카드 미니어처 — 목록 어디서나 같은 모양으로 '실물 카드'를 가리키는 아이콘(S-09) */
+.card-chip { position: relative; display: inline-block; width: 24px; height: 18px; border-radius: 4px; background: var(--sidebar-bg); flex-shrink: 0; }
+.card-chip::after { content: ''; position: absolute; left: 3px; top: 4px; width: 8px; height: 6px; border-radius: 2px; background: var(--accent-amber); }
+
+/* 카드 밖 섹션 제목(표·차트 묶음 위) */
+.section-title { font-size: var(--text-h4); font-weight: 700; margin-bottom: var(--space-1); }
 /* 긴 텍스트 한 줄 말줄임 — 쓰는 쪽에서 title 속성으로 전문을 함께 건다 */
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 넓은 테이블은 자체 컨테이너 안에서만 가로 스크롤 — 페이지 몸통이 가로로 흐르지 않게 */
@@ -634,6 +657,7 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .btn:active:not(:disabled) { transform: none; }
   .modal-backdrop, .modal { animation: none; }
   .skeleton { animation: none; background: var(--surface-2); }
+  .meter > span { transition: none; }
 }
 
 /* ── 인증(O-1) · 역할선택(R-0) · 온보딩(EMP/ACC/EXE) ───── */
