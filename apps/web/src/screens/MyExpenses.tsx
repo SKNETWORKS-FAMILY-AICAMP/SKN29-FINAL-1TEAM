@@ -175,7 +175,7 @@ export function MyExpenses() {
           {user?.dept && <span className="scope-chip"><span className="sw" style={{ background: 'var(--tone-purple)' }} />{user.dept}</span>}
         </div>
 
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        <div className="kpi-grid cols-5">
           <KpiCard flat label={`${monthLabel(month)} 사용액`} value={won(stats.total)} />
           <KpiCard flat label="미제출" value={stats.draft} unit="건" />
           <KpiCard flat label="검토중" value={stats.processing} unit="건" />

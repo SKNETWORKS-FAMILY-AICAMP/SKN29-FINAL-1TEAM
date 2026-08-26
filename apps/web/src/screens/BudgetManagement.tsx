@@ -236,7 +236,7 @@ export function BudgetManagement() {
           {teams.length === 0 && !loading && <span className="text-meta">등록된 팀이 없습니다.</span>}
         </div>
 
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-grid">
           <div className="kpi"><div className="label">총 예산</div><div className="value">{won(totals.allocated)}</div></div>
           <div className="kpi"><div className="label">사용 금액</div><div className="value">{won(totals.used)}</div></div>
           <div className="kpi"><div className="label">잔여 예산</div><div className="value">{won(totals.remaining)}</div></div>

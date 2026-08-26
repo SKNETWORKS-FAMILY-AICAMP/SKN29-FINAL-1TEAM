@@ -268,7 +268,7 @@ export function PolicyDocuments() {
           </button>
         </div>
 
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-grid">
           <KpiCard flat label="등록한 문서" value={kpi.total} unit="건" />
           <KpiCard flat label="분석 완료" value={kpi.done} unit="건" />
           <KpiCard flat warn={kpi.busy > 0} label="분석 중" value={kpi.busy} unit="건" />

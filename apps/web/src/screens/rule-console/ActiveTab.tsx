@@ -137,7 +137,7 @@ export function ActiveTab() {
       {error && <div className="note error" style={{ marginBottom: 16 }}>{error}</div>}
 
       {/* ① 활성 그래프 전체 현황(시안 실측: 승인대기 목록보다 위) */}
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="kpi-grid">
         <div className="kpi">
           <div className="label">활성 그래프</div><div className="value">{dashboard.graphCount}개</div>
           <div className="text-meta">{dashboard.scopeCount}개 스코프 커버</div>
@@ -207,7 +207,7 @@ export function ActiveTab() {
                   <div className="card-body stack" style={{ gap: 16, borderTop: '1px solid var(--border)' }}>
                     {report === undefined && <div className="text-meta">시뮬레이션 보고서를 불러오는 중입니다.</div>}
                     {stats && (
-                      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
+                      <div className="kpi-grid" style={{ marginBottom: 0 }}>
                         <div className="kpi">
                           <div className="label">자동처리율</div><div className="value">{percent(stats.autoRate)}</div>
                           <div className="text-meta">자동 {stats.autoCount} / 사람 확인 {stats.manualCount}건</div>
@@ -231,7 +231,7 @@ export function ActiveTab() {
                       </div>
                     )}
                     {grades && (
-                      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                      <div className="kpi-grid cols-3" style={{ marginBottom: 0 }}>
                         <GradeTile label="그래프 구조 평가" grade={grades.structure} />
                         <GradeTile label="실행결과 평가" grade={grades.result} />
                         <GradeTile label="권장 처리" grade={grades.action} />

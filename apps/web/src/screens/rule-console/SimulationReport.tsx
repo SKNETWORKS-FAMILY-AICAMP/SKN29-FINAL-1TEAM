@@ -76,7 +76,7 @@ export function SimulationReportView({ report, running, error, onRun }: {
       </div>
       {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 8 }}>{error}</div>}
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="kpi-grid">
         <div className="kpi">
           <div className="label">자동처리율</div><div className="value">{percent(stats.autoRate)}</div>
           <div className="text-meta">검토 없이 자동 분류 {stats.autoCount}/{stats.historyTotal}건 · 사람 확인 {stats.manualCount}건</div>
@@ -110,7 +110,7 @@ export function SimulationReportView({ report, running, error, onRun }: {
           </span>
         </div>
         <div className="card-body">
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
+          <div className="kpi-grid cols-3" style={{ marginBottom: 16 }}>
             <GradeTile label="그래프 구조 평가" grade={report.grades.structure} />
             <GradeTile label="실행결과 평가" grade={report.grades.result} />
             <GradeTile label="권장 처리" grade={report.grades.action} />

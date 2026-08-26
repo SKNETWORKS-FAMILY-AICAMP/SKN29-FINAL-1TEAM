@@ -240,6 +240,9 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .card-body { padding: var(--space-4); }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+/* 열 수 변형 — 인라인 grid-template-columns는 아래 반응형 강등(2열→1열)을 무력화하므로 클래스로만 바꾼다 */
+.kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
 .kpi {
   position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--space-4); transition: border-color 150ms cubic-bezier(0.23,1,0.32,1);
@@ -656,14 +659,14 @@ button.card-head.toggle:hover { background: var(--surface-2); }
   .rule-draft-grid > :nth-child(3) { grid-column: 1 / -1; }
 }
 @media (max-width: 1050px) {
-  .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
+  .kpi-grid, .kpi-grid.cols-3, .kpi-grid.cols-5, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
   .split, .review-ws .split { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid > :nth-child(3) { grid-column: auto; }
   .sim-structure-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .kpi-grid, .kpi-grid.cols-3, .kpi-grid.cols-5, .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; height: auto; padding: var(--space-3) var(--space-4); }
 }
 

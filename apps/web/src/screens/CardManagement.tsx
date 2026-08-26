@@ -337,7 +337,7 @@ function AttentionView({ onBack }: { onBack: () => void }) {
             사유와 근거를 확인한 뒤 회수 여부를 결정하세요.
           </div>
         </div>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-grid">
           <KpiCard flat label="조치 필요" value={remaining.length} unit="건" />
           <KpiCard flat warn={urgent > 0} label="즉시 조치" value={urgent} unit="건" />
           <KpiCard flat label="확인 필요" value={watch} unit="건" />
