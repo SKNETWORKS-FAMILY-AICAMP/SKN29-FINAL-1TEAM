@@ -7,6 +7,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, History, Lock } from 'lucide-
 import { endpoints } from '../../api/client'
 import { activateRule } from '../../api/ruleService'
 import { Markdown } from '../../components/ui/Markdown'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 import { useCan } from '../../lib/capabilities'
 import { gradeTone, type Grade, type SimReport } from './data/simulationTypes'
 import { VersionHistoryModal } from './VersionHistoryModal'
@@ -125,8 +126,15 @@ export function ActiveTab() {
 
   return (
     <>
-      {loading && <div className="card"><div className="card-body text-meta">룰 그래프를 불러오는 중입니다.</div></div>}
-      {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 16 }}>{error}</div>}
+      {loading && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-body">
+            <span className="text-meta">룰 그래프를 불러오는 중…</span>
+            <div style={{ marginTop: 8 }}><SkeletonLines rows={3} /></div>
+          </div>
+        </div>
+      )}
+      {error && <div className="note error" style={{ marginBottom: 16 }}>{error}</div>}
 
       {/* ① 활성 그래프 전체 현황(시안 실측: 승인대기 목록보다 위) */}
       <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>

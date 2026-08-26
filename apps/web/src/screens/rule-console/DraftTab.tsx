@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Code2, Plus, Send, Trash2 } from 'lucide-react'
 import { endpoints } from '../../api/client'
 import { converseRule, generateRuleGraph } from '../../api/ruleService'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 import { activateOnEnterOrSpace } from '../../lib/a11y'
 import { NewRuleGraphModal, type NewRuleChoice } from './NewRuleGraphModal'
 import { describeDsl, nodeStatusLabel, nodeStatusTone, toGraph, type ApiGraph } from './data/graphApi'
@@ -313,8 +314,13 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
               <Trash2 size={11} /> {deleteMode ? '삭제 취소' : '그래프 삭제'}
             </button>
           </div>
-          {loading && <div className="text-meta" style={{ padding: 16 }}>룰 그래프를 불러오는 중입니다.</div>}
-          {error && <div className="note" style={{ margin: 12, color: 'var(--tone-red)' }}>{error}</div>}
+          {loading && (
+            <div style={{ padding: 16 }}>
+              <span className="text-meta">룰 그래프를 불러오는 중…</span>
+              <div style={{ marginTop: 8 }}><SkeletonLines rows={3} /></div>
+            </div>
+          )}
+          {error && <div className="note error" style={{ margin: 12 }}>{error}</div>}
           {!loading && !error && visibleGraphs.length === 0 && <div className="text-meta" style={{ padding: 16 }}>표시할 룰 그래프가 없습니다.</div>}
           <div className="stack" style={{ padding: 8, gap: 8 }}>
             {visibleScopes.map(([scope, scopeGraphs]) => <div key={scope} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: 4 }}>

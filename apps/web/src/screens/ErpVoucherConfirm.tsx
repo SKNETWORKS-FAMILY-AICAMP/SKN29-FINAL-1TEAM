@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { won } from '../lib/format'
 import { endpoints } from '../api/client'
+import { SkeletonLines } from '../components/ui/Skeleton'
 
 interface VoucherPayload {
   settlement_id?: number
@@ -66,7 +67,16 @@ export function ErpVoucherConfirm() {
     </div>
   )
 
-  if (loading) return shell(<div className="card"><div className="card-body text-meta">전표를 불러오는 중…</div></div>)
+  if (loading) {
+    return shell(
+      <div className="card">
+        <div className="card-body">
+          <span className="text-meta">전표를 불러오는 중…</span>
+          <div style={{ marginTop: 8 }}><SkeletonLines rows={4} /></div>
+        </div>
+      </div>,
+    )
+  }
   if (!voucher) return shell(<div className="card"><div className="card-body">{error}</div></div>)
 
   const p = voucher.voucherPayload ?? {}

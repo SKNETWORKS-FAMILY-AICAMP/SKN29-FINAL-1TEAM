@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, FolderOpen, Scale } from 'lucide-react'
 import { won } from '../../lib/format'
 import { endpoints } from '../../api/client'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 
 interface CaseMonth { key: string; count: number; indexed: number }
 
@@ -98,7 +99,7 @@ export function DecisionCasePanel({ month, months, cases, total, loading }: {
         </div>
 
         {loading ? (
-          <div className="text-meta">불러오는 중…</div>
+          <SkeletonLines rows={4} />
         ) : cases.length === 0 ? (
           <div className="pd-empty">
             <FolderOpen size={32} aria-hidden />

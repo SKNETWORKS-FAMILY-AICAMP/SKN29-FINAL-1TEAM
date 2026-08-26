@@ -16,6 +16,7 @@ import {
   type PolicyFolder, type PolicyTableProposal,
 } from '../types/domain'
 import { KpiCard } from '../components/ui/KpiCard'
+import { SkeletonLines } from '../components/ui/Skeleton'
 import { FolderTree } from './policy-docs/FolderTree'
 import { DecisionCasePanel, monthLabel, useDecisionCases } from './policy-docs/DecisionCasePanel'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
@@ -291,7 +292,7 @@ export function PolicyDocuments() {
             <input placeholder="폴더나 문서 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           {loading
-            ? <div className="text-meta" style={{ padding: 16 }}>불러오는 중…</div>
+            ? <div style={{ padding: 16 }}><SkeletonLines rows={5} /></div>
             : (
               <>
                 <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}

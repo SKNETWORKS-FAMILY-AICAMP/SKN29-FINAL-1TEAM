@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Lock, RotateCcw } from 'lucide-react'
 import { Modal } from '../../components/ui/Modal'
 import { Markdown } from '../../components/ui/Markdown'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 import { endpoints } from '../../api/client'
 import { rollbackRuleTo } from '../../api/ruleService'
 import { useCan } from '../../lib/capabilities'
@@ -72,8 +73,13 @@ export function VersionHistoryModal({ graphId, graphName, onClose, onChanged }: 
         <div className="spacer" />
         <button className="btn" onClick={onClose}>닫기</button>
       </>}>
-      {loading && <div className="text-meta">불러오는 중입니다.</div>}
-      {error && <div className="note" style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red)', marginBottom: 12 }}>{error}</div>}
+      {loading && (
+        <div>
+          <span className="text-meta">버전 이력을 불러오는 중…</span>
+          <div style={{ marginTop: 8 }}><SkeletonLines rows={3} /></div>
+        </div>
+      )}
+      {error && <div className="note error" style={{ marginBottom: 12 }}>{error}</div>}
       {!loading && rows.length > 0 && (
         <table className="table">
           <thead><tr>
