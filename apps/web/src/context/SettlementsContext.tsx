@@ -19,6 +19,8 @@ interface SettlementsCtx {
   teamMembers: TeamMember[]
   reviewItems: ReviewItem[]
   loading: boolean
+  /** 마지막 fetch 실패 메시지 — 「내역이 없다」와 「못 불러왔다」를 화면이 구분할 수 있게 한다. */
+  loadError: string
   updateStatus: (id: string, status: SettlementStatus) => void
   findById: (id: string) => Settlement | undefined
   addExpense: (item: Settlement) => void
@@ -44,10 +46,12 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(USE_MOCK ? initialTeamMembers : [])
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>(USE_MOCK ? initialReviewItems : [])
   const [loading, setLoading] = useState(!USE_MOCK)
+  const [loadError, setLoadError] = useState('')
 
   const refresh = () => {
     if (USE_MOCK) return
     setLoading(true)
+    setLoadError('')
     fetchSettlementsData(user?.name, user?.teamId)
       .then((d) => {
         setAll(d.all)
@@ -55,6 +59,8 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
         setTeamMembers(d.teamMembers)
         setReviewItems(d.reviewItems)
       })
+      // 실패를 삼키면 화면은 빈 목록을 「내역 없음」으로 그린다 — 실패 사실을 상태로 남긴다.
+      .catch(() => setLoadError('정산 내역을 불러오지 못했습니다. 연결 상태를 확인한 뒤 다시 시도하세요.'))
       .finally(() => setLoading(false))
   }
 
@@ -86,7 +92,7 @@ export function SettlementsProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ all, myExpenses, teamMembers, reviewItems, loading, updateStatus, findById, addExpense, removeExpense, refresh }}>
+    <Ctx.Provider value={{ all, myExpenses, teamMembers, reviewItems, loading, loadError, updateStatus, findById, addExpense, removeExpense, refresh }}>
       {children}
     </Ctx.Provider>
   )

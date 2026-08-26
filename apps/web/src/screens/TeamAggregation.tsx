@@ -37,7 +37,7 @@ interface TeamBudgetView {
 }
 
 export function TeamAggregation() {
-  const { all, teamMembers, updateStatus } = useSettlements()
+  const { all, teamMembers, updateStatus, loading: listLoading, loadError } = useSettlements()
   const { user } = useAuth()
   const teamName = user?.dept ?? '내 팀' // 로그인 사용자의 소속 팀(재무회계팀 / AI·개발팀 등)
   const canManage = useCan()('team_aggregate') // 팀 취합 권한 보유자만 개별 건 조회·처리
@@ -282,6 +282,9 @@ export function TeamAggregation() {
       )}
 
       {canManage && (<>
+      {loadError && !listLoading && (
+        <div className="load-error" style={{ marginBottom: 12 }}>{loadError}</div>
+      )}
       {/* ② 취합 목록 — 대시보드와 달리 팀 단계(TEAM_*) 건만 보인다. */}
       <div className="text-meta" style={{ margin: '0 0 8px' }}>
         취합 대상 · {monthLabel(month)} — 팀원이 팀에 올린 건({listedAll.length}건)만 표시합니다. 회계로 제출하면 목록에서 사라집니다.
@@ -329,10 +332,14 @@ export function TeamAggregation() {
 
       {!hasVisibleMember && (
         <div className="card">
-          <div className="card-body text-meta">
-            {listedAll.length === 0
-              ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
-              : '이상 건이 없습니다.'}
+          <div className="card-body">
+            {listLoading
+              ? <SkeletonLines rows={3} />
+              : <span className="text-meta">
+                  {listedAll.length === 0
+                    ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
+                    : '이상 건이 없습니다.'}
+                </span>}
           </div>
         </div>
       )}
@@ -389,7 +396,8 @@ export function TeamAggregation() {
                           onKeyDown={activateOnEnterOrSpace(() => setSelected(i))}
                         >
                           <td>{i.date}</td>
-                          <td>{i.merchant}</td>
+                          {/* 셀 자체가 ellipsis(.team-settlement-table nth-child(2)) — 전문은 title로 */}
+                          <td title={i.merchant}>{i.merchant}</td>
                           <td className="num">{won(i.amount)}</td>
                           <td>{CARD_TYPE_LABEL[i.cardType]}</td>
                           <td>
