@@ -215,8 +215,13 @@ def test_정상_채점이면_status가_ok(monkeypatch):
     monkeypatch.setattr(agent, "get_active_model", lambda: _Model())
     monkeypatch.setattr(agent.tools, "get_tx_features",
                         lambda tx_id: {"feature_vector": [0.0]})
+    #  **점수를 하드코딩하지 않는다.** 컷오프는 데이터 분포에서 다시 잡히는 값이라
+    #  (2026-08-26에 .0134 → .072로 바뀌었다) 숫자를 박으면 그때마다 이 테스트가 깨진다.
+    #  여기서 고정하려는 계약은 「채점이 정상이면 status가 ok이고 등급이 붙는다」이지
+    #  「0.02가 HIGH다」가 아니다.
     monkeypatch.setattr(agent.tools, "ml_infer",
-                        lambda vec: {"anomaly_score": 0.02, "is_outlier": True, "contribs": []})
+                        lambda vec: {"anomaly_score": agent.RISK_TIER_HIGH_THRESHOLD + 0.01,
+                                     "is_outlier": True, "contribs": []})
     out = agent._stage1(1)
     assert out["status"] == agent.STAGE1_OK
     assert out["risk_tier"] == "HIGH"

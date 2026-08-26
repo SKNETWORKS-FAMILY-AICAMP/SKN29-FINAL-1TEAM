@@ -22,7 +22,7 @@
 ### 0.2 v1에 필요한 것 — 처리 현황
 
 1. **[기반] MCP 툴콜링 루프 전환** — ✅ 완료. `apps/ai/app/agents/mcp_client.py`(구 `rule_agent_v0/mcp_client.py`, 내용 변경 없이 이동)를 Rule Agent(`agent.py`/`chat.py`)와 Risk Review Agent(`_classify`)가 공유. Rule Agent와 달리 **초기 검색 1회분(policy+cases)을 파이썬이 먼저 실행**해 대화 맥락에 심어둔다 — 안 그러면 `search_policy`/`search_cases` 두 툴을 오가며 재검색만 반복하다 `MAX_TOOL_TURNS`(=6)를 다 쓰고도 한 번도 `submit_classification`을 못 부르는 사례가 실측됐다(정상 케이스에서도 발생). 프리시드 후 재검증 4건 전부 1턴 내 정상 종료 확인.
-2. **3범주 분류 스키마 신설** — ✅ 완료(팀 결정: 고정 anomaly_score 임계값). `risk_tier`는 `violation_verdict`와 별개 필드로 Stage1에 추가(기존 필드는 그대로 유지, 확장만). 경계값은 배포된 `anomaly.pkl`의 실측 calibration_table에서 "80~90% 밴드(관측 이상비율 1.7%) → 90~100% 밴드(28.19%, lift 8.08배)"로 급등하는 지점을 HIGH 경계(`RISK_TIER_HIGH_THRESHOLD=0.0134`)로, 기존 운영 `is_outlier` 컷오프(모델 `threshold`)를 MEDIUM 경계(`RISK_TIER_MEDIUM_THRESHOLD=0.0037`)로 삼았다. 재학습해도 이 상수는 자동 갱신되지 않는다(고정값을 고른 이유이자 트레이드오프) — 분포가 크게 바뀌면 재학습 시 사람이 다시 실측해 갱신해야 한다.
+2. **3범주 분류 스키마 신설** — ✅ 완료(팀 결정: 고정 anomaly_score 임계값). `risk_tier`는 `violation_verdict`와 별개 필드로 Stage1에 추가(기존 필드는 그대로 유지, 확장만). 경계값은 배포된 `anomaly.pkl`의 실측 calibration_table에서 "80~90% 밴드(관측 이상비율 1.7%) → 90~100% 밴드(28.19%, lift 8.08배)"로 급등하는 지점을 HIGH 경계(`RISK_TIER_HIGH_THRESHOLD=0.072`)로, 기존 운영 `is_outlier` 컷오프(모델 `threshold`)를 MEDIUM 경계(`RISK_TIER_MEDIUM_THRESHOLD=0.054`)로 삼았다. 재학습해도 이 상수는 자동 갱신되지 않는다(고정값을 고른 이유이자 트레이드오프) — 분포가 크게 바뀌면 재학습 시 사람이 다시 실측해 갱신해야 한다.
 3. **분류 단계와 액션(recommendation) 단계 분리** — ✅ 완료. `_classify()`(MCP 툴콜링, `Classification` 스키마: violation_verdict/review_reasons/citations/similar_cases) → `_decide_action()`(단일 호출, `ActionDecision` 스키마: recommendation/rationale, 분류 결과가 이미 확정된 전제로만 판단하고 위반 여부를 재판단하지 않음). **반환 계약은 그대로**(`stage2_rag_review`의 5개 필드 동일) — `_stage2()`가 두 결과를 기존 shape으로 재조립.
 4. **[선행 필요, 별도 트랙] `feature_contribs` 실값 확보** — ❌ 여전히 미착수. `anomaly.pkl` 재학습 필요(ML 파이프라인 작업, Agent 코드와 무관) — 이번 세션 범위 밖.
 5. **[선행 필요, 별도 트랙] `case_history` 골든데이터 확충** — ✅ 완료(팀 결정: 이번에 같이 확충). `app/rag/golden_cases.py` 10건→18건 — "업무활성"→"회식"(GATHERING) 리네임 후 회식 사례가 0건이던 공백을 메우고(3건 추가), 나머지 카테고리도 사례 다양성 보강. `python -m app.rag.case_store --upsert`로 `case_history` 재적재 완료(18건, 기존 id는 upsert라 멱등 갱신).
@@ -87,14 +87,14 @@
 ```
 70~80%  score_lower_bound=-0.0310  observed_rate=0.0125
 80~90%  score_lower_bound=-0.0142  observed_rate=0.0170
-90~100% score_lower_bound= 0.0134  observed_rate=0.2819  (lift 8.08x)
+90~100% score_lower_bound= 0.072  observed_rate=0.2819  (lift 8.08x)
 ```
 
-80~90%에서 90~100%로 넘어가는 지점에서 관측 이상비율이 1.7% → 28.19%로 **급등**한다(다른 구간 전이는 완만한데 이 지점만 계단형). 이 지점을 `RISK_TIER_HIGH_THRESHOLD = 0.0134`로 잡았다. MEDIUM 경계는 새 상수를 만들지 않고 기존 운영 `is_outlier` 컷오프(`model.threshold`, 실측 `0.0037`)를 그대로 재사용했다 — 이미 "이상치로 볼지" 판단에 쓰이고 있는 값이라 이중 기준을 늘리지 않기 위함.
+80~90%에서 90~100%로 넘어가는 지점에서 관측 이상비율이 1.7% → 28.19%로 **급등**한다(다른 구간 전이는 완만한데 이 지점만 계단형). 이 지점을 `RISK_TIER_HIGH_THRESHOLD = 0.072`로 잡았다. MEDIUM 경계는 새 상수를 만들지 않고 기존 운영 `is_outlier` 컷오프(`model.threshold`, 실측 `0.054`)를 그대로 재사용했다 — 이미 "이상치로 볼지" 판단에 쓰이고 있는 값이라 이중 기준을 늘리지 않기 위함.
 
 ```python
-RISK_TIER_HIGH_THRESHOLD = 0.0134
-RISK_TIER_MEDIUM_THRESHOLD = 0.0037
+RISK_TIER_HIGH_THRESHOLD = 0.072
+RISK_TIER_MEDIUM_THRESHOLD = 0.054
 ```
 
 `_risk_tier(anomaly_score)`가 `stage1_anomaly.risk_tier`(HIGH/MEDIUM/LOW)로 채운다. 모델 미학습 시(stub 경로)는 `LOW` 고정.
@@ -224,3 +224,11 @@ S-03가 `Math.round(anomalyScore * 100)`을 점수로 찍고 `>= 60`이면 빨�
 - **항목4(`feature_contribs` 실값)**: `anomaly.pkl`이 `feature_stats` 없이 학습된 시점의 pkl이라 여전히 빈 배열(CLAUDE.md 상태보드 기존 기록 그대로) — `train.py`(feature_stats 포함 버전)로 재학습해야 해소. Agent 코드와 무관한 별도 ML 트랙.
 - **`case_history` 실 이력 자동 적재 파이프라인**: post-MVP로 유지(§4 "주의" 참조). 지금은 골든데이터 18건이 전부.
 - 분류/액션 분리 이후 `_decide_action()`의 recommendation 판단 기준(REJECT vs SUPPLEMENT 경계)은 프롬프트 규칙으로만 정의돼 있고 별도 정량 검증셋은 없음 — Rule Agent의 `RuleTestCase` 같은 자동 검증 장치가 아직 없다. 필요해지면 후속 과제.
+
+---
+
+## risk_tier 컷오프 — v2 캐논으로 옮김
+
+2026-08-26에 우리 분포 기준으로 다시 잡았다(HIGH .072 / MEDIUM .011). 등급의 뜻·실측
+근거·재학습 계획은 **[[risk-review-agent-v2]] §2a·§2b**에 있다 — 등급 분기 자체가 v2의
+설계라 거기에 함께 둔다.

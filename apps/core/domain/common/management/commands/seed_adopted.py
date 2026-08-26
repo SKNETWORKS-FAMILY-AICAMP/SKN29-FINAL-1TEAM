@@ -808,7 +808,7 @@ class Command(BaseCommand):
     def _risk_tier(score: float) -> str:
         """`risk_review_agent.RISK_TIER_*`와 **같은 경계**를 쓴다.
 
-        시드 점수는 0~1 대역이고 실제 모델 점수는 0.0037/0.0134 근방이라 스케일이 다르다 —
+        시드 점수는 0~1 대역이고 실제 모델 점수는 0.05~0.07 근방이라 스케일이 다르다 —
         여기서는 시연용 대역값의 상대 크기로만 등급을 매긴다. 컷오프 실험이 끝나 상수가
         바뀌면 이 함수도 같이 본다(`.personal/FINDINGS.md`에 예정으로 등록돼 있다).
         """
