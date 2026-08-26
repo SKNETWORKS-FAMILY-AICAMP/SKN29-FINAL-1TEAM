@@ -278,7 +278,7 @@ export function PolicyDocuments() {
 
       {error && (
         <div className="page-inner">
-          <div className="note" style={{ marginTop: 16, color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}>
+          <div className="note error" style={{ marginTop: 16 }}>
             <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />{error}
           </div>
         </div>
@@ -326,9 +326,9 @@ export function PolicyDocuments() {
           ) : (
             <>
               <div className="pd-preview-head">
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
                   <span aria-hidden>📄</span>
-                  <b style={{ fontSize: 15 }}>{selected.title}</b>
+                  <b className="ellipsis" style={{ fontSize: 15 }} title={selected.title}>{selected.title}</b>
                   <span className="pd-badge green">{EMBEDDING_STATUS_META[selected.status]?.label}</span>
                   {selected.superseded && <span className="pd-badge gray">이전 버전</span>}
                 </div>
@@ -346,8 +346,7 @@ export function PolicyDocuments() {
                           }, '재색인을 시작하지 못했습니다.')}>
                     <RefreshCw size={11} /> {selected.status === 'FAILED' ? '재처리' : '재색인'}
                   </button>
-                  <button className="btn sm" disabled={busy}
-                          style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}
+                  <button className="btn sm outline-danger" disabled={busy}
                           onClick={() => {
                             if (!window.confirm(`"${selected.title}"을 삭제하시겠습니까?\n(이미 적재된 벡터는 재색인 전까지 남습니다)`)) return
                             void withBusy(async () => {

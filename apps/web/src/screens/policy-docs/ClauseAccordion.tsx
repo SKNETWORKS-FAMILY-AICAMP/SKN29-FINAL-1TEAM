@@ -17,7 +17,7 @@ const TONE = {
   green: { bg: 'var(--tone-green-bg)', color: 'var(--tone-green)', border: '#bfe6d1' },
   amber: { bg: 'var(--tone-amber-bg)', color: 'var(--tone-amber)', border: '#e8d5a3' },
   blue: { bg: 'var(--tone-blue-bg, #eaf1fb)', color: 'var(--tone-blue, #2f6fb5)', border: '#c3d8f0' },
-  gray: { bg: 'var(--surface-muted)', color: 'var(--muted)', border: 'var(--border-strong)' },
+  gray: { bg: 'var(--surface-2)', color: 'var(--muted)', border: 'var(--border-strong)' },
 }
 
 /** AI가 매긴 룰 생성 우선순위. 사람의 결정(`ruleStatus`)과 **나란히** 놓는다 —
