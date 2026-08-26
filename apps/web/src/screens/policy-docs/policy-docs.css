@@ -60,6 +60,24 @@
 .pd-folder:hover,
 .pd-doc:hover { background: var(--surface-2); }
 
+/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격.
+   (클래스만 있고 정의가 없어 브라우저 기본 버튼 모양·기본 폰트로 렌더링되고 있었다.) */
+.pd-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+}
+.pd-node:hover { background: var(--surface-2); }
+
 .pd-doc.active {
   background: var(--tone-blue-bg, var(--surface-2));
   font-weight: 600;
