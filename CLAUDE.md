@@ -122,7 +122,8 @@ daily_scrum/  주차별 진행 보고
 | 영역 | 상태 | 비고 |
 |---|---|---|
 | `seed_clean` (초기 적용) | ✅ | 막 설치한 회사 — 사용자·팀 + **사람·팀에 배정된 카드 10장** + `DEFAULT GATE` 1개. 팀 예산은 한도만. → [[default-gate]] §6 |
-| `seed_adopted` (적용 완료) | ✅ + 채점 | 3개월째 굴러가는 회사 — 직전 3개월 정산 ~185건이 **실제 전이를 타고** 흘러간 상태(전표 168·자동처리율 ~89%·평균 검토 ~27분). 시각은 결제일로 되돌리고, 종결 건 알림은 지운다. **골든 라벨을 남긴다**(`var/adopted_golden.json` — 사람의 결정이라 룰과 독립) → `rule_eval`이 그걸로 룰 버전을 채점한다 |
+| `seed_adopted` (적용 완료) | ✅ + 채점 + 사례 | 3개월째 굴러가는 회사 — 직전 3개월 정산 ~299건이 **실제 전이를 타고** 흘러간 상태(전표 278·자동처리율 87%). 시각은 결제일로 되돌리고, 종결 건 알림은 지운다. **골든 라벨**(`var/adopted_golden.json`)로 `rule_eval`이 룰 버전을 채점한다. **결정 사례 30건**(A 오탐교정/B 미탐교정/C 수위조정 각 10) — `ai_recommends`를 결말과 다른 축으로 둬야 생긴다. 사실은 **ACTIVE 그래프 실측**으로 고른다(회식 1인당 초과는 REVIEW가 아니라 RETURN이다). 끝에서 사례 수를 대조해 어긋나면 경고. → [[decision-case-data]] |
+| 규정문서 적재 결과 | ✅ 얼려서 재생 | `dump_policy_docs`/`load_policy_docs`. 시드가 만들 수 없는 것이라 **한 번 진짜로 돌린 결과**를 옮긴다. **관계형·벡터 두 절반을 같은 시점에 뜨고 같이 복원**(§6) — 한쪽만 옮기면 조용히 반쪽이 된다 |
 | `seed` (화면별 시연) | ✅ | 룰 4계열·정산 87건·검토 30건·RAG 하이라이트 3건. 거래일자는 이번 달 안에 배치. 회식 시연 3건은 **실제 `services.judge()`** 로 판정 |
 | 로그 | ✅ | `logs/core.log`·`logs/ai.log` (5MB×3 로테이션, git 미추적). 디버깅은 여기부터 |
 
@@ -236,6 +237,16 @@ docker compose exec core python manage.py seed_clean --dry-run
 docker compose exec core python manage.py seed_clean
 docker compose exec core python manage.py seed_adopted
 docker compose exec core python manage.py seed --fresh
+
+# 규정문서 적재 결과 — **시드가 만들 수 없다.** 파싱·청킹·임베딩·조항 분류·별표 추출이
+#   다 돌아야 생기고 그중 둘은 LLM 호출이다. 손으로 적으면 `chunk_ids`가 실제 청크를
+#   안 가리켜 근거 링크가 조용히 끊긴다. → **한 번 진짜로 돌리고 그 결과를 얼려서 재생한다.**
+#   ⚠️ 절반이 둘이다: 관계형(문서·조항·별표)은 Postgres, 청크 벡터는 Chroma.
+#      한쪽만 옮기면 에러 없이 반쪽이 된다 — 화면은 뜨는데 검색이 그 문서를 못 찾는다.
+docker compose exec core python manage.py dump_policy_docs                  # ① 관계형 절반 얼리기
+docker compose exec ai   python -m app.rag.embedding.snapshot dump --out /data/rag_snapshot  # ② 벡터 절반
+docker compose exec core python manage.py load_policy_docs                  # 복원 ①(seed_adopted가 자동 호출)
+docker compose exec ai   python -m app.rag.embedding.snapshot restore --in /data/rag_snapshot  # 복원 ②
 
 # AI 서비스 계정 (ai → core 쓰기: 룰 DRAFT 저장·규정 적재 회신) — .env의 AI_SERVICE_PASSWORD 선행
 #   **Agent별로 나누지 않은 계정 하나.** capability는 `rule_view` 뿐.

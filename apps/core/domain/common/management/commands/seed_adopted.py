@@ -503,6 +503,11 @@ class Command(BaseCommand):
             risk_review_module.AUTO_SCHEDULE = previous
 
         self._budgets(teams)
+        #  ⑤ 규정 문서 — **시드가 만들 수 없는 것**이라 얼려 둔 실제 적재 결과를 얹는다.
+        #     파싱·청킹·임베딩·조항 분류·별표 추출이 다 돌아야 생기고 그중 둘은 LLM 호출이다.
+        #     손으로 적으면 `chunk_ids`가 실제 청크를 안 가리켜 근거 링크가 끊긴다.
+        #     덤프가 없으면 조용히 넘어간다(문서 없이도 나머지 화면은 다 산다).
+        call_command("load_policy_docs", quiet_missing=True, verbosity=self.verbosity)
         self._prune_notifications()
         self._report(mismatched)
 
