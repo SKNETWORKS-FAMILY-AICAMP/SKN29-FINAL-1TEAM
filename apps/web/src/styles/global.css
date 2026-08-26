@@ -231,6 +231,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .card.anomaly .card-head { border-bottom-color: #f3c9c5; }
 .card-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .card-head h3 { font-size: var(--text-value); }
+/* 접이식 카드 — 헤더 전체가 열고 닫는 버튼(호버로 누를 수 있음을 알린다) */
+button.card-head.toggle {
+  width: 100%; background: none; border: none; cursor: pointer; font: inherit; text-align: left;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
+}
+button.card-head.toggle:hover { background: var(--surface-2); }
 .card-body { padding: var(--space-4); }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }

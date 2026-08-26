@@ -58,8 +58,8 @@ export function RuleJudgementPanel({ item }: { item: Settlement }) {
   return (
     <div className="card">
       <button
-        className="card-head"
-        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }}
+        className="card-head toggle"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

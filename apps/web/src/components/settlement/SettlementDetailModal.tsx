@@ -917,8 +917,8 @@ export function SettlementDetailModal({
           {/* fact.json — 자동생성, 접어두기 */}
           <div className="card">
             <button
-              className="card-head"
-              style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }}
+              className="card-head toggle"
+              aria-expanded={factOpen}
               onClick={() => setFactOpen((v) => !v)}
             >
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

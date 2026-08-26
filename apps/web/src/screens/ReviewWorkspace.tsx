@@ -7,6 +7,7 @@ import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
+import { SkeletonLines } from '../components/ui/Skeleton'
 import { anomalyScored, AnomalyUnavailableNotice, RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { RiskReportView } from '../components/settlement/RiskReportView'
@@ -92,7 +93,7 @@ const outcomeOf = (item: ReviewItem): RecoOrNone => OUTCOME_BY_STATUS[item.statu
 const RISK_REVIEW_POLL_MS = 3000
 
 export function ReviewWorkspace() {
-  const { reviewItems: items, updateStatus, refresh } = useSettlements()
+  const { reviewItems: items, loading, loadError, updateStatus, refresh } = useSettlements()
   const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
   const [selId, setSelId] = useState<string | undefined>(items[0]?.id)
   const [filter, setFilter] = useState<Filter>('ALL')
@@ -107,7 +108,8 @@ export function ReviewWorkspace() {
   // 헤더 요약(자동처리율·평균 검토시간) — 이 화면과 무관하게 실패해도 나머지 기능은 그대로
   // 동작해야 하므로 별도 useEffect로 분리한다(목록 로딩과 실패 경로를 안 섞는다).
   useEffect(() => {
-    fetchReviewStats().then(setStats)
+    // 실패해도 헤더는 「—」로 남는다(값을 지어내지 않는다) — 콘솔 unhandled rejection만 막는다.
+    fetchReviewStats().then(setStats).catch(() => setStats(null))
   }, [])
   const isHistory = view === 'HISTORY'
   const isConfirm = view === 'CONFIRM'
@@ -346,8 +348,13 @@ export function ReviewWorkspace() {
                 )}
               </div>
             )}
+            {loadError && !loading && (
+              <div className="load-error" style={{ margin: '10px 16px 0' }}>{loadError}</div>
+            )}
             {listed.length === 0 && (
-              <div className="card-body text-meta">{emptyMessage}</div>
+              loading
+                ? <div className="card-body"><SkeletonLines rows={4} /></div>
+                : <div className="card-body text-meta">{emptyMessage}</div>
             )}
             <ul className="review-list">
               {listed.map((i) => {
@@ -501,7 +508,7 @@ export function ReviewWorkspace() {
 
                 {/* fact.json — 접이식. 판정 시점 EvalContext 스냅샷이 있으면 그 원본을 보여준다 */}
                 <div className="card">
-                  <button className="card-head" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowFact((v) => !v)}>
+                  <button className="card-head toggle" aria-expanded={showFact} onClick={() => setShowFact((v) => !v)}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {showFact ? <ChevronDown size={15} /> : <ChevronRight size={15} />} fact.json
                     </h3>
@@ -525,7 +532,7 @@ export function ReviewWorkspace() {
 
                 {/* 상태 변경 이력 — 접이식 */}
                 <div className="card">
-                  <button className="card-head" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowHistory((v) => !v)}>
+                  <button className="card-head toggle" aria-expanded={showHistory} onClick={() => setShowHistory((v) => !v)}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {showHistory ? <ChevronDown size={15} /> : <ChevronRight size={15} />} 상태 변경 이력
                     </h3>
