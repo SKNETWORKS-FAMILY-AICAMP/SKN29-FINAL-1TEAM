@@ -523,7 +523,7 @@ export function ReviewWorkspace() {
                           builder {String(sel.evalContext.meta?.builder_version ?? '-')})
                         </div>
                       )}
-                      <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.5, background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: 12, maxHeight: 420, overflow: 'auto' }}>
+                      <pre className="fact-pre">
                         {JSON.stringify(sel.evalContext ?? fact, null, 2)}
                       </pre>
                     </div>

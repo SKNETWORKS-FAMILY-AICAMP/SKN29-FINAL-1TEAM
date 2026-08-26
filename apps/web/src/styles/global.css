@@ -570,6 +570,11 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .detail-value-grid span { color: var(--muted); font-size: var(--text-caption); }
 .detail-value-grid b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-body); }
 .json-viewer { min-height: 180px; max-height: 320px; margin: 0; padding: 12px; overflow: auto; border-radius: var(--radius-control); background: #101828; color: #d7e2f0; font: 11px/1.55 Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+/* 판정 입력 스냅샷(fact.json·EvalContext) — 밝은 배경 원본 pre. 요약하지 않고 그대로 보인다 */
+.fact-pre {
+  margin: 0; font-size: 12px; line-height: 1.5; background: var(--surface-2);
+  border-radius: var(--radius-control); padding: var(--space-3); max-height: 420px; overflow: auto;
+}
 
 /* ── 타임라인(Audit Trail) ───────────────── */
 .timeline { list-style: none; padding: 0; margin: 0; }
