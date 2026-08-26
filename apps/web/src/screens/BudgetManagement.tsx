@@ -357,7 +357,7 @@ export function BudgetManagement() {
 
         <div className="section-title">계정과목별 예산 현황</div>
         <div className="text-meta" style={{ marginBottom: 8 }}>{team.name} 예산</div>
-        <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card table-scroll" style={{ marginBottom: 24 }}>
           <table className="table">
             <thead>
               <tr>
@@ -407,7 +407,7 @@ export function BudgetManagement() {
           {/* 「13개월」이라 적어두고 3개월만 차 있으면 사람은 그걸 모른다 — 실제 이력을 적는다. */}
           이력 {historyMonths}개월 · 전월 대비 증감 (단위 만원)
         </div>
-        <div className="card">
+        <div className="card table-scroll">
           <table className="table gov-trend-table">
             <thead>
               <tr>

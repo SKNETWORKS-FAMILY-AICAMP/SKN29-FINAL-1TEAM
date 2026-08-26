@@ -372,6 +372,7 @@ export function TeamAggregation() {
                 <span className="tag">{won(m.items.reduce((s, i) => s + i.amount, 0))}</span>
               </div>
               {isOpen && (
+                <div className="table-scroll">
                 <table className="table team-settlement-table">
                   <colgroup>
                     <col style={{ width: 112 }} />
@@ -432,6 +433,7 @@ export function TeamAggregation() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           )

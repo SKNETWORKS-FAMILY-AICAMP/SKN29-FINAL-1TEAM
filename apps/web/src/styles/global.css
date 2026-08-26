@@ -455,7 +455,9 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .member-pill {
   padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid var(--border-strong);
   background: var(--surface-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1);
 }
+.member-pill:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
 .member-pill.active { background: var(--surface); border-color: var(--primary); color: var(--primary); }
 
 @media (max-width: 1000px) { .team-budget-item { flex-basis: calc(33.333% - var(--space-3)); } }
@@ -467,6 +469,9 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--space-2); border-radius: var(--radius-chip); font-size: var(--text-caption); font-weight: 600; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
 .tag.ai { background: var(--ai-soft); color: var(--ai); border-color: #f0dfae; }
+/* 버튼으로 쓰는 tag(필터 칩) — 정적 tag와 달리 누를 수 있음을 hover로 알린다 */
+.tag.tag-btn { cursor: pointer; font: inherit; transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1); }
+.tag.tag-btn:hover { border-color: var(--primary); color: var(--primary); }
 .tag.warn { background: var(--tone-red-bg); color: var(--tone-red); border-color: #f3c9c5; }
 .tag.ok { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
 .tag.caution { background: var(--tone-amber-bg); color: var(--tone-amber); border-color: #ead9ad; }

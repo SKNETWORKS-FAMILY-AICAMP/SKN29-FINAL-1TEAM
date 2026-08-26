@@ -317,7 +317,7 @@ export function ReviewWorkspace() {
             {!isConfirm && (
             <div className="row" style={{ gap: 6, padding: '10px 16px 0', flexWrap: 'wrap' }}>
               {(['ALL', 'APPROVE', 'RETURN', 'REJECT'] as Filter[]).map((f) => (
-                <button key={f} className={'tag' + (filter === f ? ' ai' : '')} style={{ cursor: 'pointer' }}
+                <button key={f} className={'tag tag-btn' + (filter === f ? ' ai' : '')}
                   title={f === 'ALL' ? undefined : isHistory ? `${RECO_LABEL[f].text}으로 처리된 건` : `AI 권장이 ${RECO_LABEL[f].text}인 건`}
                   onClick={() => pickFilter(f)}>
                   {f === 'ALL' ? '전체' : RECO_LABEL[f].text} {counts[f]}

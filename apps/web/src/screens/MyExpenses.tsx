@@ -227,7 +227,7 @@ export function MyExpenses() {
           </label>
         </div>
 
-        <div className="card">
+        <div className="card table-scroll">
           <table className="table">
             <thead>
               <tr>

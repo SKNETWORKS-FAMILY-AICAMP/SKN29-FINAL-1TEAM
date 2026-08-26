@@ -176,6 +176,7 @@ export function CardManagement() {
 
         <div className="card">
           <div className="card-head"><h3>카드 목록</h3></div>
+          <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
@@ -238,6 +239,7 @@ export function CardManagement() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
         <div className="text-meta" style={{ marginTop: 12 }}>총 {list.length}건</div>
       </div>
