@@ -67,7 +67,7 @@ from domain.policies.models import (
     OnResult, PolicyClause, PolicyDoc, PolicyFolder, PolicyTable, RuleGraph, RuleGraphStatus,
     RuleHit, RuleNode, RuleRouting,
 )
-from domain.risk.models import RiskReview
+from domain.risk.models import DecisionCase, RiskReview
 from domain.settlements.models import Category, Settlement, TeamBudget
 from domain.transactions.industry import IndustryCode
 from domain.transactions.models import MerchantCategory, Receipt, Transaction
@@ -319,8 +319,13 @@ def default_gate_spec() -> dict:
 
 # 지우는 대상. 순서가 있다 — RuleHit이 정산·거래를 SET_NULL로 참조해서 먼저 비워야
 # 고아 로그가 남지 않는다(`seed --fresh`와 같은 이유).
+#  `DecisionCase`는 정산이 지워져도 남도록 설계돼 있다(SET_NULL) — 운영에선 그게 맞다.
+#  하지만 시드는 **다시 돌리면 처음부터**여야 하므로 여기서는 지운다. 안 지우면 재시드마다
+#  같은 사례가 30건씩 쌓여, 사례 수 대조가 무의미해지고 검색 상위가 중복으로 채워진다.
+#  ⚠️ Chroma(`case_history`)는 별개 저장소라 여기서 안 지워진다 — 벡터까지 비우려면
+#     `python -m app.rag.embedding.snapshot restore --reset`(ai 컨테이너)을 쓴다.
 WIPE_MODELS = (
-    RuleHit, ErpVoucher, RiskReview, Settlement, Receipt, Transaction, Card,
+    RuleHit, ErpVoucher, RiskReview, DecisionCase, Settlement, Receipt, Transaction, Card,
     PolicyClause, PolicyDoc, PolicyFolder, PolicyTable,
     RuleRouting, RuleNode, RuleGraph, MerchantCategory,
 )

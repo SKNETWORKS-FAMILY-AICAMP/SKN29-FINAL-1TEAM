@@ -22,6 +22,8 @@ from domain.notifications.models import Notification
 from domain.policies.models import RuleGraph, RuleGraphStatus, RuleHit
 from domain.settlements.models import Category, Settlement, SettlementEvent, TeamBudget
 from domain.settlements.models import SettlementStatus as S
+from domain.common.management.commands.seed_adopted import CASES, INTENTIONAL_UNRESOLVED
+from domain.risk.models import DecisionCase
 
 #: 「아직 진행 중」인 상태들 — 지난달에 이게 남아 있으면 안 된다.
 OPEN_STATES = {
@@ -108,24 +110,55 @@ class SeedAdoptedTests(TestCase):
         )
 
     def test_검토로_간_건에는_사유가_붙어_있다(self):
-        """사유 없이 검토 큐에 오면 담당자가 빈손으로 받는다."""
+        """사유 없이 검토 큐에 오면 담당자가 빈손으로 받는다.
+
+        **판정 이력(`RuleHit`)을 본다.** 정산의 현재 `rule_judgement`가 아니다 — 보완 후
+        재제출된 건은 그 뒤 판정이 `PASS`로 덮여, "검토로 왔을 때 사유가 있었는가"를
+        현재값으로는 물을 수 없다(실측: 사례 건 6개가 그래서 사유 없음으로 잡혔다).
+        """
         reviewed = Settlement.objects.filter(events__to_state=S.IN_REVIEW).distinct()
         self.assertTrue(reviewed.exists())
         for settlement in reviewed:
-            flags = (settlement.rule_judgement or {}).get("flags", [])
-            real = [f for f in flags if not f.startswith("NO_SCOPE")]
-            self.assertTrue(real, f"{settlement.pk} 사유 없음: {flags}")
+            hits = RuleHit.objects.filter(settlement=settlement, decision="REVIEW")
+            self.assertTrue(hits.exists(), f"{settlement.pk} 검토 판정 이력이 없다")
+            for flags in hits.values_list("flags", flat=True):
+                real = [f for f in (flags or []) if not f.startswith("NO_SCOPE")]
+                self.assertTrue(real, f"{settlement.pk} 사유 없음: {flags}")
 
     def test_미해소_강등으로_검토에_온_건이_없다(self):
         """`UNRESOLVED_*`는 "사실이 없어서 판정을 못 했다"는 뜻이다 — 적용 완료 회사엔
-        그런 건이 없어야 한다(있으면 시드가 채워야 할 사실을 빠뜨린 것이다)."""
+        그런 건이 없어야 한다(있으면 시드가 채워야 할 사실을 빠뜨린 것이다).
+
+        **예외는 시드가 일부러 만든 것뿐이다**(`INTENTIONAL_UNRESOLVED`). 업종을 못 접은
+        가맹점은 금지업종 여부도 알 수 없고, 그때 사람에게 넘기는 것이 설계다 — 결정 사례
+        조리법 하나가 정확히 그 상황을 만든다. 목록에 없는 경로가 뜨면 그건 진짜 누락이다.
+        """
         offenders = []
         for settlement in Settlement.objects.exclude(status=S.DRAFT):
             flags = (settlement.rule_judgement or {}).get("flags", [])
-            bad = [f for f in flags if f.startswith("UNRESOLVED")]
+            bad = [f for f in flags
+                   if f.startswith("UNRESOLVED") and f not in INTENTIONAL_UNRESOLVED]
             if bad:
                 offenders.append((settlement.pk, settlement.category, bad))
         self.assertEqual(offenders, [], offenders[:5])
+
+    def test_결정_사례가_세_패턴으로_쌓여_있다(self):
+        """사례는 시드가 쓰는 게 아니라 `services.review()`가 「사람이 기계와 다르게
+        판단했다」고 보고 남기는 것이다. 그래서 중간 고리가 하나만 끊겨도(엔진이 REVIEW를
+        안 내거나·검토를 안 거치거나·사유가 비거나) **조용히 0건이 된다** — 실제로 오랫동안
+        0건이었다. 여기서 그 연결을 통째로 고정한다.
+        """
+        cases = DecisionCase.objects.all()
+        self.assertEqual(cases.count(), len(CASES))
+        #  세 패턴이 각각 남아야 한다. 한 방향만 쌓이면 검색이 그쪽으로 쏠린다.
+        moves = Counter(f"{c.expected}->{c.outcome}" for c in cases)
+        self.assertGreater(moves["REJECT->APPROVE"], 0, moves)    # A 오탐 교정
+        self.assertGreater(moves["APPROVE->RETURN"] + moves["APPROVE->REJECT"], 0, moves)  # B 미탐
+        self.assertGreater(moves["REJECT->RETURN"], 0, moves)     # C 수위 조정
+        for case in cases:
+            #  사유가 사례의 본체다 — 짧으면 검색돼도 쓸모가 없다.
+            self.assertGreaterEqual(len(case.reason), 40, case.case_id)
+            self.assertIn(case.reason.strip()[:20], case.text)
 
     # ── ⑤ 예산·알림 ────────────────────────────────────────────────────
     def test_월별_예산이_세_달치_있다(self):
