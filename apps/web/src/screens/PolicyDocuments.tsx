@@ -16,6 +16,7 @@ import {
   type PolicyFolder, type PolicyTableProposal,
 } from '../types/domain'
 import { KpiCard } from '../components/ui/KpiCard'
+import { SkeletonLines } from '../components/ui/Skeleton'
 import { FolderTree } from './policy-docs/FolderTree'
 import { DecisionCasePanel, monthLabel, useDecisionCases } from './policy-docs/DecisionCasePanel'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
@@ -267,7 +268,7 @@ export function PolicyDocuments() {
           </button>
         </div>
 
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-grid">
           <KpiCard flat label="등록한 문서" value={kpi.total} unit="건" />
           <KpiCard flat label="분석 완료" value={kpi.done} unit="건" />
           <KpiCard flat warn={kpi.busy > 0} label="분석 중" value={kpi.busy} unit="건" />
@@ -277,7 +278,7 @@ export function PolicyDocuments() {
 
       {error && (
         <div className="page-inner">
-          <div className="note" style={{ marginTop: 16, color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}>
+          <div className="note error" style={{ marginTop: 16 }}>
             <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />{error}
           </div>
         </div>
@@ -291,7 +292,7 @@ export function PolicyDocuments() {
             <input placeholder="폴더나 문서 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           {loading
-            ? <div className="text-meta" style={{ padding: 16 }}>불러오는 중…</div>
+            ? <div style={{ padding: 16 }}><SkeletonLines rows={5} /></div>
             : (
               <>
                 <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
@@ -325,9 +326,9 @@ export function PolicyDocuments() {
           ) : (
             <>
               <div className="pd-preview-head">
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
                   <span aria-hidden>📄</span>
-                  <b style={{ fontSize: 15 }}>{selected.title}</b>
+                  <b className="ellipsis" style={{ fontSize: 15 }} title={selected.title}>{selected.title}</b>
                   <span className="pd-badge green">{EMBEDDING_STATUS_META[selected.status]?.label}</span>
                   {selected.superseded && <span className="pd-badge gray">이전 버전</span>}
                 </div>
@@ -345,8 +346,7 @@ export function PolicyDocuments() {
                           }, '재색인을 시작하지 못했습니다.')}>
                     <RefreshCw size={11} /> {selected.status === 'FAILED' ? '재처리' : '재색인'}
                   </button>
-                  <button className="btn sm" disabled={busy}
-                          style={{ color: 'var(--tone-red)', borderColor: 'var(--tone-red-bg)' }}
+                  <button className="btn sm outline-danger" disabled={busy}
                           onClick={() => {
                             if (!window.confirm(`"${selected.title}"을 삭제하시겠습니까?\n(이미 적재된 벡터는 재색인 전까지 남습니다)`)) return
                             void withBusy(async () => {

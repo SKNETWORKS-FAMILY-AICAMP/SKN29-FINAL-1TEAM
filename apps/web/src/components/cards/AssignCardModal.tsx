@@ -61,13 +61,8 @@ export function AssignCardModal({
             <button
               key={m}
               type="button"
-              className="btn"
-              style={{
-                flex: 1, justifyContent: 'center', fontWeight: 700,
-                ...(mode === m
-                  ? { background: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary)' }
-                  : undefined),
-              }}
+              className={'btn' + (mode === m ? ' toggled' : '')}
+              style={{ flex: 1, justifyContent: 'center', fontWeight: 700 }}
               aria-pressed={mode === m}
               onClick={() => setMode(m)}
             >

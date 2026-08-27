@@ -6,6 +6,7 @@ import { judgementTags, needsAttention, notJudged } from '../lib/judgement'
 import { CARD_TYPE_LABEL, type Settlement } from '../types/domain'
 import { pct, won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
+import { SkeletonLines } from '../components/ui/Skeleton'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
 import { decideTeamSettlement, submitSettlements } from '../api/settlementService'
@@ -36,7 +37,7 @@ interface TeamBudgetView {
 }
 
 export function TeamAggregation() {
-  const { all, teamMembers, updateStatus } = useSettlements()
+  const { all, teamMembers, updateStatus, loading: listLoading, loadError } = useSettlements()
   const { user } = useAuth()
   const teamName = user?.dept ?? '내 팀' // 로그인 사용자의 소속 팀(재무회계팀 / AI·개발팀 등)
   const canManage = useCan()('team_aggregate') // 팀 취합 권한 보유자만 개별 건 조회·처리
@@ -71,18 +72,23 @@ export function TeamAggregation() {
 
   // 팀 예산 — 한도는 DB(TeamBudget), 사용액은 서버 집계(상태 무관·최종반려만 제외).
   //  서버 집계 규칙은 위 ①(countsTowardStats)과 같아야 KPI 총 사용액과 예산 카드가 맞아떨어진다.
+  //  「불러오는 중」「불러오기 실패」「배정된 예산 없음」은 서로 다른 상태다 — 한 플래그로
+  //  뭉치면 로딩 중에도 "불러오지 못했습니다" 경고가 떠서 매번 고장처럼 보인다(불변식 §1·§2).
   const [budget, setBudget] = useState<TeamBudgetView>(teamBudget)
-  const [budgetLive, setBudgetLive] = useState(USE_MOCK) // 실 모드에서 서버 응답을 받았는지
+  const [budgetState, setBudgetState] = useState<'loading' | 'live' | 'failed' | 'empty'>(USE_MOCK ? 'live' : 'loading')
   useEffect(() => {
-    if (USE_MOCK || !user?.teamId) return
+    if (USE_MOCK) return
+    if (!user?.teamId) { setBudgetState('failed'); return }
     let cancelled = false
     endpoints.teamBudget(user.teamId, month)
       .then(({ data }) => {
-        if (cancelled || !data?.categories?.length) return
+        if (cancelled) return
+        if (!data?.categories?.length) { setBudgetState('empty'); return }
         setBudget(data)
-        setBudgetLive(true)
+        setBudgetState('live')
       })
-      .catch(() => undefined)
+      // 이미 실데이터를 받았는데 갱신만 실패했다면 옛 실값을 유지한다(샘플로 되돌리지 않는다).
+      .catch(() => { if (!cancelled) setBudgetState((s) => (s === 'live' ? s : 'failed')) })
     return () => { cancelled = true }
   }, [user?.teamId, month, teamMembers])
 
@@ -196,11 +202,22 @@ export function TeamAggregation() {
       <div className="card" style={{ marginTop: 16, marginBottom: 0 }}>
         <div className="card-head">
           <h3>팀 예산 현황 · {monthLabel(month)}</h3>
-          <span className="tag" style={{ color: budgetTone, borderColor: budgetTone }}>{budgetRateLabel}</span>
+          {/* 잔여율 태그는 실값(또는 실패 시 샘플 경고와 함께)일 때만 — 로딩·빈 상태에 그리면 없는 값을 지어내는 셈 */}
+          {(budgetState === 'live' || budgetState === 'failed') && (
+            <span className="tag" style={{ color: budgetTone, borderColor: budgetTone }}>{budgetRateLabel}</span>
+          )}
         </div>
+        {budgetState === 'loading' ? (
+          <div className="card-body">
+            <span className="text-meta">팀 예산을 불러오는 중…</span>
+            <div style={{ marginTop: 8 }}><SkeletonLines rows={4} /></div>
+          </div>
+        ) : budgetState === 'empty' ? (
+          <div className="card-body text-meta">이 팀·{monthLabel(month)}에 배정된 예산이 없습니다.</div>
+        ) : (
         <div className="card-body">
-          {!budgetLive && (
-            <div className="note" style={{ marginBottom: 12 }}>
+          {budgetState === 'failed' && (
+            <div className="note error" style={{ marginBottom: 12 }}>
               ⚠ 팀 예산을 서버에서 불러오지 못했습니다. 아래 숫자는 <b>샘플 값</b>이며 실제 사용액이 아닙니다.
             </div>
           )}
@@ -211,8 +228,8 @@ export function TeamAggregation() {
           <div style={{ fontSize: 22, fontWeight: 700, color: budgetTone, marginBottom: 8 }}>
             {budgetRemaining < 0 ? `초과 ${won(Math.abs(budgetRemaining))}` : won(budgetRemaining)}
           </div>
-          <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 20 }}>
-            <div style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), height: '100%', background: budgetTone }} />
+          <div className="meter lg" style={{ marginBottom: 20 }}>
+            <span style={{ width: pct(Math.max(0, Math.min(budgetRemainingRate, 1))), background: budgetTone }} />
           </div>
 
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
@@ -242,8 +259,8 @@ export function TeamAggregation() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: barColor, marginBottom: 6 }}>
                     {remaining < 0 ? `초과 ${won(Math.abs(remaining))}` : `잔여 ${won(remaining)}`}
                   </div>
-                  <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ width: pct(Math.max(0, Math.min(remainingRate, 1))), height: '100%', background: barColor, transition: 'width 0.3s' }} />
+                  <div className="meter" style={{ marginBottom: 4 }}>
+                    <span style={{ width: pct(Math.max(0, Math.min(remainingRate, 1))), background: barColor }} />
                   </div>
                   <div className="text-meta" style={{ fontSize: 10 }}>예산 {won(c.limit)}</div>
                 </div>
@@ -251,6 +268,7 @@ export function TeamAggregation() {
             })}
           </div>
         </div>
+        )}
       </div>
       </div>
 
@@ -264,6 +282,9 @@ export function TeamAggregation() {
       )}
 
       {canManage && (<>
+      {loadError && !listLoading && (
+        <div className="load-error" style={{ marginBottom: 12 }}>{loadError}</div>
+      )}
       {/* ② 취합 목록 — 대시보드와 달리 팀 단계(TEAM_*) 건만 보인다. */}
       <div className="text-meta" style={{ margin: '0 0 8px' }}>
         취합 대상 · {monthLabel(month)} — 팀원이 팀에 올린 건({listedAll.length}건)만 표시합니다. 회계로 제출하면 목록에서 사라집니다.
@@ -311,10 +332,14 @@ export function TeamAggregation() {
 
       {!hasVisibleMember && (
         <div className="card">
-          <div className="card-body text-meta">
-            {listedAll.length === 0
-              ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
-              : '이상 건이 없습니다.'}
+          <div className="card-body">
+            {listLoading
+              ? <SkeletonLines rows={3} />
+              : <span className="text-meta">
+                  {listedAll.length === 0
+                    ? `${monthLabel(month)}에 취합할 팀 내역이 없습니다.`
+                    : '이상 건이 없습니다.'}
+                </span>}
           </div>
         </div>
       )}
@@ -347,6 +372,7 @@ export function TeamAggregation() {
                 <span className="tag">{won(m.items.reduce((s, i) => s + i.amount, 0))}</span>
               </div>
               {isOpen && (
+                <div className="table-scroll">
                 <table className="table team-settlement-table">
                   <colgroup>
                     <col style={{ width: 112 }} />
@@ -371,7 +397,8 @@ export function TeamAggregation() {
                           onKeyDown={activateOnEnterOrSpace(() => setSelected(i))}
                         >
                           <td>{i.date}</td>
-                          <td>{i.merchant}</td>
+                          {/* 셀 자체가 ellipsis(.team-settlement-table nth-child(2)) — 전문은 title로 */}
+                          <td title={i.merchant}>{i.merchant}</td>
                           <td className="num">{won(i.amount)}</td>
                           <td>{CARD_TYPE_LABEL[i.cardType]}</td>
                           <td>
@@ -406,6 +433,7 @@ export function TeamAggregation() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           )

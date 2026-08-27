@@ -203,7 +203,7 @@ export function EvidenceAttachments({
             )}
 
             {error && (
-              <div className="note" style={{ background: 'var(--tone-red-bg)', border: '1px solid #e8c0c0', marginTop: 10 }}>
+              <div className="note error" style={{ marginTop: 10 }}>
                 {error}
               </div>
             )}
@@ -239,10 +239,10 @@ function AttachmentRow({
   return (
     <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-control)', padding: '10px 12px' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
           <FileText size={16} color="var(--tone-red)" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{item.originalName}</div>
+          <div style={{ minWidth: 0 }}>
+            <div className="ellipsis" style={{ fontSize: 12.5, fontWeight: 600 }} title={item.originalName}>{item.originalName}</div>
             <div className="text-meta">{item.kindLabel}</div>
           </div>
         </div>

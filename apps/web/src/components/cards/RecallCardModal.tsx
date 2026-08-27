@@ -54,12 +54,9 @@ export function RecallCardModal({
         </div>
       </div>
 
-      <div className="row" style={{
-        gap: 8, alignItems: 'flex-start', background: 'var(--tone-amber-bg)', borderRadius: 'var(--radius-control)',
-        padding: '10px 12px', marginBottom: 16,
-      }}>
+      <div className="note caution" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 16 }}>
         <AlertTriangle size={15} color="var(--tone-amber)" style={{ flexShrink: 0, marginTop: 1 }} />
-        <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>카드를 회수하면 즉시 사용이 정지되며 이 작업은 되돌릴 수 없습니다.</span>
+        <span style={{ lineHeight: 1.5 }}>카드를 회수하면 즉시 사용이 정지되며 이 작업은 되돌릴 수 없습니다.</span>
       </div>
 
       <div className="field">

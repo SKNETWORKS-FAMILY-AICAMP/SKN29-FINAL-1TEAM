@@ -18,6 +18,7 @@ import { won } from '../lib/format'
 import { AssignCardModal } from '../components/cards/AssignCardModal'
 import { RecallCardModal } from '../components/cards/RecallCardModal'
 import { KpiCard } from '../components/ui/KpiCard'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import {
   assignCard, fetchCards, stopCard,
   type CardOption, type CorpCard,
@@ -134,8 +135,8 @@ export function CardManagement() {
 
       <div className="page-inner">
         {error && (
-          <div className="note" style={{ background: 'var(--tone-red-bg)', border: '1px solid #e8c0c0', marginBottom: 16 }}>
-            {error} <button className="btn sm" style={{ marginLeft: 8 }} onClick={() => void load()}><RefreshCw size={12} /> 다시 시도</button>
+          <div className="load-error" style={{ marginBottom: 16 }}>
+            {error} <button className="btn sm" onClick={() => void load()}><RefreshCw size={12} /> 다시 시도</button>
           </div>
         )}
 
@@ -175,6 +176,7 @@ export function CardManagement() {
 
         <div className="card">
           <div className="card-head"><h3>카드 목록</h3></div>
+          <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
@@ -187,15 +189,7 @@ export function CardManagement() {
                 <tr key={c.id}>
                   <td>
                     <span className="row" style={{ gap: 8 }}>
-                      <span style={{
-                        position: 'relative', width: 24, height: 18, borderRadius: 4,
-                        background: 'var(--sidebar-bg)', flexShrink: 0,
-                      }}>
-                        <span style={{
-                          position: 'absolute', left: 3, top: 4, width: 8, height: 6,
-                          borderRadius: 2, background: 'var(--accent-amber)',
-                        }} />
-                      </span>
+                      <span className="card-chip" />
                       <span>
                         {c.number || c.name}
                         {c.number && c.name && <span className="text-meta" style={{ marginLeft: 6 }}>{c.name}</span>}
@@ -227,8 +221,7 @@ export function CardManagement() {
                     <div className="row" style={{ justifyContent: 'flex-end' }}>
                       <button className="btn sm" onClick={() => setAssigning(c)} disabled={pending}>배정 변경</button>
                       <button
-                        className="btn sm"
-                        style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}
+                        className="btn sm outline-danger"
                         onClick={() => setRecalling(c)}
                         disabled={pending || c.status === 'STOPPED'}
                       >
@@ -238,13 +231,15 @@ export function CardManagement() {
                   </td>
                 </tr>
               ))}
-              {list.length === 0 && (
-                <tr><td colSpan={7} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>
-                  {loading ? '불러오는 중…' : '해당 조건의 카드가 없습니다.'}
-                </td></tr>
+              {list.length === 0 && (loading
+                ? <SkeletonRows rows={5} cols={7} />
+                : <tr><td colSpan={7} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>
+                    해당 조건의 카드가 없습니다.
+                  </td></tr>
               )}
             </tbody>
           </table>
+          </div>
         </div>
         <div className="text-meta" style={{ marginTop: 12 }}>총 {list.length}건</div>
       </div>
@@ -342,7 +337,7 @@ function AttentionView({ onBack }: { onBack: () => void }) {
             사유와 근거를 확인한 뒤 회수 여부를 결정하세요.
           </div>
         </div>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-grid">
           <KpiCard flat label="조치 필요" value={remaining.length} unit="건" />
           <KpiCard flat warn={urgent > 0} label="즉시 조치" value={urgent} unit="건" />
           <KpiCard flat label="확인 필요" value={watch} unit="건" />
@@ -414,9 +409,7 @@ function AttentionView({ onBack }: { onBack: () => void }) {
                 <div className="attn-body">
                   <div className="attn-title">
                     {/* 카드 미니어처 — 목록 어디서나 같은 모양으로 '카드'를 가리킨다. */}
-                    <span style={{ position: 'relative', width: 24, height: 18, borderRadius: 4, background: 'var(--sidebar-bg)', flexShrink: 0 }}>
-                      <span style={{ position: 'absolute', left: 3, top: 4, width: 8, height: 6, borderRadius: 2, background: 'var(--accent-amber)' }} />
-                    </span>
+                    <span className="card-chip" />
                     <span className="attn-no">{c.number}</span>
                     <span className="tag">{c.typeLabel}</span>
                     <span className="badge" style={{ color: REASON_META[c.reason].tone, background: REASON_META[c.reason].bg }}>
@@ -445,8 +438,7 @@ function AttentionView({ onBack }: { onBack: () => void }) {
                 </div>
                 <div className="attn-actions">
                   <button
-                    className="btn sm"
-                    style={doneReason ? undefined : { borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}
+                    className={'btn sm' + (doneReason ? '' : ' outline-danger')}
                     onClick={() => setRecalling(c)}
                     disabled={!!doneReason}
                   >

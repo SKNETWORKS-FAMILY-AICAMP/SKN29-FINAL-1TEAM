@@ -3,6 +3,7 @@
 //  구성: ① 그래프 선택 → ② 그래프 구조(플로우차트) + 노드 상세 읽기 → ③ 검증 시뮬레이션 보고서.
 import { useEffect, useMemo, useState } from 'react'
 import { endpoints } from '../../api/client'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 import { isSimulatable, toGraph, type ApiGraph } from './data/graphApi'
 import { type SimReport } from './data/simulationTypes'
 import { type RuleGraph } from './data/ruleConsoleMock'
@@ -20,6 +21,7 @@ export function SimulationTab() {
   // 과거 실행 결과가 있으면 그대로 보여준다(2026-08-19, "결과를 굳이 숨길 이유가 없다"는
   // 재요청) — report가 곧 "보여줄 결과 있음"이라 별도 revealed 플래그가 필요 없다.
   const [report, setReport] = useState<SimReport | null>(null)
+  const [reportLoadFailed, setReportLoadFailed] = useState(false)
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState('')
   const [genNote, setGenNote] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null)
@@ -57,6 +59,7 @@ export function SimulationTab() {
     if (!graphId) return
     let cancelled = false
     setReport(null)
+    setReportLoadFailed(false)
     setRunError('')
     setRequested('')
     setGenNote(null)
@@ -64,7 +67,10 @@ export function SimulationTab() {
     setLogOpen(false)
     endpoints.ruleSimulation(graphId).then(({ data, status }) => {
       if (!cancelled && status === 200 && data) setReport(data as SimReport)
-    }).catch(() => undefined)
+    }).catch(() => {
+      // 「이력이 없다」와 「불러오지 못했다」는 다른 상태 — 실패를 삼키면 빈 상태 문구가 거짓말을 한다.
+      if (!cancelled) setReportLoadFailed(true)
+    })
     return () => { cancelled = true }
   }, [graphId])
 
@@ -145,8 +151,13 @@ export function SimulationTab() {
           <div><h3>검증할 룰 그래프 선택</h3><div className="text-meta">모든 노드가 <b>검증대기</b> 상태인 그래프만 표시됩니다.</div></div>
           <span className="text-meta">{graphs.length}개 대상</span>
         </div>
-        {loading && <div className="text-meta" style={{ padding: 16 }}>룰 그래프를 불러오는 중입니다.</div>}
-        {error && <div className="note" style={{ margin: 12, color: 'var(--tone-red)' }}>{error}</div>}
+        {loading && (
+          <div style={{ padding: 16 }}>
+            <span className="text-meta">룰 그래프를 불러오는 중…</span>
+            <div style={{ marginTop: 8 }}><SkeletonLines rows={2} /></div>
+          </div>
+        )}
+        {error && <div className="note error" style={{ margin: 12 }}>{error}</div>}
         {!loading && !error && graphs.length === 0 && (
           <div className="text-meta" style={{ padding: 16 }}>
             검증 대상 그래프가 없습니다. 초안 그래프 탭에서 노드를 “초안 완료 · 검증 대기로 전환” 하면 이곳에 나타납니다.
@@ -226,6 +237,11 @@ export function SimulationTab() {
           {/* ③ 검증 시뮬레이션 보고서 — 과거 실행 이력이 있으면 그대로 보여주고, 없으면 빈
               상태("실행하기") — "실행하기" 한 번이면 검증셋 생성부터 시뮬레이션까지 끝나
               전체 보고서로 펼쳐진다 — 별도의 "검증셋 자동생성" 버튼 없이. */}
+          {reportLoadFailed && !report && (
+            <div className="note error" style={{ marginBottom: 12 }}>
+              기존 시뮬레이션 보고서를 불러오지 못했습니다 — 실행 이력이 없는 것이 아닐 수 있습니다. 아래에서 새로 실행할 수 있습니다.
+            </div>
+          )}
           {report
             ? <SimulationReportView report={report} running={running} error={runError} onRun={() => void run()} />
             : <SimulationEmptyState running={running} error={runError} onRun={() => void run()} />}

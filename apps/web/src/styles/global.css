@@ -68,6 +68,10 @@
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
   --accent-green: #22c55e;
+
+  /* 그림자 — border-only 원칙이라 그림자는 hover 부상·팝오버 같은 보조 용도로만.
+     (기존에 참조만 있고 정의가 없어 box-shadow가 조용히 무시되고 있었다.) */
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08);
 }
 
 * { box-sizing: border-box; }
@@ -227,9 +231,18 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .card.anomaly .card-head { border-bottom-color: #f3c9c5; }
 .card-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .card-head h3 { font-size: var(--text-value); }
+/* 접이식 카드 — 헤더 전체가 열고 닫는 버튼(호버로 누를 수 있음을 알린다) */
+button.card-head.toggle {
+  width: 100%; background: none; border: none; cursor: pointer; font: inherit; text-align: left;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
+}
+button.card-head.toggle:hover { background: var(--surface-2); }
 .card-body { padding: var(--space-4); }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+/* 열 수 변형 — 인라인 grid-template-columns는 아래 반응형 강등(2열→1열)을 무력화하므로 클래스로만 바꾼다 */
+.kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
 .kpi {
   position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--space-4); transition: border-color 150ms cubic-bezier(0.23,1,0.32,1);
@@ -445,7 +458,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .member-pill {
   padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid var(--border-strong);
   background: var(--surface-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1);
 }
+.member-pill:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
 .member-pill.active { background: var(--surface); border-color: var(--primary); color: var(--primary); }
 
 @media (max-width: 1000px) { .team-budget-item { flex-basis: calc(33.333% - var(--space-3)); } }
@@ -457,6 +472,9 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--space-2); border-radius: var(--radius-chip); font-size: var(--text-caption); font-weight: 600; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
 .tag.ai { background: var(--ai-soft); color: var(--ai); border-color: #f0dfae; }
+/* 버튼으로 쓰는 tag(필터 칩) — 정적 tag와 달리 누를 수 있음을 hover로 알린다 */
+.tag.tag-btn { cursor: pointer; font: inherit; transition: border-color 150ms cubic-bezier(0.23,1,0.32,1), color 150ms cubic-bezier(0.23,1,0.32,1); }
+.tag.tag-btn:hover { border-color: var(--primary); color: var(--primary); }
 .tag.warn { background: var(--tone-red-bg); color: var(--tone-red); border-color: #f3c9c5; }
 .tag.ok { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
 .tag.caution { background: var(--tone-amber-bg); color: var(--tone-amber); border-color: #ead9ad; }
@@ -480,6 +498,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .btn.reject { background: var(--tone-red); border-color: var(--tone-red); color: #fff; }
 .btn.sm { padding: var(--space-1) var(--space-2); font-size: var(--text-meta); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 위험 동작 보조 버튼(회수·정지·삭제) — 채움 버튼(.reject)만큼 무겁지 않은 아웃라인 표현 */
+.btn.outline-danger { border-color: var(--tone-red); color: var(--tone-red); }
+.btn.outline-danger:hover:not(:disabled) { background: var(--tone-red-bg); }
+/* 선택 상태의 토글·옵션 버튼(필터 탭, 모달 선택지) */
+.btn.toggled { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+.btn.toggled:hover:not(:disabled) { background: var(--primary-soft); }
 
 /* 카드 헤더 오른쪽 끝의 아이콘 버튼(기본 내역의 「AI로 다시 작성」).
    제목과 같은 줄에 앉되 제목을 밀지 않도록 정사각으로 고정한다. */
@@ -549,6 +573,11 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .detail-value-grid span { color: var(--muted); font-size: var(--text-caption); }
 .detail-value-grid b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-body); }
 .json-viewer { min-height: 180px; max-height: 320px; margin: 0; padding: 12px; overflow: auto; border-radius: var(--radius-control); background: #101828; color: #d7e2f0; font: 11px/1.55 Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+/* 판정 입력 스냅샷(fact.json·EvalContext) — 밝은 배경 원본 pre. 요약하지 않고 그대로 보인다 */
+.fact-pre {
+  margin: 0; font-size: 12px; line-height: 1.5; background: var(--surface-2);
+  border-radius: var(--radius-control); padding: var(--space-3); max-height: 420px; overflow: auto;
+}
 
 /* ── 타임라인(Audit Trail) ───────────────── */
 .timeline { list-style: none; padding: 0; margin: 0; }
@@ -576,6 +605,49 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .row { display: flex; gap: var(--space-2); align-items: center; }
 .spacer { flex: 1; }
 .note { font-size: var(--text-meta); color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); }
+/* 주의(amber)·오류(red) 톤 노트 — 화면마다 인라인으로 색을 박던 것을 한 곳으로 */
+.note.caution { background: var(--tone-amber-bg); border: 1px solid #ead9ad; color: var(--text); }
+.note.error { background: var(--tone-red-bg); border: 1px solid #e8c0c0; color: var(--text); }
+
+/* 가로 게이지(잔여율·소진율·진행률 공용) — 트랙은 공통, 채움 색·너비는 쓰는 쪽이 정한다
+   (같은 비율이라도 화면마다 뜻이 달라 색 규칙까지 여기로 끌어오지 않는다). */
+.meter { height: 6px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--primary); transition: width 300ms ease; }
+.meter.lg { height: 8px; }
+.meter.sm { height: 4px; }
+
+/* 카드 미니어처 — 목록 어디서나 같은 모양으로 '실물 카드'를 가리키는 아이콘(S-09) */
+.card-chip { position: relative; display: inline-block; width: 24px; height: 18px; border-radius: 4px; background: var(--sidebar-bg); flex-shrink: 0; }
+.card-chip::after { content: ''; position: absolute; left: 3px; top: 4px; width: 8px; height: 6px; border-radius: 2px; background: var(--accent-amber); }
+
+/* 카드 밖 섹션 제목(표·차트 묶음 위) */
+.section-title { font-size: var(--text-h4); font-weight: 700; margin-bottom: var(--space-1); }
+/* 긴 텍스트 한 줄 말줄임 — 쓰는 쪽에서 title 속성으로 전문을 함께 건다 */
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* 넓은 테이블은 자체 컨테이너 안에서만 가로 스크롤 — 페이지 몸통이 가로로 흐르지 않게 */
+.table-scroll { overflow-x: auto; }
+
+/* ── 로딩 스켈레톤 ─────────────────────────────
+   불변식(§settlement-ui-rules 2): 빈 상태에서도 레이아웃은 한 벌 — 로딩 중에도 실제
+   내용과 같은 골격을 자리표시자로 채운다. 텍스트 한 줄("불러오는 중…")은 내용이 오는
+   순간 화면이 펴지며 눌러야 할 자리가 바뀐다. */
+@keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.skeleton {
+  display: block; border-radius: var(--radius-chip);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%; animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line { height: 12px; }
+.skeleton-line + .skeleton-line { margin-top: var(--space-2); }
+
+/* 데이터 영역 불러오기 실패 — 「데이터가 없다」와 「불러오지 못했다」는 다른 상태다.
+   조용히 삼킨 catch가 이 둘을 한 덩어리로 뭉치게 두지 않는다. */
+.load-error {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); border: 1px solid #f3c9c5; border-radius: var(--radius-control);
+  background: var(--tone-red-bg); color: var(--tone-red); font-size: var(--text-body);
+}
+.load-error .btn { margin-left: auto; flex-shrink: 0; }
 
 /* 반응형 */
 /* 3열이 나란히 놓이려면 사이드바(접힘 기본값 118px)를 빼고도 1300px+380px = 1680px는 있어야
@@ -587,14 +659,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .rule-draft-grid > :nth-child(3) { grid-column: 1 / -1; }
 }
 @media (max-width: 1050px) {
-  .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
+  .kpi-grid, .kpi-grid.cols-3, .kpi-grid.cols-5, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
   .split, .review-ws .split { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid { grid-template-columns: 1fr; min-width: 0; }
   .rule-draft-grid > :nth-child(3) { grid-column: auto; }
   .sim-structure-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .kpi-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .kpi-grid, .kpi-grid.cols-3, .kpi-grid.cols-5, .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; height: auto; padding: var(--space-3) var(--space-4); }
 }
 
@@ -603,6 +675,8 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .btn, .sidebar-nav a, .x-btn, .table tbody tr { transition: none; }
   .btn:active:not(:disabled) { transform: none; }
   .modal-backdrop, .modal { animation: none; }
+  .skeleton { animation: none; background: var(--surface-2); }
+  .meter > span { transition: none; }
 }
 
 /* ── 인증(O-1) · 역할선택(R-0) · 온보딩(EMP/ACC/EXE) ───── */

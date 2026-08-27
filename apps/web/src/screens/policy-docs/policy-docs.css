@@ -58,10 +58,28 @@
 }
 
 .pd-folder:hover,
-.pd-doc:hover { background: var(--surface-muted); }
+.pd-doc:hover { background: var(--surface-2); }
+
+/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격.
+   (클래스만 있고 정의가 없어 브라우저 기본 버튼 모양·기본 폰트로 렌더링되고 있었다.) */
+.pd-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+}
+.pd-node:hover { background: var(--surface-2); }
 
 .pd-doc.active {
-  background: var(--tone-blue-bg, var(--surface-muted));
+  background: var(--tone-blue-bg, var(--surface-2));
   font-weight: 600;
 }
 
@@ -114,7 +132,7 @@
 
 /* 드래그 중인 문서를 받을 수 있는 폴더 — 어디에 떨어지는지 분명해야 오배치가 없다. */
 .pd-folder.drop {
-  background: var(--tone-blue-bg, var(--surface-muted));
+  background: var(--tone-blue-bg, var(--surface-2));
   outline: 2px dashed var(--primary);
   outline-offset: -2px;
 }
@@ -142,7 +160,7 @@
   padding: 32px 16px;
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius-control);
-  background: var(--surface-muted);
+  background: var(--surface-2);
   cursor: pointer;
   text-align: center;
 }
@@ -150,7 +168,7 @@
 .pd-dropzone:hover,
 .pd-dropzone.over {
   border-color: var(--primary);
-  background: var(--tone-blue-bg, var(--surface-muted));
+  background: var(--tone-blue-bg, var(--surface-2));
 }
 
 .pd-picked {
@@ -160,7 +178,7 @@
   padding: 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
-  background: var(--surface-muted);
+  background: var(--surface-2);
 }
 
 .pd-badge {
@@ -175,7 +193,7 @@
 .pd-badge.amber { background: var(--tone-amber-bg); color: var(--tone-amber); border-color: #e8d5a3; }
 .pd-badge.green { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
 .pd-badge.red   { background: var(--tone-red-bg);   color: var(--tone-red);   border-color: #f3c9c5; }
-.pd-badge.gray  { background: var(--surface-muted); color: var(--muted);      border-color: var(--border-strong); }
+.pd-badge.gray  { background: var(--surface-2); color: var(--muted);      border-color: var(--border-strong); }
 
 /* ── 우: 문서 미리보기 ───────────────────────── */
 .pd-preview { padding: 16px; min-height: 420px; }
@@ -227,7 +245,7 @@
   width: 100%;
   padding: 10px 12px;
   border: none;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   cursor: pointer;
   text-align: left;
 }
@@ -247,7 +265,7 @@
 .pd-markdown {
   margin: 6px 0 0;
   padding: 10px 12px;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   border-radius: var(--radius-control);
   font-size: 12px;
   line-height: 1.7;
@@ -263,7 +281,7 @@
 .pd-table-wrap {
   margin: 6px 0 0;
   padding: 4px;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   border-radius: var(--radius-control);
   max-height: 260px;
   overflow: auto;
@@ -323,7 +341,7 @@
 }
 
 .pd-field input:disabled,
-.pd-field select:disabled { background: var(--surface-muted); color: var(--muted); }
+.pd-field select:disabled { background: var(--surface-2); color: var(--muted); }
 
 .pd-field .text-meta { margin-top: 4px; }
 
@@ -338,7 +356,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
-  background: var(--surface-muted);
+  background: var(--surface-2);
   resize: vertical;
 }
 
@@ -366,7 +384,7 @@
 .pd-decided {
   margin-top: 12px;
   padding: 10px 12px;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   border-radius: var(--radius-control);
   font-size: 12px;
   display: flex;
@@ -401,7 +419,7 @@
   gap: 12px;
   padding: 8px 18px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-muted);
+  background: var(--surface-2);
   flex-shrink: 0;
 }
 
@@ -421,7 +439,7 @@
   align-items: center;
   gap: 10px;
   border-right: 1px solid var(--border);
-  background: var(--surface-muted);
+  background: var(--surface-2);
 }
 
 .pdf-thumb {

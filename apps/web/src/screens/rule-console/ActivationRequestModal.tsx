@@ -43,7 +43,7 @@ export function ActivationRequestModal({ report, graphName, onClose, onSubmit, s
 
         <div>
           <div className="text-meta" style={{ fontWeight: 700, marginBottom: 6 }}>시뮬레이션 KPI</div>
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
+          <div className="kpi-grid" style={{ marginBottom: 0 }}>
             <div className="kpi">
               <div className="label">자동처리율</div><div className="value">{percent(stats.autoRate)}</div>
               <div className="text-meta">자동 {stats.autoCount} / 사람 확인 {stats.manualCount}건</div>
@@ -69,7 +69,7 @@ export function ActivationRequestModal({ report, graphName, onClose, onSubmit, s
 
         <div>
           <div className="text-meta" style={{ fontWeight: 700, marginBottom: 6 }}>AI 의견 KPI</div>
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+          <div className="kpi-grid cols-3" style={{ marginBottom: 0 }}>
             <GradeTile label="그래프 구조 평가" grade={grades.structure} />
             <GradeTile label="실행결과 평가" grade={grades.result} />
             <GradeTile label="권장 처리" grade={grades.action} />

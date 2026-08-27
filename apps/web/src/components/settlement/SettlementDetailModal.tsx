@@ -917,8 +917,8 @@ export function SettlementDetailModal({
           {/* fact.json — 자동생성, 접어두기 */}
           <div className="card">
             <button
-              className="card-head"
-              style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }}
+              className="card-head toggle"
+              aria-expanded={factOpen}
               onClick={() => setFactOpen((v) => !v)}
             >
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -928,10 +928,7 @@ export function SettlementDetailModal({
             </button>
             {factOpen && (
               <div className="card-body">
-                <pre style={{
-                  margin: 0, fontSize: 12, lineHeight: 1.5, background: 'var(--surface-2)',
-                  borderRadius: 'var(--radius-control)', padding: 12, overflowX: 'auto',
-                }}>{JSON.stringify(fact, null, 2)}</pre>
+                <pre className="fact-pre">{JSON.stringify(fact, null, 2)}</pre>
               </div>
             )}
           </div>

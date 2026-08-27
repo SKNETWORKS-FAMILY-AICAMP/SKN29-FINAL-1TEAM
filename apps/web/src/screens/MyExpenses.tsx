@@ -9,6 +9,7 @@ import {
 import { useCategories } from '../lib/categories'
 import { won } from '../lib/format'
 import { KpiCard } from '../components/ui/KpiCard'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { StatusText } from '../components/ui/StatusText'
 import { SettlementDetailModal } from '../components/settlement/SettlementDetailModal'
 import { claimSettlement, importSettlements, raiseSettlements } from '../api/settlementService'
@@ -45,7 +46,7 @@ const S01_STATUS_LABEL: Partial<Record<SettlementStatus, string>> = {
 type ViewFilter = 'ACTIVE' | 'RETURNED' | 'REJECT' | 'DRAFT' | 'PROCESSING' | 'DONE' | 'ALL'
 
 export function MyExpenses() {
-  const { myExpenses: expenses, updateStatus, addExpense, removeExpense, refresh } = useSettlements()
+  const { myExpenses: expenses, loading, loadError, updateStatus, addExpense, removeExpense, refresh } = useSettlements()
   const { user } = useAuth()
   const nav = useNavigate()
   const [selected, setSelected] = useState<Settlement | null>(null)
@@ -54,7 +55,8 @@ export function MyExpenses() {
   const [submitting, setSubmitting] = useState(false)
   const [period, setPeriod] = useState<'MONTH' | 'ALL'>('MONTH')
   const [importing, setImporting] = useState(false)
-  const [importNote, setImportNote] = useState('')
+  // 성공 안내와 실패 안내는 같은 회색 노트로 뭉치지 않는다 — 실패는 오류 톤으로 보인다.
+  const [importNote, setImportNote] = useState<{ text: string; error?: boolean } | null>(null)
   const [view, setView] = useState<ViewFilter>('ACTIVE')
   const [cardTypeFilter, setCardTypeFilter] = useState<CardType | 'ALL'>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<Category | 'ALL'>('ALL')
@@ -102,19 +104,19 @@ export function MyExpenses() {
 
   const runImport = async () => {
     setImporting(true)
-    setImportNote('')
+    setImportNote(null)
     try {
       const result = await importSettlements()
       await refresh()
-      setImportNote(
-        result.exhausted && result.created === 0
+      setImportNote({
+        text: result.exhausted && result.created === 0
           ? `준비된 표본 ${result.totalBatches}회분을 모두 불러왔습니다.`
           : `${result.batch}/${result.totalBatches}회차 · ${result.created}건을 불러왔습니다`
             + (result.claimPending > 0 ? ` (실사용자 등록 대기 ${result.claimPending}건)` : '')
             + (result.exhausted ? ' — 마지막 회차입니다.' : ''),
-      )
+      })
     } catch {
-      setImportNote('결제내역을 불러오지 못했습니다. 로그인 상태와 연결을 확인해주세요.')
+      setImportNote({ text: '결제내역을 불러오지 못했습니다. 로그인 상태와 연결을 확인해주세요.', error: true })
     } finally {
       setImporting(false)
     }
@@ -173,7 +175,7 @@ export function MyExpenses() {
           {user?.dept && <span className="scope-chip"><span className="sw" style={{ background: 'var(--tone-purple)' }} />{user.dept}</span>}
         </div>
 
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        <div className="kpi-grid cols-5">
           <KpiCard flat label={`${monthLabel(month)} 사용액`} value={won(stats.total)} />
           <KpiCard flat label="미제출" value={stats.draft} unit="건" />
           <KpiCard flat label="검토중" value={stats.processing} unit="건" />
@@ -184,7 +186,12 @@ export function MyExpenses() {
 
       <div className="page-inner">
         {importNote && (
-          <div className="note" style={{ marginBottom: 12 }}>{importNote}</div>
+          <div className={'note' + (importNote.error ? ' error' : '')} style={{ marginBottom: 12 }}>{importNote.text}</div>
+        )}
+        {loadError && !loading && (
+          <div className="load-error" style={{ marginBottom: 12 }}>
+            {loadError} <button className="btn sm" onClick={refresh}>다시 시도</button>
+          </div>
         )}
 
         <div className="filter-bar">
@@ -220,7 +227,7 @@ export function MyExpenses() {
           </label>
         </div>
 
-        <div className="card">
+        <div className="card table-scroll">
           <table className="table">
             <thead>
               <tr>
@@ -253,7 +260,7 @@ export function MyExpenses() {
                       />
                     </td>
                     <td>{e.date}</td>
-                    <td>{e.merchant}</td>
+                    <td className="ellipsis" style={{ maxWidth: 240 }} title={e.merchant}>{e.merchant}</td>
                     <td className="num">{won(e.amount)}</td>
                     <td>{CARD_TYPE_LABEL[e.cardType]}</td>
                     <td>
@@ -294,8 +301,14 @@ export function MyExpenses() {
                   </tr>
                 )
               })}
-              {list.length === 0 && (
-                <tr><td colSpan={9} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>해당 조건의 내역이 없습니다.</td></tr>
+              {list.length === 0 && (loading
+                ? <SkeletonRows rows={5} cols={9} />
+                : <tr><td colSpan={9} className="text-meta" style={{ textAlign: 'center', padding: 24 }}>
+                    {/* 「내역이 없다」와 「필터로 비었다」는 다른 상황 — 뭉치면 필터를 건 채 고장으로 읽는다. */}
+                    {expenses.length === 0
+                      ? '등록된 지출 내역이 없습니다. 「내역 불러오기」 또는 「신규 지출 등록」으로 시작하세요.'
+                      : '필터·검색 조건에 맞는 내역이 없습니다.'}
+                  </td></tr>
               )}
             </tbody>
           </table>
