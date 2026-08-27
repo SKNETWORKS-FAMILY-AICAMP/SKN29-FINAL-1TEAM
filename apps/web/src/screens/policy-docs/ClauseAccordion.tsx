@@ -13,23 +13,16 @@ import {
   type ClauseRuleStatus, type PolicyClause,
 } from '../../types/domain'
 
-const TONE = {
-  green: { bg: 'var(--tone-green-bg)', color: 'var(--tone-green)', border: '#bfe6d1' },
-  amber: { bg: 'var(--tone-amber-bg)', color: 'var(--tone-amber)', border: '#e8d5a3' },
-  blue: { bg: 'var(--tone-blue-bg, #eaf1fb)', color: 'var(--tone-blue, #2f6fb5)', border: '#c3d8f0' },
-  gray: { bg: 'var(--surface-2)', color: 'var(--muted)', border: 'var(--border-strong)' },
-}
-
 /** AI가 매긴 룰 생성 우선순위. 사람의 결정(`ruleStatus`)과 **나란히** 놓는다 —
- *  한 배지로 합치면 "AI가 제외로 봤다"와 "사람이 제외로 정했다"가 구분되지 않는다. */
+ *  한 배지로 합치면 "AI가 제외로 봤다"와 "사람이 제외로 정했다"가 구분되지 않는다.
+ *  색·모양은 화면 전체가 공유하는 `.pd-badge`(policy-docs.css)를 그대로 쓴다 —
+ *  여기서 따로 만들면 별표 카드(TableProposalPanel)의 배지와 미묘하게 달라진다. */
 function PriorityBadge({ clause }: { clause: PolicyClause }) {
   if (!clause.triagePriority && !clause.triageKind) return null
   const meta = PRIORITY_META[clause.triagePriority]
-  const t = TONE[meta.tone]
   const kind = CLAUSE_KIND_META[clause.triageKind]?.label
   return (
-    <span title={clause.triageReason}
-          style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: t.bg, color: t.color, border: `1px solid ${t.border}`, whiteSpace: 'nowrap' }}>
+    <span className={`pd-badge ${meta.tone}`} title={clause.triageReason}>
       {kind && clause.triagePriority === 'SKIP' ? kind : meta.label}
     </span>
   )
@@ -37,12 +30,7 @@ function PriorityBadge({ clause }: { clause: PolicyClause }) {
 
 function StatusBadge({ status }: { status: ClauseRuleStatus }) {
   const meta = CLAUSE_STATUS_META[status]
-  const t = TONE[meta.tone]
-  return (
-    <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: t.bg, color: t.color, border: `1px solid ${t.border}`, whiteSpace: 'nowrap' }}>
-      {meta.label}
-    </span>
-  )
+  return <span className={`pd-badge ${meta.tone}`}>{meta.label}</span>
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -125,13 +113,23 @@ export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCrea
 
       {expanded && (
         <div className="pd-clause-body">
+          {/* AI 분류 근거 — 별표 카드의 "AI 설명 보기"와 같은 관용구로 통일한다. 분류
+              배지(위 PriorityBadge)는 이미 헤더에 보이니, 왜 그렇게 분류했는지는
+              필요한 사람만 펴서 본다(예전엔 조항마다 항상 펼쳐진 박스였다). */}
           {clause.triageReason && (
-            <div className="note">
-              <b>AI 검토</b> · {CLAUSE_KIND_META[clause.triageKind]?.label || '분류 없음'}
-              {clause.triagePriority && <> · {PRIORITY_META[clause.triagePriority].label}</>}
-              <div>{clause.triageReason}</div>
-              {clause.triageSummary && <div className="text-meta">만들 규칙: {clause.triageSummary}</div>}
-            </div>
+            <details className="pd-ai-fold">
+              <summary>
+                AI 검토 보기
+                <span className="text-meta" style={{ fontWeight: 400 }}>
+                  {CLAUSE_KIND_META[clause.triageKind]?.label || '분류 없음'}
+                  {clause.triagePriority && ` · ${PRIORITY_META[clause.triagePriority].label}`}
+                </span>
+              </summary>
+              <div className="pd-ai-fold-body">
+                <div className="pd-ai-line">{clause.triageReason}</div>
+                {clause.triageSummary && <div className="pd-ai-line">만들 규칙: {clause.triageSummary}</div>}
+              </div>
+            </details>
           )}
 
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>

@@ -194,6 +194,18 @@
 .pd-badge.green { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
 .pd-badge.red   { background: var(--tone-red-bg);   color: var(--tone-red);   border-color: #f3c9c5; }
 .pd-badge.gray  { background: var(--surface-2); color: var(--muted);      border-color: var(--border-strong); }
+.pd-badge.blue  { background: var(--tone-blue-bg, #eaf1fb); color: var(--tone-blue, #2f6fb5); border-color: #c3d8f0; }
+
+/* 확신도 칩 — 문장 속 숫자 대신 훑어보는 작은 표시. 점 색으로 구간을 알린다. */
+.pd-chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 2px 9px; margin-left: 8px; vertical-align: middle;
+}
+.pd-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pd-chip.green::before { background: var(--tone-green); }
+.pd-chip.amber::before { background: var(--tone-amber); }
+.pd-chip.red::before { background: var(--tone-red); }
 
 /* ── 우: 문서 미리보기 ───────────────────────── */
 .pd-preview { padding: 16px; min-height: 420px; }
@@ -221,10 +233,14 @@
 
 .pd-meta { margin-top: 6px; }
 
+/* 섹션 제목 — 별표/조항처럼 성격이 다른 묶음 사이를 얇은 선 하나로 가른다("장 나누기").
+   문서 헤더의 메타 정보와 헷갈리지 않게 글자도 한 단계 키운다(13px → --text-h4). */
 .pd-section-title {
-  margin: 20px 0 8px;
+  margin: var(--space-6) 0 var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--text-h4);
 }
 
 /* ── 조항 카드 ───────────────────────────────── */
@@ -243,24 +259,26 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-4);
   border: none;
   background: var(--surface-2);
   cursor: pointer;
   text-align: left;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
 }
+.pd-clause-head:hover { background: var(--border); }
 
 .pd-clause-title { font-weight: 600; font-size: 13px; flex: 1; }
 .pd-clause-head .pd-caret { margin-left: 4px; }
 
 .pd-clause-peek {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-4);
   color: var(--muted);
   font-size: 12px;
   border-top: 1px solid var(--border);
 }
 
-.pd-clause-body { padding: 12px; border-top: 1px solid var(--border); }
+.pd-clause-body { padding: var(--space-4); border-top: 1px solid var(--border); }
 
 .pd-markdown {
   margin: 6px 0 0;
@@ -361,6 +379,30 @@
 }
 
 .pd-json:disabled { color: var(--muted); }
+
+/* 값 고치기 — 표 모양 그대로 셀을 고치는 편집 그리드(축 0~2개). JSON 문법을 몰라도
+   되게, 표에 입력칸만 얹은 모양으로 만든다(가짜 인풋이 아니라 진짜 <input>). */
+.pd-grid-scroll { overflow-x: auto; }
+.pd-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+.pd-grid th, .pd-grid td { border: 1px solid var(--border); padding: 0; }
+.pd-grid th { background: var(--surface-2); }
+.pd-grid tfoot td { border: none; padding: 8px 0 0; }
+.pd-grid input {
+  width: 100%; min-width: 64px; border: none; background: transparent; font: inherit;
+  font-size: 12.5px; padding: 6px 8px; color: var(--text); border-radius: 0;
+}
+.pd-grid th input { font-weight: 700; }
+.pd-grid input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pd-grid input:disabled { color: var(--muted); }
+.pd-grid input:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
+.pd-grid td:last-child, .pd-grid th:last-child { border: none; width: 26px; padding: 0 2px; }
+
+.pd-grid-single {
+  width: 100%; max-width: 200px; font: inherit; font-size: 14px; font-weight: 600;
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control); background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
 
 .pd-skipform {
   margin-top: 12px;
@@ -512,26 +554,76 @@
 .pd-md-table th { background: var(--surface); font-weight: 700; }
 
 /*  승인 뒤에 남는 게 한 줄 문장뿐이면 "내가 뭘 승인했더라"를 확인할 길이 원문 대조밖에
-    없다. 저장된 값을 그대로 표로 보여준다. */
-.pd-resolved { margin-top: 8px; }
-.pd-resolved table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    없다. 저장된 값을 그대로 표로 보여준다.
+    **결과가 카드의 결론**이라 눈에 먼저 들어와야 한다 — 아래 AI 설명·원문은 그 결과를
+    설명하거나 뒷받침하는 것들이다. **박스 안에 색칠된 박스**(카드 → 이 요소)로 두 겹
+    두르는 대신, 카드 헤더와 결과 사이를 얇은 선 하나로만 가른다 — 이미 바깥 `.pd-clause`
+    카드가 경계를 주고 있어서, 안에 또 테두리+배경을 두르면 "박스 속 박스"가 된다. */
+.pd-resolved {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.pd-resolved table { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); }
 .pd-resolved th,
-.pd-resolved td { border: 1px solid var(--border); padding: 5px 8px; }
+.pd-resolved td { border: 1px solid var(--border); padding: var(--space-2) var(--space-3); }
 .pd-resolved th { background: var(--surface-2); font-weight: 700; text-align: left; }
 .pd-resolved .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-/*  **결과가 카드의 결론**이라 눈에 먼저 들어와야 한다 — 아래 코멘트·메모·원문은 그 결과를
-    설명하거나 뒷받침하는 것들이다. */
-.pd-resolved {
-  border: 1px solid var(--border-strong); border-radius: var(--radius-control);
-  padding: 10px 12px; background: var(--surface-2);
+.pd-resolved-head { margin-bottom: var(--space-3); }
+/* ① 사람말 제목 — 카드에서 가장 먼저 읽혀야 할 한 줄. 카드 헤더의 짧은 이름표와
+   달리 여기서만 전체 설명 문장을 보여준다. */
+.pd-resolved-title {
+  font-size: var(--text-h4); font-weight: 700; color: var(--text); letter-spacing: -0.005em;
+  text-wrap: balance;
 }
-.pd-resolved-head { margin-bottom: 6px; line-height: 1.5; }
-.pd-resolved-head code {
-  font-size: 12.5px; font-weight: 700; color: var(--primary);
-  background: var(--primary-soft); padding: 1px 5px; border-radius: 4px;
+/* ② 이 표가 무엇으로 값을 고르는지 — 축 경로가 아니라 사람말 문장. */
+.pd-resolved-sub { margin-top: 4px; font-size: var(--text-meta); color: var(--muted); line-height: 1.55; }
+/* ③ DSL 참조줄 — 추적용으로 남기되 위계에서는 가장 아래, 가장 작게. */
+.pd-resolved-ref { margin-top: 6px; font-size: 10.5px; color: var(--muted); }
+.pd-resolved-ref code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: inherit; font-weight: 600; color: var(--muted); background: none; padding: 0;
 }
-.pd-resolved table { background: var(--surface); }
+.pd-resolved-ref span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* 축 없이 값 하나뿐인 표 — 카드의 결론이 되는 숫자라 눈에 띄게 키운다. KPI 카드의
+   "가장 중요한 숫자" 크기(--text-hero)를 그대로 재사용한다 — 이 화면만의 새 크기를
+   만들지 않고, 앱이 이미 "핵심 숫자"에 쓰는 크기를 그대로 가져온다. */
+.pd-resolved-single {
+  font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); color: var(--text);
+  letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+}
+
+/* 대조·확인용 표라 행 클릭처럼 읽히면 안 된다(.pd-table-wrap과 같은 이유로 끈다). */
+.pd-resolved .table tbody tr:hover { background: transparent; cursor: default; }
+/* 은은한 줄무늬 — 열이 많은 2축 표에서 행을 눈으로 따라가기 쉽게. */
+.pd-resolved .table tbody tr:nth-child(even) td { background: var(--surface-2); }
+/* 가로 스크롤이 생기는 2축 표에서 첫 열(행 라벨)은 고정 — 오른쪽 열까지 스크롤해도
+   "이게 무슨 행이었더라"를 잃지 않는다. */
+.pd-resolved .table th:first-child,
+.pd-resolved .table td:first-child { position: sticky; left: 0; border-right: 1px solid var(--border-strong); }
+.pd-resolved .table th:first-child { background: var(--surface-2); z-index: 1; }
+.pd-resolved .table td:first-child { background: var(--surface); font-weight: 600; }
+.pd-resolved .table tbody tr:nth-child(even) td:first-child { background: var(--surface-2); }
+
+/* AI 설명 토글 — 코멘트·통과 검사·메모를 한 곳에 접어 둔다(예전엔 박스 3개가 항상
+   펼쳐져 있었다). 칩 모양으로 눌러도 되는 요소처럼 보이게 한다(기존 .tag.ai와 같은
+   primary-soft 어휘 재사용 — 새 색을 만들지 않는다). */
+.pd-ai-fold { margin-top: var(--space-3); }
+.pd-ai-fold > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--primary);
+  padding: 7px var(--space-3); background: var(--primary-soft); border-radius: var(--radius-control);
+  user-select: none; transition: filter 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.pd-ai-fold > summary::-webkit-details-marker { display: none; }
+.pd-ai-fold > summary:hover { filter: brightness(0.97); }
+.pd-ai-fold > summary::after { content: '▾'; margin-left: auto; font-size: 10px; }
+.pd-ai-fold[open] > summary::after { content: '▴'; }
+.pd-ai-fold-body { padding: var(--space-3) var(--space-1) 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.pd-ai-fold-body .pd-ai-line { margin-top: var(--space-2); }
+.pd-ai-fold-body .pd-ai-line:first-child { margin-top: 0; }
 
 /*  접기 — 원문 대조·값 고치기처럼 **필요한 사람만 여는 것**. 늘 펼쳐 두면 카드가 길어져
     결론이 안 보인다(예전 상태: 결과를 보려면 여섯 블록을 지나야 했다). */

@@ -363,7 +363,14 @@ export function PolicyDocuments() {
                 등록일 {selected.uploadedAt?.slice(0, 10)}
                 {selected.fileSize > 0 && <> · 크기 {fmtSize(selected.fileSize)}</>}
                 · 조항 {selected.clauseCount}개
-                {selected.reviewCount > 0 && <> · 확인이 필요한 조항 {selected.reviewCount}개</>}
+                {selected.reviewCount > 0 && (
+                  // 이 줄의 다른 사실(등록일·크기)은 참고용이지만 이건 할 일이다.
+                  // --tone-amber는 갈색조라 굵은 텍스트만으로는 눈에 잘 안 띄어서
+                  // (실측: 색이 있는데도 "안 바뀌었다"로 보고됨) 배경 있는 배지로 바꾼다.
+                  <span className="pd-badge amber" style={{ marginLeft: 6 }}>
+                    확인 필요 {selected.reviewCount}개
+                  </span>
+                )}
                 {selected.profile && (
                   // 유형이 컬렉션을 정하고, 컬렉션이 "판정에 인용되는가"를 정한다.
                   // 사람이 지정한 값이면 자동 감지가 아니라는 것도 같이 밝힌다.
@@ -380,9 +387,15 @@ export function PolicyDocuments() {
                 )}
               </div>
 
+              {/* docling 모킹 경고 등 — 문서 주석의 의도는 "노란 배너"다(§rag-ingestion).
+                  텍스트 색만 바꾼 회색 박스는 다른 안내문과 구분이 안 갔다 — 이미 있는
+                  .note.caution/.error(배경+테두리)로 실제 경고처럼 보이게 한다. */}
               {selected.error && (
-                <div className="note" style={{ margin: '8px 0', whiteSpace: 'pre-wrap', color: selected.status === 'FAILED' ? 'var(--tone-red)' : 'var(--tone-amber)' }}>
-                  {selected.error}
+                <div className={`note ${selected.status === 'FAILED' ? 'error' : 'caution'}`} style={{ margin: '8px 0', whiteSpace: 'pre-wrap' }}>
+                  <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
+                  {/* 백엔드 문구가 이미 "⚠ "로 시작한다(docling 모킹 경고) — 위 아이콘과
+                      겹쳐 세모가 두 번 찍히지 않게 선행 기호만 걷어낸다. */}
+                  {selected.error.replace(/^[⚠️\s]+/, '')}
                 </div>
               )}
               {selected.ruleTrigger?.detail && (
@@ -410,8 +423,10 @@ export function PolicyDocuments() {
                       </span>
                     )}
                   </div>
-                  <div className="note">
-                    승인하면 이 표의 값이 <b>모든 정산 판정</b>에 쓰입니다. 표 원문과 값을 대조한 뒤 눌러주세요.
+                  {/* 문서마다 항상 같은 고정 안내문 — 매번 같은 무게의 박스로 띄우면
+                      실제 경고(위 docling 배너)·건별 정보와 구분이 안 간다. 캡션 한 줄로. */}
+                  <div className="text-meta" style={{ marginBottom: 4 }}>
+                    승인하면 이 표의 값이 모든 정산 판정에 쓰여요 — 표 원문과 대조한 뒤 눌러주세요.
                   </div>
                   {orderedProposals.map((proposal) => (
                     <TableProposalCard

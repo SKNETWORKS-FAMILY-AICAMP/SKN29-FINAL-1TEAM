@@ -12,7 +12,7 @@
 //
 // `SKIPPED`는 AI가 "임계값 표가 아니다"라고 본 것이다. 조용히 버리지 않고 사유와 함께
 // 남긴다 — 안 그러면 담당자는 「표가 있는데 왜 후보가 없지」를 스스로 알아내야 한다.
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, Table2, X } from 'lucide-react'
 import type { AxisOption, PolicyTableProposal } from '../../types/domain'
 import { Markdown } from '../../components/ui/Markdown'
@@ -40,12 +40,190 @@ const STATUS_META: Record<PolicyTableProposal['status'], { label: string; tone: 
   SKIPPED: { label: '생성 안 함', tone: 'var(--muted)' },
 }
 
-const CHECK_TONE: Record<string, string> = {
-  ok: 'var(--tone-green)', info: 'var(--muted)', warn: 'var(--tone-amber)',
+/** 축 경로(`tx.dining.headcount`)를 사람이 읽는 라벨로 바꾼다. 목록에 없는 축(이전
+ *  적재의 잔재)은 원래 경로를 그대로 남긴다 — 조용히 다른 이름으로 보이면 안 된다. */
+function axisLabel(path: string, options: AxisOption[]): string {
+  return options.find((o) => o.path === path)?.section ?? path
 }
 
-/** 중첩 payload를 사람이 고칠 수 있게 JSON 텍스트로 편다. 표 구조가 자유형식이라
- *  칸을 나눠 그리면 축이 2개인 표에서 곧 안 맞는다 — 원문 대조가 진짜 검증이다. */
+/** "무엇으로 값을 고르는가"를 한 문장으로. 개발자 경로 대신 사람말 라벨을 쓴다 —
+ *  DSL 경로는 `pd-resolved-ref`(하단 참조줄)에서만 보인다. */
+function axisSentence(axes: string[], options: AxisOption[]): string {
+  if (!axes.length) return '축 구분 없이 모든 정산 건에 같은 값이 적용돼요.'
+  return `정산 건의 ${axes.map((a) => axisLabel(a, options)).join(' · ')}에 따라 값이 달라져요.`
+}
+
+/** AI 확신도를 문장 속 숫자가 아니라 제목 옆 작은 칩으로 — 읽는 정보가 아니라
+ *  훑는 정보라서다. 낮을수록 눈에 띄어야 하니 색은 구간별로 다르게. */
+function ConfidenceChip({ value }: { value: number }) {
+  const pct = Math.round((value ?? 0) * 100)
+  const tone = pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'red'
+  return <span className={`pd-chip ${tone}`}>확신 {pct}%</span>
+}
+
+/** 셀 입력 문자열 → 저장값. 숫자로 읽히면 숫자로, 아니면 문자열 그대로 —
+ *  회계 담당자가 "30,000" 대신 "30000"만 치면 되게 쉼표는 미리 걷어낸다. */
+function parseCellValue(raw: string): unknown {
+  const trimmed = raw.trim()
+  if (trimmed === '') return ''
+  const n = Number(trimmed.replace(/,/g, ''))
+  return trimmed !== '' && Number.isFinite(n) ? n : raw
+}
+
+const cellText = (v: unknown) => (v === undefined || v === null ? '' : String(v))
+
+/** 축이 0개인 표 — 값 하나. */
+function SingleValueEditor({ value, onChange, disabled }: {
+  value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; disabled: boolean
+}) {
+  return (
+    <input
+      className="pd-grid-single" disabled={disabled} value={cellText(value.value)}
+      onChange={(e) => onChange({ ...value, value: parseCellValue(e.target.value) })}
+    />
+  )
+}
+
+/** 축이 1개인 표 — 행 키·값 두 열의 편집 가능한 표. 행 순서를 배열로 들고 있어서
+ *  키를 고치는 중에도(매 글자마다) 행이 재정렬되며 포커스를 잃지 않는다
+ *  (Record를 바로 펼쳐 다시 만들면 rename이 곧 삭제+append라 순서가 흔들린다). */
+function AxisTableEditor({ label, value, onChange, disabled }: {
+  label: string; value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; disabled: boolean
+}) {
+  const [rows, setRows] = useState(() => Object.entries(value).map(([k, v], id) => ({ id, key: k, value: cellText(v) })))
+  const nextId = useRef(rows.length)
+  const commit = (next: typeof rows) => {
+    setRows(next)
+    const payload: Record<string, unknown> = {}
+    for (const r of next) if (r.key.trim()) payload[r.key] = parseCellValue(r.value)
+    onChange(payload)
+  }
+  return (
+    <table className="pd-grid">
+      <thead><tr><th>{label}</th><th className="num">값</th><th /></tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={r.id}>
+            <td>
+              <input value={r.key} disabled={disabled} placeholder="* = 그 외"
+                     onChange={(e) => commit(rows.map((row, j) => (j === i ? { ...row, key: e.target.value } : row)))} />
+            </td>
+            <td>
+              <input className="num" value={r.value} disabled={disabled}
+                     onChange={(e) => commit(rows.map((row, j) => (j === i ? { ...row, value: e.target.value } : row)))} />
+            </td>
+            <td>
+              <button className="btn sm" disabled={disabled} onClick={() => commit(rows.filter((_, j) => j !== i))}>
+                <X size={11} />
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colSpan={3}>
+            <button className="btn sm" disabled={disabled}
+                    onClick={() => commit([...rows, { id: nextId.current++, key: '', value: '' }])}>
+              행 추가
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  )
+}
+
+type GridCol = { id: number; key: string }
+type GridRow2 = { id: number; key: string; cells: Record<number, string> }
+
+/** 축이 2개인 표 — 행×열 그리드. 셀은 열 id로 찾는다(열 이름을 고치는 중에도 다른
+ *  행의 값이 밀리지 않게 — 열 이름이 아니라 열 순서가 셀의 진짜 주소다). */
+function Grid2Editor({ labels, value, onChange, disabled }: {
+  labels: [string, string]; value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; disabled: boolean
+}) {
+  const [{ rows, cols }, setState] = useState<{ rows: GridRow2[]; cols: GridCol[] }>(() => {
+    const colKeys = [...new Set(
+      Object.values(value).flatMap((r) => (r && typeof r === 'object' ? Object.keys(r as object) : [])),
+    )]
+    const cols: GridCol[] = colKeys.map((key, id) => ({ id, key }))
+    const rows: GridRow2[] = Object.entries(value).map(([key, row], id) => ({
+      id, key,
+      cells: Object.fromEntries(cols.map((c) => [c.id, cellText(row && typeof row === 'object' ? (row as Record<string, unknown>)[c.key] : undefined)])),
+    }))
+    return { rows, cols }
+  })
+  const rowSeq = useRef(rows.length)
+  const colSeq = useRef(cols.length)
+
+  const commit = (rows: GridRow2[], cols: GridCol[]) => {
+    setState({ rows, cols })
+    const payload: Record<string, unknown> = {}
+    for (const r of rows) {
+      if (!r.key.trim()) continue
+      const rowObj: Record<string, unknown> = {}
+      for (const c of cols) if (c.key.trim()) rowObj[c.key] = parseCellValue(r.cells[c.id] ?? '')
+      payload[r.key] = rowObj
+    }
+    onChange(payload)
+  }
+
+  return (
+    <div className="pd-grid-scroll">
+      <table className="pd-grid">
+        <thead>
+          <tr>
+            <th title={`${labels[0]} \\ ${labels[1]}`}>{labels[0]} \ {labels[1]}</th>
+            {cols.map((c, ci) => (
+              <th key={c.id}>
+                <input value={c.key} disabled={disabled}
+                       onChange={(e) => commit(rows, cols.map((col, j) => (j === ci ? { ...col, key: e.target.value } : col)))} />
+              </th>
+            ))}
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, ri) => (
+            <tr key={r.id}>
+              <td>
+                <input value={r.key} disabled={disabled} placeholder="* = 그 외"
+                       onChange={(e) => commit(rows.map((row, j) => (j === ri ? { ...row, key: e.target.value } : row)), cols)} />
+              </td>
+              {cols.map((c) => (
+                <td key={c.id}>
+                  <input className="num" disabled={disabled} value={r.cells[c.id] ?? ''}
+                         onChange={(e) => commit(
+                           rows.map((row, j) => (j === ri ? { ...row, cells: { ...row.cells, [c.id]: e.target.value } } : row)),
+                           cols,
+                         )} />
+                </td>
+              ))}
+              <td>
+                <button className="btn sm" disabled={disabled} onClick={() => commit(rows.filter((_, j) => j !== ri), cols)}>
+                  <X size={11} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="row" style={{ gap: 6, marginTop: 6 }}>
+        <button className="btn sm" disabled={disabled}
+                onClick={() => commit([...rows, { id: rowSeq.current++, key: '', cells: {} }], cols)}>
+          행 추가
+        </button>
+        <button className="btn sm" disabled={disabled}
+                onClick={() => commit(rows, [...cols, { id: colSeq.current++, key: '' }])}>
+          열 추가
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** 중첩 payload를 사람이 고칠 수 있게 JSON 텍스트로 편다. 축이 3개 이상인 드문 표만
+ *  이 폼을 쓴다(0~2개는 위의 표 모양 그리드로 충분하다). */
 function PayloadEditor({ value, onChange, disabled }: {
   value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; disabled: boolean
 }) {
@@ -120,25 +298,35 @@ const TODAY = new Date().toISOString().slice(0, 10)
  *  승인했더라"를 확인할 길이 원문 대조밖에 없다. 축이 0~2개인 실제 모양만 그리고, 그보다
  *  깊으면 **접지 않고 JSON을 보여준다** — 잘못 접어 보여주느니 날것이 낫다.
  */
-function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
+function ResolvedTable({ proposal, axisOptions }: { proposal: PolicyTableProposal; axisOptions: AxisOption[] }) {
   const axes = proposal.keyAxes ?? []
   const payload = (proposal.payload ?? {}) as Record<string, unknown>
   const label = (key: string) => (key === '*' ? '그 외(기본값)' : key)
   const cell = (v: unknown) =>
     typeof v === 'number' ? v.toLocaleString() : String(v ?? '—')
+  const field = (proposal.key || '').replace(/_table$/, '') || '이름 없음'
 
   //  **무엇이 되는지가 표보다 먼저다.** 숫자만 보면 「어느 판정 변수에 어떤 축으로
   //  들어가는가」를 알 수 없고, 그게 승인에서 실제로 판단할 것이다.
+  //  사람말이 1번 줄, DSL 경로(`policy.xxx`·축 원문)는 참조용으로 맨 아래 작게 —
+  //  개발자 어휘를 지우는 게 아니라(추적은 되어야 한다) 위계에서만 내린다.
   const head = (
     <div className="pd-resolved-head">
-      <code>policy.{(proposal.key || '').replace(/_table$/, '') || '이름 없음'}</code>
-      <span className="text-meta">
-        {axes.length === 0
-          ? ' · 축 없음'
-          : ` · 축 ${axes.map((a) => `\`${a}\``).join(' × ')}`}
-        {proposal.effectiveDate ? ` · ${proposal.effectiveDate} 시행` : ''}
-        {proposal.strictKeys ? ' · 축 값 모르면 미적용' : ''}
-      </span>
+      <div className="pd-resolved-title">
+        {proposal.title || proposal.sourceLabel || '이름 없는 표'}
+        <ConfidenceChip value={proposal.confidence} />
+      </div>
+      <div className="pd-resolved-sub">
+        {axisSentence(axes, axisOptions)}
+        {proposal.effectiveDate && ` ${proposal.effectiveDate}부터 적용돼요.`}
+        {proposal.strictKeys && ' 해당 사항을 모르면 이 표는 적용하지 않아요.'}
+      </div>
+      <div className="pd-resolved-ref">
+        <code>policy.{field}</code>
+        {axes.map((a) => (
+          <span key={a} title={axisOptions.find((o) => o.path === a)?.desc}> · {a}</span>
+        ))}
+      </div>
     </div>
   )
 
@@ -150,15 +338,13 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
   )
 
   if (axes.length === 0) {
-    return wrap(
-      <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{cell(payload.value)}</div>,
-    )
+    return wrap(<div className="pd-resolved-single">{cell(payload.value)}</div>)
   }
 
   if (axes.length === 1) {
     return wrap(
       <table className="table">
-          <thead><tr><th>{axes[0]}</th><th className="num">값</th></tr></thead>
+          <thead><tr><th title={axes[0]}>{axisLabel(axes[0], axisOptions)}</th><th className="num">값</th></tr></thead>
           <tbody>
             {Object.entries(payload).map(([k, v]) => (
               <tr key={k}>
@@ -181,7 +367,9 @@ function ResolvedTable({ proposal }: { proposal: PolicyTableProposal }) {
       <table className="table">
           <thead>
             <tr>
-              <th>{axes[0]} \ {axes[1]}</th>
+              <th title={`${axes[0]} \\ ${axes[1]}`}>
+                {axisLabel(axes[0], axisOptions)} \ {axisLabel(axes[1], axisOptions)}
+              </th>
               {cols.map((c) => <th key={c} className="num">{label(c)}</th>)}
             </tr>
           </thead>
@@ -239,18 +427,19 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
     <div className="pd-clause">
       <button type="button" className="pd-clause-head" onClick={() => setOpen(!open)}>
         <Table2 size={13} style={{ flexShrink: 0 }} />
-        <span className="pd-clause-title">
-          {proposal.sourceLabel || proposal.key || '이름 없는 표'}
-          {proposal.title && <span className="text-meta"> · {proposal.title}</span>}
-        </span>
+        {/* 헤더는 짧은 이름표(source label)만 — 전체 설명 문장은 펼쳤을 때 본문
+            제목(.pd-resolved-title)에서 한 번만 보여준다(예전엔 여기·본문 두 곳에
+            같은 긴 문장이 반복됐다). */}
+        <span className="pd-clause-title">{proposal.sourceLabel || proposal.title || proposal.key || '이름 없는 표'}</span>
         {proposal.checks.some((c) => c.level === 'warn') && proposal.status === 'PENDING' && (
           <span className="pd-badge" style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
             검사 {proposal.checks.filter((c) => c.level === 'warn').length}
           </span>
         )}
+        {/* 승인을 막는 문제라 통과 경고(위 배지, amber)와 색을 다르게 해 구분한다. */}
         {proposal.problems.length > 0 && proposal.status === 'PENDING' && (
-          <span className="pd-badge" style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
-            확인 {proposal.problems.length}
+          <span className="pd-badge" style={{ background: 'var(--tone-red-bg)', color: 'var(--tone-red)' }}>
+            승인 전 확인 {proposal.problems.length}
           </span>
         )}
         <span className="pd-badge" style={{ color: meta.tone }}>{meta.label}</span>
@@ -267,7 +456,7 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
                 ? proposal.skipReason || '임계값 표가 아니라고 판단했습니다.'
                 //  접힌 상태에서 먼저 보여줄 것은 **사람 말 설명**이다. 확신도만 있으면
                 //  담당자는 숫자를 보고도 무엇을 확인할지 모른다.
-                : `${proposal.comment || proposal.notes || '표를 확인해 주세요'} (AI 확신도 ${Math.round(proposal.confidence * 100)}%)`}
+                : `${proposal.comment || proposal.notes || '표를 확인해 주세요'} · 확신 ${Math.round(proposal.confidence * 100)}%`}
         </div>
       )}
 
@@ -289,61 +478,44 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
             </div>
           ) : (
             <>
-              {/* ① 처리된 결과 — 1·2축은 표로, 3축 이상은 JSON으로. */}
-              <ResolvedTable proposal={proposal} />
+              {/* ① 처리된 결과 — 1·2축은 표로, 3축 이상은 JSON으로. 확신도는 제목 옆 칩. */}
+              <ResolvedTable proposal={proposal} axisOptions={axisOptions} />
 
-              {/* ② 사람 말 설명. 확신도를 같이 붙여 「얼마나 믿을 값인가」를 한 줄에. */}
-              {proposal.comment && (
-                <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-                  <b>AI 코멘트</b> · 확신도 {Math.round(proposal.confidence * 100)}%
-                  <div style={{ marginTop: 4 }}>{proposal.comment}</div>
-                </div>
-              )}
-
-              {/* ③ 확인이 필요한 것만 펴 둔다. **통과 항목까지 항상 펼치면 경고가 묻힌다** —
-                  검사를 했다는 사실은 요약 줄로 전하고, 통과 내역은 접는다. */}
+              {/* ② AI가 하는 말을 한 곳에 — 코멘트·통과한 자동검사·메모. 예전엔 이 셋이
+                  박스 3개로 항상 펼쳐져 있었다. 문제가 없으면 안 읽어도 되는 정보라
+                  기본은 접는다(승인/반려에 필요한 건 위 표뿐이다). */}
               {(() => {
-                const warns = proposal.checks.filter((c) => c.level === 'warn')
-                const rest = proposal.checks.filter((c) => c.level !== 'warn')
+                const passed = proposal.checks.filter((c) => c.level !== 'warn')
+                if (!proposal.comment && !proposal.notes && !passed.length) return null
                 return (
-                  <>
-                    {warns.length > 0 && (
-                      <div className="note" style={{ borderColor: 'var(--tone-amber)' }}>
-                        <div className="row" style={{ gap: 6, alignItems: 'center', color: 'var(--tone-amber)' }}>
-                          <AlertTriangle size={13} /> <b>확인이 필요합니다</b>
+                  <details className="pd-ai-fold">
+                    <summary>AI 설명 보기 <span className="text-meta">근거 · 검사결과</span></summary>
+                    <div className="pd-ai-fold-body">
+                      {proposal.comment && <div className="pd-ai-line">{proposal.comment}</div>}
+                      {passed.length > 0 && (
+                        <div className="pd-ai-line">
+                          자동 검사 {passed.length}건 통과 — {passed.map((c) => c.message).join(' · ')}
                         </div>
-                        {warns.map((c, i) => (
-                          <div key={i} style={{ marginTop: 4 }}>· {c.message}</div>
-                        ))}
-                      </div>
-                    )}
-                    {rest.length > 0 && (
-                      <details className="pd-fold">
-                        <summary>
-                          자동 검사 <span className="text-meta">{rest.length}건 통과</span>
-                        </summary>
-                        {rest.map((c, i) => (
-                          <div key={i} style={{ marginTop: 4, color: CHECK_TONE[c.level] }}>
-                            {c.level === 'ok' ? '✓' : '·'} {c.message}
-                          </div>
-                        ))}
-                      </details>
-                    )}
-                  </>
+                      )}
+                      {proposal.notes && <div className="pd-ai-line">{proposal.notes}</div>}
+                    </div>
+                  </details>
                 )
               })()}
 
-              {/* ④ AI 메모 — **결과 다음**이다. 못 옮긴 열·애매한 머리글·표기 변환 기록처럼
-                  「결과를 보고 나서」 의미가 생기는 단서라, 결과 앞에 두면 무슨 말인지 모른다. */}
-              {proposal.notes && (
-                <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-                  <b>AI 메모</b>
-                  <span className="text-meta"> — 옮기며 판단한 것·확인이 남은 것</span>
-                  <div style={{ marginTop: 4 }}>{proposal.notes}</div>
+              {/* ③ 확인이 필요한 것 — 승인을 막진 않지만 눈에 띄어야 해서 접지 않는다. */}
+              {proposal.checks.some((c) => c.level === 'warn') && (
+                <div className="note" style={{ borderColor: 'var(--tone-amber)' }}>
+                  <div className="row" style={{ gap: 6, alignItems: 'center', color: 'var(--tone-amber)' }}>
+                    <AlertTriangle size={13} /> <b>확인이 필요합니다</b>
+                  </div>
+                  {proposal.checks.filter((c) => c.level === 'warn').map((c, i) => (
+                    <div key={i} style={{ marginTop: 4 }}>· {c.message}</div>
+                  ))}
                 </div>
               )}
 
-              {/* ⑤ 지금 누르면 걸릴 문제 — 누른 뒤가 아니라 누르기 전에. */}
+              {/* ④ 지금 누르면 걸릴 문제 — 누른 뒤가 아니라 누르기 전에. */}
               {proposal.status === 'PENDING' && proposal.problems.length > 0 && (
                 <div className="note" style={{ borderColor: 'var(--tone-red)', color: 'var(--tone-red)' }}>
                   <div className="row" style={{ gap: 6, alignItems: 'center' }}>
@@ -403,8 +575,27 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
 
               <div className="pd-field">
                 <label>표 내용</label>
-                <PayloadEditor value={draft.payload} disabled={locked}
-                               onChange={(payload) => setDraft({ ...draft, payload })} />
+                {/* 축 0~2개는 표 모양 그대로 셀을 고친다 — JSON 문법을 몰라도 된다.
+                    축 3개 이상은 드문 경우라 JSON 폴백을 그대로 둔다. */}
+                {draft.keyAxes.length === 0 && (
+                  <SingleValueEditor value={draft.payload} disabled={locked}
+                                     onChange={(payload) => setDraft({ ...draft, payload })} />
+                )}
+                {draft.keyAxes.length === 1 && (
+                  <AxisTableEditor label={axisLabel(draft.keyAxes[0], axisOptions)} value={draft.payload} disabled={locked}
+                                   onChange={(payload) => setDraft({ ...draft, payload })} />
+                )}
+                {draft.keyAxes.length === 2 && (
+                  <Grid2Editor
+                    labels={[axisLabel(draft.keyAxes[0], axisOptions), axisLabel(draft.keyAxes[1], axisOptions)]}
+                    value={draft.payload} disabled={locked}
+                    onChange={(payload) => setDraft({ ...draft, payload })}
+                  />
+                )}
+                {draft.keyAxes.length >= 3 && (
+                  <PayloadEditor value={draft.payload} disabled={locked}
+                                 onChange={(payload) => setDraft({ ...draft, payload })} />
+                )}
               </div>
 
               <div className="row" style={{ gap: 16, flexWrap: 'wrap' }}>
@@ -482,7 +673,7 @@ export function TableProposalCard({ proposal, axisOptions, busy, onSave, onDecid
                     </div>
                     {/* **무엇이 저장됐는지**를 보여준다. 승인 뒤에 남는 게 한 줄 문장뿐이면
                         "내가 뭘 승인했더라"를 확인할 길이 원문 대조밖에 없다. */}
-                    <ResolvedTable proposal={proposal} />
+                    <ResolvedTable proposal={proposal} axisOptions={axisOptions} />
                   </>
                 )}
               </div>
