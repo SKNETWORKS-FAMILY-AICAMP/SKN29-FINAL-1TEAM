@@ -1,6 +1,10 @@
-// 조항 아코디언 — 목업 S-05 v4 ③ 우측 패널.
+// 조항 — S-05 작업 중심 재구성.
 //
-// 조 하나가 하나의 카드다. 담당자가 여기서 보는 것은 세 가지이고, 그게 곧 세 상태다:
+// 목록(ClauseListRow)에서 조를 고르면 상세(ClauseDetail)가 오른쪽에 뜨는 목록→상세
+// 패턴이다(예전엔 조마다 아코디언이 펼쳐졌다 — 조가 수십 개면 스크롤이 길어지고,
+// 담당자가 지금 무엇을 보고 있는지 스크롤 위치로만 알 수 있었다).
+//
+// 담당자가 여기서 보는 것은 세 가지이고, 그게 곧 세 상태다:
 //   · 규칙 연결됨   — 이 조항이 어떤 자동 판단으로 이어졌는지(쉬운 문장으로)
 //   · 확인 필요     — 아직 아무 결정도 안 된 조항. 규칙을 만들지, 만들지 않을지 정해야 한다
 //   · 규칙 생성 안 함 — 사람이 "안 만들겠다"고 정한 조항 + 그 사유
@@ -17,7 +21,7 @@ import {
  *  한 배지로 합치면 "AI가 제외로 봤다"와 "사람이 제외로 정했다"가 구분되지 않는다.
  *  색·모양은 화면 전체가 공유하는 `.pd-badge`(policy-docs.css)를 그대로 쓴다 —
  *  여기서 따로 만들면 별표 카드(TableProposalPanel)의 배지와 미묘하게 달라진다. */
-function PriorityBadge({ clause }: { clause: PolicyClause }) {
+export function PriorityBadge({ clause }: { clause: PolicyClause }) {
   if (!clause.triagePriority && !clause.triageKind) return null
   const meta = PRIORITY_META[clause.triagePriority]
   const kind = CLAUSE_KIND_META[clause.triageKind]?.label
@@ -28,7 +32,7 @@ function PriorityBadge({ clause }: { clause: PolicyClause }) {
   )
 }
 
-function StatusBadge({ status }: { status: ClauseRuleStatus }) {
+export function StatusBadge({ status }: { status: ClauseRuleStatus }) {
   const meta = CLAUSE_STATUS_META[status]
   return <span className={`pd-badge ${meta.tone}`}>{meta.label}</span>
 }
@@ -72,131 +76,150 @@ function SkipForm({ onCancel, onSubmit, busy }: {
   )
 }
 
-export function ClauseCard({ clause, expanded, onToggle, onSkip, onReset, onCreateRule, busy }: {
+// 청킹이 주는 `articleTitle`은 조 라벨을 **이미 포함한 전체 헤딩**이다("제1조 (목적)").
+// 그걸 모르고 `라벨 + (제목)`으로 조합하면 "제1조(제1조 (목적))"이 된다(실측으로 잡음).
+// 라벨이 빠진 제목이 올 수도 있으므로 양쪽 모양을 다 받는다. 목록 행과 상세 패널이
+// 같은 헤딩을 써야 하므로 한 곳(함수)에만 둔다.
+function clauseHeading(clause: PolicyClause): string {
+  const title = clause.articleTitle?.trim() ?? ''
+  if (!title) return clause.articleLabel
+  if (title.startsWith(clause.articleLabel)) return title
+  return `${clause.articleLabel} ${title.startsWith('(') ? title : `(${title})`}`
+}
+
+function clausePeek(clause: PolicyClause): string {
+  if (clause.ruleStatus === 'SKIPPED' && clause.decisionReason) return `결정 사유: ${clause.decisionReason}`
+  if (clause.triageSummary) return clause.triageSummary
+  return `${clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ').slice(0, 70)}...`
+}
+
+/** 목록 행 — 가운데 열에서 조 하나를 고르는 자리. 본문은 여기서 보여주지 않는다
+ *  (한 줄 미리보기만) — 본문·근거·결정 버튼은 오른쪽 상세 패널의 몫이다. */
+export function ClauseListRow({ clause, active, onSelect }: {
   clause: PolicyClause
-  expanded: boolean
-  onToggle: () => void
+  active: boolean
+  onSelect: () => void
+}) {
+  const attn = clause.ruleStatus === 'NEEDS_REVIEW'
+  return (
+    <button
+      type="button"
+      className={'pd-list-row' + (active ? ' active' : '') + (attn ? ' attn' : '')}
+      onClick={onSelect}
+    >
+      <span className="pd-list-row-title">{clauseHeading(clause)}</span>
+      <span className="pd-list-row-badges">
+        <PriorityBadge clause={clause} />
+        <StatusBadge status={clause.ruleStatus} />
+      </span>
+      <span className="pd-list-row-peek">{clausePeek(clause)}</span>
+    </button>
+  )
+}
+
+/** 상세 패널 — 선택한 조 하나의 원문·AI 근거·연결된 규칙·결정 버튼. 목록에서 다른
+ *  조를 고르면(부모가 `key={clause.id}`로 이 컴포넌트를 새로 마운트해) `skipping` 같은
+ *  내부 상태가 자연히 초기화된다 — 여기서 직접 리셋할 필요가 없다. */
+export function ClauseDetail({ clause, onSkip, onReset, onCreateRule, busy }: {
+  clause: PolicyClause
   onSkip: (reason: string) => void
   onReset: () => void
   onCreateRule: () => void
   busy: boolean
 }) {
   const [skipping, setSkipping] = useState(false)
-  // 청킹이 주는 `articleTitle`은 조 라벨을 **이미 포함한 전체 헤딩**이다("제1조 (목적)").
-  // 그걸 모르고 `라벨 + (제목)`으로 조합하면 "제1조(제1조 (목적))"이 된다(실측으로 잡음).
-  // 라벨이 빠진 제목이 올 수도 있으므로 양쪽 모양을 다 받는다.
-  const title = clause.articleTitle?.trim() ?? ''
-  const heading = !title
-    ? clause.articleLabel
-    : title.startsWith(clause.articleLabel)
-      ? title
-      : `${clause.articleLabel} ${title.startsWith('(') ? title : `(${title})`}`
 
   return (
-    <div className={'pd-clause' + (expanded && clause.ruleStatus === 'NEEDS_REVIEW' ? ' pd-clause-attn' : '')}>
-      <button type="button" className="pd-clause-head" onClick={onToggle}>
-        <span className="pd-clause-title">{heading}</span>
-        <PriorityBadge clause={clause} />
-        <StatusBadge status={clause.ruleStatus} />
-        <span className="pd-caret">{expanded ? '⌃' : '⌄'}</span>
-      </button>
+    <div className="pd-detail-body">
+      <div className="pd-detail-title-row">
+        <h3 className="pd-detail-title">{clauseHeading(clause)}</h3>
+        <span className="row" style={{ gap: 6, flexShrink: 0 }}>
+          <PriorityBadge clause={clause} />
+          <StatusBadge status={clause.ruleStatus} />
+        </span>
+      </div>
 
-      {!expanded && (
-        <div className="pd-clause-peek">
-          {clause.ruleStatus === 'SKIPPED' && clause.decisionReason
-            ? `결정 사유: ${clause.decisionReason}`
-            : clause.triageSummary
-              ? clause.triageSummary
-              : `${clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ').slice(0, 60)}...`}
+      {/* AI 분류 근거 — 별표 상세의 "AI 설명 보기"와 같은 관용구로 통일한다. 분류
+          배지(위)는 이미 보이니, 왜 그렇게 분류했는지는 필요한 사람만 펴서 본다. */}
+      {clause.triageReason && (
+        <details className="pd-ai-fold">
+          <summary>
+            AI 설명 보기
+            <span className="text-meta" style={{ fontWeight: 400 }}>
+              {CLAUSE_KIND_META[clause.triageKind]?.label || '분류 없음'}
+              {clause.triagePriority && ` · ${PRIORITY_META[clause.triagePriority].label}`}
+            </span>
+          </summary>
+          <div className="pd-ai-fold-body">
+            <div className="pd-ai-line">{clause.triageReason}</div>
+            {clause.triageSummary && <div className="pd-ai-line">만들 규칙: {clause.triageSummary}</div>}
+          </div>
+        </details>
+      )}
+
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+        <span className="text-meta">원본 조항</span>
+        <CopyButton text={clause.body} />
+      </div>
+      <pre className="pd-markdown">{clause.body}</pre>
+
+      {clause.ruleStatus === 'LINKED' && (
+        <div className="pd-linked">
+          <b>이렇게 자동으로 판단돼요</b>
+          {clause.linkedRules.map((rule) => (
+            <div key={`${rule.graphId}-${rule.nodeKey}`} style={{ marginTop: 8 }}>
+              {/* conditionText는 "언제 걸리나요/걸리면 어떻게 되나요" 문장이다(DSL 아님). */}
+              {(rule.conditionText || rule.title).split('\n').map((line, i) => (
+                <div key={i} className="pd-linked-line">· {line}</div>
+              ))}
+              <a className="pd-link" href={`/rules?graph=${rule.graphId}&node=${rule.nodeKey}`}>
+                {rule.title || rule.nodeKey} 자세히 보기 →
+              </a>
+            </div>
+          ))}
         </div>
       )}
 
-      {expanded && (
-        <div className="pd-clause-body">
-          {/* AI 분류 근거 — 별표 카드의 "AI 설명 보기"와 같은 관용구로 통일한다. 분류
-              배지(위 PriorityBadge)는 이미 헤더에 보이니, 왜 그렇게 분류했는지는
-              필요한 사람만 펴서 본다(예전엔 조항마다 항상 펼쳐진 박스였다). */}
-          {clause.triageReason && (
-            <details className="pd-ai-fold">
-              <summary>
-                AI 검토 보기
-                <span className="text-meta" style={{ fontWeight: 400 }}>
-                  {CLAUSE_KIND_META[clause.triageKind]?.label || '분류 없음'}
-                  {clause.triagePriority && ` · ${PRIORITY_META[clause.triagePriority].label}`}
-                </span>
-              </summary>
-              <div className="pd-ai-fold-body">
-                <div className="pd-ai-line">{clause.triageReason}</div>
-                {clause.triageSummary && <div className="pd-ai-line">만들 규칙: {clause.triageSummary}</div>}
-              </div>
-            </details>
-          )}
-
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="text-meta">원본 조항 (Markdown)</span>
-            <CopyButton text={clause.body} />
+      {clause.ruleStatus === 'NEEDS_REVIEW' && !skipping && (
+        <div className="pd-decide">
+          <p>
+            {clause.triagePriority === 'SKIP'
+              // AI가 규칙 대상이 아니라고 본 조항. **차단하지 않는다** — 모델이 못
+              // 알아본 규칙이 반드시 있고, 통로가 없으면 그 조항은 영영 룰이 못 된다.
+              ? 'AI는 규칙 대상이 아니라고 봤어요. 그래도 필요하면 직접 만들 수 있어요.'
+              : '이 조항은 아직 자동 판단 규칙이 없어요. 규칙을 만들지, 만들지 않을지 결정해주세요.'}
+          </p>
+          <div className="row" style={{ gap: 8 }}>
+            <button className={'btn' + (clause.triagePriority === 'SKIP' ? '' : ' primary')}
+                    onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
+            <button className="btn" onClick={() => setSkipping(true)} disabled={busy}>
+              규칙 생성 안 함으로 표시
+            </button>
           </div>
-          <pre className="pd-markdown">{clause.body}</pre>
+        </div>
+      )}
 
-          {clause.ruleStatus === 'LINKED' && (
-            <div className="pd-linked">
-              <b>이렇게 자동으로 판단돼요</b>
-              {clause.linkedRules.map((rule) => (
-                <div key={`${rule.graphId}-${rule.nodeKey}`} style={{ marginTop: 8 }}>
-                  {/* conditionText는 "언제 걸리나요/걸리면 어떻게 되나요" 문장이다(DSL 아님). */}
-                  {(rule.conditionText || rule.title).split('\n').map((line, i) => (
-                    <div key={i} className="pd-linked-line">· {line}</div>
-                  ))}
-                  <a className="pd-link" href={`/rules?graph=${rule.graphId}&node=${rule.nodeKey}`}>
-                    {rule.title || rule.nodeKey} 자세히 보기 →
-                  </a>
-                </div>
-              ))}
-            </div>
-          )}
+      {skipping && (
+        <SkipForm
+          busy={busy}
+          onCancel={() => setSkipping(false)}
+          onSubmit={(reason) => { setSkipping(false); onSkip(reason) }}
+        />
+      )}
 
-          {clause.ruleStatus === 'NEEDS_REVIEW' && !skipping && (
-            <div className="pd-decide">
-              <p>
-                {clause.triagePriority === 'SKIP'
-                  // AI가 규칙 대상이 아니라고 본 조항. **차단하지 않는다** — 모델이 못
-                  // 알아본 규칙이 반드시 있고, 통로가 없으면 그 조항은 영영 룰이 못 된다.
-                  ? 'AI는 규칙 대상이 아니라고 봤어요. 그래도 필요하면 직접 만들 수 있어요.'
-                  : '이 조항은 아직 자동 판단 규칙이 없어요. 규칙을 만들지, 만들지 않을지 결정해주세요.'}
-              </p>
-              <div className="row" style={{ gap: 8 }}>
-                <button className={'btn' + (clause.triagePriority === 'SKIP' ? '' : ' primary')}
-                        onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
-                <button className="btn" onClick={() => setSkipping(true)} disabled={busy}>
-                  규칙 생성 안 함으로 표시
-                </button>
-              </div>
-            </div>
-          )}
-
-          {skipping && (
-            <SkipForm
-              busy={busy}
-              onCancel={() => setSkipping(false)}
-              onSubmit={(reason) => { setSkipping(false); onSkip(reason) }}
-            />
-          )}
-
-          {clause.ruleStatus === 'SKIPPED' && !skipping && (
-            <div className="pd-decided">
-              <div>
-                <b>결정 사유:</b> {clause.decisionReason}
-                {clause.decidedBy && <span className="text-meta"> · {clause.decidedBy}</span>}
-              </div>
-              <div className="row" style={{ gap: 6 }}>
-                {/* 「안 만들겠다」고 정한 뒤에도 만들 수 있다 — 결정은 되돌릴 수 있어야 한다. */}
-                <button className="btn sm" onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
-                <button className="btn sm" onClick={onReset} disabled={busy}>
-                  <X size={11} /> 수정
-                </button>
-              </div>
-            </div>
-          )}
+      {clause.ruleStatus === 'SKIPPED' && !skipping && (
+        <div className="pd-decided">
+          <div>
+            <b>결정 사유:</b> {clause.decisionReason}
+            {clause.decidedBy && <span className="text-meta"> · {clause.decidedBy}</span>}
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            {/* 「안 만들겠다」고 정한 뒤에도 만들 수 있다 — 결정은 되돌릴 수 있어야 한다. */}
+            <button className="btn sm" onClick={onCreateRule} disabled={busy}>규칙 생성하기</button>
+            <button className="btn sm" onClick={onReset} disabled={busy}>
+              <X size={11} /> 수정
+            </button>
+          </div>
         </div>
       )}
     </div>

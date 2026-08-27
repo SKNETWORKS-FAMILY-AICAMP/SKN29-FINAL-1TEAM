@@ -1,27 +1,27 @@
-// 규정 문서 관리 (목업 S-05 v4 ③ 폴더보기 - 문서 미리보기)
+// 규정 문서 관리 — S-05, 작업 중심으로 재구성(v5).
 //
-// 좌: 폴더 트리 / 우: 선택한 문서의 조(條) 단위 미리보기.
-// 목업 하단의 "확인 필요(3)" 노란 박스는 제외했다 — 같은 정보가 우측 조항 카드에 이미
-// 있고(확인 필요 배지 + 결정 버튼), 두 곳에서 같은 결정을 내릴 수 있으면 어느 쪽이
-// 최신인지 모르게 된다.
+// 예전엔 문서 메타·상태·별표·안내문·AI 설명·조항 원문·연결 규칙·버튼이 한 화면에
+// 세로로 계속 쌓여 글자가 많고 지금 뭘 해야 하는지 잘 안 보였다. 지금은 세 가지를
+// 빨리 알 수 있게 나눴다: ① 어떤 문서를 보고 있나(헤더) ② 지금 확인할 게 뭔가(탭+목록)
+// ③ 무엇을 해야 하나(상세 패널의 상태·버튼). 실제 목록·상세 렌더링은
+// `DocumentWorkspace`(조항)·`DecisionCasePanel`(사례)에 있고, 여기는 데이터 로딩과
+// 문서/폴더 선택만 맡는다.
 //
 // 업로드는 **접수만** 하고 파싱·청킹·임베딩·적재는 백그라운드로 돈다(문서당 수십 초~분).
 // 그래서 진행 중인 문서가 있을 때만 목록을 폴링한다.
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, FileText, RefreshCw, Scale, Search, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, Scale, Search, Upload } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
-  EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META, PRIORITY_META,
+  EMBEDDING_IN_PROGRESS,
   type AxisOption, type FolderDoc, type PolicyClause, type PolicyDocument,
   type PolicyFolder, type PolicyTableProposal,
 } from '../types/domain'
-import { KpiCard } from '../components/ui/KpiCard'
 import { SkeletonLines } from '../components/ui/Skeleton'
 import { FolderTree } from './policy-docs/FolderTree'
 import { DecisionCasePanel, monthLabel, useDecisionCases } from './policy-docs/DecisionCasePanel'
 import { UploadModal, type UploadInput } from './policy-docs/UploadModal'
-import { ClauseCard } from './policy-docs/ClauseAccordion'
-import { TableProposalCard } from './policy-docs/TableProposalPanel'
+import { DocumentWorkspace } from './policy-docs/DocumentWorkspace'
 import './policy-docs/policy-docs.css'
 
 // pdfjs-dist는 무겁다(수백KB) — 열 때만 불러온다. 목록·조항 화면은 대부분의 방문에서
@@ -29,12 +29,6 @@ import './policy-docs/policy-docs.css'
 const DocumentRenderModal = lazy(() => import('./policy-docs/DocumentRenderModal').then((m) => ({ default: m.DocumentRenderModal })))
 
 const POLL_MS = 4000
-// 판정 근거로 인용되는 컬렉션. org_docs(조직도·직급체계)는 여기 없다 — 결재선의 SoR은
-// 문서가 아니라 Django이고, 조직도가 정산 판정 근거로 인용되면 안 된다.
-const JUDGEMENT_COLLECTIONS = ['policy_docs', 'case_history', 'tax_refs']
-
-const fmtSize = (bytes: number) =>
-  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1024))}KB`
 
 export function PolicyDocuments() {
   const [folders, setFolders] = useState<PolicyFolder[]>([])
@@ -44,12 +38,8 @@ export function PolicyDocuments() {
   const [clauses, setClauses] = useState<PolicyClause[]>([])
   const [proposals, setProposals] = useState<PolicyTableProposal[]>([])
   const [axisOptions, setAxisOptions] = useState<AxisOption[]>([])
-  // 조항이 수십 개인 문서에서 "지금 할 일"만 보기 위한 필터. 기본은 전체 —
-  // 필터를 기본값으로 켜두면 안 보이는 조항이 있다는 걸 아무도 모른다.
-  const [onlyActionable, setOnlyActionable] = useState(false)
   //  제안 하나에 대한 실패 사유 — 카드 안에서 보여주려고 id와 함께 들고 있는다.
   const [proposalError, setProposalError] = useState<{ id: number; message: string } | null>(null)
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
   const [rendering, setRendering] = useState(false)
@@ -88,7 +78,6 @@ export function PolicyDocuments() {
     return () => clearInterval(timer)
   }, [docs, load])
 
-  // 선택한 문서의 조항. 첫 '확인 필요' 조항을 펼쳐 둔다 — 담당자가 할 일이 그것이다.
   const loadClauses = useCallback(async (id: string) => {
     try {
       const [clauseRes, tableRes] = await Promise.all([
@@ -97,15 +86,9 @@ export function PolicyDocuments() {
         // 보이지 않던 자리라, 조항과 **함께** 가져온다.
         endpoints.policyTableProposals(id),
       ])
-      const rows = clauseRes.data as PolicyClause[]
-      setClauses(rows)
+      setClauses(clauseRes.data as PolicyClause[])
       setProposals(tableRes.data.proposals ?? [])
       setAxisOptions(tableRes.data.axisOptions ?? [])
-      // 담당자가 먼저 볼 것 = 자동 생성됐거나 1순위인 확인 필요 조항. 분류가 없으면
-      // 예전대로 첫 '확인 필요'를 편다.
-      const first = rows.find((c) => c.ruleStatus === 'NEEDS_REVIEW' && c.triagePriority === 'P1')
-        ?? rows.find((c) => c.ruleStatus === 'NEEDS_REVIEW')
-      setExpanded(new Set(first ? [first.id] : []))
     } catch {
       setClauses([]); setProposals([])
       setError('조항을 불러오지 못했습니다.')
@@ -113,7 +96,7 @@ export function PolicyDocuments() {
   }, [])
 
   useEffect(() => {
-    if (!selectedId) { setClauses([]); return }
+    if (!selectedId) { setClauses([]); setProposals([]); return }
     void loadClauses(selectedId)
   }, [selectedId, loadClauses])
 
@@ -185,9 +168,8 @@ export function PolicyDocuments() {
       await loadClauses(selectedId)
     }, '별표 수정을 저장하지 못했습니다.')
 
-  //  ⚠️ 결정 실패는 **카드 안에서** 보여준다. 페이지 상단 배너로만 띄우면 목록을 스크롤해
-  //     내려간 상태에서 승인을 누른 사람에게는 화면 밖에서 뜬다 — 실제로 "승인을 눌러도
-  //     아무 반응이 없다"로 보고된 증상이 이것이었다(서버는 400과 사유를 주고 있었다).
+  //  ⚠️ 결정 실패는 **패널 안에서** 보여준다. 페이지 상단 배너로만 띄우면 스크롤해
+  //     내려간 상태에서 승인을 누른 사람에게는 화면 밖에서 뜬다.
   const decideProposal = async (
     id: number, action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>,
   ) => {
@@ -220,42 +202,15 @@ export function PolicyDocuments() {
       setError(data?.detail || '규칙을 만들지 못했습니다 — 룰 콘솔에서 직접 만들어 주세요.')
     }, '규칙 생성에 실패했습니다.')
 
-  // 우선순위 순으로 다시 세운다 — 순위를 보여주기만 하고 순서를 안 바꾸면 목록은
-  // 여전히 조 번호 순이라 아무 도움이 안 된다. 같은 순위면 원래 조 순서를 지킨다.
-  const orderedClauses = useMemo(() => {
-    const rows = onlyActionable
-      ? clauses.filter((c) => c.ruleStatus === 'NEEDS_REVIEW' && c.triagePriority !== 'SKIP')
-      : clauses
-    return [...rows].sort((a, b) =>
-      PRIORITY_META[a.triagePriority].rank - PRIORITY_META[b.triagePriority].rank)
-  }, [clauses, onlyActionable])
-
-  const triaged = clauses.some((c) => c.triagePriority)
-  const pendingTables = proposals.filter((p) => p.status === 'PENDING').length
-  const skippedTables = proposals.filter((p) => p.status === 'SKIPPED').length
-  //  **사람이 판단할 것이 먼저다.** AI가 「표가 아니다」라고 본 건(`SKIPPED`)은 버리지
-  //  않되 맨 뒤로 보낸다 — 대기 목록 사이에 섞이면 무엇을 처리해야 하는지 흐려진다.
-  const orderedProposals = useMemo(() => {
-    const rank = { PENDING: 0, APPROVED: 1, REJECTED: 2, SKIPPED: 3 } as const
-    return [...proposals].sort((a, b) => rank[a.status] - rank[b.status] || a.id - b.id)
-  }, [proposals])
-
   const kpi = useMemo(() => ({
     total: docs.length,
-    done: docs.filter((d) => d.status === 'DONE').length,
     busy: docs.filter((d) => EMBEDDING_IN_PROGRESS.includes(d.status)).length,
     review: docs.reduce((sum, d) => sum + (d.reviewCount || 0), 0),
   }), [docs])
 
-  const toggle = (id: number) => setExpanded((prev) => {
-    const next = new Set(prev)
-    next.has(id) ? next.delete(id) : next.add(id)
-    return next
-  })
-
   return (
     <>
-      <div className="hero-band">
+      <div className="hero-band pd-hero">
         <div className="page-head row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <span className="screen-id">규정문서</span>
@@ -268,11 +223,12 @@ export function PolicyDocuments() {
           </button>
         </div>
 
-        <div className="kpi-grid">
-          <KpiCard flat label="등록한 문서" value={kpi.total} unit="건" />
-          <KpiCard flat label="분석 완료" value={kpi.done} unit="건" />
-          <KpiCard flat warn={kpi.busy > 0} label="분석 중" value={kpi.busy} unit="건" />
-          <KpiCard flat warn={kpi.review > 0} label="확인이 필요한 조항" value={kpi.review} unit="개" />
+        {/* 예전의 4칸 KPI 카드 대신 한 줄 요약 — 값이 0인 상태는 아예 안 보여준다.
+            지금 처리해야 하는 「확인 필요」만 눈에 띄게 강조한다. */}
+        <div className="pd-status-row">
+          <span>등록 문서 <b>{kpi.total}</b>건</span>
+          {kpi.busy > 0 && <span className="pd-status-pill busy">분석 중 {kpi.busy}건</span>}
+          {kpi.review > 0 && <span className="pd-status-pill review">확인 필요 {kpi.review}건</span>}
         </div>
       </div>
 
@@ -285,217 +241,85 @@ export function PolicyDocuments() {
       )}
 
       <div className="page-inner">
-      <div className="pd-layout">
-        <aside className="card pd-tree">
-          <div className="pd-search">
-            <Search size={13} color="var(--muted)" />
-            <input placeholder="폴더나 문서 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
-          {loading
-            ? <div style={{ padding: 16 }}><SkeletonLines rows={5} /></div>
-            : (
-              <>
-                <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
-                            query={query} actions={treeActions} busy={busy} />
-                <CaseTree
+        <div className={'pd-shell' + (selectedId || casesOpen ? ' has-selection' : '')}>
+          <aside className="card pd-tree-pane">
+            <div className="pd-search">
+              <Search size={13} color="var(--muted)" />
+              <input placeholder="폴더나 문서 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            {loading
+              ? <div style={{ padding: 16 }}><SkeletonLines rows={5} /></div>
+              : (
+                <>
+                  <FolderTree folders={folders} unfiled={unfiled} selectedId={selectedId}
+                              query={query} actions={treeActions} busy={busy} />
+                  <CaseTree
+                    months={cases.months}
+                    selected={caseMonth}
+                    onSelect={(m) => { setCaseMonth(m); setSelectedId(null) }}
+                  />
+                  {/* 문서 행에도 같은 안내가 title 툴팁으로 있지만(FolderTree.tsx),
+                      호버해야만 보여 놓치기 쉽다 — 트리 하단에 한 줄로 짧게 남긴다.
+                      문서가 있을 때만: 옮길 게 없으면 필요 없는 안내다. */}
+                  {(folders.length > 0 || unfiled.length > 0) && (
+                    <div className="pd-tree-hint text-meta">문서를 드래그하면 폴더로 옮길 수 있어요</div>
+                  )}
+                </>
+              )}
+          </aside>
+
+          <div className="pd-content-pane">
+            {casesOpen ? (
+              <div className="card pd-cases-card">
+                <button type="button" className="pd-back-to-tree" onClick={() => setCaseMonth(null)}>← 문서함</button>
+                <DecisionCasePanel
+                  month={caseMonth ?? ''}
                   months={cases.months}
-                  selected={caseMonth}
-                  onSelect={(m) => { setCaseMonth(m); setSelectedId(null) }}
+                  cases={cases.cases}
+                  total={cases.total}
+                  loading={cases.loading}
+                />
+              </div>
+            ) : !selected ? (
+              <div className="card pd-empty-card">
+                <div className="pd-empty">
+                  <div style={{ fontSize: 40 }} aria-hidden>📄</div>
+                  <b>왼쪽에서 문서를 선택하면 상세 정보를 볼 수 있어요</b>
+                  <p className="text-meta">
+                    문서를 열면 어떤 조항이 자동 규칙으로 연결됐는지, 어떤 조항을 확인해야 하는지 한눈에 볼 수 있어요.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button type="button" className="pd-back-to-tree" onClick={() => setSelectedId(null)}>← 문서함</button>
+                <DocumentWorkspace
+                  doc={selected}
+                  clauses={clauses}
+                  proposals={proposals}
+                  axisOptions={axisOptions}
+                  busy={busy}
+                  proposalError={proposalError}
+                  onOpenRender={() => setRendering(true)}
+                  onReembed={() => void withBusy(async () => {
+                    await endpoints.reembedPolicyDoc(selected.id); await load()
+                  }, '재색인을 시작하지 못했습니다.')}
+                  onDelete={() => {
+                    if (!window.confirm(`"${selected.title}"을 삭제하시겠습니까?\n(이미 적재된 벡터는 재색인 전까지 남습니다)`)) return
+                    void withBusy(async () => {
+                      await endpoints.deletePolicyDoc(selected.id)
+                      setSelectedId(null); await load()
+                    }, '삭제하지 못했습니다.')
+                  }}
+                  onDecideClause={decide}
+                  onCreateRule={createRule}
+                  onSaveProposal={saveProposal}
+                  onDecideProposal={decideProposal}
                 />
               </>
             )}
-        </aside>
-
-        <section className="card pd-preview">
-          {casesOpen ? (
-            <DecisionCasePanel
-              month={caseMonth ?? ''}
-              months={cases.months}
-              cases={cases.cases}
-              total={cases.total}
-              loading={cases.loading}
-            />
-          ) : !selected ? (
-            <div className="pd-empty">
-              <div style={{ fontSize: 40 }} aria-hidden>📄</div>
-              <b>왼쪽에서 문서를 선택하면 상세 정보를 볼 수 있어요</b>
-              <p className="text-meta">
-                문서를 열면 어떤 조항이 자동 규칙으로 연결됐는지, 어떤 조항을 확인해야 하는지 한눈에 볼 수 있어요.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="pd-preview-head">
-                <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
-                  <span aria-hidden>📄</span>
-                  <b className="ellipsis" style={{ fontSize: 15 }} title={selected.title}>{selected.title}</b>
-                  <span className="pd-badge green">{EMBEDDING_STATUS_META[selected.status]?.label}</span>
-                  {selected.superseded && <span className="pd-badge gray">이전 버전</span>}
-                </div>
-                <div className="row" style={{ gap: 6 }}>
-                  {/* 문서 렌더링(모달) — 페이지 단위 원본 보기. 적재 상태와 무관하게 열 수 있다:
-                      파싱이 실패했을 때야말로 원본을 봐야 한다. 새 탭·다운로드는 모달 안에 있다. */}
-                  <button className="btn sm" disabled={!selected.fileName}
-                          title={selected.fileName ? '문서를 페이지 단위로 봅니다' : '원본 파일이 없습니다'}
-                          onClick={() => setRendering(true)}>
-                    <FileText size={11} /> 원본 보기
-                  </button>
-                  <button className="btn sm" disabled={busy || EMBEDDING_IN_PROGRESS.includes(selected.status)}
-                          onClick={() => void withBusy(async () => {
-                            await endpoints.reembedPolicyDoc(selected.id); await load()
-                          }, '재색인을 시작하지 못했습니다.')}>
-                    <RefreshCw size={11} /> {selected.status === 'FAILED' ? '재처리' : '재색인'}
-                  </button>
-                  <button className="btn sm outline-danger" disabled={busy}
-                          onClick={() => {
-                            if (!window.confirm(`"${selected.title}"을 삭제하시겠습니까?\n(이미 적재된 벡터는 재색인 전까지 남습니다)`)) return
-                            void withBusy(async () => {
-                              await endpoints.deletePolicyDoc(selected.id)
-                              setSelectedId(null); await load()
-                            }, '삭제하지 못했습니다.')
-                          }}>
-                    <Trash2 size={11} /> 삭제
-                  </button>
-                </div>
-              </div>
-
-              <div className="pd-meta text-meta">
-                등록일 {selected.uploadedAt?.slice(0, 10)}
-                {selected.fileSize > 0 && <> · 크기 {fmtSize(selected.fileSize)}</>}
-                · 조항 {selected.clauseCount}개
-                {selected.reviewCount > 0 && (
-                  // 이 줄의 다른 사실(등록일·크기)은 참고용이지만 이건 할 일이다.
-                  // --tone-amber는 갈색조라 굵은 텍스트만으로는 눈에 잘 안 띄어서
-                  // (실측: 색이 있는데도 "안 바뀌었다"로 보고됨) 배경 있는 배지로 바꾼다.
-                  <span className="pd-badge amber" style={{ marginLeft: 6 }}>
-                    확인 필요 {selected.reviewCount}개
-                  </span>
-                )}
-                {selected.profile && (
-                  // 유형이 컬렉션을 정하고, 컬렉션이 "판정에 인용되는가"를 정한다.
-                  // 사람이 지정한 값이면 자동 감지가 아니라는 것도 같이 밝힌다.
-                  <> · {selected.profileLabel || selected.profile}
-                    {selected.profileHint && <span className="pd-badge gray" style={{ marginLeft: 4 }}>지정</span>}
-                  </>
-                )}
-                {selected.collection && (
-                  <> · {selected.collection}
-                    {!JUDGEMENT_COLLECTIONS.includes(selected.collection) && (
-                      <span style={{ color: 'var(--tone-amber)' }}> (판정 미인용)</span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* docling 모킹 경고 등 — 문서 주석의 의도는 "노란 배너"다(§rag-ingestion).
-                  텍스트 색만 바꾼 회색 박스는 다른 안내문과 구분이 안 갔다 — 이미 있는
-                  .note.caution/.error(배경+테두리)로 실제 경고처럼 보이게 한다. */}
-              {selected.error && (
-                <div className={`note ${selected.status === 'FAILED' ? 'error' : 'caution'}`} style={{ margin: '8px 0', whiteSpace: 'pre-wrap' }}>
-                  <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                  {/* 백엔드 문구가 이미 "⚠ "로 시작한다(docling 모킹 경고) — 위 아이콘과
-                      겹쳐 세모가 두 번 찍히지 않게 선행 기호만 걷어낸다. */}
-                  {selected.error.replace(/^[⚠️\s]+/, '')}
-                </div>
-              )}
-              {selected.ruleTrigger?.detail && (
-                <div className="note" style={{ margin: '8px 0' }}>
-                  {selected.ruleTrigger.detail}
-                  {selected.ruleTrigger.hint && <div className="text-meta">{selected.ruleTrigger.hint}</div>}
-                </div>
-              )}
-
-              {/* ── 별표(한도표) — 조에 속하지 않아 조항 목록에는 안 뜬다. 임계값의
-                     원천이라 위에 둔다: 별표를 승인하기 전에 만든 룰은 그 값을 참조해도
-                     미해소로 떨어져 전건 검토가 된다. */}
-              {proposals.length > 0 && (
-                <>
-                  <div className="pd-section-title">
-                    별표 — 판정 임계값
-                    {pendingTables > 0 && (
-                      <span className="pd-badge" style={{ marginLeft: 8, background: 'var(--tone-amber-bg)', color: 'var(--tone-amber)' }}>
-                        승인 대기 {pendingTables}
-                      </span>
-                    )}
-                    {skippedTables > 0 && (
-                      <span className="pd-badge" style={{ marginLeft: 6 }}>
-                        생성 안 함 {skippedTables}
-                      </span>
-                    )}
-                  </div>
-                  {/* 문서마다 항상 같은 고정 안내문 — 매번 같은 무게의 박스로 띄우면
-                      실제 경고(위 docling 배너)·건별 정보와 구분이 안 간다. 캡션 한 줄로. */}
-                  <div className="text-meta" style={{ marginBottom: 4 }}>
-                    승인하면 이 표의 값이 모든 정산 판정에 쓰여요 — 표 원문과 대조한 뒤 눌러주세요.
-                  </div>
-                  {orderedProposals.map((proposal) => (
-                    <TableProposalCard
-                      key={proposal.id}
-                      proposal={proposal}
-                      axisOptions={axisOptions}
-                      busy={busy}
-                      onSave={(patch) => void saveProposal(proposal.id, patch)}
-                      onDecide={(action, note, patch) =>
-                        void decideProposal(proposal.id, action, note, patch)}
-                      error={proposalError?.id === proposal.id ? proposalError.message : ''}
-                    />
-                  ))}
-                </>
-              )}
-
-              <div className="pd-section-title row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>조항 {triaged && <span className="text-meta">· 우선순위 순</span>}</span>
-                {triaged && (
-                  <label className="row text-meta" style={{ gap: 6, alignItems: 'center', fontWeight: 400 }}>
-                    <input type="checkbox" checked={onlyActionable}
-                           onChange={(e) => setOnlyActionable(e.target.checked)} />
-                    규칙이 필요한 조항만
-                  </label>
-                )}
-              </div>
-
-              {EMBEDDING_IN_PROGRESS.includes(selected.status) && (
-                <div className="text-meta" style={{ padding: 16 }}>
-                  문서를 분석하고 있어요. 끝나면 조항이 여기에 나타납니다.
-                </div>
-              )}
-              {!EMBEDDING_IN_PROGRESS.includes(selected.status) && clauses.length === 0 && (
-                <div className="text-meta" style={{ padding: 16 }}>
-                  조 단위로 인식된 조항이 없어요. 표·별표만 있는 문서이거나 파싱이 실패했을 수 있어요.
-                </div>
-              )}
-              {/* 필터로 비었을 때와 원래 없을 때를 구분한다 — 같은 빈 화면으로 두면
-                  "규칙 만들 게 없다"와 "필터를 켜뒀다"가 섞인다. */}
-              {clauses.length > 0 && orderedClauses.length === 0 && (
-                <div className="text-meta" style={{ padding: 16 }}>
-                  규칙이 필요한 조항이 없어요. 필터를 끄면 전체 {clauses.length}개가 보입니다.
-                </div>
-              )}
-
-              {orderedClauses.map((clause) => (
-                <ClauseCard
-                  key={clause.id}
-                  clause={clause}
-                  expanded={expanded.has(clause.id)}
-                  onToggle={() => toggle(clause.id)}
-                  busy={busy}
-                  onSkip={(reason) => void decide(clause.id, 'SKIP', reason)}
-                  onReset={() => void decide(clause.id, 'RESET')}
-                  // 생성은 서버가 조항에서 질의를 만들어 돌린다(화면마다 다른 질의가
-                  // 나가지 않게). 만들어진 그래프의 편집·승인은 룰 콘솔이 주인이라
-                  // 생성 직후 그쪽으로 넘긴다 — 여기에 두 번째 편집 화면을 만들지 않는다.
-                  onCreateRule={() => void createRule(clause)}
-                />
-              ))}
-            </>
-          )}
-        </section>
-      </div>
-
-      <div className="note" style={{ marginTop: 16 }}>
-        등록된 문서 {kpi.total}개 · {folders.length}개 폴더로 정리되어 있어요.
-        문서는 드래그해서 폴더로 옮길 수 있고, 폴더는 비어 있을 때만 삭제됩니다.
-      </div>
+          </div>
+        </div>
       </div>
 
       {uploadOpen && (

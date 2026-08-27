@@ -1,19 +1,44 @@
-/* 규정 문서 관리 (S-05 v4) — 좌 폴더 트리 / 우 문서 미리보기.
+/* 규정 문서 관리 (S-05 v5) — 좌 폴더 탐색 / 가운데 목록 / 오른쪽 상세.
    토큰(--surface, --border 등)은 전역 테마를 그대로 쓴다. 여기선 이 화면 고유 배치만 정의한다. */
 
-.pd-layout {
+/* ── 상단 헤더 — 큰 KPI 카드 4개 대신 한 줄 요약. ─────── */
+.pd-hero .kpi-grid { display: none; } /* 안전망: 남아있을 수 있는 kpi-grid는 이 화면에서 쓰지 않는다 */
+
+.pd-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--space-3);
+  font-size: var(--text-body);
+  color: var(--sidebar-text-muted);
+}
+
+.pd-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text);
+}
+
+/* 「확인 필요」만 색을 줘서 강조한다 — 지금 처리해야 하는 것 하나만 눈에 띄면 된다. */
+.pd-status-pill.review { background: var(--tone-amber-bg); color: var(--tone-amber); }
+.pd-status-pill.busy { background: rgba(255, 255, 255, 0.12); color: var(--sidebar-text); }
+
+/* ── 3단 뼈대 — 바깥은 [탐색 | 본문] 2열, 본문 안에서 문서 하나를 열면
+   [목록 | 상세] 2열이 다시 생긴다(.pd-workspace). 두 단계가 각자 자기 상태로
+   좁은 화면 드릴다운을 결정해서, 부모가 자식의 내부 선택 상태를 몰라도 된다. ─── */
+.pd-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
+  grid-template-columns: minmax(240px, 300px) 1fr;
   gap: 16px;
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .pd-layout { grid-template-columns: 1fr; }
-}
-
-/* ── 좌: 폴더 트리 ───────────────────────────── */
-.pd-tree {
+.pd-tree-pane {
   padding: 0;
   position: sticky;
   top: 16px;
@@ -21,6 +46,44 @@
   overflow: auto;
 }
 
+.pd-content-pane { min-width: 0; }
+
+/* 트리 하단의 짧은 사용 팁 — 박스로 띄우지 않고 캡션 한 줄로. */
+.pd-tree-hint {
+  padding: 10px 12px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.pd-back-to-tree,
+.pd-back-to-list {
+  display: none; /* 데스크톱에서는 탐색·목록이 항상 옆에 보이므로 되돌아갈 필요가 없다 */
+  border: none;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0 0 10px;
+  cursor: pointer;
+}
+.pd-back-to-tree:hover,
+.pd-back-to-list:hover { text-decoration: underline; }
+
+@media (max-width: 960px) {
+  .pd-shell { grid-template-columns: 1fr; }
+  /* 문서를 아직 안 골랐으면 탐색만, 골랐으면 본문만 — 3단을 억지로 유지하지 않고
+     탐색 → 목록 → 상세가 순서대로 전환되게 한다. */
+  .pd-shell.has-selection .pd-tree-pane { display: none; }
+  .pd-shell:not(.has-selection) .pd-content-pane { display: none; }
+  .pd-tree-pane { position: static; max-height: none; }
+  .pd-back-to-tree { display: inline-block; }
+}
+
+.pd-cases-card,
+.pd-empty-card { padding: var(--space-4); }
+
+/* ── 탐색(좌) — 검색·폴더 트리 ───────────────────────────── */
 .pd-search {
   display: flex;
   align-items: center;
@@ -60,8 +123,7 @@
 .pd-folder:hover,
 .pd-doc:hover { background: var(--surface-2); }
 
-/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격.
-   (클래스만 있고 정의가 없어 브라우저 기본 버튼 모양·기본 폰트로 렌더링되고 있었다.) */
+/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격. */
 .pd-node {
   display: flex;
   align-items: center;
@@ -96,7 +158,6 @@
   white-space: nowrap;
 }
 
-/* 폴더 헤더(새 폴더 버튼) */
 .pd-tree-head {
   display: flex;
   align-items: center;
@@ -105,8 +166,7 @@
   padding: 6px 10px 8px;
 }
 
-/* 폴더 도구(하위폴더·이름변경·삭제) — 평소엔 숨기고 hover/focus에서만 꺼낸다.
-   항상 보이면 세 개짜리 아이콘 줄이 문서명보다 눈에 띈다. */
+/* 폴더 도구(하위폴더·이름변경·삭제) — 평소엔 숨기고 hover/focus에서만 꺼낸다. */
 .pd-folder-tools {
   display: none;
   gap: 2px;
@@ -150,7 +210,7 @@
   border-radius: 4px;
 }
 
-/* 업로드 모달 — 드롭존 / 선택된 파일 */
+/* ── 업로드 모달 — 드롭존 / 선택된 파일 ─────────────────── */
 .pd-dropzone {
   display: flex;
   flex-direction: column;
@@ -181,6 +241,7 @@
   background: var(--surface-2);
 }
 
+/* ── 배지·확신도 칩 — 화면 전체가 공유(목록 행·상세·트리·모달 배지가 전부 같은 모양) ── */
 .pd-badge {
   padding: 1px 6px;
   border-radius: 999px;
@@ -196,7 +257,6 @@
 .pd-badge.gray  { background: var(--surface-2); color: var(--muted);      border-color: var(--border-strong); }
 .pd-badge.blue  { background: var(--tone-blue-bg, #eaf1fb); color: var(--tone-blue, #2f6fb5); border-color: #c3d8f0; }
 
-/* 확신도 칩 — 문장 속 숫자 대신 훑어보는 작은 표시. 점 색으로 구간을 알린다. */
 .pd-chip {
   display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
   color: var(--muted); background: var(--surface); border: 1px solid var(--border-strong);
@@ -207,8 +267,8 @@
 .pd-chip.amber::before { background: var(--tone-amber); }
 .pd-chip.red::before { background: var(--tone-red); }
 
-/* ── 우: 문서 미리보기 ───────────────────────── */
-.pd-preview { padding: 16px; min-height: 420px; }
+/* ── 문서 카드(본문) — 헤더 + 탭 + [목록 | 상세] ────────────── */
+.pd-doc-card { padding: var(--space-4); min-height: 480px; }
 
 .pd-empty {
   display: flex;
@@ -220,7 +280,6 @@
   padding: 64px 24px;
   color: var(--muted);
 }
-
 .pd-empty p { max-width: 420px; margin: 0; }
 
 .pd-preview-head {
@@ -231,54 +290,136 @@
   flex-wrap: wrap;
 }
 
-.pd-meta { margin-top: 6px; }
+.pd-doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pd-doc-head-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; }
+.pd-doc-head-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 섹션 제목 — 별표/조항처럼 성격이 다른 묶음 사이를 얇은 선 하나로 가른다("장 나누기").
-   문서 헤더의 메타 정보와 헷갈리지 않게 글자도 한 단계 키운다(13px → --text-h4). */
-.pd-section-title {
-  margin: var(--space-6) 0 var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
-  font-weight: 700;
-  font-size: var(--text-h4);
+.pd-doc-meta { margin-top: 6px; }
+
+/* 적재 경고 배너 — 첫 줄만 기본 노출, 나머지는 접는다(DocErrorBanner). */
+.pd-warn { margin: 10px 0; }
+.pd-warn-head { display: flex; align-items: center; gap: 6px; }
+.pd-warn-head b { font-size: 12.5px; }
+.pd-warn-toggle {
+  margin-left: auto; border: none; background: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 11.5px; font-weight: 700; color: inherit; text-decoration: underline;
+  opacity: 0.75; flex-shrink: 0;
+}
+.pd-warn-toggle:hover { opacity: 1; }
+.pd-warn-body { margin-top: 4px; white-space: pre-wrap; line-height: 1.5; }
+.pd-warn-body > div + div { margin-top: 4px; }
+
+/* ── 더보기 메뉴 — 재색인·삭제 등 자주 안 쓰는 문서 작업 ──────────────── */
+.pd-more { position: relative; }
+.pd-more > summary { list-style: none; cursor: pointer; }
+.pd-more > summary::-webkit-details-marker { display: none; }
+.pd-more-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5;
+  display: flex; flex-direction: column; gap: 2px; min-width: 140px;
+  padding: 6px; background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control); box-shadow: var(--shadow-md, 0 4px 16px rgba(16,24,40,0.12));
+}
+.pd-more-menu .btn { justify-content: flex-start; border-color: transparent; }
+.pd-more-menu .btn:hover { background: var(--surface-2); }
+
+/* ── 탭 — 확인 필요 / 전체 조항 / 별표 / 문서 정보 ───────────── */
+.pd-tabs {
+  display: inline-flex; gap: 4px; padding: 4px; margin-top: 14px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.pd-tabs .btn { border-color: transparent; background: transparent; box-shadow: none; }
+.pd-tabs .btn.primary { color: #fff; background: var(--primary); box-shadow: var(--shadow-sm); }
+.pd-tab-count {
+  display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; background: rgba(0,0,0,0.08);
+}
+.pd-tabs .btn.primary .pd-tab-count { background: rgba(255,255,255,0.25); }
+
+/* ── 목록 → 상세 2열. 좁은 화면에서는 상세를 열면 목록 대신 그것만 보인다. ── */
+.pd-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 16px;
+  margin-top: 14px;
+  align-items: start;
 }
 
-/* ── 조항 카드 ───────────────────────────────── */
-.pd-clause {
+@media (max-width: 720px) {
+  .pd-workspace { grid-template-columns: 1fr; }
+  .pd-workspace.has-active .pd-list-col { display: none; }
+  .pd-workspace:not(.has-active) .pd-detail-col { display: none; }
+  .pd-back-to-list { display: inline-block; }
+}
+
+.pd-list-col {
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  margin-bottom: 8px;
   overflow: hidden;
 }
 
-/* 확인 필요 조항을 펼쳤을 때 — 결정이 필요한 자리라는 걸 테두리로 드러낸다(시안 실측). */
-.pd-clause-attn { border-color: var(--tone-orange); border-width: 1.5px; }
+.pd-list-scroll { max-height: 560px; overflow-y: auto; padding: 6px; }
 
-.pd-clause-head {
+.pd-detail-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 200px;
+  max-height: 620px;
+  overflow-y: auto;
+}
+
+/* ── 목록 행 — 조·별표 하나를 고르는 자리. 본문은 여기 없다(한 줄 미리보기만) ── */
+.pd-list-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   width: 100%;
-  padding: var(--space-3) var(--space-4);
+  padding: 9px 10px;
+  margin-bottom: 2px;
   border: none;
-  background: var(--surface-2);
-  cursor: pointer;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-chip);
+  background: none;
   text-align: left;
+  cursor: pointer;
   transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
 }
-.pd-clause-head:hover { background: var(--border); }
+.pd-list-row:last-child { margin-bottom: 0; }
+.pd-list-row:hover { background: var(--surface-2); }
+.pd-list-row.active { background: var(--primary-soft); border-left-color: var(--primary); }
+/* 결정이 필요한 항목 — 확인 필요 상태를 목록에서도 은은하게 알린다. */
+.pd-list-row.attn:not(.active) { border-left-color: var(--tone-amber); }
 
-.pd-clause-title { font-weight: 600; font-size: 13px; flex: 1; }
-.pd-clause-head .pd-caret { margin-left: 4px; }
-
-.pd-clause-peek {
-  padding: var(--space-2) var(--space-4);
-  color: var(--muted);
-  font-size: 12px;
-  border-top: 1px solid var(--border);
+.pd-list-row-title { font-weight: 600; font-size: 13px; line-height: 1.4; }
+.pd-list-row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.pd-list-row-peek {
+  color: var(--muted); font-size: 11.5px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.pd-clause-body { padding: var(--space-4); border-top: 1px solid var(--border); }
+/* ── 상세 패널 — 선택한 조·별표 하나의 원문·근거·결정 버튼 ─────────── */
+.pd-detail-body { padding: var(--space-4); }
+
+.pd-detail-title-row {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  padding-bottom: var(--space-3); margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.pd-detail-title { font-size: var(--text-h4); font-weight: 700; margin: 0; }
+
+/* 승인/반려처럼 폼이 긴 상세의 주요 행동 버튼 — 스크롤해도 잃지 않게 하단에 붙인다. */
+.pd-detail-actions {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  position: sticky; bottom: -1px; background: var(--surface);
+}
 
 .pd-markdown {
   margin: 6px 0 0;
@@ -294,20 +435,6 @@
   overflow: auto;
 }
 
-/* 별표 원문 표 — .pd-markdown과 같은 박스, 안은 진짜 <table>(원문 대조가 목적이라
-   행 클릭처럼 읽히면 안 되므로 전역 .table의 hover 포인터는 끈다). */
-.pd-table-wrap {
-  margin: 6px 0 0;
-  padding: 4px;
-  background: var(--surface-2);
-  border-radius: var(--radius-control);
-  max-height: 260px;
-  overflow: auto;
-}
-.pd-table-wrap .table { font-size: 12px; }
-.pd-table-wrap .table th, .pd-table-wrap .table td { padding: var(--space-1) var(--space-2); white-space: nowrap; }
-.pd-table-wrap .table tbody tr:hover { background: transparent; cursor: default; }
-
 .pd-linked {
   margin-top: 12px;
   padding: 12px;
@@ -316,9 +443,7 @@
   border-radius: var(--radius-control);
   font-size: 12px;
 }
-
 .pd-linked-line { margin-top: 2px; }
-
 .pd-link {
   display: inline-block;
   margin-top: 6px;
@@ -327,26 +452,21 @@
   text-decoration: none;
 }
 
+/* 결정 대기 안내 — 경고가 아니라 "지금 할 수 있는 행동" 안내라 amber(경고색)를 쓰지
+   않는다. 안에 primary 버튼이 있으니 같은 계열의 옅은 파랑(--primary-soft)으로
+   묶어 "이 파란 영역이 지금 할 일"이라는 신호를 준다(AI 설명 토글 칩과 같은 어휘). */
 .pd-decide {
   margin-top: 12px;
   padding: 12px;
-  background: var(--tone-amber-bg);
-  border: 1px solid #e8d5a3;
+  background: var(--primary-soft);
+  border: 1px solid #c3d8f0;
   border-radius: var(--radius-control);
 }
+.pd-decide p { margin: 0 0 10px; font-size: 12px; color: var(--text); }
 
-.pd-decide p { margin: 0 0 10px; font-size: 12px; }
-
-/* ── 별표 판정 임계값 승인 폼(표 key·이름·축·내용·시행일) ─────── */
+/* ── 별표 승인 폼(표 key·이름·축·내용·시행일) ─────────────────────── */
 .pd-field { margin-top: 14px; }
-
-.pd-field label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
+.pd-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .pd-field input,
 .pd-field select {
   width: 100%;
@@ -357,13 +477,14 @@
   border-radius: var(--radius-control);
   background: var(--surface);
 }
-
 .pd-field input:disabled,
 .pd-field select:disabled { background: var(--surface-2); color: var(--muted); }
 
+/* 표 이름 · 표 key처럼 짧은 필드 두 개를 한 줄에 — 각자 라벨은 그대로 갖되
+   세로 두 줄을 다 차지하지 않는다. */
+.pd-field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.pd-field input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 .pd-field .text-meta { margin-top: 4px; }
-
-/* AxisPicker — 축 select는 폭이 좁아도 되고, 옆 삭제 버튼과 한 줄에 나란히 */
 .pd-field select { width: auto; flex: 1; min-width: 0; }
 
 .pd-json {
@@ -377,11 +498,8 @@
   background: var(--surface-2);
   resize: vertical;
 }
-
 .pd-json:disabled { color: var(--muted); }
 
-/* 값 고치기 — 표 모양 그대로 셀을 고치는 편집 그리드(축 0~2개). JSON 문법을 몰라도
-   되게, 표에 입력칸만 얹은 모양으로 만든다(가짜 인풋이 아니라 진짜 <input>). */
 .pd-grid-scroll { overflow-x: auto; }
 .pd-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
 .pd-grid th, .pd-grid td { border: 1px solid var(--border); padding: 0; }
@@ -410,9 +528,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
 }
-
 .pd-skipform label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
-
 .pd-skipform textarea {
   width: 100%;
   font: inherit;
@@ -434,6 +550,17 @@
   align-items: flex-start;
   gap: 12px;
 }
+
+/* ── 「문서 정보」 탭 — 감사·오류 확인용 기술 정보를 여기 모은다 ───────── */
+.pd-info-grid { display: flex; flex-direction: column; }
+.pd-info-row {
+  display: grid; grid-template-columns: 150px 1fr; gap: 12px;
+  padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.pd-info-row:last-child { border-bottom: none; }
+.pd-info-label { color: var(--muted); font-weight: 600; }
+.pd-info-value { color: var(--text); word-break: break-word; }
+.pd-info-value code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
 
 /* ── 문서 렌더링 모달(S-05 ③) — 페이지 뷰어 ─────── */
 .modal.pdf-viewer-modal {
@@ -534,14 +661,12 @@
 }
 
 /* ── 별표 승인: 원문 표 렌더 + 승인 결과 표 ────────────────────────────── */
-/*  원문을 파이프 문자로 보여주면 셀 경계를 눈으로 세어야 해서 추출 결과와 대조하는 데
-    시간이 걸린다 — 그러면 대충 누르게 된다. 표로 그리고, 원문은 토글로 남긴다. */
 .pd-md-table {
   background: var(--surface-2);
   border-radius: var(--radius-control);
   padding: 10px 12px;
   margin: 6px 0 10px;
-  overflow-x: auto;          /* 열이 많은 별표가 카드를 밀어내지 않게 */
+  overflow-x: auto;
 }
 .pd-md-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .pd-md-table th,
@@ -553,12 +678,6 @@
 }
 .pd-md-table th { background: var(--surface); font-weight: 700; }
 
-/*  승인 뒤에 남는 게 한 줄 문장뿐이면 "내가 뭘 승인했더라"를 확인할 길이 원문 대조밖에
-    없다. 저장된 값을 그대로 표로 보여준다.
-    **결과가 카드의 결론**이라 눈에 먼저 들어와야 한다 — 아래 AI 설명·원문은 그 결과를
-    설명하거나 뒷받침하는 것들이다. **박스 안에 색칠된 박스**(카드 → 이 요소)로 두 겹
-    두르는 대신, 카드 헤더와 결과 사이를 얇은 선 하나로만 가른다 — 이미 바깥 `.pd-clause`
-    카드가 경계를 주고 있어서, 안에 또 테두리+배경을 두르면 "박스 속 박스"가 된다. */
 .pd-resolved {
   margin-top: var(--space-4);
   padding-top: var(--space-3);
@@ -571,15 +690,11 @@
 .pd-resolved .num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .pd-resolved-head { margin-bottom: var(--space-3); }
-/* ① 사람말 제목 — 카드에서 가장 먼저 읽혀야 할 한 줄. 카드 헤더의 짧은 이름표와
-   달리 여기서만 전체 설명 문장을 보여준다. */
 .pd-resolved-title {
   font-size: var(--text-h4); font-weight: 700; color: var(--text); letter-spacing: -0.005em;
   text-wrap: balance;
 }
-/* ② 이 표가 무엇으로 값을 고르는지 — 축 경로가 아니라 사람말 문장. */
 .pd-resolved-sub { margin-top: 4px; font-size: var(--text-meta); color: var(--muted); line-height: 1.55; }
-/* ③ DSL 참조줄 — 추적용으로 남기되 위계에서는 가장 아래, 가장 작게. */
 .pd-resolved-ref { margin-top: 6px; font-size: 10.5px; color: var(--muted); }
 .pd-resolved-ref code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -587,29 +702,20 @@
 }
 .pd-resolved-ref span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-/* 축 없이 값 하나뿐인 표 — 카드의 결론이 되는 숫자라 눈에 띄게 키운다. KPI 카드의
-   "가장 중요한 숫자" 크기(--text-hero)를 그대로 재사용한다 — 이 화면만의 새 크기를
-   만들지 않고, 앱이 이미 "핵심 숫자"에 쓰는 크기를 그대로 가져온다. */
 .pd-resolved-single {
   font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); color: var(--text);
   letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
 }
 
-/* 대조·확인용 표라 행 클릭처럼 읽히면 안 된다(.pd-table-wrap과 같은 이유로 끈다). */
 .pd-resolved .table tbody tr:hover { background: transparent; cursor: default; }
-/* 은은한 줄무늬 — 열이 많은 2축 표에서 행을 눈으로 따라가기 쉽게. */
 .pd-resolved .table tbody tr:nth-child(even) td { background: var(--surface-2); }
-/* 가로 스크롤이 생기는 2축 표에서 첫 열(행 라벨)은 고정 — 오른쪽 열까지 스크롤해도
-   "이게 무슨 행이었더라"를 잃지 않는다. */
 .pd-resolved .table th:first-child,
 .pd-resolved .table td:first-child { position: sticky; left: 0; border-right: 1px solid var(--border-strong); }
 .pd-resolved .table th:first-child { background: var(--surface-2); z-index: 1; }
 .pd-resolved .table td:first-child { background: var(--surface); font-weight: 600; }
 .pd-resolved .table tbody tr:nth-child(even) td:first-child { background: var(--surface-2); }
 
-/* AI 설명 토글 — 코멘트·통과 검사·메모를 한 곳에 접어 둔다(예전엔 박스 3개가 항상
-   펼쳐져 있었다). 칩 모양으로 눌러도 되는 요소처럼 보이게 한다(기존 .tag.ai와 같은
-   primary-soft 어휘 재사용 — 새 색을 만들지 않는다). */
+/* AI 설명 토글 — 코멘트·통과 검사·메모를 한 곳에 접어 둔다. */
 .pd-ai-fold { margin-top: var(--space-3); }
 .pd-ai-fold > summary {
   cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
@@ -625,8 +731,7 @@
 .pd-ai-fold-body .pd-ai-line { margin-top: var(--space-2); }
 .pd-ai-fold-body .pd-ai-line:first-child { margin-top: 0; }
 
-/*  접기 — 원문 대조·값 고치기처럼 **필요한 사람만 여는 것**. 늘 펼쳐 두면 카드가 길어져
-    결론이 안 보인다(예전 상태: 결과를 보려면 여섯 블록을 지나야 했다). */
+/* 접기 — 원문 대조·값 고치기처럼 필요한 사람만 여는 것. */
 .pd-fold { margin-top: 10px; }
 .pd-fold > summary {
   cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted);
