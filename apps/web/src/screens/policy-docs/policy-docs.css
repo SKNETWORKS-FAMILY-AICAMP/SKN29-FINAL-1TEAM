@@ -446,6 +446,24 @@
   position: sticky; bottom: -1px; background: var(--surface);
 }
 
+/* 원본 조항 본문 — 줄바꿈만 있던 원문에 항목 구분을 표시로만 얹는다(텍스트는 그대로).
+   번호 항목("1.")은 마커만 굵게 + 항목 사이 여백, 번호 없는 하위 줄은 들여쓰기 +
+   가운뎃점(::before, 실제 텍스트 아님)만 붙인다. */
+.pd-clause-body {
+  margin: 6px 0 0; padding: 12px 14px; background: var(--surface-2);
+  border-radius: var(--radius-control); font-size: 13px; line-height: 1.7;
+  max-height: 320px; overflow: auto;
+}
+.pd-clause-line { margin: 0 0 8px; }
+.pd-clause-line:last-child { margin-bottom: 0; }
+.pd-clause-line.num { margin-top: 12px; }
+.pd-clause-line.num:first-child { margin-top: 0; }
+.pd-clause-marker { color: var(--primary); }
+.pd-clause-line.sub {
+  margin: 0 0 5px 6px; padding-left: 13px; position: relative; color: var(--text);
+}
+.pd-clause-line.sub::before { content: '·'; position: absolute; left: 0; color: var(--muted); font-weight: 700; }
+
 .pd-markdown {
   margin: 6px 0 0;
   padding: 10px 12px;

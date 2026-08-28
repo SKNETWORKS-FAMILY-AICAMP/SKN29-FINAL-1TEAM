@@ -169,6 +169,37 @@ export function ClauseListRow({ clause, active, query = '', onSelect }: {
   )
 }
 
+/** 원본 조항 — 파싱이 준 그대로 줄바꿈만 있고 번호·하위 항목 구분이 없어 한 덩어리
+ *  문단처럼 보였다(실사용 화면 리뷰로 확인). 단어는 하나도 안 바꾸고 **표시만** 정돈한다:
+ *  "1./2./3."로 시작하는 줄은 새 항목(마커를 굵게, 위 여백을 더), 그 아래 번호 없는
+ *  줄은 그 항목의 하위 목록으로 보고 살짝 들여쓰기 + 가운뎃점을 붙인다(가운뎃점은 CSS
+ *  장식일 뿐 실제 텍스트에는 없다). 번호가 아예 없는 조항(라벨: 설명 나열형 등)은
+ *  전부 하위 취급 없이 문단으로만 나눈다. */
+function ClauseBody({ text, query }: { text: string; query: string }) {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  let sawNumbered = false
+  return (
+    <div className="pd-clause-body">
+      {lines.map((line, i) => {
+        const m = line.match(/^(\d+\.)\s*(.*)$/)
+        if (m) {
+          sawNumbered = true
+          return (
+            <p key={i} className="pd-clause-line num">
+              <b className="pd-clause-marker">{m[1]}</b> {highlightAll(m[2], query)}
+            </p>
+          )
+        }
+        return (
+          <p key={i} className={'pd-clause-line' + (sawNumbered ? ' sub' : '')}>
+            {highlightAll(line, query)}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
 /** 상세 패널 — 선택한 조 하나의 원문·AI 근거·연결된 규칙·결정 버튼. 목록에서 다른
  *  조를 고르면(부모가 `key={clause.id}`로 이 컴포넌트를 새로 마운트해) `skipping` 같은
  *  내부 상태가 자연히 초기화된다 — 여기서 직접 리셋할 필요가 없다. */
@@ -214,7 +245,7 @@ export function ClauseDetail({ clause, query = '', onSkip, onReset, onCreateRule
         <span className="text-meta">원본 조항</span>
         <CopyButton text={clause.body} />
       </div>
-      <pre className="pd-markdown">{highlightAll(clause.body, query)}</pre>
+      <ClauseBody text={clause.body} query={query} />
 
       {clause.ruleStatus === 'LINKED' && (
         <div className="pd-linked">
