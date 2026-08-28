@@ -3,6 +3,7 @@
 import { RotateCw } from 'lucide-react'
 import type { LabStatus } from './data/labApi'
 import { EmptyHint, ErrorBanner, FactRow, JsonBlock, StatusDot } from './components/LabPrimitives'
+import { SkeletonLines } from '../../components/ui/Skeleton'
 
 interface Props {
   status: LabStatus | null
@@ -46,9 +47,32 @@ export function StatusStrip({ status, error, loading, onReload }: Props) {
   )
 }
 
+/** 도착 후 실제 골격(2카드 그리드 + JSON 카드)과 같은 모양의 자리표시자 — 로딩→도착
+ *  순간 레이아웃이 펴지며 자리가 바뀌지 않게 한다(Skeleton.tsx 불변식). */
+function StatusPanelSkeleton() {
+  return (
+    <div className="stack-lg" aria-busy="true" aria-label="환경 상태를 불러오는 중">
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-head"><h3>실행 환경</h3></div>
+          <div className="card-body"><SkeletonLines rows={5} /></div>
+        </div>
+        <div className="card">
+          <div className="card-head"><h3>벡터 적재 현황</h3></div>
+          <div className="card-body"><SkeletonLines rows={4} /></div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head"><h3>원본 응답</h3></div>
+        <div className="card-body"><SkeletonLines rows={6} /></div>
+      </div>
+    </div>
+  )
+}
+
 export function StatusPanel({ status, error, loading, onReload }: Props) {
   if (error && !status) return <ErrorBanner message={error} />
-  if (!status) return <EmptyHint>{loading ? '상태를 불러오는 중입니다…' : '상태를 불러오지 못했습니다.'}</EmptyHint>
+  if (!status) return loading ? <StatusPanelSkeleton /> : <EmptyHint>상태를 불러오지 못했습니다.</EmptyHint>
 
   const totalChunks = status.chroma.collections.reduce((sum, c) => sum + c.count, 0)
 
