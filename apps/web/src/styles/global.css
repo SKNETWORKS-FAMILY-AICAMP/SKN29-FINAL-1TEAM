@@ -277,6 +277,13 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .page:has(.review-ws) { overflow-x: auto; }
 /* Review List는 고정, 선택 건 상세만 남는 폭에 따라 확장 */
 .review-ws .split { grid-template-columns: 360px minmax(720px, 1fr); min-width: 1100px; }
+/* 상세 패널 안(review-detail)이 좌우 2열(grid-2)이라 720px가 필요했다 — 노트북 폭
+   (1152px 실측)에서 가로 스크롤이 매번 발생했다. 이 구간에서는 상세 패널만 세로로
+   접어 필요한 최소폭을 낮춘다(rule-draft-grid가 이미 쓰는 중간 breakpoint와 같은 원리). */
+@media (max-width: 1300px) and (min-width: 1051px) {
+  .review-ws .split { grid-template-columns: 360px minmax(420px, 1fr); min-width: 820px; }
+  .review-detail.grid-2 { grid-template-columns: 1fr; }
+}
 
 /* ── S-04 Rule 콘솔 : 초안 그래프 트리라 가로 스크롤 허용 ── */
 .page:has(.rule-console-full) { overflow-x: auto; }
