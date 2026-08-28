@@ -24,7 +24,15 @@ export function AssignCardModal({
   const [userId, setUserId] = useState<number | undefined>(people[0]?.id)
   const [reason, setReason] = useState('')
 
-  const canConfirm = reason.trim() !== '' && (mode === 'TEAM' ? teamId != null : userId != null)
+  // 버튼을 그냥 비활성화만 하면 왜 안 눌리는지 알 수 없다 — 원인을 짚어 다음 행동을 알려준다.
+  const blockedReason = reason.trim() === ''
+    ? '변경 사유를 입력해야 확정할 수 있어요.'
+    : mode === 'TEAM' && teamId == null
+      ? '배정할 팀이 없습니다.'
+      : mode === 'PERSONAL' && userId == null
+        ? '배정할 사람이 없습니다.'
+        : ''
+  const canConfirm = blockedReason === ''
 
   const footer = (
     <>
@@ -89,6 +97,7 @@ export function AssignCardModal({
       <div className="field" style={{ marginBottom: 8 }}>
         <label>변경 사유 <span style={{ color: 'var(--tone-red)' }}>*</span></label>
         <textarea rows={2} placeholder="예: 부서 이동에 따른 카드 재배정" value={reason} onChange={(e) => setReason(e.target.value)} />
+        {blockedReason && <div className="text-meta" style={{ color: 'var(--tone-amber)', marginTop: 4 }}>{blockedReason}</div>}
       </div>
       <div className="text-meta">배정 변경 내역은 카드 이력에 기록되며 되돌릴 수 없습니다.</div>
     </Modal>
