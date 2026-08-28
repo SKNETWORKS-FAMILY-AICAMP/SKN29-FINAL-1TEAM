@@ -603,6 +603,10 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .field input, .field select, .field textarea {
   width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: var(--text-body); background: var(--surface);
 }
+/* 읽기 전용 필드 — 이전엔 편집 가능한 입력과 똑같이 그려져, 눌러도 반응이 없는
+   이유를 텍스트로만 알 수 있었다(NodeDetailRead 등). 배경을 안쪽으로 눌린 톤으로
+   낮춰 "여기는 입력할 곳이 아니다"를 보기만 해도 알 수 있게 한다. */
+.field input:read-only, .field textarea:read-only { background: var(--surface-2); color: var(--muted); cursor: default; }
 
 .muted { color: var(--muted); }
 .text-meta { font-size: var(--text-meta); color: var(--muted); }

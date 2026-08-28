@@ -318,9 +318,20 @@ function TestResultList({ rows, stats }: { rows: SimResultRow[]; stats: SimRepor
                   ? <span className="tag">{decisionText(row.expected)}</span>
                   : <span className="text-meta">-</span>}</td>
                 <td><span className={'tag ' + decisionTone(row.decision)}>{decisionText(row.decision)}</span></td>
-                <td className="text-meta" style={{ fontSize: 11 }}>
-                  {row.path.join(' → ') || '-'}
-                  {row.flags.length > 0 && <div style={{ color: 'var(--tone-red)' }}>{row.flags.join(', ')}</div>}
+                <td className="text-meta" style={{ fontSize: 12 }}>
+                  <div>{row.path.join(' → ') || '-'}</div>
+                  {/* 케이스 대부분에 플래그가 여러 개(보통 5~9개) 붙어, 늘 펼쳐 두면 한 줄
+                      요약이어야 할 표가 붉은 글자 벽이 된다 — 접어 두고 필요할 때만 편다.
+                      색도 실제 불일치일 때만 붉게: 정상 처리된 케이스의 플래그(예: 합성
+                      케이스라 정보가 비어 있음)까지 경고로 보이면 안 된다. */}
+                  {row.flags.length > 0 && (
+                    <details style={{ marginTop: 3 }}>
+                      <summary style={{ cursor: 'pointer' }}>플래그 {row.flags.length}개</summary>
+                      <div style={{ marginTop: 3, color: row.matchedExpectation === false ? 'var(--tone-red)' : 'var(--muted)' }}>
+                        {row.flags.join(', ')}
+                      </div>
+                    </details>
+                  )}
                 </td>
               </tr>
             ))}
