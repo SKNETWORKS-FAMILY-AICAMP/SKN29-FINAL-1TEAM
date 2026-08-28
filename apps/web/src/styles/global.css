@@ -794,7 +794,11 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .notif-row.tone-green { color: var(--tone-green); }
 .notif-row.tone-gray { color: var(--tone-gray); }
 .notif-row.tone-purple { color: var(--tone-purple); }
-.notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+/* 아이콘 색은 "아직 안 읽음"일 때만 — 읽은 알림까지 6가지 색이 계속 떠 있으면
+   패널을 열 때마다 색이 다 다른 목록이 된다. 읽으면 무채색으로 가라앉는다
+   (왼쪽 강조 바가 이미 unread에서만 색을 켜는 것과 같은 원칙). */
+.notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; color: var(--muted); }
+.notif-row.unread .icon { color: inherit; }
 .notif-row .notif-body { min-width: 0; color: var(--text); }
 .notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--text-value); }
 .notif-row .title-row .unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
