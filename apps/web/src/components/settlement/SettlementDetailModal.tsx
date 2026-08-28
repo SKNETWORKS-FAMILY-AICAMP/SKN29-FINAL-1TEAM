@@ -17,7 +17,7 @@ import {
 import { useCategories } from '../../lib/categories'
 import { needsAttention } from '../../lib/judgement'
 import { Modal } from '../ui/Modal'
-import { StatusBadge } from '../ui/StatusBadge'
+import { StatusText } from '../ui/StatusText'
 import { useCan } from '../../lib/capabilities'
 import { todayISO } from '../../lib/period'
 import { useAuth } from '../../context/AuthContext'
@@ -692,7 +692,7 @@ export function SettlementDetailModal({
         </div>
         {isCreate
           ? <span className="tag">신규 작성</span>
-          : <StatusBadge status={item!.status} />}
+          : <StatusText status={item!.status} />}
       </div>
 
       <div className="grid-2">

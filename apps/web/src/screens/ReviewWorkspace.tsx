@@ -14,7 +14,7 @@ import { RiskReportView } from '../components/settlement/RiskReportView'
 import { RuleJudgementPanel } from '../components/settlement/RuleJudgementPanel'
 import { Markdown } from '../components/ui/Markdown'
 import { DecisionReasonModal } from '../components/settlement/DecisionReasonModal'
-import { StatusBadge } from '../components/ui/StatusBadge'
+import { StatusText } from '../components/ui/StatusText'
 import {
   confirmSettlement, fetchReviewStats, rerunRiskReview, reviewSettlement,
   type ReviewStats,
@@ -405,7 +405,7 @@ export function ReviewWorkspace() {
                             확정 대기에서 AI 권장 배지를 띄우면 "권장 승인"과 "승인되어 확정 대기"가
                             같은 칩으로 보여 담당자가 둘을 구별할 수 없다. */}
                         {isHistory || isConfirm ? (
-                          <StatusBadge status={i.status} />
+                          <StatusText status={i.status} />
                         ) : reco === RECO_NONE ? (
                           <span className="tag" title="Risk Review Agent가 아직 돌지 않았습니다">{reco.abbr}</span>
                         ) : (
@@ -689,7 +689,7 @@ export function ReviewWorkspace() {
                         <span className="text-meta">
                           {isHistory ? '이미 처리된 건 — 조회 전용' : '검토를 마친 건 — 사람 확정만 남았습니다'}
                         </span>
-                        <StatusBadge status={sel.status} />
+                        <StatusText status={sel.status} />
                       </div>
                     )}
                     {/* 확정 대기 — 주된 일은 확정이지만, 열어보고 **되돌릴 수도 있어야 한다.**

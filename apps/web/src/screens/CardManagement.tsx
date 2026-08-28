@@ -204,16 +204,14 @@ export function CardManagement() {
                   <td>
                     {c.assignee}
                     {c.attention && (
-                      <div className="text-meta" style={{ color: 'var(--tone-amber)' }}>⚠ {c.attention.label}</div>
+                      <div className="text-meta" style={{ color: 'var(--tone-amber)' }}>{c.attention.label}</div>
                     )}
                   </td>
                   <td className="num">{won(c.usage)}</td>
                   {/* 한도 0 = 미설정. 0원을 한도로 그리면 전 카드가 초과로 보인다. */}
                   <td className="num text-meta">{c.limit > 0 ? won(c.limit) : '미설정'}</td>
                   <td>
-                    <span className="badge" style={c.status === 'ACTIVE'
-                      ? { color: 'var(--tone-green)', background: 'var(--tone-green-bg)' }
-                      : { color: 'var(--tone-red)', background: 'var(--tone-red-bg)' }}>
+                    <span style={{ color: c.status === 'ACTIVE' ? 'var(--tone-green)' : 'var(--tone-red)', fontWeight: 700 }}>
                       {c.statusLabel}
                     </span>
                   </td>

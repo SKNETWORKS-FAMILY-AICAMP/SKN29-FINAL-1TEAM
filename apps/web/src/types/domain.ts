@@ -372,6 +372,9 @@ export const EMBEDDING_IN_PROGRESS: EmbeddingStatus[] = ['PENDING', 'PARSING', '
 export interface PolicyDocument {
   id: string
   title: string
+  /** 자유 입력 버전 표기(예: "v3.2"). 업로드 시 비워두면 빈 문자열 — 회사가 아직 버전을
+   *  관리하지 않는 규정이 많아 빈 값이 흔하다(값이 있을 때만 화면에 배지로 보여준다). */
+  version: string
   fileName: string
   fileSize: number
   /** 최종 적용된 문서 유형(지정값이 있으면 그것, 없으면 파서 자동 감지). 컬렉션 라우팅을 정한다. */
@@ -427,6 +430,7 @@ export interface FolderDoc {
   id: string
   title: string
   status: EmbeddingStatus
+  version: string
   reviewCount: number
   superseded: boolean
 }

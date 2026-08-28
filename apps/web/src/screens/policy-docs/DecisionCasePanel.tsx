@@ -89,13 +89,11 @@ export function DecisionCasePanel({ month, months, cases, total, loading }: {
       </div>
 
       <div className="card-body">
-        <div className="note" style={{ marginBottom: 14 }}>
-          회계 담당자가 <b>AI 권고·룰 판정과 다르게 판단한</b> 건과 그 사유입니다.
-          검색 근거(<code>case_history</code>)로 적재되어, 다음에 비슷한 건을 검토할 때 인용됩니다.
-          <div className="text-meta" style={{ marginTop: 4 }}>
-            권고대로 처리한 건은 남기지 않습니다 — 전부 넣으면 검색 상위가 「권고대로 처리함」으로
-            채워져 정작 봐야 할 예외가 밀려납니다.
-          </div>
+        {/* 항상 똑같이 뜨는 고정 설명문 — 매번 박스로 띄우면 아래 실제 사례 목록과
+            같은 무게로 경쟁한다(별표 섹션 캡션과 같은 이유). 캡션 한 줄로 낮춘다. */}
+        <div className="text-meta" style={{ marginBottom: 14 }}>
+          회계 담당자가 AI 권고·룰 판정과 다르게 판단한 건과 그 사유예요. 다음에 비슷한 건을
+          검토할 때 검색 근거로 인용돼요 — 권고대로 처리한 건은 남기지 않아요.
         </div>
 
         {loading ? (

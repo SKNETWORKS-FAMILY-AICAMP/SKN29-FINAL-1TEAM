@@ -54,7 +54,6 @@ type Tone = 'NORMAL' | 'CAUTION' | 'OVER'
 const toneOf = (rate: number): Tone => (rate >= 100 ? 'OVER' : rate >= 75 ? 'CAUTION' : 'NORMAL')
 const TONE_LABEL: Record<Tone, string> = { NORMAL: '정상', CAUTION: '주의', OVER: '초과' }
 const TONE_COLOR: Record<Tone, string> = { NORMAL: 'var(--tone-green)', CAUTION: 'var(--tone-amber)', OVER: 'var(--tone-red)' }
-const TONE_BG: Record<Tone, string> = { NORMAL: 'var(--tone-green-bg)', CAUTION: 'var(--tone-amber-bg)', OVER: 'var(--tone-red-bg)' }
 
 const manwon = (value: number) => `${Math.round(value).toLocaleString()}만원`
 const trendNote = (diff: number, rate: number) =>
@@ -384,7 +383,7 @@ export function BudgetManagement() {
                         <span className="text-meta">{Math.round(rate * 100)}%</span>
                       </div>
                     </td>
-                    <td><span className="badge" style={{ color: TONE_COLOR[tone], background: TONE_BG[tone] }}>{TONE_LABEL[tone]}</span></td>
+                    <td><span style={{ color: TONE_COLOR[tone], fontWeight: 700 }}>{TONE_LABEL[tone]}</span></td>
                     <td><button className="btn sm" disabled>수정</button></td>
                   </tr>
                 )

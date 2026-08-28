@@ -160,7 +160,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       const detail = (exc as { response?: { data?: { detail?: string } }; message?: string })
       const reason = detail.response?.data?.detail || detail.message || '요청을 처리하지 못했습니다.'
       setError(reason)
-      setChat((previous) => [...previous, { role: 'ai', text: `⚠️ ${reason}` }])
+      setChat((previous) => [...previous, { role: 'ai', text: reason }])
     } finally {
       setChatting(false)
     }
@@ -442,6 +442,9 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
   const [action, setAction] = useState(node.actionDetail ?? {})
   const [workflowStatus, setWorkflowStatus] = useState<GraphNode['workflowStatus']>(node.workflowStatus ?? 'DRAFT')
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved')
+  // 저장 실패 사유를 구분한다 — DSL 문법 오류(로컬)와 저장 요청 실패(네트워크/서버)는
+  // 사람이 할 다음 행동이 다르다("DSL 코드를 고쳐라" vs "다시 시도하라").
+  const [saveErrorDetail, setSaveErrorDetail] = useState('')
   // 쉽게보기 문장은 Agent가 조건과 함께 써 둔 값이라, DSL을 손으로 고치면 설명이 뒤처진다(마운트 시점 원문과 비교).
   const openedConditionExpr = useRef(node.conditionExpr)
   const dirty = useRef(false)
@@ -450,8 +453,13 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
   const saveNow = async (override?: { routes?: typeof routes; workflowStatus?: GraphNode['workflowStatus'] }) => {
     if (!editable || (!dirty.current && !override)) return
     setSaveState('saving')
+    setSaveErrorDetail('')
     let condition: unknown = {}
-    try { condition = conditionText.trim() ? JSON.parse(conditionText) : {} } catch { setSaveState('error'); return }
+    try { condition = conditionText.trim() ? JSON.parse(conditionText) : {} } catch {
+      setSaveState('error')
+      setSaveErrorDetail('DSL 코드가 올바른 JSON 형식이 아닙니다 — 아래 "DSL 코드"를 펼쳐 문법을 확인하세요.')
+      return
+    }
     try {
       const { data } = await endpoints.saveRuleNode(graph.id, node.nodeKey, {
         condition,
@@ -464,7 +472,10 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       dirty.current = false
       if (data?.revertedToGraphId) onReverted(String(data.revertedToGraphId))
       else setSaveState('saved')
-    } catch { setSaveState('error') }
+    } catch {
+      setSaveState('error')
+      setSaveErrorDetail('저장 요청이 실패했습니다 — 네트워크 연결을 확인하고 다시 시도하세요.')
+    }
   }
   saveRef.current = saveNow
 
@@ -481,7 +492,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
     catch { return 'DSL 형식을 확인해주세요.' }
   }, [node.conditionText, conditionText])
   const conditionTextStale = Boolean(node.conditionText?.trim()) && conditionText !== openedConditionExpr.current
-  const markDirty = () => { dirty.current = true; setSaveState('saved') }
+  const markDirty = () => { dirty.current = true; setSaveState('saved'); setSaveErrorDetail('') }
   const addRoute = () => {
     const next = [...routes, { from: node.nodeKey, onResult: 'MATCH' as const, to: '' }]
     setRoutes(next); dirty.current = true; void saveNow({ routes: next })
@@ -508,7 +519,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       <div className="field">
         <label>이 Rule이 하는 일</label>
         <div className="note" style={{ lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{naturalCondition}</div>
-        {conditionTextStale && <div className="text-meta" style={{ marginTop: 6 }}>⚠ DSL 코드를 직접 수정했습니다. 위 설명은 수정 전 기준이며, Rule Agent가 다시 생성할 때 갱신됩니다.</div>}
+        {conditionTextStale && <div className="text-meta" style={{ marginTop: 6, color: 'var(--tone-amber)' }}>DSL 코드를 직접 수정했습니다. 위 설명은 수정 전 기준이며, Rule Agent가 다시 생성할 때 갱신됩니다.</div>}
         <div className="dsl-disclosure" role="button" tabIndex={0} onClick={() => setShowCode((value) => !value)}><Code2 size={13} /> DSL 코드 {showCode ? '접기' : '펼치기'} <span>{showCode ? '⌃' : '⌄'}</span></div>
         {showCode && <textarea rows={7} value={conditionText} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setConditionText(event.target.value); onNodeChanged({ conditionExpr: event.target.value }); markDirty() }} placeholder="JSON DSL 조건" style={{ fontFamily: 'monospace' }} />}
       </div>
@@ -548,10 +559,12 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
         </div>
       </div>
 
-      <div className="field"><label>생성 이유 · 근거</label><div className="note"><div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>{node.sourceClause && <a href="/policy-docs" style={{ display: 'inline-block', marginTop: 8 }}>📎 관련 조항: {node.sourceClause}</a>}</div></div>
+      <div className="field"><label>생성 이유 · 근거</label><div className="note"><div>{node.aiReason || '생성 이유가 아직 입력되지 않았습니다.'}</div>{node.sourceClause && <a href="/policy-docs" style={{ display: 'inline-block', marginTop: 8 }}>관련 조항: {node.sourceClause}</a>}</div></div>
     </div>
     <div className="modal-foot">
-      <span className="text-meta">{!editable ? '읽기 전용' : saveState === 'saving' ? '저장 중…' : saveState === 'error' ? '저장 실패 또는 DSL 오류' : '변경사항 자동 저장됨'}</span>
+      <span className="text-meta" style={saveState === 'error' ? { color: 'var(--tone-red)' } : undefined}>
+        {!editable ? '읽기 전용' : saveState === 'saving' ? '저장 중…' : saveState === 'error' ? saveErrorDetail : '변경사항 자동 저장됨'}
+      </span>
       <div className="spacer" />
       {!editable && graph.status === 'ACTIVE' && <button className="btn primary" onClick={onStartEdit}>v{(graph.version ?? 1) + 1} 수정 시작</button>}
       {editable && <button className="btn warn" onClick={onDelete}><Trash2 size={12} /> 노드 삭제</button>}

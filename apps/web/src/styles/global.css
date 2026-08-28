@@ -277,6 +277,13 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .page:has(.review-ws) { overflow-x: auto; }
 /* Review List는 고정, 선택 건 상세만 남는 폭에 따라 확장 */
 .review-ws .split { grid-template-columns: 360px minmax(720px, 1fr); min-width: 1100px; }
+/* 상세 패널 안(review-detail)이 좌우 2열(grid-2)이라 720px가 필요했다 — 노트북 폭
+   (1152px 실측)에서 가로 스크롤이 매번 발생했다. 이 구간에서는 상세 패널만 세로로
+   접어 필요한 최소폭을 낮춘다(rule-draft-grid가 이미 쓰는 중간 breakpoint와 같은 원리). */
+@media (max-width: 1300px) and (min-width: 1051px) {
+  .review-ws .split { grid-template-columns: 360px minmax(420px, 1fr); min-width: 820px; }
+  .review-detail.grid-2 { grid-template-columns: 1fr; }
+}
 
 /* ── S-04 Rule 콘솔 : 초안 그래프 트리라 가로 스크롤 허용 ── */
 .page:has(.rule-console-full) { overflow-x: auto; }
@@ -596,6 +603,10 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .field input, .field select, .field textarea {
   width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: var(--text-body); background: var(--surface);
 }
+/* 읽기 전용 필드 — 이전엔 편집 가능한 입력과 똑같이 그려져, 눌러도 반응이 없는
+   이유를 텍스트로만 알 수 있었다(NodeDetailRead 등). 배경을 안쪽으로 눌린 톤으로
+   낮춰 "여기는 입력할 곳이 아니다"를 보기만 해도 알 수 있게 한다. */
+.field input:read-only, .field textarea:read-only { background: var(--surface-2); color: var(--muted); cursor: default; }
 
 .muted { color: var(--muted); }
 .text-meta { font-size: var(--text-meta); color: var(--muted); }
@@ -787,7 +798,11 @@ button.card-head.toggle:hover { background: var(--surface-2); }
 .notif-row.tone-green { color: var(--tone-green); }
 .notif-row.tone-gray { color: var(--tone-gray); }
 .notif-row.tone-purple { color: var(--tone-purple); }
-.notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+/* 아이콘 색은 "아직 안 읽음"일 때만 — 읽은 알림까지 6가지 색이 계속 떠 있으면
+   패널을 열 때마다 색이 다 다른 목록이 된다. 읽으면 무채색으로 가라앉는다
+   (왼쪽 강조 바가 이미 unread에서만 색을 켜는 것과 같은 원칙). */
+.notif-row .icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-top: 1px; color: var(--muted); }
+.notif-row.unread .icon { color: inherit; }
 .notif-row .notif-body { min-width: 0; color: var(--text); }
 .notif-row .title-row { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--text-value); }
 .notif-row .title-row .unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }

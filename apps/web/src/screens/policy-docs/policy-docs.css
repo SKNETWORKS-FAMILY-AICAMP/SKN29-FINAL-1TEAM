@@ -1,19 +1,34 @@
-/* 규정 문서 관리 (S-05 v4) — 좌 폴더 트리 / 우 문서 미리보기.
+/* 규정 문서 관리 (S-05 v5) — 좌 폴더 탐색 / 가운데 목록 / 오른쪽 상세.
    토큰(--surface, --border 등)은 전역 테마를 그대로 쓴다. 여기선 이 화면 고유 배치만 정의한다. */
 
-.pd-layout {
+/* ── 상단 헤더 — 큰 KPI 카드 4개 대신 한 줄 요약. ─────── */
+.pd-hero .kpi-grid { display: none; } /* 안전망: 남아있을 수 있는 kpi-grid는 이 화면에서 쓰지 않는다 */
+
+.pd-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--space-3);
+  font-size: var(--text-body);
+  color: var(--sidebar-text-muted);
+}
+
+/* 「확인 필요」만 굵게 밝혀서 강조한다 — 지금 처리해야 하는 것 하나만 눈에 띄면 된다.
+   예전엔 라이트 테마용 --tone-amber-bg(옅은 베이지)를 다크 남색 히어로 위에 그대로
+   써서 색이 겉돌았다 — 배경색 알약을 없애고 굵기·밝기 차이로만 강조한다. */
+.pd-status-attn { color: var(--sidebar-text); font-weight: 700; }
+
+/* ── 3단 뼈대 — 바깥은 [탐색 | 본문] 2열, 본문 안에서 문서 하나를 열면
+   [목록 | 상세] 2열이 다시 생긴다(.pd-workspace). 두 단계가 각자 자기 상태로
+   좁은 화면 드릴다운을 결정해서, 부모가 자식의 내부 선택 상태를 몰라도 된다. ─── */
+.pd-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
+  grid-template-columns: minmax(240px, 300px) 1fr;
   gap: 16px;
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .pd-layout { grid-template-columns: 1fr; }
-}
-
-/* ── 좌: 폴더 트리 ───────────────────────────── */
-.pd-tree {
+.pd-tree-pane {
   padding: 0;
   position: sticky;
   top: 16px;
@@ -21,6 +36,44 @@
   overflow: auto;
 }
 
+.pd-content-pane { min-width: 0; }
+
+/* 트리 하단의 짧은 사용 팁 — 박스로 띄우지 않고 캡션 한 줄로. */
+.pd-tree-hint {
+  padding: 10px 12px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.pd-back-to-tree,
+.pd-back-to-list {
+  display: none; /* 데스크톱에서는 탐색·목록이 항상 옆에 보이므로 되돌아갈 필요가 없다 */
+  border: none;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0 0 10px;
+  cursor: pointer;
+}
+.pd-back-to-tree:hover,
+.pd-back-to-list:hover { text-decoration: underline; }
+
+@media (max-width: 960px) {
+  .pd-shell { grid-template-columns: 1fr; }
+  /* 문서를 아직 안 골랐으면 탐색만, 골랐으면 본문만 — 3단을 억지로 유지하지 않고
+     탐색 → 목록 → 상세가 순서대로 전환되게 한다. */
+  .pd-shell.has-selection .pd-tree-pane { display: none; }
+  .pd-shell:not(.has-selection) .pd-content-pane { display: none; }
+  .pd-tree-pane { position: static; max-height: none; }
+  .pd-back-to-tree { display: inline-block; }
+}
+
+.pd-cases-card,
+.pd-empty-card { padding: var(--space-4); }
+
+/* ── 탐색(좌) — 검색·폴더 트리 ───────────────────────────── */
 .pd-search {
   display: flex;
   align-items: center;
@@ -60,8 +113,7 @@
 .pd-folder:hover,
 .pd-doc:hover { background: var(--surface-2); }
 
-/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격.
-   (클래스만 있고 정의가 없어 브라우저 기본 버튼 모양·기본 폰트로 렌더링되고 있었다.) */
+/* 트리 하단 「결정 사례」 노드 — 폴더·문서 노드와 같은 골격. */
 .pd-node {
   display: flex;
   align-items: center;
@@ -96,7 +148,6 @@
   white-space: nowrap;
 }
 
-/* 폴더 헤더(새 폴더 버튼) */
 .pd-tree-head {
   display: flex;
   align-items: center;
@@ -105,8 +156,29 @@
   padding: 6px 10px 8px;
 }
 
-/* 폴더 도구(하위폴더·이름변경·삭제) — 평소엔 숨기고 hover/focus에서만 꺼낸다.
-   항상 보이면 세 개짜리 아이콘 줄이 문서명보다 눈에 띈다. */
+/* 트리 상단 상태 필터 칩 — 기존 .btn.sm/.toggled 그대로, 새 색을 만들지 않는다. */
+.pd-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 10px 8px;
+}
+.pd-filter-row .btn.sm { border-radius: var(--radius-pill); }
+
+/* 문서 버전 표기 — 자유 입력이라 값이 있을 때만 렌더링된다(DocRow). 배지(.pd-badge)와
+   달리 상태색이 아니라 중립 정보라 회색 아웃라인으로만 구분한다. */
+.pd-version {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-chip);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 폴더 도구(하위폴더·이름변경·삭제) — 평소엔 숨기고 hover/focus에서만 꺼낸다. */
 .pd-folder-tools {
   display: none;
   gap: 2px;
@@ -150,7 +222,7 @@
   border-radius: 4px;
 }
 
-/* 업로드 모달 — 드롭존 / 선택된 파일 */
+/* ── 업로드 모달 — 드롭존 / 선택된 파일 ─────────────────── */
 .pd-dropzone {
   display: flex;
   flex-direction: column;
@@ -181,6 +253,7 @@
   background: var(--surface-2);
 }
 
+/* ── 배지·확신도 칩 — 화면 전체가 공유(목록 행·상세·트리·모달 배지가 전부 같은 모양) ── */
 .pd-badge {
   padding: 1px 6px;
   border-radius: 999px;
@@ -194,9 +267,20 @@
 .pd-badge.green { background: var(--tone-green-bg); color: var(--tone-green); border-color: #bfe6d1; }
 .pd-badge.red   { background: var(--tone-red-bg);   color: var(--tone-red);   border-color: #f3c9c5; }
 .pd-badge.gray  { background: var(--surface-2); color: var(--muted);      border-color: var(--border-strong); }
+.pd-badge.blue  { background: var(--tone-blue-bg, #eaf1fb); color: var(--tone-blue, #2f6fb5); border-color: #c3d8f0; }
 
-/* ── 우: 문서 미리보기 ───────────────────────── */
-.pd-preview { padding: 16px; min-height: 420px; }
+.pd-chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 2px 9px; margin-left: 8px; vertical-align: middle;
+}
+.pd-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pd-chip.green::before { background: var(--tone-green); }
+.pd-chip.amber::before { background: var(--tone-amber); }
+.pd-chip.red::before { background: var(--tone-red); }
+
+/* ── 문서 카드(본문) — 헤더 + 탭 + [목록 | 상세] ────────────── */
+.pd-doc-card { padding: var(--space-4); min-height: 480px; }
 
 .pd-empty {
   display: flex;
@@ -208,7 +292,6 @@
   padding: 64px 24px;
   color: var(--muted);
 }
-
 .pd-empty p { max-width: 420px; margin: 0; }
 
 .pd-preview-head {
@@ -219,48 +302,167 @@
   flex-wrap: wrap;
 }
 
-.pd-meta { margin-top: 6px; }
+.pd-doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pd-doc-head-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; }
+.pd-doc-head-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.pd-section-title {
-  margin: 20px 0 8px;
+.pd-doc-meta { margin-top: 6px; }
+
+/* ── 더보기 메뉴 — 재색인·삭제 등 자주 안 쓰는 문서 작업 ──────────────── */
+.pd-more { position: relative; }
+.pd-more > summary { list-style: none; cursor: pointer; }
+.pd-more > summary::-webkit-details-marker { display: none; }
+.pd-more-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5;
+  display: flex; flex-direction: column; gap: 2px; min-width: 140px;
+  padding: 6px; background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control); box-shadow: var(--shadow-md, 0 4px 16px rgba(16,24,40,0.12));
+}
+.pd-more-menu .btn { justify-content: flex-start; border-color: transparent; }
+.pd-more-menu .btn:hover { background: var(--surface-2); }
+
+/* ── 탭 — 확인 필요 / 전체 조항 / 별표 / 문서 정보 ───────────── */
+.pd-tabs {
+  display: inline-flex; gap: 4px; padding: 4px; margin-top: 14px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.pd-tabs .btn { border-color: transparent; background: transparent; box-shadow: none; }
+.pd-tabs .btn.primary { color: #fff; background: var(--primary); box-shadow: var(--shadow-sm); }
+.pd-tab-count {
+  display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; background: rgba(0,0,0,0.08);
+}
+.pd-tabs .btn.primary .pd-tab-count { background: rgba(255,255,255,0.25); }
+
+/* ── 전체 조항 툴바 — 조번호순/우선순위순 전환 · 본문 검색 · 지금 위치 ── */
+.pd-clause-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.pd-clause-pos {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.pd-clause-pos b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* 검색어 일치 표시 — 확인 필요(amber)와 겹치지 않게 별도 색(파랑 계열)로 둔다. */
+.pd-list-row mark,
+.pd-detail-body mark {
+  background: var(--tone-blue-bg, #eaf1fb);
+  color: var(--tone-blue, #2f6fb5);
+  border-radius: 2px;
+  padding: 0 1px;
   font-weight: 700;
-  font-size: 13px;
 }
 
-/* ── 조항 카드 ───────────────────────────────── */
-.pd-clause {
+/* ── 목록 → 상세 2열. 좁은 화면에서는 상세를 열면 목록 대신 그것만 보인다. ── */
+.pd-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 16px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .pd-workspace { grid-template-columns: 1fr; }
+  .pd-workspace.has-active .pd-list-col { display: none; }
+  .pd-workspace:not(.has-active) .pd-detail-col { display: none; }
+  .pd-back-to-list { display: inline-block; }
+}
+
+.pd-list-col {
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  margin-bottom: 8px;
   overflow: hidden;
 }
 
-/* 확인 필요 조항을 펼쳤을 때 — 결정이 필요한 자리라는 걸 테두리로 드러낸다(시안 실측). */
-.pd-clause-attn { border-color: var(--tone-orange); border-width: 1.5px; }
+.pd-list-scroll { max-height: 560px; overflow-y: auto; padding: 6px; }
 
-.pd-clause-head {
+.pd-detail-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 200px;
+  max-height: 620px;
+  overflow-y: auto;
+}
+
+/* ── 목록 행 — 조·별표 하나를 고르는 자리. 본문은 여기 없다(한 줄 미리보기만) ── */
+.pd-list-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 10px;
+  margin-bottom: 2px;
   border: none;
-  background: var(--surface-2);
-  cursor: pointer;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-chip);
+  background: none;
   text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.pd-list-row:last-child { margin-bottom: 0; }
+.pd-list-row:hover { background: var(--surface-2); }
+.pd-list-row.active { background: var(--primary-soft); border-left-color: var(--primary); }
+
+.pd-list-row-top { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+.pd-list-row-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.4; }
+/* 이미 처리된 소수(연결됨·제외)만 흐리게 — "확인 필요"(기본값)는 색을 안 쓴다. */
+.pd-list-row.resolved .pd-list-row-title { font-weight: 400; color: var(--muted); }
+.pd-list-row-note { flex-shrink: 0; font-size: 12px; color: var(--muted); }
+.pd-list-row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.pd-list-row-peek {
+  color: var(--muted); font-size: 11.5px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.pd-clause-title { font-weight: 600; font-size: 13px; flex: 1; }
-.pd-clause-head .pd-caret { margin-left: 4px; }
+/* ── 상세 패널 — 선택한 조·별표 하나의 원문·근거·결정 버튼 ─────────── */
+.pd-detail-body { padding: var(--space-4); }
 
-.pd-clause-peek {
-  padding: 8px 12px;
-  color: var(--muted);
-  font-size: 12px;
+.pd-detail-title-row {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  padding-bottom: var(--space-3); margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.pd-detail-title { font-size: var(--text-h4); font-weight: 700; margin: 0; }
+
+/* 승인/반려처럼 폼이 긴 상세의 주요 행동 버튼 — 스크롤해도 잃지 않게 하단에 붙인다. */
+.pd-detail-actions {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding-top: 12px;
   border-top: 1px solid var(--border);
+  position: sticky; bottom: -1px; background: var(--surface);
 }
 
-.pd-clause-body { padding: 12px; border-top: 1px solid var(--border); }
+/* 원본 조항 본문 — 줄바꿈만 있던 원문에 항목 구분을 표시로만 얹는다(텍스트는 그대로).
+   번호 항목("1.")은 마커만 굵게 + 항목 사이 여백, 번호 없는 하위 줄은 들여쓰기 +
+   가운뎃점(::before, 실제 텍스트 아님)만 붙인다. */
+.pd-clause-body {
+  margin: 6px 0 0; padding: 12px 14px; background: var(--surface-2);
+  border-radius: var(--radius-control); font-size: 13px; line-height: 1.7;
+  max-height: 320px; overflow: auto;
+}
+.pd-clause-line { margin: 0 0 8px; }
+.pd-clause-line:last-child { margin-bottom: 0; }
+.pd-clause-line.num { margin-top: 12px; }
+.pd-clause-line.num:first-child { margin-top: 0; }
+.pd-clause-marker { color: var(--primary); }
+.pd-clause-line.sub {
+  margin: 0 0 5px 6px; padding-left: 13px; position: relative; color: var(--text);
+}
+.pd-clause-line.sub::before { content: '·'; position: absolute; left: 0; color: var(--muted); font-weight: 700; }
 
 .pd-markdown {
   margin: 6px 0 0;
@@ -276,20 +478,6 @@
   overflow: auto;
 }
 
-/* 별표 원문 표 — .pd-markdown과 같은 박스, 안은 진짜 <table>(원문 대조가 목적이라
-   행 클릭처럼 읽히면 안 되므로 전역 .table의 hover 포인터는 끈다). */
-.pd-table-wrap {
-  margin: 6px 0 0;
-  padding: 4px;
-  background: var(--surface-2);
-  border-radius: var(--radius-control);
-  max-height: 260px;
-  overflow: auto;
-}
-.pd-table-wrap .table { font-size: 12px; }
-.pd-table-wrap .table th, .pd-table-wrap .table td { padding: var(--space-1) var(--space-2); white-space: nowrap; }
-.pd-table-wrap .table tbody tr:hover { background: transparent; cursor: default; }
-
 .pd-linked {
   margin-top: 12px;
   padding: 12px;
@@ -298,9 +486,7 @@
   border-radius: var(--radius-control);
   font-size: 12px;
 }
-
 .pd-linked-line { margin-top: 2px; }
-
 .pd-link {
   display: inline-block;
   margin-top: 6px;
@@ -309,26 +495,21 @@
   text-decoration: none;
 }
 
+/* 결정 대기 안내 — 경고가 아니라 "지금 할 수 있는 행동" 안내라 amber(경고색)를 쓰지
+   않는다. 안에 primary 버튼이 있으니 같은 계열의 옅은 파랑(--primary-soft)으로
+   묶어 "이 파란 영역이 지금 할 일"이라는 신호를 준다(AI 설명 토글 칩과 같은 어휘). */
 .pd-decide {
   margin-top: 12px;
   padding: 12px;
-  background: var(--tone-amber-bg);
-  border: 1px solid #e8d5a3;
+  background: var(--primary-soft);
+  border: 1px solid #c3d8f0;
   border-radius: var(--radius-control);
 }
+.pd-decide p { margin: 0 0 10px; font-size: 12px; color: var(--text); }
 
-.pd-decide p { margin: 0 0 10px; font-size: 12px; }
-
-/* ── 별표 판정 임계값 승인 폼(표 key·이름·축·내용·시행일) ─────── */
+/* ── 별표 승인 폼(표 key·이름·축·내용·시행일) ─────────────────────── */
 .pd-field { margin-top: 14px; }
-
-.pd-field label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
+.pd-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .pd-field input,
 .pd-field select {
   width: 100%;
@@ -339,13 +520,14 @@
   border-radius: var(--radius-control);
   background: var(--surface);
 }
-
 .pd-field input:disabled,
 .pd-field select:disabled { background: var(--surface-2); color: var(--muted); }
 
+/* 표 이름 · 표 key처럼 짧은 필드 두 개를 한 줄에 — 각자 라벨은 그대로 갖되
+   세로 두 줄을 다 차지하지 않는다. */
+.pd-field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.pd-field input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 .pd-field .text-meta { margin-top: 4px; }
-
-/* AxisPicker — 축 select는 폭이 좁아도 되고, 옆 삭제 버튼과 한 줄에 나란히 */
 .pd-field select { width: auto; flex: 1; min-width: 0; }
 
 .pd-json {
@@ -359,8 +541,29 @@
   background: var(--surface-2);
   resize: vertical;
 }
-
 .pd-json:disabled { color: var(--muted); }
+
+.pd-grid-scroll { overflow-x: auto; }
+.pd-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+.pd-grid th, .pd-grid td { border: 1px solid var(--border); padding: 0; }
+.pd-grid th { background: var(--surface-2); }
+.pd-grid tfoot td { border: none; padding: 8px 0 0; }
+.pd-grid input {
+  width: 100%; min-width: 64px; border: none; background: transparent; font: inherit;
+  font-size: 12.5px; padding: 6px 8px; color: var(--text); border-radius: 0;
+}
+.pd-grid th input { font-weight: 700; }
+.pd-grid input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pd-grid input:disabled { color: var(--muted); }
+.pd-grid input:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
+.pd-grid td:last-child, .pd-grid th:last-child { border: none; width: 26px; padding: 0 2px; }
+
+.pd-grid-single {
+  width: 100%; max-width: 200px; font: inherit; font-size: 14px; font-weight: 600;
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control); background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
 
 .pd-skipform {
   margin-top: 12px;
@@ -368,9 +571,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
 }
-
 .pd-skipform label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
-
 .pd-skipform textarea {
   width: 100%;
   font: inherit;
@@ -392,6 +593,49 @@
   align-items: flex-start;
   gap: 12px;
 }
+
+/* ── 「문서 정보」 탭 — 감사·오류 확인용 기술 정보를 여기 모은다 ─────────
+   성격이 다른 사실을 나눈다: 기본 정보 → 처리 결과(짧은 사실, 2칸) → 참고 사항
+   (긴 문단, 라벨 위·본문 아래) → 문서 ID(맨 아래, 가장 작게). 구분은 여백 +
+   캡션 한 줄뿐 — 색이나 테두리로 섹션을 나누지 않는다. */
+.pd-info-sections { display: flex; flex-direction: column; margin-top: 14px; }
+.pd-info-caption {
+  margin: 18px 0 2px; font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.pd-info-caption-first { margin-top: 0; }
+
+/* 목록 칸(300px) 밖으로 나와 전체 폭을 쓰게 된 자리 — 짧은 사실 두 그룹을 세로로
+   더 쌓지 않고 가로로 나란히 둔다. 좁은 화면에서는 자연히 1열로 줄어든다. */
+.pd-info-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+@media (max-width: 720px) { .pd-info-cols { grid-template-columns: 1fr; } }
+
+.pd-info-grid { display: flex; flex-direction: column; }
+.pd-info-row {
+  display: grid; grid-template-columns: 120px 1fr; gap: 12px;
+  padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.pd-info-row:last-child { border-bottom: none; }
+.pd-info-label { color: var(--muted); font-weight: 600; }
+.pd-info-value { color: var(--text); word-break: break-word; }
+.pd-info-value code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+
+.pd-info-notes { display: flex; flex-direction: column; gap: 12px; }
+.pd-info-note { padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-control); }
+.pd-info-note .pd-info-label { margin-bottom: 4px; }
+.pd-info-note .pd-info-value { font-size: 13px; line-height: 1.6; }
+
+.pd-info-id { margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+.pd-info-id code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* 상태를 배지(배경 채운 알약)가 아니라 굵기·색만으로 — 화면 전체에 색이 담긴
+   덩어리가 반복되던 것을 정리한다(목록 행과 같은 원칙). */
+.pd-status-text { font-weight: 700; font-size: 13px; }
+.pd-status-text.amber { color: var(--tone-amber); }
+.pd-status-text.green { color: var(--tone-green); }
+.pd-status-text.red { color: var(--tone-red); }
+.pd-status-text.gray { color: var(--muted); font-weight: 600; }
+.pd-status-text.blue { color: var(--primary); }
 
 /* ── 문서 렌더링 모달(S-05 ③) — 페이지 뷰어 ─────── */
 .modal.pdf-viewer-modal {
@@ -492,14 +736,12 @@
 }
 
 /* ── 별표 승인: 원문 표 렌더 + 승인 결과 표 ────────────────────────────── */
-/*  원문을 파이프 문자로 보여주면 셀 경계를 눈으로 세어야 해서 추출 결과와 대조하는 데
-    시간이 걸린다 — 그러면 대충 누르게 된다. 표로 그리고, 원문은 토글로 남긴다. */
 .pd-md-table {
   background: var(--surface-2);
   border-radius: var(--radius-control);
   padding: 10px 12px;
   margin: 6px 0 10px;
-  overflow-x: auto;          /* 열이 많은 별표가 카드를 밀어내지 않게 */
+  overflow-x: auto;
 }
 .pd-md-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .pd-md-table th,
@@ -511,30 +753,60 @@
 }
 .pd-md-table th { background: var(--surface); font-weight: 700; }
 
-/*  승인 뒤에 남는 게 한 줄 문장뿐이면 "내가 뭘 승인했더라"를 확인할 길이 원문 대조밖에
-    없다. 저장된 값을 그대로 표로 보여준다. */
-.pd-resolved { margin-top: 8px; }
-.pd-resolved table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pd-resolved {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.pd-resolved table { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); }
 .pd-resolved th,
-.pd-resolved td { border: 1px solid var(--border); padding: 5px 8px; }
+.pd-resolved td { border: 1px solid var(--border); padding: var(--space-2) var(--space-3); }
 .pd-resolved th { background: var(--surface-2); font-weight: 700; text-align: left; }
 .pd-resolved .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-/*  **결과가 카드의 결론**이라 눈에 먼저 들어와야 한다 — 아래 코멘트·메모·원문은 그 결과를
-    설명하거나 뒷받침하는 것들이다. */
-.pd-resolved {
-  border: 1px solid var(--border-strong); border-radius: var(--radius-control);
-  padding: 10px 12px; background: var(--surface-2);
+.pd-resolved-head { margin-bottom: var(--space-3); }
+.pd-resolved-title {
+  font-size: var(--text-h4); font-weight: 700; color: var(--text); letter-spacing: -0.005em;
+  text-wrap: balance;
 }
-.pd-resolved-head { margin-bottom: 6px; line-height: 1.5; }
-.pd-resolved-head code {
-  font-size: 12.5px; font-weight: 700; color: var(--primary);
-  background: var(--primary-soft); padding: 1px 5px; border-radius: 4px;
+.pd-resolved-sub { margin-top: 4px; font-size: var(--text-meta); color: var(--muted); line-height: 1.55; }
+.pd-resolved-ref { margin-top: 6px; font-size: 10.5px; color: var(--muted); }
+.pd-resolved-ref code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: inherit; font-weight: 600; color: var(--muted); background: none; padding: 0;
 }
-.pd-resolved table { background: var(--surface); }
+.pd-resolved-ref span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-/*  접기 — 원문 대조·값 고치기처럼 **필요한 사람만 여는 것**. 늘 펼쳐 두면 카드가 길어져
-    결론이 안 보인다(예전 상태: 결과를 보려면 여섯 블록을 지나야 했다). */
+.pd-resolved-single {
+  font-size: var(--text-hero); font-weight: 700; margin-top: var(--space-2); color: var(--text);
+  letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+}
+
+.pd-resolved .table tbody tr:hover { background: transparent; cursor: default; }
+.pd-resolved .table tbody tr:nth-child(even) td { background: var(--surface-2); }
+.pd-resolved .table th:first-child,
+.pd-resolved .table td:first-child { position: sticky; left: 0; border-right: 1px solid var(--border-strong); }
+.pd-resolved .table th:first-child { background: var(--surface-2); z-index: 1; }
+.pd-resolved .table td:first-child { background: var(--surface); font-weight: 600; }
+.pd-resolved .table tbody tr:nth-child(even) td:first-child { background: var(--surface-2); }
+
+/* AI 설명 토글 — 코멘트·통과 검사·메모를 한 곳에 접어 둔다. */
+.pd-ai-fold { margin-top: var(--space-3); }
+.pd-ai-fold > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--primary);
+  padding: 7px var(--space-3); background: var(--primary-soft); border-radius: var(--radius-control);
+  user-select: none; transition: filter 150ms cubic-bezier(0.23,1,0.32,1);
+}
+.pd-ai-fold > summary::-webkit-details-marker { display: none; }
+.pd-ai-fold > summary:hover { filter: brightness(0.97); }
+.pd-ai-fold > summary::after { content: '▾'; margin-left: auto; font-size: 10px; }
+.pd-ai-fold[open] > summary::after { content: '▴'; }
+.pd-ai-fold-body { padding: var(--space-3) var(--space-1) 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.pd-ai-fold-body .pd-ai-line { margin-top: var(--space-2); }
+.pd-ai-fold-body .pd-ai-line:first-child { margin-top: 0; }
+
+/* 접기 — 원문 대조·값 고치기처럼 필요한 사람만 여는 것. */
 .pd-fold { margin-top: 10px; }
 .pd-fold > summary {
   cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted);

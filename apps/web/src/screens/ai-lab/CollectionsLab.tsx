@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { RotateCw, Search } from 'lucide-react'
 import { labApi, labErrorMessage, type CollectionStat, type RagSampleResponse } from './data/labApi'
 import { Collapsible, EmptyHint, ErrorBanner, JsonBlock, TextBlock } from './components/LabPrimitives'
+import { SkeletonRows } from '../../components/ui/Skeleton'
 
 const NAMES = ['policy_docs', 'tax_refs', 'case_history', 'org_docs']
 
@@ -68,6 +69,7 @@ export function CollectionsLab() {
                 </tr>
               </thead>
               <tbody>
+                {loading && rows === null && <SkeletonRows rows={4} cols={4} />}
                 {(rows ?? []).map((c) => (
                   <tr key={c.name} style={{ cursor: 'default' }}>
                     <td style={{ fontWeight: 600 }}>{c.name}</td>
