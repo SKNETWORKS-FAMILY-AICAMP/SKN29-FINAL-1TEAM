@@ -1,0 +1,527 @@
+<meta charset="UTF-8">
+<title>7주차 주간 브리핑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --page-bg:#D7D9E1;
+    --paper:#F8F8FA;
+    --blob-gray:#ECECF1;
+    --blob-lav:#C9CEEE;
+    --ink:#1A1E2A;
+    --ink-soft:#767C8C;
+    --ink-faint:#A5AAB8;
+    --primary:#3E4FC4;
+    --primary-dark:#2E3B99;
+    --primary-tint:#ECEFFB;
+    --line:#E2E4EA;
+    --navy:#1C2436;
+    --navy-2:#252E44;
+    --chip-navy:#333D59;
+    --on-navy:#F2F3F8;
+    --on-navy-soft:#9CA3BC;
+    --sev-p0:#D8574F;
+    --sev-p1:#DB9A3B;
+    --good:#2F8F63;
+    --stage-shadow:0 24px 64px -16px rgba(20,24,40,.28), 0 2px 12px rgba(20,24,40,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page-bg:#0B0D12; --stage-shadow:0 28px 80px -14px rgba(0,0,0,.7); }
+  }
+  :root[data-theme="dark"]{ --page-bg:#0B0D12; --stage-shadow:0 28px 80px -14px rgba(0,0,0,.7); }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--page-bg);
+    font-family:"Noto Sans KR",system-ui,sans-serif;
+    color:var(--ink);
+    overflow:hidden;
+  }
+  h1,h2,h3{margin:0; font-weight:900; text-wrap:balance;}
+  p{margin:0;}
+  ::selection{background:var(--primary); color:#fff;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+  svg{display:block;}
+
+  .stage-wrap{
+    position:relative; width:min(96vw, calc(96vh * 16 / 9)); aspect-ratio:16/9;
+    max-height:96vh;
+    border-radius:16px; overflow:hidden; background:var(--paper); box-shadow:var(--stage-shadow);
+    border:1px solid rgba(20,24,40,.08);
+  }
+  .slide{
+    position:absolute; inset:0; display:none; opacity:0; transform:translateX(12px);
+    transition:opacity .3s ease, transform .3s ease;
+    background:var(--paper);
+  }
+  .slide.active{ display:flex; opacity:1; transform:translateX(0); flex-direction:column;}
+  @media (prefers-reduced-motion: reduce){ .slide{ transition:none; transform:none;} }
+
+  /* ---------- decorative blobs (cover / agenda / closing only) ---------- */
+  .blob{ position:absolute; border-radius:58% 42% 55% 45% / 48% 55% 45% 52%; pointer-events:none;}
+  .blob-gray{ background:var(--blob-gray); }
+  .blob-lav{ background:var(--blob-lav); }
+
+  /* ---------- shared header (icon + title + rule) ---------- */
+  .head{ display:flex; align-items:center; gap:12px; padding:5.6% 6% 0;}
+  .head .ic{ flex:none; width:clamp(24px,2.3vw,32px); height:clamp(24px,2.3vw,32px); border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center;}
+  .head .ic svg{ width:56%; height:56%; stroke:#fff; fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round;}
+  .head h2{ font-size:clamp(21px,2.6vw,32px); color:var(--ink); line-height:1.2;}
+  .head-rule{ margin:1.6% 6% 0; height:1px; background:var(--line);}
+  .kicker{ font-family:"IBM Plex Mono"; font-size:clamp(10.5px,.9vw,12px); letter-spacing:.14em; text-transform:uppercase; color:var(--primary); font-weight:600; padding:0 6%; margin-top:3.2%;}
+
+  .body-pad{ flex:1 1 auto; min-height:0; padding:0 6% 5%; display:flex; flex-direction:column; }
+
+  /* ---------- cover / closing ---------- */
+  .slide.cover, .slide.close{ position:relative; display:block;}
+  .cover-inner, .close-inner{ position:relative; z-index:2; padding:0 8%; max-width:74%; margin-top:clamp(60px,20vh,180px);}
+  .pill{
+    display:inline-flex; align-items:center; padding:9px 22px; border-radius:999px;
+    border:1.6px solid var(--primary); color:var(--primary); font-weight:700;
+    font-size:clamp(12px,1.05vw,14.5px); background:var(--paper);
+  }
+  .cover h1{ margin-top:clamp(10px,2.2vw,22px); font-size:clamp(40px,6.6vw,78px); line-height:1.02; letter-spacing:-.01em;}
+  .cover h1 .accent{ color:var(--primary); display:block;}
+  .cover h1 .plain{ color:var(--ink); display:block;}
+  .cover .sub{ margin-top:clamp(8px,1.6vw,16px); font-family:"IBM Plex Mono"; font-size:clamp(13px,1.25vw,17px); color:var(--ink-soft);}
+  .foot-meta{
+    margin-top:clamp(24px,4.5vw,48px); padding-top:clamp(12px,2vw,20px); border-top:1px solid var(--line);
+    display:flex; gap:14px; font-size:clamp(12px,1vw,14px); color:var(--ink-soft);
+  }
+  .foot-meta b{ color:var(--ink); font-weight:700;}
+
+  .close h2{ font-size:clamp(42px,6.2vw,72px); color:var(--primary); line-height:1.05;}
+  .close .sub{ margin-top:clamp(8px,1.4vw,14px); font-size:clamp(14px,1.3vw,17px); color:var(--ink-soft); max-width:46ch;}
+  .close-stats{ margin-top:clamp(24px,4vw,44px); display:flex; gap:clamp(28px,4vw,52px);}
+  .close-stats div{ font-family:"IBM Plex Mono"; font-size:clamp(11px,.9vw,12.5px); color:var(--ink-soft);}
+  .close-stats b{ display:block; font-family:"Noto Sans KR"; font-weight:900; font-size:clamp(24px,2.6vw,34px); color:var(--ink); margin-bottom:3px;}
+
+  /* ---------- agenda ---------- */
+  .agenda-wrap{ flex:1; display:flex; align-items:center; gap:6%; padding:2% 8% 4%; position:relative; z-index:2;}
+  .agenda-badge{
+    flex:none; width:clamp(180px,22vw,300px); height:clamp(180px,22vw,300px); border-radius:50%;
+    background:#fff; box-shadow:0 18px 40px -14px rgba(30,36,60,.18);
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:clamp(19px,2vw,25px); font-weight:900; color:var(--ink); line-height:1.35; padding:clamp(14px,2.2vw,26px);
+  }
+  .agenda-list{ flex:1; display:flex; flex-direction:column; gap:clamp(10px,2.4%,20px);}
+  .agenda-row{ display:flex; align-items:baseline; gap:18px; padding-bottom:clamp(8px,1.8%,16px); border-bottom:1px solid var(--line);}
+  .agenda-row:last-child{ border-bottom:none;}
+  .agenda-num{ font-family:"IBM Plex Mono"; font-weight:600; font-size:clamp(16px,1.6vw,21px); color:var(--primary); flex:none; width:2.2em;}
+  .agenda-row h3{ font-size:clamp(15px,1.5vw,20px); color:var(--ink); font-weight:700;}
+  .agenda-row span{ display:block; margin-top:3px; font-size:clamp(11px,.9vw,13px); color:var(--ink-faint); font-weight:400;}
+
+  /* ---------- divider (Part N) ---------- */
+  .slide.divider{ align-items:center; justify-content:center; text-align:center;}
+  .divider .pill{ margin:0 auto;}
+  .divider h2{ margin-top:2.6%; font-size:clamp(30px,4.6vw,52px); color:var(--ink);}
+  .divider .sub{ margin-top:1.6%; font-size:clamp(13px,1.15vw,15.5px); color:var(--ink-soft); font-family:"IBM Plex Mono";}
+
+  /* ---------- flow cards (dark, numbered) ---------- */
+  .flow{ display:flex; flex-direction:column; gap:clamp(12px,2.2%,20px); margin-top:clamp(18px,3%,32px);}
+  .flow-item{ display:flex; align-items:stretch; gap:14px;}
+  .flow-num{
+    flex:none; width:clamp(26px,2.2vw,32px); height:clamp(26px,2.2vw,32px); border-radius:50%;
+    background:var(--primary); color:#fff; font-family:"IBM Plex Mono"; font-weight:600;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(12px,1.05vw,14px);
+    align-self:center;
+  }
+  .flow-card{
+    flex:1; background:var(--navy); border-radius:14px; padding:clamp(16px,2.6%,26px) clamp(20px,2.8%,28px);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .flow-top{ display:flex; align-items:center; gap:9px; justify-content:space-between;}
+  .flow-title{ display:flex; align-items:center; gap:10px; font-weight:700; color:#fff; font-size:clamp(15px,1.4vw,18px);}
+  .flow-title .em{ font-size:1.15em;}
+  .flow-tag{
+    font-family:"IBM Plex Mono"; font-size:11px; color:var(--on-navy-soft); background:var(--chip-navy);
+    padding:4px 10px; border-radius:6px; white-space:nowrap;
+  }
+  .flow-desc{ font-size:clamp(12.5px,1.1vw,15px); color:var(--on-navy-soft); line-height:1.5;}
+
+  /* ---------- severity list (dark) ---------- */
+  .sev-list{ display:flex; flex-direction:column; gap:clamp(10px,1.8%,16px); margin-top:clamp(18px,3%,32px);}
+  .sev-item{ display:flex; align-items:center; gap:16px; background:var(--navy); border-radius:14px; padding:clamp(14px,2.2%,20px) clamp(18px,2.4%,24px);}
+  .sev-tag{
+    flex:none; font-family:"IBM Plex Mono"; font-weight:700; font-size:12px; color:#fff;
+    padding:6px 0; width:48px; text-align:center; border-radius:7px;
+  }
+  .sev-tag.p0{ background:var(--sev-p0);}
+  .sev-tag.p1{ background:var(--sev-p1);}
+  .sev-txt{ font-size:clamp(13px,1.15vw,15.5px); color:var(--on-navy); line-height:1.5;}
+  .sev-txt b{ color:#fff; font-weight:700;}
+
+  /* ---------- stat cards ---------- */
+  .stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(14px,2.2%,24px); margin-top:clamp(28px,5%,54px);}
+  .stat-card{
+    background:#fff; border:1px solid var(--line); border-radius:16px; text-align:center;
+    padding:clamp(20px,3.4%,34px) clamp(10px,1.6%,18px);
+    box-shadow:0 14px 30px -18px rgba(30,36,60,.16);
+  }
+  .stat-card .lbl{ font-size:clamp(12px,1.05vw,14.5px); color:var(--ink-soft); font-weight:700;}
+  .stat-card .val{ margin-top:10px; display:flex; align-items:baseline; justify-content:center; gap:8px;}
+  .stat-card .from{ font-family:"IBM Plex Mono"; font-size:clamp(15px,1.5vw,19px); color:var(--ink-faint); text-decoration:line-through; text-decoration-color:var(--line); text-decoration-thickness:2px;}
+  .stat-card .arrow{ color:var(--primary); font-size:clamp(14px,1.2vw,17px);}
+  .stat-card .to{ font-family:"IBM Plex Mono"; font-weight:700; font-size:clamp(26px,2.8vw,38px); color:var(--primary);}
+  .stat-card .to.good{ color:var(--good);}
+  .stat-note{ margin-top:clamp(14px,2.4%,22px); text-align:center; font-size:clamp(11.5px,1vw,13.5px); color:var(--ink-soft);}
+  .stat-note b{ color:var(--ink); font-weight:700;}
+
+  /* ---------- plan rows (light) ---------- */
+  .plan{ display:flex; flex-direction:column; gap:clamp(12px,2.2%,20px); margin-top:clamp(18px,3%,32px);}
+  .plan-row{
+    display:flex; align-items:center; gap:clamp(16px,2.4%,24px);
+    background:var(--blob-gray); border-radius:14px; padding:clamp(16px,2.6%,26px) clamp(20px,2.8%,28px);
+  }
+  .plan-ic{ flex:none; width:clamp(32px,2.8vw,40px); height:clamp(32px,2.8vw,40px); display:flex; align-items:center; justify-content:center;}
+  .plan-ic svg{ width:100%; height:100%; stroke:var(--primary); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
+  .plan-div{ flex:none; width:1px; align-self:stretch; background:var(--line);}
+  .plan-txt h3{ font-size:clamp(15.5px,1.45vw,19px); color:var(--ink); font-weight:700;}
+  .plan-txt span{ display:block; margin-top:4px; font-size:clamp(12px,1vw,14px); color:var(--ink-soft); font-weight:400;}
+  .plan-row .tag{
+    margin-left:auto; flex:none; font-family:"IBM Plex Mono"; font-size:10.5px; font-weight:700; color:#fff;
+    background:var(--sev-p0); padding:4px 10px; border-radius:6px;
+  }
+
+  /* ---------- footer nav ---------- */
+  .stage-foot{ position:absolute; left:0; right:0; bottom:0; height:30px; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none;}
+  .dots{ display:flex; gap:6px; pointer-events:auto;}
+  .dots button{ width:6px; height:6px; border-radius:50%; border:none; padding:0; cursor:pointer; background:var(--line);}
+  .dots button.on{ background:var(--primary); width:16px; border-radius:3px;}
+  .count{ position:absolute; right:6%; font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--ink-faint); pointer-events:none;}
+
+  .nav-btn{
+    position:absolute; top:0; bottom:30px; width:8%; display:flex; align-items:center;
+    background:transparent; border:none; cursor:pointer; color:var(--ink-faint);
+    opacity:0; transition:opacity .18s ease; z-index:6;
+  }
+  .nav-btn:hover, .nav-btn:focus-visible{ opacity:1;}
+  .nav-btn:focus-visible{ outline:2px solid var(--primary); outline-offset:-4px;}
+  .nav-btn.prev{ left:0; justify-content:flex-start; padding-left:8px;}
+  .nav-btn.next{ right:0; justify-content:flex-end; padding-right:8px;}
+  .nav-btn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+
+  .hint{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); font-family:"IBM Plex Mono"; font-size:11px; color:#7C879C; opacity:.7; pointer-events:none;}
+
+  @media print{
+    body{ background:#fff; overflow:visible; height:auto; display:block;}
+    .stage-wrap{ box-shadow:none; border-radius:0; width:100%; aspect-ratio:auto;}
+    .slide{ position:static; display:flex !important; opacity:1 !important; transform:none !important; width:100%; height:100vh; page-break-after:always;}
+    .nav-btn, .hint{ display:none !important;}
+  }
+</style>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="ic-check"><path d="M5 12l4.5 4.5L19 7"/></g>
+    <g id="ic-doc"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></g>
+    <g id="ic-db"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></g>
+    <g id="ic-flask"><path d="M9 3h6M10 3v6l-5.2 8.5A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M8 15h8"/></g>
+    <g id="ic-chart"><path d="M4 20h16"/><rect x="6" y="12" width="3.4" height="8"/><rect x="10.3" y="7" width="3.4" height="13"/><rect x="14.6" y="15" width="3.4" height="5"/></g>
+    <g id="ic-search"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></g>
+    <g id="ic-warn"><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.2"/><circle cx="12" cy="17.2" r="0.15" fill="currentColor" stroke="none"/></g>
+    <g id="ic-flag"><path d="M6 21V4"/><path d="M6 5h11l-3 4 3 4H6"/></g>
+    <g id="ic-card"><rect x="3" y="6" width="18" height="12" rx="2.2"/><path d="M3 10h18"/><path d="M7 14h4"/></g>
+    <g id="ic-link"><path d="M9.5 14.5l5-5"/><rect x="3.5" y="10.5" width="7" height="7" rx="3.5" transform="rotate(-45 7 14)"/><rect x="13.5" y="6.5" width="7" height="7" rx="3.5" transform="rotate(-45 17 10)"/></g>
+    <g id="ic-target"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none"/></g>
+    <g id="ic-layers"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></g>
+  </defs>
+</svg>
+
+<div class="stage-wrap" id="stage">
+
+  <!-- 1: cover -->
+  <section class="slide cover active">
+    <div class="blob blob-gray" style="width:30%; height:52%; top:-14%; right:-6%;"></div>
+    <div class="blob blob-lav" style="width:20%; height:34%; left:-6%; bottom:-10%;"></div>
+    <div class="cover-inner">
+      <span class="pill">법인카드 정산 자동화 플랫폼</span>
+      <h1><span class="accent">WEEK 7</span><span class="plain">주간 브리핑</span></h1>
+      <div class="sub">2026.08.24 — 2026.08.28</div>
+      <div class="foot-meta">
+        <div><b>1 TEAM 호냥이</b></div>
+        <div>·</div>
+        <div>정영석 (PM) · 김정민 · 김진욱 · 이지현 · 한경찬</div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 2: agenda -->
+  <section class="slide">
+    <div class="blob blob-gray" style="width:24%; height:40%; top:-12%; right:2%;"></div>
+    <div class="blob blob-lav" style="width:16%; height:26%; left:-4%; bottom:-8%; opacity:.7;"></div>
+    <div class="agenda-wrap">
+      <div class="agenda-badge">금주<br>진행 현황</div>
+      <div class="agenda-list">
+        <div class="agenda-row"><span class="agenda-num">01</span><div><h3>규정·QA 정비</h3><span>산출물 현행화 · 라이브테스트 결함 수정</span></div></div>
+        <div class="agenda-row"><span class="agenda-num">02</span><div><h3>룰엔진 검증 프레임워크</h3><span>검증셋 300건 · 자동처리율 100%</span></div></div>
+        <div class="agenda-row"><span class="agenda-num">03</span><div><h3>Rule Agent 개선</h3><span>별표 처리 고도화 · 초안 이어붙이기</span></div></div>
+        <div class="agenda-row"><span class="agenda-num">04</span><div><h3>소스코드 리뷰 &amp; 리스크</h3><span>레포 전수 조사 · 발표 전 갭 5건 발견</span></div></div>
+        <div class="agenda-row"><span class="agenda-num">05</span><div><h3>Risk Review Agent 검증</h3><span>검증셋 100건 · 결함 2건 수정</span></div></div>
+        <div class="agenda-row"><span class="agenda-num">06</span><div><h3>UI 폴리시 &amp; 차주 계획</h3><span>화면 일관성 통일 · 다음 주 우선순위</span></div></div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 3: Part1 divider -->
+  <section class="slide divider">
+    <span class="pill">Part 1</span>
+    <h2>규정·QA 정비</h2>
+    <div class="sub">산출물 현행화 · 라이브테스트 50건 × 4 에이전트</div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 4: Part1 content -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>규정 세트 정비부터 QA 라이브테스트까지</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num">1</div><div class="flow-card">
+          <div class="flow-top"><span class="flow-title"><span class="em">📄</span>규정 세트 정비</span><span class="flow-tag mono">법인카드 제8·15조</span></div>
+          <div class="flow-desc">문서번호 체계 제거, 실제 조항명으로 참조하도록 전 규정 갱신</div>
+        </div></div>
+        <div class="flow-item"><div class="flow-num">2</div><div class="flow-card">
+          <div class="flow-top"><span class="flow-title"><span class="em">🧾</span>식대·회의비 규정 신설</span><span class="flow-tag mono">별표 1</span></div>
+          <div class="flow-desc">자동처리 기준(금액·인원·시점)과 시간대별 한도 정의</div>
+        </div></div>
+        <div class="flow-item"><div class="flow-num">3</div><div class="flow-card">
+          <div class="flow-top"><span class="flow-title"><span class="em">🗄️</span>벡터DB 덤프·복원 확보</span><span class="flow-tag mono">snapshot</span></div>
+          <div class="flow-desc">재임베딩 없이 시연용 벡터 상태를 고정·복원</div>
+        </div></div>
+        <div class="flow-item"><div class="flow-num">4</div><div class="flow-card">
+          <div class="flow-top"><span class="flow-title"><span class="em">🧪</span>QA 라이브테스트</span><span class="flow-tag mono">50건 × 4</span></div>
+          <div class="flow-desc">RAG 스코프 누수 · 증빙 추출 값 날조, 결함 2건 발견·수정</div>
+        </div></div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 5: Part2 divider -->
+  <section class="slide divider">
+    <span class="pill">Part 2</span>
+    <h2>룰엔진 검증 프레임워크</h2>
+    <div class="sub">골든 라벨 실측 채점 체계 신설</div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 6: Part2 content -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>검증셋 300건으로 성능을 숫자로 증명</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="stat-row">
+        <div class="stat-card"><div class="lbl">자동처리율</div><div class="val"><span class="from">26%</span><span class="arrow">→</span><span class="to">100%</span></div></div>
+        <div class="stat-card"><div class="lbl">오탐</div><div class="val"><span class="to good">0건</span></div></div>
+        <div class="stat-card"><div class="lbl">검증셋 규모</div><div class="val"><span class="to">300건</span></div></div>
+      </div>
+      <div class="stat-note"><b>rule_timeline.py</b> 게이트 화이트리스트 7단계 도입 타임라인 · <b>golden.py + rule_eval.py</b> 버전별 자동 채점 커맨드 신설</div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 7: Part3 divider -->
+  <section class="slide divider">
+    <span class="pill">Part 3</span>
+    <h2>Rule Agent 개선</h2>
+    <div class="sub">별표 처리 고도화 · 초안 중복 생성 해결</div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 8: Part3 content -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>호출마다 새 룰 계열이 생기던 결함, 근본 해결</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="plan">
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-warn"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>문제</h3><span>호출할 때마다 새 룰 계열(v1)이 생겨 콘솔이 초안으로 뒤덮임</span></div>
+        </div>
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-link"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>조치</h3><span>편집 중인 기존 초안에 노드를 이어붙이는 방식으로 전환</span></div>
+        </div>
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-check"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>효과</h3><span>구조검증 실패해도 사람 작업 보존, 별표 승인 흐름 결함도 함께 차단</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 9: Part4 divider -->
+  <section class="slide divider">
+    <span class="pill">Part 4</span>
+    <h2>소스코드 리뷰 &amp; 발표 리스크</h2>
+    <div class="sub">레포 6개 영역 전수 조사 → 갭 5건 발견</div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 10: Part4 content -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>발표 전 반드시 알아야 할 갭 5건</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="sev-list">
+        <div class="sev-item"><span class="sev-tag p0">P0</span><span class="sev-txt"><b>위험도 표시 리그레션</b> — 캘리브레이션된 riskTier 대신 원시 점수를 잘못된 스케일로 비교</span></div>
+        <div class="sev-item"><span class="sev-tag p0">P0</span><span class="sev-txt"><b>인가 스캐폴드 부채</b> — 전역 AllowAny + 소유권 검사가 비로그인 시 스킵되는 구조</span></div>
+        <div class="sev-item"><span class="sev-tag p1">P1</span><span class="sev-txt"><b>시뮬레이션 미검사</b> — DRAFT를 시뮬레이션 없이 바로 ACTIVE 전환 가능</span></div>
+        <div class="sev-item"><span class="sev-tag p1">P1</span><span class="sev-txt"><b>내부 API 노출</b> — /api/internal/* 다수가 인증 없이 노출</span></div>
+        <div class="sev-item"><span class="sev-tag p1">P1</span><span class="sev-txt"><b>RAG stale vector</b> — 재적재 시 구버전 벡터가 Chroma에 잔존</span></div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 11: Part5 divider -->
+  <section class="slide divider">
+    <span class="pill">Part 5</span>
+    <h2>Risk Review Agent 검증</h2>
+    <div class="sub">검증셋 100건 E2E · 결함 2건 수정</div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 12: Part5 content -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>결함 2건 수정으로 정확도·오탐 동시 개선</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="stat-row">
+        <div class="stat-card"><div class="lbl">권고 정확도</div><div class="val"><span class="from">54%</span><span class="arrow">→</span><span class="to good">69%</span></div></div>
+        <div class="stat-card"><div class="lbl">오탐(정상→되돌림)</div><div class="val"><span class="from">36건</span><span class="arrow">→</span><span class="to good">6건</span></div></div>
+        <div class="stat-card"><div class="lbl">분류와 어긋난 권고</div><div class="val"><span class="from">52건</span><span class="arrow">→</span><span class="to good">0건</span></div></div>
+      </div>
+      <div class="stat-note">권고 규칙 미연결 · 등급 게이트 과다 통과, 두 결함을 수정 — 남은 미탐 25건 원인까지 특정해 후속 과제로 정리</div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 13: UI polish & next -->
+  <section class="slide">
+    <div class="head"><span class="ic"><svg><use href="#ic-check"/></svg></span><h2>화면 정리, 그리고 다음 주 계획</h2></div>
+    <div class="head-rule"></div>
+    <div class="body-pad">
+      <div class="plan">
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-layers"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>UI 폴리시 통일</h3><span>상태 배지 → 텍스트 전환, 이모지·스켈레톤 정리, 오류 안내 보강</span></div>
+        </div>
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-flag"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>발표 리스크 대응</h3><span>위험도 표시·인가 스캐폴드 우선 수정</span></div>
+          <span class="tag">P0 우선</span>
+        </div>
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-target"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>정해진 후속 과제</h3><span>별표 적재 확장 · RAG 실 코퍼스 적재 · 출장 입력칸 · 이상탐지 재학습</span></div>
+        </div>
+        <div class="plan-row">
+          <span class="plan-ic"><svg><use href="#ic-card"/></svg></span>
+          <span class="plan-div"></span>
+          <div class="plan-txt"><h3>최종 발표 리허설</h3><span>데모 흐름 최종 점검</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <!-- 14: close -->
+  <section class="slide close">
+    <div class="blob blob-lav" style="width:22%; height:38%; top:-10%; right:0%;"></div>
+    <div class="blob blob-gray" style="width:26%; height:44%; left:-8%; bottom:-14%;"></div>
+    <div class="close-inner">
+      <span class="pill">법인카드 정산 자동화 플랫폼</span>
+      <h2>감사합니다.</h2>
+      <div class="sub">규정·룰엔진을 다듬던 주에서, 두 에이전트를 숫자로 검증하고 발표 리스크를 코드 수준에서 찾아낸 주로.</div>
+      <div class="close-stats">
+        <div><b>100%</b>룰엔진 자동처리율</div>
+        <div><b>69%</b>Risk Review 정확도</div>
+        <div><b>5건</b>발표 전 갭 식별</div>
+      </div>
+    </div>
+    <div class="stage-foot"></div>
+  </section>
+
+  <button class="nav-btn prev" id="prevBtn" aria-label="이전 슬라이드">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="nav-btn next" id="nextBtn" aria-label="다음 슬라이드">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+<div class="hint">← → 로 이동 · 인쇄하면 전체 슬라이드가 PDF로 저장됩니다</div>
+
+<script>
+  // JS-measured sizing: guards against embedding contexts where vh/vw
+  // resolve against a stale or mismatched viewport (e.g. nested preview frames).
+  const stageEl = document.getElementById('stage');
+  function sizeStage(){
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const maxW = vw * 0.96, maxH = vh * 0.96;
+    let w = maxW, h = w * 9 / 16;
+    if (h > maxH) { h = maxH; w = h * 16 / 9; }
+    stageEl.style.width = w + 'px';
+    stageEl.style.height = h + 'px';
+  }
+  sizeStage();
+  window.addEventListener('resize', sizeStage);
+
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let idx = 0;
+
+  function buildFoot(){
+    slides.forEach((s,i)=>{
+      const foot = s.querySelector('.stage-foot');
+      if(!foot) return;
+      const dots = Array.from({length: total}).map((_,j)=>
+        `<button data-i="${j}" class="${j===i?'on':''}" aria-label="${j+1}번 슬라이드로 이동"></button>`
+      ).join('');
+      foot.innerHTML = `<span class="dots">${dots}</span><span class="count">${String(i+1).padStart(2,'0')} / ${total}</span>`;
+    });
+  }
+  buildFoot();
+
+  function go(n){
+    idx = (n + total) % total;
+    slides.forEach((s,i)=> s.classList.toggle('active', i===idx));
+  }
+  document.getElementById('prevBtn').addEventListener('click', ()=>go(idx-1));
+  document.getElementById('nextBtn').addEventListener('click', ()=>go(idx+1));
+  document.getElementById('stage').addEventListener('click', (e)=>{
+    const btn = e.target.closest('.dots button');
+    if(btn) go(parseInt(btn.dataset.i,10));
+  });
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){ go(idx+1); e.preventDefault(); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ go(idx-1); e.preventDefault(); }
+    if(e.key==='Home'){ go(0); e.preventDefault(); }
+    if(e.key==='End'){ go(total-1); e.preventDefault(); }
+  });
+
+  let touchX = null;
+  const stage = document.getElementById('stage');
+  stage.addEventListener('touchstart', e=>{ touchX = e.touches[0].clientX; }, {passive:true});
+  stage.addEventListener('touchend', e=>{
+    if(touchX===null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if(Math.abs(dx) > 40){ go(idx + (dx<0 ? 1 : -1)); }
+    touchX = null;
+  }, {passive:true});
+</script>
