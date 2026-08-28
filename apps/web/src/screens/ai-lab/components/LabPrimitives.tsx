@@ -107,3 +107,10 @@ export function FactRow({ items }: { items: [string, ReactNode][] }) {
 export function EmptyHint({ children }: { children: ReactNode }) {
   return <div className="lab-empty">{children}</div>
 }
+
+/** 탭 상단 고정 안내 — 경고와 사용법 안내를 색으로 갈라 쓰던 것을 하나로 통일한다.
+ *  (실행하면 실제 부작용이 있다는 것도, 파일을 여기서 못 올린다는 것도 "이 탭을 쓰기
+ *  전에 알아야 할 것"이라는 같은 종류의 정보라 같은 모양이어야 한다.) */
+export function TabNote({ children }: { children: ReactNode }) {
+  return <div className="lab-tab-note">{children}</div>
+}

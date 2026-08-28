@@ -1,6 +1,5 @@
 // S-09 (모달) 카드 회수 확인 — 카드를 즉시 회수·사용정지 처리한다(되돌릴 수 없음).
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 
 //  조치 큐가 기본 선택으로 넘기는 사유(`RECALL_REASON_OF`)가 **이 목록 안에 있어야** 한다 —
@@ -50,13 +49,12 @@ export function RecallCardModal({
         </div>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="text-meta">현재 상태</span>
-          <span className="badge" style={{ color: 'var(--tone-amber)', background: 'var(--tone-amber-bg)' }}>{statusLabel}</span>
+          <span style={{ fontWeight: 700 }}>{statusLabel}</span>
         </div>
       </div>
 
-      <div className="note caution" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 16 }}>
-        <AlertTriangle size={15} color="var(--tone-amber)" style={{ flexShrink: 0, marginTop: 1 }} />
-        <span style={{ lineHeight: 1.5 }}>카드를 회수하면 즉시 사용이 정지되며 이 작업은 되돌릴 수 없습니다.</span>
+      <div className="text-meta" style={{ color: 'var(--tone-red)', marginBottom: 16 }}>
+        카드를 회수하면 즉시 사용이 정지되며 이 작업은 되돌릴 수 없습니다.
       </div>
 
       <div className="field">

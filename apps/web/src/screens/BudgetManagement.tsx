@@ -339,18 +339,19 @@ export function BudgetManagement() {
           </div>
         )}
 
-        {/* 예산 행이 없는 과목의 지출 — 숨기면 "항목 합 ≠ 총 사용액"이 원인 없이 어긋나 보인다. */}
+        {/* 예산 행이 없는 과목의 지출 — 숨기면 "항목 합 ≠ 총 사용액"이 원인 없이 어긋나 보인다.
+            경고가 아니라 집계 각주다 — 색을 칠하면 매달 뜨는 정상 안내가 문제처럼 보인다. */}
         {team.unbudgetedUsed > 0 && (
-          <div className="note caution" style={{ margin: '16px 0' }}>
+          <div className="text-meta" style={{ margin: '16px 0' }}>
             예산 행이 없는 과목의 지출 {won(team.unbudgetedUsed)} — 아래 항목 합계에는 포함되지 않습니다
             ({Object.entries(team.unbudgeted).map(([k, v]) => `${k || '분류 미지정'} ${won(v)}`).join(' · ')}).
           </div>
         )}
 
-        <div className="note caution" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '16px 0',
+        <div className="row" style={{
+          alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '16px 0',
         }}>
-          <span>예산 수정 권한이 없습니다. 관리자에게 권한을 요청하세요.</span>
+          <span className="text-meta">예산 수정 권한이 없습니다. 관리자에게 권한을 요청하세요.</span>
           <button className="btn sm" disabled>권한 요청</button>
         </div>
 

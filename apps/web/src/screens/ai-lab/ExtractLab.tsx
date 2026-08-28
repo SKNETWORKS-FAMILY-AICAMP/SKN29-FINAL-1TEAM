@@ -3,9 +3,9 @@
 // 파일을 올릴 수 없다 — `fileRef`는 이미 어딘가에 업로드된 파일의 경로여야 한다(정산 상세에서
 // 첨부한 파일의 저장 경로 등). RAG 검색 탭의 "Chroma 적재가 선행돼야 한다"와 같은 제약이다.
 import { useState } from 'react'
-import { AlertTriangle, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { labApi, labErrorMessage, type ExtractRunLabResponse } from './data/labApi'
-import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
+import { Collapsible, ErrorBanner, FactRow, JsonBlock, TabNote } from './components/LabPrimitives'
 
 const KINDS = [
   { value: 'RECEIPT', label: '영수증·카드전표' },
@@ -37,12 +37,11 @@ export function ExtractLab() {
 
   return (
     <div className="stack-lg">
-      <div className="note" style={{ borderColor: 'var(--tone-amber)', color: 'var(--tone-amber)' }}>
-        <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
+      <TabNote>
         여기서 새 파일을 올릴 수 없습니다 — ai 컨테이너는 media 볼륨을 <b>읽기전용</b>으로 마운트합니다.
         정산 상세 화면에서 이미 첨부를 올렸다면 그 파일의 저장 경로(예: <code>attachments/202608/xxx.png</code>)를
         여기에 입력하세요.
-      </div>
+      </TabNote>
 
       <div className="card">
         <div className="card-head"><h3>판독 입력</h3></div>
@@ -73,9 +72,6 @@ export function ExtractLab() {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {!res && !error && (
-        <EmptyHint>종류·경로를 입력하고 실행하면 뽑힌 판정 사실·신뢰도·근거 인용이 나옵니다.</EmptyHint>
-      )}
 
       {res && (
         <>

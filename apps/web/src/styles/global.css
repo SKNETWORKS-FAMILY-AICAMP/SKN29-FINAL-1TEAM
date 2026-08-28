@@ -910,9 +910,19 @@ button.card-head.toggle:hover { background: var(--surface-2); }
   background: var(--tone-red-bg); border: 1px solid #f3c9c5; border-radius: var(--radius-control);
   color: var(--tone-red); font-size: var(--text-body);
 }
+/* 점선 테두리(=업로드 드롭존 어휘)를 빌려 쓰던 것을 카드와 같은 실선으로 —
+   결과를 기다리는 빈 상태가 "뭔가 잘못된 자리표시자"가 아니라 그냥 다음 카드로 읽히게 한다. */
 .lab-empty {
-  padding: var(--space-6); text-align: center; color: var(--muted); font-size: var(--text-body);
-  border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface);
+  padding: 48px 24px; text-align: center; color: var(--muted); font-size: var(--text-body);
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+
+/* 탭 상단 고정 안내 — 실행 전 알아야 할 제약·부작용. 경고색(amber)을 쓰면 "위험한
+   버튼"처럼 읽혀 실제 예외 상태(오류·이상탐지)의 색과 뒤섞인다. 대신 카드보다 한
+   톤 낮은 배경으로만 구분한다. */
+.lab-tab-note {
+  padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-control);
+  background: var(--surface-2); color: var(--text); font-size: var(--text-body); line-height: 1.6;
 }
 
 /* 예시 질의 · 예정 기능 칩 */

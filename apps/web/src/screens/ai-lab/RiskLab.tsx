@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { Play } from 'lucide-react'
 import { labApi, labErrorMessage, type RiskRunLabResponse } from './data/labApi'
-import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
+import { Collapsible, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
 
 export function RiskLab() {
   const [settlementId, setSettlementId] = useState('')
@@ -64,9 +64,6 @@ export function RiskLab() {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {!res && !error && (
-        <EmptyHint>정산 id를 넣고 실행하면 1차 이상탐지 점수와 2차 RAG 검증 결과가 함께 나옵니다.</EmptyHint>
-      )}
 
       {res && s1 && s2 && (
         <>

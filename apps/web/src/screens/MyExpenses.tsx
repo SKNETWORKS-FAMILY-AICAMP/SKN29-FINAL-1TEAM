@@ -1,7 +1,7 @@
 // S-01 내 지출("지출 증빙") — 사용자(임직원). FR-UI-01, FR-DA-01~09, FR-DB-02
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Check, Download, FileText, Loader2, Plus, Search, UserPlus } from 'lucide-react'
+import { Download, FileText, Loader2, Plus, Search, UserPlus } from 'lucide-react'
 import {
   CARD_TYPE_LABEL, categoryTone,
   type CardType, type Category, type Settlement, type SettlementStatus,
@@ -270,8 +270,8 @@ export function MyExpenses() {
                     </td>
                     <td>
                       {e.evidence === 'MISSING'
-                        ? <span className="tag caution"><AlertTriangle size={11} /> 누락</span>
-                        : <span className="tag ok"><Check size={11} /> 완료</span>}
+                        ? <span style={{ color: 'var(--tone-amber)', fontWeight: 700 }}>누락</span>
+                        : <span className="text-meta">완료</span>}
                     </td>
                     <td>
                       {pending

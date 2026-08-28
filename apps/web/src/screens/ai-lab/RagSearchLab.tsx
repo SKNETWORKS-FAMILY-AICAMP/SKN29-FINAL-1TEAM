@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { Play, Search } from 'lucide-react'
 import { labApi, labErrorMessage, type RagHit, type RagSearchResponse } from './data/labApi'
-import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
+import { Collapsible, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
 
 const COLLECTIONS = [
   { name: 'policy_docs', label: 'policy_docs (사내 규정)' },
@@ -105,7 +105,6 @@ export function RagSearchLab() {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {!res && !error && <EmptyHint>질의를 넣고 검색하면 조문 단위 히트가 점수·인용과 함께 나열됩니다.</EmptyHint>}
 
       {res && (
         <>

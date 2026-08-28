@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { RotateCw, Search } from 'lucide-react'
 import { labApi, labErrorMessage, type CollectionStat, type RagSampleResponse } from './data/labApi'
-import { Collapsible, EmptyHint, ErrorBanner, JsonBlock, TextBlock } from './components/LabPrimitives'
+import { Collapsible, ErrorBanner, JsonBlock, TextBlock } from './components/LabPrimitives'
 import { SkeletonRows } from '../../components/ui/Skeleton'
 
 const NAMES = ['policy_docs', 'tax_refs', 'case_history', 'org_docs']
@@ -129,7 +129,6 @@ export function CollectionsLab() {
       </div>
 
       {sampleError && <ErrorBanner message={sampleError} />}
-      {!sample && !sampleError && <EmptyHint>컬렉션을 골라 조회하면 적재된 청크 원본이 그대로 나옵니다.</EmptyHint>}
 
       {sample && (
         <div className="card">

@@ -2,9 +2,9 @@
 //  Draft/RAG 탭과 달리 **부작용이 있다**: 실행하면 Django에 실제 RuleGraph(DRAFT)가
 //  생긴다(Rule Agent의 산출물 자체가 "저장된 그래프"라 dry-run 경로를 따로 두지 않았다).
 import { useState } from 'react'
-import { AlertTriangle, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { labApi, labErrorMessage, type RuleGenerateLabResponse } from './data/labApi'
-import { EmptyHint, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
+import { ErrorBanner, FactRow, JsonBlock, TabNote } from './components/LabPrimitives'
 import { useCategories } from '../../lib/categories'
 
 //  scope 목록도 서버가 정한다(GLOBAL ∪ Category) — `useCategories().ruleScopes`.
@@ -39,12 +39,11 @@ export function RuleLab() {
 
   return (
     <div className="stack-lg">
-      <div className="note" style={{ borderColor: 'var(--tone-amber)', color: 'var(--tone-amber)' }}>
-        <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
+      <TabNote>
         실행하면 RAG 검색 + LLM 노드 초안 + 결정론적 조립을 거쳐 <b>Django에 실제 DRAFT 그래프</b>가
         생성됩니다(룰 콘솔·S-04에서 확인·삭제 가능). 실험 전용 dry-run은 없습니다 — 운영과 같은
         코드를 부르기 때문입니다.
-      </div>
+      </TabNote>
 
       <div className="card">
         <div className="card-head"><h3>생성 입력</h3></div>
@@ -82,9 +81,6 @@ export function RuleLab() {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {!res && !error && (
-        <EmptyHint>scope를 고르고 생성을 누르면 RAG 근거·LLM 조립 결과·저장된 그래프 id가 나옵니다.</EmptyHint>
-      )}
 
       {res && (
         <>

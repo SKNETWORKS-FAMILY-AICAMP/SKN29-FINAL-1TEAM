@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { Play } from 'lucide-react'
 import { labApi, labErrorMessage, type RagEmbedResponse } from './data/labApi'
-import { EmptyHint, ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
+import { ErrorBanner, FactRow, JsonBlock } from './components/LabPrimitives'
 
 const SAMPLE = [
   '회식비 한도는 어떻게 정해져 있나',
@@ -80,7 +80,6 @@ export function EmbeddingLab() {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {!res && !error && <EmptyHint>문장을 넣고 실행하면 벡터 요약과 문장 간 유사도 행렬이 나옵니다.</EmptyHint>}
 
       {res && (
         <>

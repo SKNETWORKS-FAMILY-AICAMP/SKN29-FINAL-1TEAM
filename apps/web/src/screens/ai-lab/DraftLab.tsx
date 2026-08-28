@@ -9,7 +9,7 @@ import {
   type DraftCategory,
   type DraftRunResponse,
 } from './data/labApi'
-import { Collapsible, EmptyHint, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
+import { Collapsible, ErrorBanner, FactRow, JsonBlock, TextBlock } from './components/LabPrimitives'
 import { useCategories } from '../../lib/categories'
 
 const CARD_TYPES = ['PERSONAL', 'TEAM', 'SHARED', 'POST_PAID', 'PREPAID'] as const
@@ -385,12 +385,6 @@ export function DraftLab() {
       {/* ── 결과 ───────────────────────────────── */}
       <div className="stack-lg">
         {error && <ErrorBanner message={error} />}
-        {!response && !error && (
-          <EmptyHint>
-            왼쪽에서 값을 채우고 <b>실행</b>을 누르면, 초안 결과와 함께 모델·프롬프트·원본 응답·토큰·지연이
-            이 자리에 펼쳐집니다.
-          </EmptyHint>
-        )}
         {response && <DraftResultView res={response} onCarry={carryToRevise} />}
       </div>
     </div>
