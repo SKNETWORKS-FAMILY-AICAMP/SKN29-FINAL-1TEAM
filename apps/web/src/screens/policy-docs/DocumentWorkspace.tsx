@@ -9,7 +9,7 @@
 // 좁은 화면에서는 이 두 칸을 세로로 쌓고, 상세를 열면 목록 대신 그것만 보여준다
 // (`.pd-workspace.has-active`, policy-docs.css) — 3단을 억지로 유지하지 않는다.
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, FileText, MoreVertical, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { FileText, MoreVertical, RefreshCw, Search, Trash2 } from 'lucide-react'
 import {
   EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META, PRIORITY_META,
   type AxisOption, type PolicyClause, type PolicyDocument, type PolicyTableProposal,
@@ -53,36 +53,6 @@ function MoreMenu({ children }: { children: ReactNode }) {
       <summary className="btn sm" aria-label="더보기"><MoreVertical size={14} /></summary>
       <div className="pd-more-menu">{children}</div>
     </details>
-  )
-}
-
-/** 적재 경고 배너 — 백엔드가 주는 문구(`doc.error`)는 최대 20건까지 줄바꿈으로 이어
- *  붙는 원본 로그라 그대로 쏟아내면 한 번에 문단 몇 줄이 된다. 문구 자체를 고치지
- *  않고(백엔드 정본), **첫 줄만 기본 노출**하고 나머지는 접어 둔다 — docling 모킹
- *  경고처럼 "켠 걸 잊으면 안 되는" 신호는 첫 줄에 이미 있다(§rag-ingestion). */
-function DocErrorBanner({ doc }: { doc: PolicyDocument }) {
-  const [open, setOpen] = useState(false)
-  if (!doc.error) return null
-  // 백엔드 문구가 이미 "⚠ "로 시작한다 — 아이콘과 겹치지 않게 선행 기호만 걷어낸다.
-  const lines = doc.error.replace(/^[⚠️\s]+/, '').split('\n').filter(Boolean)
-  const isMock = lines[0]?.includes('docling 모킹 모드')
-  const heading = doc.status === 'FAILED' ? '적재 실패' : isMock ? '테스트 데이터로 적재됨' : '확인할 내용이 있어요'
-
-  return (
-    <div className={`note ${doc.status === 'FAILED' ? 'error' : 'caution'} pd-warn`}>
-      <div className="pd-warn-head">
-        <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-        <b>{heading}</b>
-        {lines.length > 1 && (
-          <button type="button" className="pd-warn-toggle" onClick={() => setOpen((v) => !v)}>
-            {open ? '접기' : `자세히 (${lines.length})`}
-          </button>
-        )}
-      </div>
-      <div className="pd-warn-body">
-        {(open ? lines : lines.slice(0, 1)).map((line, i) => <div key={i}>{line}</div>)}
-      </div>
-    </div>
   )
 }
 
@@ -163,17 +133,22 @@ export function DocumentWorkspace({
             <FileText size={15} style={{ flexShrink: 0, color: 'var(--muted)' }} />
             <b className="ellipsis" title={doc.title}>{doc.title}</b>
           </div>
-          <div className="row" style={{ gap: 6, flexShrink: 0 }}>
-            <span className="pd-badge green">{EMBEDDING_STATUS_META[doc.status]?.label}</span>
-            {doc.superseded && <span className="pd-badge gray">이전 버전</span>}
+          <div className="row" style={{ gap: 8, flexShrink: 0 }}>
+            <span className={`pd-status-text ${EMBEDDING_STATUS_META[doc.status]?.tone ?? 'gray'}`}>
+              {EMBEDDING_STATUS_META[doc.status]?.label}
+            </span>
+            {doc.superseded && <span className="pd-status-text gray">이전 버전</span>}
           </div>
         </div>
 
         {/* 조항·별표 수는 바로 아래 탭 배지가 이미 보여준다 — 같은 화면 안에서
-            두 번 세지 않는다. 여기는 문서를 구분하는 최소 정보만 남긴다. */}
+            두 번 세지 않는다. 여기는 문서를 구분하는 최소 정보만 남긴다. 적재 경고는
+            개발 환경 진단 정보라 "문서 정보" 탭으로만 보낸다 — 진짜 실패(FAILED)만
+            여기서도 plain text로 알린다(별도 배너·아이콘 없이, 유일한 예외 색으로). */}
         <div className="pd-doc-meta text-meta">
           {doc.version && <>버전 {doc.version} · </>}
           등록일 {doc.uploadedAt?.slice(0, 10)}
+          {doc.status === 'FAILED' && <span style={{ color: 'var(--tone-red)' }}> · 적재 실패</span>}
         </div>
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
@@ -191,8 +166,6 @@ export function DocumentWorkspace({
             </button>
           </MoreMenu>
         </div>
-
-        <DocErrorBanner doc={doc} />
 
         <div className="pd-tabs">
           <button type="button" className={'btn' + (tab === 'REVIEW' ? ' primary' : '')} onClick={() => setTab('REVIEW')}>
@@ -238,23 +211,26 @@ export function DocumentWorkspace({
           </div>
         )}
 
-        <div className={'pd-workspace' + (hasActive ? ' has-active' : '')}>
-          <div className="pd-list-col">
-            {tab === 'INFO' ? (
-              <DocInfo doc={doc} />
-            ) : tab === 'TABLES' ? (
-              <ProposalList proposals={orderedProposals} activeId={activeProposalId} onSelect={setActiveProposalId} />
-            ) : (
-              <ClauseList
-                doc={doc}
-                list={tab === 'REVIEW' ? reviewClauses : visibleAllClauses}
-                total={clauses.length} query={tab === 'ALL' ? clauseQuery : ''}
-                activeId={activeClauseId} onSelect={setActiveClauseId}
-              />
-            )}
-          </div>
+        {/* 「문서 정보」는 목록↔상세 2열 골격을 안 쓴다 — 목록 칸(300px)에 표를 욱여넣으면
+            좁은 세로 표가 되고 오른쪽 절반은 빈 채로 남는다(실사용 화면 리뷰로 확인).
+            전체 폭을 그대로 써서 사실 2그룹을 가로로 나란히 놓는다. */}
+        {tab === 'INFO' ? (
+          <DocInfo doc={doc} />
+        ) : (
+          <div className={'pd-workspace' + (hasActive ? ' has-active' : '')}>
+            <div className="pd-list-col">
+              {tab === 'TABLES' ? (
+                <ProposalList proposals={orderedProposals} activeId={activeProposalId} onSelect={setActiveProposalId} />
+              ) : (
+                <ClauseList
+                  doc={doc}
+                  list={tab === 'REVIEW' ? reviewClauses : visibleAllClauses}
+                  total={clauses.length} query={tab === 'ALL' ? clauseQuery : ''}
+                  activeId={activeClauseId} onSelect={setActiveClauseId}
+                />
+              )}
+            </div>
 
-          {tab !== 'INFO' && (
             <div className="pd-detail-col">
               {tab === 'TABLES' ? (
                 activeProposal ? (
@@ -294,8 +270,8 @@ export function DocumentWorkspace({
                 </button>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </>
   )
@@ -349,29 +325,45 @@ function ProposalList({ proposals, activeId, onSelect }: {
 }
 
 /** 「문서 정보」 탭 — 파일 크기·컬렉션·profile 원본 값 등, 감사·오류 확인에는 필요하지만
- *  평소 결정에는 필요 없는 기술 정보를 여기 모은다(메인 화면에서는 지웠다). */
+ *  평소 결정에는 필요 없는 기술 정보를 여기 모은다(메인 화면에서는 지웠다).
+ *
+ *  14개 사실을 한 표로 쭉 나열하면 짧은 값("647KB")과 긴 문단(적재 노트 4줄)이 같은
+ *  두 칸짜리 줄에 섞여 뭘 먼저 봐야 할지 알기 어려웠다 — **성격이 다른 사실을 나눈다**:
+ *  기본 정보 → 처리 결과(짧은 사실, 2칸 표) → 참고 사항(긴 문단, 라벨 위·본문 아래
+ *  전체 폭) → 시스템 값(문서 ID, 맨 아래 작게). 구분은 색이 아니라 여백과 캡션 하나로만. */
 function DocInfo({ doc }: { doc: PolicyDocument }) {
-  const rows: [string, ReactNode][] = [
+  const facts: [string, ReactNode][] = [
     ['문서명', doc.title],
     ['버전', doc.version || '표기 안 함'],
-    ['원본 파일', doc.fileName || '—'],
-    ['파일 크기', doc.fileSize > 0 ? fmtSize(doc.fileSize) : '—'],
     ['문서 유형', (
       <>
         {doc.profileLabel || doc.profile || '—'}
-        {doc.profileHint && <span className="pd-badge gray" style={{ marginLeft: 6 }}>사람이 지정</span>}
+        {doc.profileHint && <span className="text-meta"> (사람이 지정)</span>}
       </>
     )],
+    ['업로더', doc.uploadedBy || '—'],
+    ['등록일', doc.uploadedAt?.slice(0, 10) || '—'],
+  ]
+  const processing: [string, ReactNode][] = [
+    ['원본 파일', doc.fileName || '—'],
+    ['파일 크기', doc.fileSize > 0 ? fmtSize(doc.fileSize) : '—'],
+    ['조항 / 청크', `${doc.clauseCount}개 / ${doc.chunkCount}개 (검색 대상 ${doc.leafCount}개)`],
+    ['비용분류(룰 생성 대상)', doc.ruleScope || '지정 안 함'],
     ['적재 컬렉션', (
       <>
         {doc.collection || '—'}
         {doc.collection && !JUDGEMENT_COLLECTIONS.includes(doc.collection) && (
-          <span style={{ color: 'var(--tone-amber)' }}> (정산 판정에 인용되지 않음)</span>
+          <span className="text-meta"> (정산 판정에 인용되지 않음)</span>
         )}
       </>
     )],
-    ['비용분류(룰 생성 대상)', doc.ruleScope || '지정 안 함'],
-    ['조항 / 청크', `${doc.clauseCount}개 / ${doc.chunkCount}개 (검색 대상 ${doc.leafCount}개)`],
+    ['적재 완료', doc.indexedAt?.slice(0, 10) || '—'],
+  ]
+  // 긴 문단은 2칸 표에 욱여넣지 않고 라벨-본문을 세로로, 전체 폭으로 둔다.
+  const notes: [string, ReactNode][] = [
+    // docling 모킹 경고 등 적재 진단 정보 — 개발 환경 전용이라 메인 화면(헤더·목록)에는
+    // 아무 표시도 두지 않고 여기 기술 정보 자리에만 원문 그대로 둔다(문구는 백엔드 정본).
+    ...(doc.error ? [['적재 노트', doc.error.replace(/^[⚠️\s]+/, '')] as [string, ReactNode]] : []),
     // 적재 후 룰 자동 생성이 어떻게 됐는지 — 업로드 시점 한 번 일어나는 배경 이벤트라
     // 상시 배너보다 감사용 기록에 가깝다. 없으면(정상 생성 등) 굳이 한 줄 차지하지 않는다.
     ...(doc.ruleTrigger?.detail ? [['룰 자동 생성', (
@@ -380,19 +372,52 @@ function DocInfo({ doc }: { doc: PolicyDocument }) {
         {doc.ruleTrigger.hint && <div className="text-meta" style={{ marginTop: 4 }}>{doc.ruleTrigger.hint}</div>}
       </>
     )] as [string, ReactNode]] : []),
-    ['업로더', doc.uploadedBy || '—'],
-    ['등록일', doc.uploadedAt?.slice(0, 10) || '—'],
-    ['적재 완료', doc.indexedAt?.slice(0, 10) || '—'],
-    ['문서 ID', <code key="id">{doc.id}</code>],
   ]
   return (
-    <div className="pd-info-grid">
-      {rows.map(([label, value]) => (
-        <div key={label} className="pd-info-row">
-          <div className="pd-info-label">{label}</div>
-          <div className="pd-info-value">{value}</div>
+    <div className="pd-info-sections">
+      {/* 세로로 길게 쌓지 않고 짧은 사실 두 그룹을 가로로 나란히 — 좁은 목록 칸을
+          벗어나 전체 폭을 쓰게 되면서 생긴 여유를 표 하나 아래로 늘어뜨리는 대신
+          옆으로 쓴다. */}
+      <div className="pd-info-cols">
+        <div>
+          <div className="pd-info-caption pd-info-caption-first">기본 정보</div>
+          <div className="pd-info-grid">
+            {facts.map(([label, value]) => (
+              <div key={label} className="pd-info-row">
+                <div className="pd-info-label">{label}</div>
+                <div className="pd-info-value">{value}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+        <div>
+          <div className="pd-info-caption pd-info-caption-first">처리 결과</div>
+          <div className="pd-info-grid">
+            {processing.map(([label, value]) => (
+              <div key={label} className="pd-info-row">
+                <div className="pd-info-label">{label}</div>
+                <div className="pd-info-value">{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {notes.length > 0 && (
+        <>
+          <div className="pd-info-caption">참고 사항</div>
+          <div className="pd-info-notes">
+            {notes.map(([label, value]) => (
+              <div key={label} className="pd-info-note">
+                <div className="pd-info-label">{label}</div>
+                <div className="pd-info-value" style={{ whiteSpace: 'pre-line' }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="pd-info-id">문서 ID · <code>{doc.id}</code></div>
     </div>
   )
 }

@@ -570,7 +570,7 @@ export function TableProposalDetail({ proposal, axisOptions, busy, onSave, onDec
           패널을 차지한다. */}
       {proposal.status !== 'SKIPPED' && (
         <details className="pd-fold" open={proposal.problems.length > 0}>
-          <summary>값 고치기 <span className="text-meta">key · 축 · 표 내용 · 시행일</span></summary>
+          <summary>값 고치기</summary>
 
           {/* 사람 말(표 이름)이 넓게, 개발자 경로(key)는 좁고 참조용으로 — 한 줄에
               나란히 둔다(예전엔 두 줄을 다 차지해 「값 고치기」의 절반이 이름표였다). */}

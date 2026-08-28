@@ -10,7 +10,7 @@
 // 업로드는 **접수만** 하고 파싱·청킹·임베딩·적재는 백그라운드로 돈다(문서당 수십 초~분).
 // 그래서 진행 중인 문서가 있을 때만 목록을 폴링한다.
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Scale, Search, Upload } from 'lucide-react'
+import { AlertTriangle, Search, Upload } from 'lucide-react'
 import { endpoints } from '../api/client'
 import {
   EMBEDDING_IN_PROGRESS,
@@ -228,8 +228,8 @@ export function PolicyDocuments() {
             지금 처리해야 하는 「확인 필요」만 눈에 띄게 강조한다. */}
         <div className="pd-status-row">
           <span>등록 문서 <b>{kpi.total}</b>건</span>
-          {kpi.busy > 0 && <span className="pd-status-pill busy">분석 중 {kpi.busy}건</span>}
-          {kpi.review > 0 && <span className="pd-status-pill review">확인 필요 {kpi.review}건</span>}
+          {kpi.busy > 0 && <span>분석 중 <b>{kpi.busy}</b>건</span>}
+          {kpi.review > 0 && <span className="pd-status-attn">확인 필요 <b>{kpi.review}</b>건</span>}
         </div>
       </div>
 
@@ -366,7 +366,7 @@ function CaseTree({ months, selected, onSelect }: {
         style={{ width: '100%', fontWeight: 700, ...(selected === '' ? { background: 'var(--primary-soft)' } : {}) }}
         onClick={() => onSelect(selected === null ? '' : null)}
       >
-        <Scale size={13} /> 결정 사례
+        결정 사례
         <span className="text-meta" style={{ marginLeft: 'auto' }}>{total}</span>
       </button>
       {selected !== null && (

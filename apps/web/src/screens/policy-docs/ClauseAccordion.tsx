@@ -26,7 +26,7 @@ export function PriorityBadge({ clause }: { clause: PolicyClause }) {
   const meta = PRIORITY_META[clause.triagePriority]
   const kind = CLAUSE_KIND_META[clause.triageKind]?.label
   return (
-    <span className={`pd-badge ${meta.tone}`} title={clause.triageReason}>
+    <span className={`pd-status-text ${meta.tone}`} title={clause.triageReason}>
       {kind && clause.triagePriority === 'SKIP' ? kind : meta.label}
     </span>
   )
@@ -34,7 +34,7 @@ export function PriorityBadge({ clause }: { clause: PolicyClause }) {
 
 export function StatusBadge({ status }: { status: ClauseRuleStatus }) {
   const meta = CLAUSE_STATUS_META[status]
-  return <span className={`pd-badge ${meta.tone}`}>{meta.label}</span>
+  return <span className={`pd-status-text ${meta.tone}`}>{meta.label}</span>
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -141,6 +141,10 @@ function clausePeekFor(clause: PolicyClause, query: string): ReactNode {
 
 /** 목록 행 — 가운데 열에서 조 하나를 고르는 자리. 본문은 여기서 보여주지 않는다
  *  (한 줄 미리보기만) — 본문·근거·결정 버튼은 오른쪽 상세 패널의 몫이다. */
+/** 목록 행 — "확인 필요"가 16개 중 12개처럼 **기본값**인 탭에서는, 행마다 같은 배지를
+ *  반복하는 게 정보가 아니라 잡음이었다(실사용 화면 리뷰로 확인). 배지·테두리색을 없애고
+ *  굵기·명도만으로 나눈다: 기본(확인 필요)은 진하게, **이미 처리된 소수**(연결됨·제외)만
+ *  흐리게 눌러 자연히 대비로 도드라지게 한다 — 새 색을 쓰지 않는다(`--muted`만 재사용). */
 export function ClauseListRow({ clause, active, query = '', onSelect }: {
   clause: PolicyClause
   active: boolean
@@ -148,19 +152,19 @@ export function ClauseListRow({ clause, active, query = '', onSelect }: {
   query?: string
   onSelect: () => void
 }) {
-  const attn = clause.ruleStatus === 'NEEDS_REVIEW'
+  const resolved = clause.ruleStatus !== 'NEEDS_REVIEW'
+  const peek = query.trim() ? clausePeekFor(clause, query) : null
   return (
     <button
       type="button"
-      className={'pd-list-row' + (active ? ' active' : '') + (attn ? ' attn' : '')}
+      className={'pd-list-row' + (active ? ' active' : '') + (resolved ? ' resolved' : '')}
       onClick={onSelect}
     >
-      <span className="pd-list-row-title">{highlightAll(clauseHeading(clause), query)}</span>
-      <span className="pd-list-row-badges">
-        <PriorityBadge clause={clause} />
-        <StatusBadge status={clause.ruleStatus} />
+      <span className="pd-list-row-top">
+        <span className="pd-list-row-title">{highlightAll(clauseHeading(clause), query)}</span>
+        {resolved && <span className="pd-list-row-note">{CLAUSE_STATUS_META[clause.ruleStatus].label}</span>}
       </span>
-      <span className="pd-list-row-peek">{clausePeekFor(clause, query)}</span>
+      {peek && <span className="pd-list-row-peek">{peek}</span>}
     </button>
   )
 }
