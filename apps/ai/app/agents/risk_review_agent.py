@@ -1,7 +1,7 @@
 """③ Risk Review Agent — MVP 2단계 (요구사항 §5.5 / 기술명세서 §4.3).
 
   [1차] 단순 이상거래 탐지(비지도) → anomaly_score + feature_contribs + risk_tier(3단계)
-  [2차] RAG 내규 기반 검증 — ①분류(위반 여부) → ②액션(권장 처리) 2단, MCP 툴콜링(§1)
+  [2차] RAG 내규 기반 검증 — ①분류(위반 여부) → ②보고서(권장 처리 포함) 2단, MCP 툴콜링(§1)
 
 ※ 지도학습(review_probability)·자동 재학습 피드백 루프는 post-MVP 확장.
   회계 결정(decision_labels)은 MVP에선 '적재만'.
@@ -19,18 +19,25 @@ v1 변경(agent-v1-upgrade-plan.md §2.2, 2026-08-19):
      그대로 썼다. 모델을 재학습해도 이 두 상수는 코드에서 다시 계산하지 않는다(그게
      "고정 임계값"을 고른 이유) — 분포가 크게 달라지면 재학습 시 사람이 다시 실측해
      상수를 갱신해야 한다.
-  3. **분류(violation_verdict) ↔ 액션(recommendation) 단계 분리** — 이전엔 한 번의 LLM
-     호출·한 스키마(`RiskVerdict`)가 위반 여부와 권장 처리를 동시에 냈다. v1은 ①분류
-     호출(근거 검색 포함, MCP 툴콜링)이 끝난 뒤 ②액션 호출(분류 결과만 입력받아 권장
-     처리 결정)로 나눈다 — 판단(사실관계)과 처리방침(정책적 선택)을 같은 근거 확보
-     루프에 묶지 않기 위함. **반환 계약(dict shape)은 그대로 유지**(§3 비침습 체크리스트) —
-     `stage2_rag_review`의 5개 필드(violation_verdict/review_reasons/recommendation/
-     citations/similar_cases)는 이전과 동일하게 채워진다.
+  3. **분류(violation_verdict) ↔ 권장 처리(recommendation) 분리** — 위반 여부는 ①분류가
+     정하고, 권장 처리는 그 결과가 **허용하는 값 안에서만** 나온다(`_ALLOWED_RECOMMENDATION`).
+     판단(사실관계)과 처리방침(정책적 선택)을 섞지 않되, **처리방침이 판단을 뒤집지도
+     못하게** 한다. **반환 계약(dict shape)은 그대로 유지**(§3 비침습 체크리스트).
+
+v2 정정(2026-08-28, 검증 100건 실측 → `docs/report/risk-review-agent-report.md`):
+  · 권장 처리 규칙을 가진 액션 전용 호출(`_decide_action`)이 **어디서도 불리지 않았고**
+    보고서 프롬프트엔 그 규칙이 없어, 「위반 아님」 72건 중 52건에 보완요청이 붙었다.
+    회귀 테스트가 그 죽은 함수를 직접 import해 검증하고 있어 오래 안 드러났다.
+  · 고친 방향: **LLM 호출을 늘리지 않는다.** 규칙 표 하나(`_ALLOWED_RECOMMENDATION`)를
+    ①출력 스키마 ②프롬프트 ③서버 정정 **세 곳이 같이** 보게 하고, 죽은 호출은 지웠다.
+    같은 값을 주는 창구가 둘이면 하나는 반드시 뒤처진다.
+  · 보고서에 **검증 → 재작성 루프**를 넣었다(`_report_problems`, 최대 2회).
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Literal
 
 from openai import OpenAI
@@ -100,7 +107,29 @@ def _get_client() -> OpenAI:
     return _client
 
 
+#: 등급 강제 스위치 — **임시**다. 컷오프 근거가 위험 라벨 5건뿐이라 표본이 바뀌면
+#  전건이 한쪽으로 쏠린다(검증셋 100건 실측: 96건이 LOW로 떨어져 2차 검증을 한 번도
+#  못 받았다 → `docs/report/risk-review-agent-report.md` §5-①). 컷오프를 다시 산출할
+#  때까지 **모든 건을 MEDIUM으로 고정해** 2차 검증을 태우려고 둔 문이다.
+#
+#  `DOCLING_MOCK`과 같은 규율을 따른다 — ① 호출 시점에 env를 읽어 `docker exec -e`로
+#  프로세스 단위 지정이 되고 ② 켜져 있으면 **WARNING 로그와 결과의 `note`에 그대로
+#  드러낸다.** 진짜 위험은 켠 걸 잊는 것이라, 조용히 동작하면 안 된다.
+_TIER_OVERRIDE_VALUES = ("LOW", "MEDIUM", "HIGH")
+
+
+def _tier_override() -> str:
+    raw = os.getenv("RISK_TIER_OVERRIDE") or getattr(settings, "risk_tier_override", "") or ""
+    value = raw.strip().upper()
+    return value if value in _TIER_OVERRIDE_VALUES else ""
+
+
 def _risk_tier(anomaly_score: float) -> Literal["HIGH", "MEDIUM", "LOW"]:
+    forced = _tier_override()
+    if forced:
+        logger.warning("risk_tier 강제 고정: %s (RISK_TIER_OVERRIDE) — 점수 %.4f는 무시된다",
+                       forced, anomaly_score)
+        return forced  # type: ignore[return-value]
     if anomaly_score >= RISK_TIER_HIGH_THRESHOLD:
         return "HIGH"
     if anomaly_score >= RISK_TIER_MEDIUM_THRESHOLD:
@@ -128,16 +157,6 @@ class Classification(BaseModel):
     review_reasons: list[str]
     citations: list[Citation]
     similar_cases: list[SimilarCase]
-
-
-class ActionDecision(BaseModel):
-    """②액션 단계 산출물 — 분류 결과를 입력받아 권장 처리만 결정.
-
-    ⚠️ `RiskReport`로 대체됐다. 결정론적 폴백(`_fallback_report`)이 같은 필드를 채우는 데
-    쓰이므로 남겨 둔다.
-    """
-    recommendation: Literal["APPROVE", "SUPPLEMENT", "REJECT"]
-    rationale: str
 
 
 # ── ②보고서: 담당자가 읽는 산출물 ──────────────────────────────────────
@@ -172,6 +191,44 @@ class RiskReport(BaseModel):
     highlights: list[str]                                 # ① 눈여겨볼 특징(거래 사실에서만)
     findings: list[ReportFinding]                         # ② 근거 + 판단 이유
     advisories: list[str]                                 # ③ 담당자가 추가로 고려할 것
+
+
+#: 분류 결과가 허용하는 권장 처리. **`_ACTION_FALLBACK`과 같은 규칙**이고, 이 표가
+#  프롬프트·출력 스키마·서버 검증 세 곳의 단일 출처다.
+#
+#  이 표가 없던 동안 무슨 일이 있었나(검증 100건 실측): 규칙을 가진 `_decide_action`이
+#  **호출되지 않았고** 보고서 프롬프트엔 그 규칙이 없어서, 「위반 아님」 72건 중 52건에
+#  보완요청이 붙었다. 모델이 지시를 어긴 게 아니라 **지시가 전달되지 않았다.**
+#  → `docs/report/risk-review-agent-report.md` §5-②
+_ALLOWED_RECOMMENDATION: dict[str, tuple[str, ...]] = {
+    "NO_VIOLATION": ("APPROVE",),
+    "VIOLATION": ("REJECT", "SUPPLEMENT"),
+    "INSUFFICIENT_INFO": ("SUPPLEMENT",),
+}
+
+
+class _ReportApprove(RiskReport):
+    """위반 아님 — 승인 외에는 **낼 수 없다.**"""
+    recommendation: Literal["APPROVE"]
+
+
+class _ReportViolation(RiskReport):
+    """위반 — 수위(반려/보완)는 모델이 고른다. 그건 정말로 판단의 영역이다."""
+    recommendation: Literal["REJECT", "SUPPLEMENT"]
+
+
+class _ReportHold(RiskReport):
+    """판단 보류 — 근거가 부족한 것이지 문제가 없는 것이 아니다."""
+    recommendation: Literal["SUPPLEMENT"]
+
+
+#: 분류 결과별 출력 스키마. **낼 수 없어야 하는 값은 지시가 아니라 스키마에서 뺀다** —
+#  Rule Agent가 자동 통과를 스키마에서 뺀 것과 같은 장치다.
+_REPORT_MODEL: dict[str, type[RiskReport]] = {
+    "NO_VIOLATION": _ReportApprove,
+    "VIOLATION": _ReportViolation,
+    "INSUFFICIENT_INFO": _ReportHold,
+}
 
 
 # ── ①분류: MCP 툴콜링 프롬프트 ─────────────────────────────────────────
@@ -507,29 +564,6 @@ def _classify(summary: dict, stage1: dict, profile: str = "fast") -> dict:
 
 # ── ②액션: 분류 결과만 입력받아 권장 처리 결정 ────────────────────────────
 
-_ACTION_SYSTEM_PROMPT = """당신은 법인카드 정산 Risk Review의 처리방침 담당입니다. 앞 단계에서
-이미 확정된 "내규 위반 여부 분류" 결과만 보고, 권장 처리(recommendation)를 결정하세요.
-위반 여부 자체를 재판단하거나 뒤집지 마세요 — 주어진 분류를 그대로 전제로 합니다.
-
-규칙:
-- violation_verdict가 VIOLATION이면 REJECT 또는 SUPPLEMENT(보완요청) 중 사안의 심각도에
-  맞게 고르세요(위반이 명백하고 시정 불가능하면 REJECT, 소명/보완으로 해소 가능하면 SUPPLEMENT).
-- violation_verdict가 NO_VIOLATION이면 APPROVE.
-- violation_verdict가 INSUFFICIENT_INFO면 사람 판단이 필요하므로 원칙적으로 SUPPLEMENT.
-- rationale은 1~2문장으로, review_reasons에 근거해 왜 이 처리를 권장하는지 설명하세요."""
-
-_ACTION_USER_PROMPT_TEMPLATE = """[분류 결과]
-violation_verdict: {violation_verdict}
-review_reasons: {review_reasons}
-citations: {citations}
-
-recommendation을 결정하세요."""
-
-
-# 액션 LLM이 실패했을 때 쓰는 결정론적 폴백 — 프롬프트 규칙의 "안전한 쪽" 절반만 남긴 것.
-# **VIOLATION이어도 REJECT로 자동 강등하지 않는다**: 최종반려는 되돌릴 수 없는 단말이라
-# 사람(회계 담당자)만 내릴 수 있다는 도메인 원칙(CLAUDE.md — "엔진은 최종반려를 만들지
-# 않는다" / "사람 확정 원칙")을 LLM 장애 경로에서도 그대로 지킨다.
 _ACTION_FALLBACK = {
     "NO_VIOLATION": "APPROVE",
     "VIOLATION": "SUPPLEMENT",
@@ -569,7 +603,14 @@ _REPORT_SYSTEM_PROMPT = """당신은 법인카드 정산 위험 검토 보고서
 8. 내부 필드명(evidence.has_valid_receipt 같은 것)·플래그 코드를 본문에 노출하지 마세요.
    담당자가 쓰는 일상어로 씁니다.
 9. 판단 보류(INSUFFICIENT_INFO)면 승인(APPROVE)을 권하지 마세요 — 근거가 부족한 것이지
-   문제가 없는 것이 아닙니다."""
+   문제가 없는 것이 아닙니다.
+10. **권장 처리(recommendation)는 이미 끝난 위반 여부 분류를 그대로 따릅니다.** 당신이
+   위반 여부를 다시 판단하는 자리가 아닙니다:
+   · 위반 아님(NO_VIOLATION)  → APPROVE. **「확인해 보면 좋겠다」는 보완요청 사유가
+     아닙니다.** 더 볼 것이 있으면 advisories에 쓰세요 — 그러라고 있는 칸입니다.
+   · 위반(VIOLATION)          → REJECT 또는 SUPPLEMENT. 시정이 불가능하면 REJECT,
+     소명·보완으로 해소되면 SUPPLEMENT.
+   · 판단 보류(INSUFFICIENT_INFO) → SUPPLEMENT."""
 
 _REPORT_USER_PROMPT_TEMPLATE = """[2차 내규 검증 결과]
 위반 판정: {violation_verdict}
@@ -590,6 +631,9 @@ anomaly_score: {anomaly_score} (등급 {risk_tier}) {anomaly_note}
 
 [사용 가능한 근거 — evidence.ref는 여기 있는 id만 쓰세요]
 {evidence_pool}
+
+[권장 처리 — 위 분류가 허용하는 값은 이것뿐입니다]
+{allowed_recommendation}
 
 위 내용으로 보고서를 작성하세요."""
 
@@ -653,10 +697,15 @@ def _validate_report(report: RiskReport, classification: dict, index: dict[str, 
     if dropped_refs:
         logger.info("보고서에서 알 수 없는 근거 id를 버렸다: %s", sorted(set(dropped_refs)))
 
+    #  분류가 허용하지 않는 권고는 **마지막에 코드가 되돌린다.** 스키마·프롬프트·재시도를
+    #  다 통과해도 여기서 한 번 더 막는다 — 셋 다 확률이지만 이건 보장이다.
     recommendation = report.recommendation
-    if verdict == "INSUFFICIENT_INFO" and recommendation == "APPROVE":
-        logger.info("판단 보류인데 승인 권고 — 보완요청으로 정정한다")
-        recommendation = "SUPPLEMENT"
+    allowed = _ALLOWED_RECOMMENDATION.get(verdict)
+    if allowed and recommendation not in allowed:
+        corrected = _ACTION_FALLBACK.get(verdict, "SUPPLEMENT")
+        logger.warning("권고가 분류와 어긋난다(%s → %s) — %s로 정정한다",
+                       verdict, recommendation, corrected)
+        recommendation = corrected
 
     if not findings:
         findings = [{
@@ -696,8 +745,57 @@ def _fallback_report(classification: dict, reason: str) -> dict:
     }
 
 
+MAX_REPORT_ATTEMPTS = 2  # 첫 호출 + 피드백 재시도 1회. 그 이상은 비용만 늘고 안 나아졌다.
+
+
+def _report_problems(report: RiskReport, classification: dict, index: dict[str, dict]) -> list[str]:
+    """보고서를 **되돌려 보낼 이유**만 모은다 — 고쳐 쓰면 나아지는 것들.
+
+    `_validate_report`가 하는 일과 다르다. 저쪽은 「그대로 쓸 수 없는 부분을 서버가
+    걷어내는」 최종 방어이고, 여기는 **모델에게 다시 시킬 값어치가 있는가**를 본다.
+    그래서 강등으로 해결되는 것(근거 없는 finding → advisories)은 문제로 세지 않는다.
+    """
+    problems: list[str] = []
+    verdict = classification.get("violation_verdict", "")
+
+    allowed = _ALLOWED_RECOMMENDATION.get(verdict)
+    if allowed and report.recommendation not in allowed:
+        problems.append(
+            f"위반 여부 분류가 {verdict}인데 권장 처리를 {report.recommendation}로 냈습니다. "
+            f"이 분류에서 낼 수 있는 값은 {' 또는 '.join(allowed)} 뿐입니다. "
+            "위반 여부를 다시 판단하지 말고 분류 결과를 그대로 따르세요."
+        )
+
+    unknown = sorted({e.ref for f in report.findings for e in f.evidence if e.ref not in index})
+    if unknown:
+        problems.append(
+            f"근거 목록에 없는 id를 인용했습니다: {', '.join(unknown)}. "
+            "제시된 근거 목록의 id만 그대로 쓰세요."
+        )
+
+    if not report.summary.strip():
+        problems.append("요약(summary)이 비어 있습니다. 2문장 이내로 채우세요.")
+
+    #  근거가 하나도 안 붙은 보고서는 화면에서 「검증 안 함」과 구분되지 않는다.
+    #  다만 **줄 근거가 애초에 없었다면** 모델 잘못이 아니므로 되돌리지 않는다.
+    if index and not any(e.ref in index for f in report.findings for e in f.evidence):
+        problems.append(
+            "근거를 하나도 인용하지 않았습니다. 최소 한 개의 finding에 "
+            "제시된 근거 목록의 id를 붙이세요."
+        )
+    return problems
+
+
 def _build_report(summary: dict, stage1: dict, classification: dict, profile: str) -> dict:
-    """②보고서: 분류 결과 + 거래 사실 → 담당자가 읽는 산출물. 단일 호출."""
+    """②보고서: 분류 결과 + 거래 사실 → 담당자가 읽는 산출물.
+
+    **검증 → 재작성 루프**를 돈다(Rule Agent의 재생성 루프와 같은 모양). 되돌려 보낼 때
+    바뀌는 것은 「무엇이 왜 틀렸는가」뿐이고, 근거·사실은 그대로 재사용한다.
+
+    권장 처리는 **세 겹으로** 잠근다 — ① 출력 스키마에서 낼 수 없는 값을 뺀다
+    ② 프롬프트가 허용 값을 명시한다 ③ 그래도 어긋나면 서버가 되돌린다(`_validate_report`).
+    ①이 정본이고 ②③은 그물이다.
+    """
     pool, index = _evidence_pool(classification)
     notable_facts = notables(summary.get("evalContext") or {}, summary.get("ruleFlags") or [])
     note = f"— {stage1['note']}" if stage1.get("note") else ""
@@ -716,61 +814,45 @@ def _build_report(summary: dict, stage1: dict, classification: dict, profile: st
         #  아무거나 고르고, 대개 화면에 이미 있는 금액·시각을 고른다(`review_notables`).
         notables="\n".join(f"- {n}" for n in notable_facts) or "(없음)",
         evidence_pool=pool,
+        allowed_recommendation=" 또는 ".join(
+            _ALLOWED_RECOMMENDATION.get(classification.get("violation_verdict", ""), ())
+        ) or "APPROVE 또는 SUPPLEMENT 또는 REJECT",
     )
-    try:
-        report, _ = llm.parse(
-            profile,
-            model=RiskReport,
-            schema_name="risk_report",
-            messages=[
-                {"role": "system", "content": _REPORT_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            timeout=90,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("보고서 생성 실패(profile=%s): %s — 분류 결과로 폴백", profile, exc)
-        return _fallback_report(classification, f"{type(exc).__name__}")
+    model_cls = _REPORT_MODEL.get(classification.get("violation_verdict", ""), RiskReport)
+
+    report = None
+    feedback = ""
+    for attempt in range(1, MAX_REPORT_ATTEMPTS + 1):
+        try:
+            report, _ = llm.parse(
+                profile,
+                model=model_cls,
+                schema_name="risk_report",
+                messages=[
+                    {"role": "system", "content": _REPORT_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt + feedback},
+                ],
+                timeout=90,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("보고서 생성 실패(profile=%s, %d회차): %s — 분류 결과로 폴백",
+                           profile, attempt, exc)
+            return _fallback_report(classification, f"{type(exc).__name__}")
+
+        problems = _report_problems(report, classification, index)
+        if not problems:
+            break
+        if attempt == MAX_REPORT_ATTEMPTS:
+            #  **여기서 버리지 않는다.** 남은 문제는 `_validate_report`가 강등·정정으로
+            #  처리할 수 있는 것들이고, 보고서를 통째로 버리면 담당자는 빈손이 된다.
+            logger.warning("보고서 재작성 %d회에도 남은 문제: %s — 서버 정정으로 넘긴다",
+                           MAX_REPORT_ATTEMPTS, "; ".join(problems))
+            break
+        logger.info("보고서 재작성(%d회차) — %s", attempt + 1, "; ".join(problems))
+        feedback = ("\n\n[직전 작성본의 문제 — 아래를 고쳐 다시 작성하세요]\n"
+                    + "\n".join(f"- {p}" for p in problems))
+
     return _validate_report(report, classification, index)
-
-
-def _decide_action(classification: dict) -> dict:
-    """②액션: 단일 호출(근거 검색 불필요 — 분류 단계에서 이미 확보된 근거만 본다).
-
-    **분류 결과를 유실시키지 않는다.** 여기서 예외를 올리면 이미 성공한 ①분류(근거 검색·인용
-    포함, 비용도 이미 지불)까지 통째로 버려지고 Django엔 `RiskReview` 행이 안 남는다. 그래서
-    LLM 장애는 결정론적 폴백으로 격하하고, 폴백을 썼다는 사실을 `rationale`에 남긴다.
-    """
-    verdict = classification["violation_verdict"]
-    user_prompt = _ACTION_USER_PROMPT_TEMPLATE.format(
-        violation_verdict=verdict,
-        review_reasons="; ".join(classification.get("review_reasons") or []) or "(없음)",
-        citations=", ".join(
-            f"「{c['doc']}」{c['article']}" for c in classification.get("citations") or []
-        ) or "(없음)",
-    )
-    try:
-        resp = _get_client().beta.chat.completions.parse(
-            model=MODEL,
-            temperature=0.2,
-            timeout=30,
-            messages=[
-                {"role": "system", "content": _ACTION_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format=ActionDecision,
-        )
-        parsed = resp.choices[0].message.parsed
-    except Exception as exc:  # noqa: BLE001  # OpenAI 장애·타임아웃 등
-        logger.warning("액션 단계 LLM 실패(%s) — 결정론적 폴백 사용: %s", verdict, exc)
-        parsed = None
-
-    if parsed is None:
-        return {
-            "recommendation": _ACTION_FALLBACK.get(verdict, "SUPPLEMENT"),
-            "rationale": "권장 처리를 LLM으로 판단하지 못해 안전한 기본값을 적용했습니다 — 사람 검토 필요",
-        }
-    return parsed.model_dump()
 
 
 #: 1차 이상탐지의 결과 상태. **점수 0과 "점수를 못 냈다"를 가르는 축**이다.
@@ -827,6 +909,11 @@ def _stage1(tx_id: int) -> dict:
         result = tools.ml_infer(features["feature_vector"])
         result["risk_tier"] = _risk_tier(result.get("anomaly_score", 0.0))
         result["status"] = STAGE1_OK
+        if _tier_override():
+            #  화면·보고서·평가 결과 어디서든 「강제된 등급」임을 알 수 있어야 한다.
+            result["note"] = (f"등급이 {result['risk_tier']}로 강제 고정된 상태입니다"
+                              " (RISK_TIER_OVERRIDE) — 점수로 정해진 등급이 아닙니다.")
+            result["tier_forced"] = True
         return result
     except Exception as exc:  # noqa: BLE001  # Django 미기동·형상 불일치·모델 로드 실패 전부
         logger.warning("stage1(이상탐지) 실패(tx=%s): %s — 2차 검증만 진행", tx_id, exc)

@@ -23,7 +23,7 @@ from unittest.mock import patch
 from app.agents import risk_review_agent as agent
 from app.agents.risk_review_agent import (
     _build_classify_prompt,
-    _decide_action,
+    _report_problems,
     _format_case_hits,
     _format_policy_chunks,
     _risk_tier,
@@ -158,20 +158,61 @@ def test_safe_search_returns_empty_on_backend_failure():
         assert _safe_search("search_policy", "chunks", query="q") == []
 
 
-def test_action_falls_back_deterministically_when_llm_fails():
-    """액션 LLM 장애로 이미 성공한 ①분류(검색·인용 포함)까지 버리지 않는다."""
-    with patch.object(agent, "_get_client", side_effect=RuntimeError("openai 500")):
-        out = _decide_action({"violation_verdict": "NO_VIOLATION", "review_reasons": [],
-                              "citations": [], "similar_cases": []})
+def test_report_fallback_maps_verdict_deterministically():
+    """보고서 LLM 장애로 이미 성공한 ①분류(검색·인용 포함)까지 버리지 않는다.
+
+    이전엔 이 계약을 `_decide_action`으로 검증했는데, **그 함수는 실행 경로에서
+    호출되지 않고 있었다** — 테스트가 죽은 함수를 살아 있는 것처럼 통과시켰다
+    (검증 100건 실측, `docs/report/risk-review-agent-report.md` §5-②). 이제 실제로
+    쓰이는 폴백을 검증한다.
+    """
+    out = agent._fallback_report(
+        {"violation_verdict": "NO_VIOLATION", "review_reasons": [], "citations": []}, "timeout")
     assert out["recommendation"] == "APPROVE"
 
 
-def test_action_fallback_never_auto_rejects():
+def test_report_fallback_never_auto_rejects():
     """최종반려는 되돌릴 수 없는 단말 — 장애 경로에서 자동으로 내리지 않는다(사람 확정 원칙)."""
-    with patch.object(agent, "_get_client", side_effect=RuntimeError("openai 500")):
-        out = _decide_action({"violation_verdict": "VIOLATION", "review_reasons": ["한도 초과"],
-                              "citations": [], "similar_cases": []})
+    out = agent._fallback_report(
+        {"violation_verdict": "VIOLATION", "review_reasons": ["한도 초과"], "citations": []},
+        "timeout")
     assert out["recommendation"] == "SUPPLEMENT"
+
+
+def test_recommendation_outside_verdict_is_corrected_by_server():
+    """**권고는 분류를 뒤집을 수 없다.** 스키마·프롬프트를 다 뚫어도 서버가 되돌린다."""
+    report = agent.RiskReport(summary="문제 없음", recommendation="SUPPLEMENT",
+                              highlights=[], findings=[], advisories=[])
+    out = agent._validate_report(report, {"violation_verdict": "NO_VIOLATION"}, {})
+    assert out["recommendation"] == "APPROVE"
+
+
+def test_report_problems_flags_contradicting_recommendation():
+    """재작성 루프가 되돌려 보낼 이유 — 분류와 어긋난 권고는 고쳐 쓸 값어치가 있다."""
+    report = agent.RiskReport(summary="ok", recommendation="REJECT",
+                              highlights=[], findings=[], advisories=[])
+    problems = _report_problems(report, {"violation_verdict": "NO_VIOLATION"}, {})
+    assert any("NO_VIOLATION" in p for p in problems)
+    assert not _report_problems(
+        agent.RiskReport(summary="ok", recommendation="APPROVE",
+                         highlights=[], findings=[], advisories=[]),
+        {"violation_verdict": "NO_VIOLATION"}, {})
+
+
+def test_report_schema_is_narrowed_by_verdict():
+    """낼 수 없어야 하는 값은 지시가 아니라 **스키마에서** 뺀다."""
+    assert agent._REPORT_MODEL["NO_VIOLATION"].model_fields["recommendation"].annotation.__args__         == ("APPROVE",)
+
+
+def test_tier_override_is_loud_and_read_at_call_time(monkeypatch):
+    """등급 강제는 **조용히** 동작하면 안 된다 — 호출 시점에 읽고, 켜지면 티가 난다."""
+    monkeypatch.delenv("RISK_TIER_OVERRIDE", raising=False)
+    assert agent._tier_override() == ""
+    monkeypatch.setenv("RISK_TIER_OVERRIDE", "medium")
+    assert agent._tier_override() == "MEDIUM"
+    assert _risk_tier(-99.0) == "MEDIUM"      # 점수를 무시한다
+    monkeypatch.setenv("RISK_TIER_OVERRIDE", "nonsense")
+    assert agent._tier_override() == ""       # 오타는 조용히 무시하지 않고 꺼진 것으로 본다
 
 
 def test_risk_tier_boundaries_are_inclusive_at_the_threshold():
