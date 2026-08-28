@@ -104,7 +104,7 @@ export function SimulationReportView({ report, running, error, onRun }: {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-head">
-          <h3>🤖 Agent 의견 — 종합 개요</h3>
+          <h3>Agent 의견 — 종합 개요</h3>
           <span className={'tag ' + (report.grades.action.level === 'good' ? 'ok' : 'warn')}>
             권장 처리 · {report.grades.action.label}
           </span>
@@ -149,7 +149,7 @@ function GradeTile({ label, grade }: { label: string; grade: Grade }) {
       {(grade.cause && grade.cause.length > 0) || grade.aiAdjusted ? (
         <div className="row" style={{ gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
           {grade.cause?.map((c) => <span key={c} className="tag warn" style={{ fontSize: 10 }}>원인 · {CAUSE_LABEL[c]}</span>)}
-          {grade.aiAdjusted && <span className="tag ai" style={{ fontSize: 10 }} title="Agent가 실행 결과 전체를 보고 재판단한 등급입니다">🤖 Agent 판단</span>}
+          {grade.aiAdjusted && <span className="tag ai" style={{ fontSize: 10 }} title="Agent가 실행 결과 전체를 보고 재판단한 등급입니다">Agent 판단</span>}
         </div>
       ) : null}
       <div className="text-meta">{grade.note}</div>
@@ -158,9 +158,9 @@ function GradeTile({ label, grade }: { label: string; grade: Grade }) {
 }
 
 const HIST_VERDICT_META: Record<'reversal' | 'risk' | 'intended', { badge: string; tone: string; heading: string }> = {
-  reversal: { badge: '⚠⚠ 완전 반전', tone: 'danger', heading: '⚠⚠ 가장 먼저 확인하세요 · 완전 반전' },
-  risk: { badge: '⚠ 위험 변경', tone: 'warn', heading: '⚠ AI 코멘트 · 위험' },
-  intended: { badge: '✅ 정상 변경', tone: 'ok', heading: '💬 AI 코멘트 · 의도된 변경' },
+  reversal: { badge: '완전 반전', tone: 'danger', heading: '가장 먼저 확인하세요 · 완전 반전' },
+  risk: { badge: '위험 변경', tone: 'warn', heading: 'AI 코멘트 · 위험' },
+  intended: { badge: '정상 변경', tone: 'ok', heading: 'AI 코멘트 · 의도된 변경' },
 }
 
 /** 직전 기간 내역 — 위험건(완전 반전 포함) / 정상변경건 / 전체. 변경건에만 AI 코멘트가 붙는다. */
@@ -301,8 +301,8 @@ function TestResultList({ rows, stats }: { rows: SimResultRow[]; stats: SimRepor
                   {row.matchedExpectation === null
                     ? <span className="tag">채점 안 함</span>
                     : row.matchedExpectation
-                      ? <span className="tag ok">✅ 정상</span>
-                      : <span className="tag warn">⚠ 불일치</span>}
+                      ? <span className="tag ok">정상</span>
+                      : <span className="tag warn">불일치</span>}
                 </td>
                 <td>
                   <b style={{ fontSize: 12.5 }}>{row.label}</b>

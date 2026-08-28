@@ -253,7 +253,7 @@ export function ActiveTab() {
                     {report && (
                       <div className="card">
                         <div className="card-head">
-                          <h3>🤖 Agent 의견</h3>
+                          <h3>Agent 의견</h3>
                           <span className="text-meta">
                             실행 #{report.runId} · {report.ranAt}
                             {report.stale && ' · 실행 이후 그래프 변경됨'}

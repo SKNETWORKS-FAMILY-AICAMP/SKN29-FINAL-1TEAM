@@ -160,7 +160,7 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
       const detail = (exc as { response?: { data?: { detail?: string } }; message?: string })
       const reason = detail.response?.data?.detail || detail.message || '요청을 처리하지 못했습니다.'
       setError(reason)
-      setChat((previous) => [...previous, { role: 'ai', text: `⚠️ ${reason}` }])
+      setChat((previous) => [...previous, { role: 'ai', text: reason }])
     } finally {
       setChatting(false)
     }
@@ -508,7 +508,7 @@ function NodeDetail({ graph, node, onStartEdit, onDelete, onReverted, onNodeChan
       <div className="field">
         <label>이 Rule이 하는 일</label>
         <div className="note" style={{ lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{naturalCondition}</div>
-        {conditionTextStale && <div className="text-meta" style={{ marginTop: 6 }}>⚠ DSL 코드를 직접 수정했습니다. 위 설명은 수정 전 기준이며, Rule Agent가 다시 생성할 때 갱신됩니다.</div>}
+        {conditionTextStale && <div className="text-meta" style={{ marginTop: 6, color: 'var(--tone-amber)' }}>DSL 코드를 직접 수정했습니다. 위 설명은 수정 전 기준이며, Rule Agent가 다시 생성할 때 갱신됩니다.</div>}
         <div className="dsl-disclosure" role="button" tabIndex={0} onClick={() => setShowCode((value) => !value)}><Code2 size={13} /> DSL 코드 {showCode ? '접기' : '펼치기'} <span>{showCode ? '⌃' : '⌄'}</span></div>
         {showCode && <textarea rows={7} value={conditionText} disabled={!editable} onBlur={() => void saveNow()} onChange={(event) => { setConditionText(event.target.value); onNodeChanged({ conditionExpr: event.target.value }); markDirty() }} placeholder="JSON DSL 조건" style={{ fontFamily: 'monospace' }} />}
       </div>

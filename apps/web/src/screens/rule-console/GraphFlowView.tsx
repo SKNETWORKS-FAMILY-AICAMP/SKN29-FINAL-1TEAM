@@ -161,7 +161,7 @@ export function GraphFlowView({ graph, selectedKey, onSelect }: {
     <>
     {flow.hasCycle && (
       <div className="note" style={{ margin: '12px 16px 0', color: 'var(--tone-red)', borderColor: 'var(--tone-red)' }}>
-        ⚠ 되돌아가는 라우팅(순환)이 있습니다. 순환 그래프는 Active 전환 시 거부됩니다.
+        되돌아가는 라우팅(순환)이 있습니다. 순환 그래프는 Active 전환 시 거부됩니다.
       </div>
     )}
     {/* 프레임이 남은 높이를 차지하고, 스크롤 영역은 그 안에 절대배치 —
