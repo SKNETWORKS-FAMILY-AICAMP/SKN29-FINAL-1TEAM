@@ -10,26 +10,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { won } from '../lib/format'
 import { endpoints } from '../api/client'
 import { SkeletonLines } from '../components/ui/Skeleton'
-
-interface VoucherPayload {
-  settlement_id?: number
-  merchant?: string
-  amount?: number
-  category?: string
-  date?: string
-  drafted_at?: string
-}
-
-interface Voucher {
-  id: number
-  settlement: number
-  voucherPayload: VoucherPayload
-  status: string
-  created_at: string
-}
+import { VoucherBody, type Voucher } from '../components/settlement/VoucherPanel'
 
 export function ErpVoucherConfirm() {
   const { id } = useParams<{ id: string }>()
@@ -79,13 +62,6 @@ export function ErpVoucherConfirm() {
   }
   if (!voucher) return shell(<div className="card"><div className="card-body">{error}</div></div>)
 
-  const p = voucher.voucherPayload ?? {}
-  //  전표번호는 서버가 만든 id 기준이다 — 화면이 날짜·정산번호를 조합해 지어내면
-  //  같은 전표가 화면마다 다른 번호로 보인다.
-  const voucherNo = `V-${(p.date ?? voucher.created_at.slice(0, 10)).replace(/-/g, '')}-${String(voucher.id).padStart(4, '0')}`
-  const amount = p.amount ?? 0
-  const category = p.category || '미분류'
-
   return shell(
     <>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -97,39 +73,8 @@ export function ErpVoucherConfirm() {
       </div>
 
       <div className="card">
-        <div className="card-body stack">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="text-meta">전표번호</span><b>{voucherNo}</b>
-          </div>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="text-meta">거래처</span><b>{p.merchant || '-'}</b>
-          </div>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="text-meta">거래일</span><b>{p.date || '-'}</b>
-          </div>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="text-meta">적요</span><b>{category} 지출 (정산 #{voucher.settlement})</b>
-          </div>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="text-meta">생성 시각</span><b>{(p.drafted_at ?? voucher.created_at).replace('T', ' ').slice(0, 16)}</b>
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h3>회계 분개 (차변 / 대변)</h3></div>
-        <table className="table">
-          <thead><tr><th>구분</th><th>계정과목</th><th className="num">금액</th></tr></thead>
-          <tbody>
-            <tr><td><b>차변</b></td><td>{category}</td><td className="num">{won(amount)}</td></tr>
-            <tr><td><b>대변</b></td><td>미지급금(법인카드)</td><td className="num">{won(amount)}</td></tr>
-          </tbody>
-        </table>
         <div className="card-body">
-          <div className="note">
-            💡 계정과목은 비용 분류({category}) 기준으로 매핑된 <b>초안</b>입니다. 실제 ERP 적재·연동은 MVP 범위 밖이며,
-            최종 계정 확정은 회계 담당자가 ERP에서 수행합니다.
-          </div>
+          <VoucherBody voucher={voucher} />
         </div>
       </div>
 
