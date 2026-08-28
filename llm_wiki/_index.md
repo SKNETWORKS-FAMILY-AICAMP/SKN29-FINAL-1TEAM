@@ -104,6 +104,7 @@ llm_wiki/
 |---|---|
 | `rule-agent-v1-implementation.md` | Rule Agent v1 구현 기록. §0에 결정 사항 요약(구 `agent-v1-upgrade-plan.md`, 2026-08-25 병합) + 근거·코드 위치·검증 결과 |
 | `risk-review-agent-v1-implementation.md` | Risk Review v1 구현 기록. §0에 결정 사항 요약(구 `agent-v1-upgrade-plan.md` §2, 2026-08-25 병합) + 근거·코드 위치·검증 결과 |
+| `risk-review-agent-eval-hardening.md` | 검증셋 100건 평가가 드러낸 결함 2건(권고 규칙 미배선·등급 게이트)과 수정 기록 — 3겹 권고 잠금·보고서 재작성 루프·`RISK_TIER_OVERRIDE`. 최종 수치는 `docs/report/risk-review-agent-report.md` |
 | `rule-agent-v1-ux-upgrade-plan.md` | 룰 콘솔 UX 고도화 계획·구현 |
 | `eval-context-sourcing.md` | EvalContext 다이어트 실행 기록(§12~) + v6·DSL null 의미론·참석인원 출처 결정(§15~18). 다이어트 이전 조사(구 §0~11)는 2026-08-25에 배경 요약으로 압축 |
 

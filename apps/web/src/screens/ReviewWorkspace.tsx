@@ -2,13 +2,15 @@
 // FR-UI-03, FR-RR-01~08, FR-RL-01~02, FR-DB-04
 // MVP 2단계: ① 비지도 이상탐지 → ② RAG 내규검증. 지도학습(review_prob)은 post-MVP.
 import { useEffect, useState } from 'react'
-import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight } from 'lucide-react'
+import { Paperclip, ExternalLink, History, ChevronDown, ChevronRight, FileText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { ReviewItem } from '../types/domain'
 import { CARD_TYPE_LABEL } from '../types/domain'
 import { won, pct } from '../lib/format'
 import { LabeledBar } from '../components/ui/MiniChart'
 import { SkeletonLines } from '../components/ui/Skeleton'
 import { anomalyScored, AnomalyUnavailableNotice, RiskReviewStatusBody, RiskScoreBadge, riskScoreLabel, riskScoreTitle } from '../components/settlement/RiskReviewStatus'
+import { VoucherPanel } from '../components/settlement/VoucherPanel'
 import { ReviewDetailEmpty } from '../components/settlement/ReviewDetailEmpty'
 import { RiskReportView } from '../components/settlement/RiskReportView'
 import { RuleJudgementPanel } from '../components/settlement/RuleJudgementPanel'
@@ -95,6 +97,7 @@ const RISK_REVIEW_POLL_MS = 3000
 export function ReviewWorkspace() {
   const { reviewItems: items, loading, loadError, updateStatus, refresh } = useSettlements()
   const canReview = useCan()('accounting_review') // 회계 검토·확정 권한(없으면 처리 버튼 비활성)
+  const nav = useNavigate()
   const [selId, setSelId] = useState<string | undefined>(items[0]?.id)
   const [filter, setFilter] = useState<Filter>('ALL')
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -138,6 +141,9 @@ export function ReviewWorkspace() {
   }
   const listed = filter === 'ALL' ? source : source.filter((i) => bucketOf(i) === filter)
   const sel = source.find((i) => i.id === selId) ?? listed[0] ?? source[0]
+  //  전표가 있는 건 = 확정 후 전표(안)까지 생성된 상태. **상태로 판정한다** — 전표를 먼저
+  //  조회해 보고 결정하면 목록을 옮길 때마다 카드가 깜빡인다(있는 줄 알았다가 없어진다).
+  const hasVoucher = sel?.status === 'ERP_VOUCHER_DRAFTED'
   // fact.json — 정산 상세 모달과 동일한 "규정 판정 입력값" 스냅샷(읽기 전용 요약)
   const fact = sel && {
     merchant: sel.merchant,
@@ -602,7 +608,36 @@ export function ReviewWorkspace() {
                   </div>
                 </div>
 
-                {/* ② RAG 내규 검증 — 간단 설명 + 근거 링크 */}
+                {/*  ② 전표(안) 또는 RAG 내규 검증.
+                     **전표가 생긴 건은 전표를 먼저 보여준다.** 이전 처리 탭에서 확정까지 끝난
+                     건에 필요한 것은 "무엇을 검증했나"가 아니라 "무엇이 ERP로 나가나"다.
+                     검토 당시 보고서는 아래 접이식으로 남긴다 — 감사 때 되짚는 자리라 지우지 않는다. */}
+                {hasVoucher ? (
+                <div className="card">
+                  <div className="card-head">
+                    <h3>② ERP 전표(안)</h3>
+                    <button type="button" className="btn sm" onClick={() => nav(`/erp/${sel.id}`)}>
+                      <FileText size={13} /> 전표 전체 보기
+                    </button>
+                  </div>
+                  <div className="card-body">
+                    <VoucherPanel settlementId={sel.id} />
+                    {(sel.riskReport || sel.ragReport) && (
+                      <details style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                        <summary className="text-meta" style={{ cursor: 'pointer', fontWeight: 700 }}>
+                          검토 당시 내규 검증 보고서
+                        </summary>
+                        <div style={{ marginTop: 10 }}>
+                          {/*  `?? ''`은 도달하지 않는다 — 이 블록 자체가 둘 중 하나가 있을 때만 열린다. */}
+                          {sel.riskReport
+                            ? <RiskReportView report={sel.riskReport} tierPath={sel.riskTierPath} />
+                            : <Markdown source={sel.ragReport ?? ''} />}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                </div>
+                ) : (
                 <div className="card">
                   <div className="card-head">
                     <h3>② RAG 내규 검증</h3>
@@ -680,6 +715,7 @@ export function ReviewWorkspace() {
                     )}
                   </div>
                 </div>
+                )}
 
                 {/* 원클릭 처리 3종 (FR-UI-03) — 3버튼 균등 정렬. 이전 처리 뷰는 조회 전용(비활성) */}
                 <div className="card">
