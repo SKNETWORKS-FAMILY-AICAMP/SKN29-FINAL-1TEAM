@@ -10,7 +10,7 @@
 //   · 규칙 생성 안 함 — 사람이 "안 만들겠다"고 정한 조항 + 그 사유
 //
 // 상태는 백엔드가 계산해서 준다(저장 안 함) — 룰은 나중에 생기고 지워지므로.
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Check, Copy, X } from 'lucide-react'
 import {
   CLAUSE_KIND_META, CLAUSE_STATUS_META, PRIORITY_META,
@@ -93,11 +93,59 @@ function clausePeek(clause: PolicyClause): string {
   return `${clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ').slice(0, 70)}...`
 }
 
+/** "이 문서의 조항 내용 찾기" 검색이 조 라벨·제목·원문 어디에 걸렸는지 판정한다.
+ *  목록 필터링과 하이라이트가 **같은 기준**을 써야 "검색됐는데 안 보인다"가 안 생긴다. */
+export function clauseMatchesQuery(clause: PolicyClause, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return (
+    clauseHeading(clause).toLowerCase().includes(q)
+    || clause.body.toLowerCase().includes(q)
+  )
+}
+
+/** 일치하는 모든 구간을 `<mark>`로 감싼다. 쿼리가 비어 있으면 원문 문자열 그대로 반환한다
+ *  (평소엔 아무 것도 감싸지 않아 렌더링 비용·DOM 구조가 검색 전과 같다). */
+function highlightAll(text: string, query: string): ReactNode {
+  const q = query.trim()
+  if (!q) return text
+  const lower = text.toLowerCase()
+  const qLower = q.toLowerCase()
+  const parts: ReactNode[] = []
+  let cursor = 0
+  let idx = lower.indexOf(qLower)
+  while (idx !== -1) {
+    if (idx > cursor) parts.push(text.slice(cursor, idx))
+    parts.push(<mark key={idx}>{text.slice(idx, idx + q.length)}</mark>)
+    cursor = idx + q.length
+    idx = lower.indexOf(qLower, cursor)
+  }
+  parts.push(text.slice(cursor))
+  return parts
+}
+
+/** 목록 행 미리보기 — 검색어가 있으면 본문에서 일치 지점 주변으로 스니펫을 다시 자른다.
+ *  기본 미리보기(`clausePeek`)는 항상 앞 70자라, 일치 지점이 그보다 뒤에 있으면
+ *  하이라이트가 화면에 아예 안 보이는 문제가 있었다. */
+function clausePeekFor(clause: PolicyClause, query: string): ReactNode {
+  const q = query.trim()
+  if (!q) return clausePeek(clause)
+  const body = clause.body.replace(/^#+\s*/gm, '').replace(/\s+/g, ' ')
+  const idx = body.toLowerCase().indexOf(q.toLowerCase())
+  if (idx === -1) return clausePeek(clause)
+  const start = Math.max(0, idx - 20)
+  const end = Math.min(body.length, idx + q.length + 40)
+  const snippet = (start > 0 ? '…' : '') + body.slice(start, end) + (end < body.length ? '…' : '')
+  return highlightAll(snippet, q)
+}
+
 /** 목록 행 — 가운데 열에서 조 하나를 고르는 자리. 본문은 여기서 보여주지 않는다
  *  (한 줄 미리보기만) — 본문·근거·결정 버튼은 오른쪽 상세 패널의 몫이다. */
-export function ClauseListRow({ clause, active, onSelect }: {
+export function ClauseListRow({ clause, active, query = '', onSelect }: {
   clause: PolicyClause
   active: boolean
+  /** "이 문서의 조항 내용 찾기" 검색어 — 있으면 제목·미리보기에 하이라이트한다. */
+  query?: string
   onSelect: () => void
 }) {
   const attn = clause.ruleStatus === 'NEEDS_REVIEW'
@@ -107,12 +155,12 @@ export function ClauseListRow({ clause, active, onSelect }: {
       className={'pd-list-row' + (active ? ' active' : '') + (attn ? ' attn' : '')}
       onClick={onSelect}
     >
-      <span className="pd-list-row-title">{clauseHeading(clause)}</span>
+      <span className="pd-list-row-title">{highlightAll(clauseHeading(clause), query)}</span>
       <span className="pd-list-row-badges">
         <PriorityBadge clause={clause} />
         <StatusBadge status={clause.ruleStatus} />
       </span>
-      <span className="pd-list-row-peek">{clausePeek(clause)}</span>
+      <span className="pd-list-row-peek">{clausePeekFor(clause, query)}</span>
     </button>
   )
 }
@@ -120,8 +168,9 @@ export function ClauseListRow({ clause, active, onSelect }: {
 /** 상세 패널 — 선택한 조 하나의 원문·AI 근거·연결된 규칙·결정 버튼. 목록에서 다른
  *  조를 고르면(부모가 `key={clause.id}`로 이 컴포넌트를 새로 마운트해) `skipping` 같은
  *  내부 상태가 자연히 초기화된다 — 여기서 직접 리셋할 필요가 없다. */
-export function ClauseDetail({ clause, onSkip, onReset, onCreateRule, busy }: {
+export function ClauseDetail({ clause, query = '', onSkip, onReset, onCreateRule, busy }: {
   clause: PolicyClause
+  query?: string
   onSkip: (reason: string) => void
   onReset: () => void
   onCreateRule: () => void
@@ -132,7 +181,7 @@ export function ClauseDetail({ clause, onSkip, onReset, onCreateRule, busy }: {
   return (
     <div className="pd-detail-body">
       <div className="pd-detail-title-row">
-        <h3 className="pd-detail-title">{clauseHeading(clause)}</h3>
+        <h3 className="pd-detail-title">{highlightAll(clauseHeading(clause), query)}</h3>
         <span className="row" style={{ gap: 6, flexShrink: 0 }}>
           <PriorityBadge clause={clause} />
           <StatusBadge status={clause.ruleStatus} />
@@ -161,7 +210,7 @@ export function ClauseDetail({ clause, onSkip, onReset, onCreateRule, busy }: {
         <span className="text-meta">원본 조항</span>
         <CopyButton text={clause.body} />
       </div>
-      <pre className="pd-markdown">{clause.body}</pre>
+      <pre className="pd-markdown">{highlightAll(clause.body, query)}</pre>
 
       {clause.ruleStatus === 'LINKED' && (
         <div className="pd-linked">

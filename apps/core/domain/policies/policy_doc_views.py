@@ -60,6 +60,7 @@ def _folder_doc(doc: PolicyDoc) -> dict:
         "id": doc.pk,
         "title": doc.title,
         "status": doc.status,
+        "version": doc.version,
         # 확인이 필요한 조항 수 — 트리의 "확인 3" 배지.
         "reviewCount": getattr(doc, "review_count", 0),
         # 구판이면 "이전 버전" 배지. 지우지 않는 이유는 과거 판정이 인용한 조항 보존.

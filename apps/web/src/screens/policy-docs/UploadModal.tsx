@@ -23,6 +23,7 @@ const MAX_MB = 50
 export type UploadInput = {
   file: File
   title: string
+  version: string
   profileHint: DocProfile | ''
   ruleScope: string
   folderId: number | null
@@ -45,6 +46,7 @@ export function UploadModal({ folders, defaultFolderId, busy, onClose, onSubmit 
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
+  const [version, setVersion] = useState('')
   const [profileHint, setProfileHint] = useState<DocProfile | ''>('')
   const [ruleScope, setRuleScope] = useState('')
   const [folderId, setFolderId] = useState<number | null>(defaultFolderId)
@@ -73,7 +75,7 @@ export function UploadModal({ folders, defaultFolderId, busy, onClose, onSubmit 
 
   const submit = () => {
     if (!file || busy) return
-    onSubmit({ file, title: title.trim() || file.name, profileHint, ruleScope, folderId })
+    onSubmit({ file, title: title.trim() || file.name, version: version.trim(), profileHint, ruleScope, folderId })
   }
 
   const footer = (
@@ -128,13 +130,20 @@ export function UploadModal({ folders, defaultFolderId, busy, onClose, onSubmit 
         </div>
       )}
 
-      <div className="field" style={{ marginTop: 16 }}>
-        <label>문서명</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy}
-               placeholder="예) 법인카드 사용규정 v3.2" />
+      <div className="row" style={{ gap: 12, marginTop: 16, alignItems: 'flex-start' }}>
+        <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+          <label>문서명</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy}
+                 placeholder="예) 법인카드 사용규정" />
+        </div>
+        <div className="field" style={{ width: 110, marginBottom: 0 }}>
+          <label>버전 <span className="text-meta">(선택)</span></label>
+          <input value={version} onChange={(e) => setVersion(e.target.value)} disabled={busy}
+                 maxLength={20} placeholder="예) v3.2" />
+        </div>
       </div>
 
-      <div className="field">
+      <div className="field" style={{ marginTop: 16 }}>
         <label>문서 유형</label>
         <select value={profileHint} disabled={busy}
                 onChange={(e) => setProfileHint(e.target.value as DocProfile | '')}>

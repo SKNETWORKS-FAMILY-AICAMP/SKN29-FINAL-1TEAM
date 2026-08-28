@@ -9,12 +9,12 @@
 // 좁은 화면에서는 이 두 칸을 세로로 쌓고, 상세를 열면 목록 대신 그것만 보여준다
 // (`.pd-workspace.has-active`, policy-docs.css) — 3단을 억지로 유지하지 않는다.
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, FileText, MoreVertical, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertTriangle, FileText, MoreVertical, RefreshCw, Search, Trash2 } from 'lucide-react'
 import {
   EMBEDDING_IN_PROGRESS, EMBEDDING_STATUS_META, PRIORITY_META,
   type AxisOption, type PolicyClause, type PolicyDocument, type PolicyTableProposal,
 } from '../../types/domain'
-import { ClauseDetail, ClauseListRow } from './ClauseAccordion'
+import { ClauseDetail, ClauseListRow, clauseMatchesQuery } from './ClauseAccordion'
 import { TableProposalDetail, TableProposalListRow, orderProposals } from './TableProposalPanel'
 
 const fmtSize = (bytes: number) =>
@@ -106,9 +106,20 @@ export function DocumentWorkspace({
   onDecideProposal: (id: number, action: 'APPROVE' | 'REJECT', note: string, patch?: Record<string, unknown>) => void
 }) {
   const reviewClauses = useMemo(() => byPriority(clauses.filter((c) => c.ruleStatus === 'NEEDS_REVIEW')), [clauses])
-  const allClauses = useMemo(() => byPriority(clauses), [clauses])
+  // 전체 조항은 기본이 **조 번호순**이다(백엔드가 이미 그 순서로 준다 — `PolicyClause.Meta.ordering`).
+  // 우선순위순은 "다음에 뭘 처리할까"용 보조 정렬이라 토글로만 둔다 — 문서를 목차처럼
+  // 훑어보려는 사람에게 조 순서를 뺏으면 안 된다.
+  const [allOrder, setAllOrder] = useState<'article' | 'priority'>('article')
+  const allClauses = useMemo(
+    () => (allOrder === 'priority' ? byPriority(clauses) : clauses),
+    [clauses, allOrder],
+  )
+  const [clauseQuery, setClauseQuery] = useState('')
+  const visibleAllClauses = useMemo(
+    () => (clauseQuery.trim() ? allClauses.filter((c) => clauseMatchesQuery(c, clauseQuery)) : allClauses),
+    [allClauses, clauseQuery],
+  )
   const orderedProposals = useMemo(() => orderProposals(proposals), [proposals])
-  const triaged = clauses.some((c) => c.triagePriority)
 
   // 처음 여는 탭 — 확인할 게 있으면 그것부터, 없으면 전체를 보여준다(문서의 조항 수는
   // 목록 API 응답을 기다릴 필요 없이 `doc`에 이미 있다 — 탭을 고르는 데 조항 배열의
@@ -161,6 +172,7 @@ export function DocumentWorkspace({
         {/* 조항·별표 수는 바로 아래 탭 배지가 이미 보여준다 — 같은 화면 안에서
             두 번 세지 않는다. 여기는 문서를 구분하는 최소 정보만 남긴다. */}
         <div className="pd-doc-meta text-meta">
+          {doc.version && <>버전 {doc.version} · </>}
           등록일 {doc.uploadedAt?.slice(0, 10)}
         </div>
 
@@ -199,6 +211,33 @@ export function DocumentWorkspace({
           </button>
         </div>
 
+        {/* 조 번호순↔우선순위순 전환 + 지금 위치 + 본문 검색은 "전체 조항"에서만 의미가
+            있다 — "확인 필요"는 이미 작업 순서(우선순위)로 짧게 추려진 목록이라 여기서
+            정렬·탐색을 또 고민하게 하지 않는다. */}
+        {tab === 'ALL' && (
+          <div className="pd-clause-toolbar">
+            <div className="seg-toggle">
+              <button type="button" className={allOrder === 'article' ? 'active' : ''} onClick={() => setAllOrder('article')}>
+                조 번호순
+              </button>
+              <button type="button" className={allOrder === 'priority' ? 'active' : ''} onClick={() => setAllOrder('priority')}>
+                AI 우선순위순
+              </button>
+            </div>
+            <div className="search-box" style={{ flex: '0 1 220px' }}>
+              <Search size={13} />
+              <input
+                placeholder="이 문서의 조항 내용 찾기"
+                value={clauseQuery}
+                onChange={(e) => setClauseQuery(e.target.value)}
+              />
+            </div>
+            <span className="text-meta pd-clause-pos">
+              지금 보는 위치 · <b>{activeClauseId && tab === 'ALL' ? allClauses.find((c) => c.id === activeClauseId)?.articleLabel ?? '—' : '—'}</b> / 전체 {clauses.length}개 조
+            </span>
+          </div>
+        )}
+
         <div className={'pd-workspace' + (hasActive ? ' has-active' : '')}>
           <div className="pd-list-col">
             {tab === 'INFO' ? (
@@ -207,8 +246,9 @@ export function DocumentWorkspace({
               <ProposalList proposals={orderedProposals} activeId={activeProposalId} onSelect={setActiveProposalId} />
             ) : (
               <ClauseList
-                doc={doc} tab={tab} list={tab === 'REVIEW' ? reviewClauses : allClauses}
-                total={clauses.length} triaged={triaged}
+                doc={doc}
+                list={tab === 'REVIEW' ? reviewClauses : visibleAllClauses}
+                total={clauses.length} query={tab === 'ALL' ? clauseQuery : ''}
                 activeId={activeClauseId} onSelect={setActiveClauseId}
               />
             )}
@@ -234,6 +274,7 @@ export function DocumentWorkspace({
                 <ClauseDetail
                   key={activeClause.id}
                   clause={activeClause}
+                  query={tab === 'ALL' ? clauseQuery : ''}
                   busy={busy}
                   onSkip={(reason) => onDecideClause(activeClause.id, 'SKIP', reason)}
                   onReset={() => onDecideClause(activeClause.id, 'RESET')}
@@ -264,8 +305,8 @@ function EmptyDetail({ text }: { text: string }) {
   return <div className="pd-empty" style={{ padding: '48px 16px' }}><p className="text-meta">{text}</p></div>
 }
 
-function ClauseList({ doc, tab, list, total, triaged, activeId, onSelect }: {
-  doc: PolicyDocument; tab: Tab; list: PolicyClause[]; total: number; triaged: boolean
+function ClauseList({ doc, list, total, query, activeId, onSelect }: {
+  doc: PolicyDocument; list: PolicyClause[]; total: number; query: string
   activeId: number | null; onSelect: (id: number) => void
 }) {
   if (EMBEDDING_IN_PROGRESS.includes(doc.status)) {
@@ -274,15 +315,17 @@ function ClauseList({ doc, tab, list, total, triaged, activeId, onSelect }: {
   if (total === 0) {
     return <div className="text-meta" style={{ padding: 16 }}>조 단위로 인식된 조항이 없어요. 표·별표만 있는 문서이거나 파싱이 실패했을 수 있어요.</div>
   }
+  if (list.length === 0 && query.trim()) {
+    return <div className="text-meta" style={{ padding: 16 }}>"{query.trim()}"와 일치하는 조항이 없어요.</div>
+  }
   if (list.length === 0) {
     // 확인 필요 탭이 비었을 때 — 필터로 비었을 뿐이라는 걸 분명히 한다("전체 조항"이 사라진 게 아니다).
     return <div className="text-meta" style={{ padding: 16 }}>확인할 조항이 없어요. 전체 {total}개는 「전체 조항」 탭에서 볼 수 있어요.</div>
   }
   return (
     <div className="pd-list-scroll">
-      {triaged && tab === 'ALL' && <div className="text-meta" style={{ padding: '4px 2px 8px' }}>우선순위 순</div>}
       {list.map((clause) => (
-        <ClauseListRow key={clause.id} clause={clause} active={clause.id === activeId} onSelect={() => onSelect(clause.id)} />
+        <ClauseListRow key={clause.id} clause={clause} active={clause.id === activeId} query={query} onSelect={() => onSelect(clause.id)} />
       ))}
     </div>
   )
@@ -310,6 +353,7 @@ function ProposalList({ proposals, activeId, onSelect }: {
 function DocInfo({ doc }: { doc: PolicyDocument }) {
   const rows: [string, ReactNode][] = [
     ['문서명', doc.title],
+    ['버전', doc.version || '표기 안 함'],
     ['원본 파일', doc.fileName || '—'],
     ['파일 크기', doc.fileSize > 0 ? fmtSize(doc.fileSize) : '—'],
     ['문서 유형', (

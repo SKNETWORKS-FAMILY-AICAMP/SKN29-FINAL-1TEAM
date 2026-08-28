@@ -105,6 +105,7 @@ export function PolicyDocuments() {
     const form = new FormData()
     form.append('file', input.file)
     form.append('title', input.title)
+    if (input.version) form.append('version', input.version)
     if (input.profileHint) form.append('profileHint', input.profileHint)
     if (input.ruleScope) form.append('ruleScope', input.ruleScope)
     if (input.folderId != null) form.append('folderId', String(input.folderId))
