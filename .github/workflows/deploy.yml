@@ -1,0 +1,47 @@
+name: Deploy to EC2
+
+# 수동 실행 전용(aws-deployment-plan-v1.md §1-5). build.yml로 이미지를 먼저
+# GHCR에 올려둔 뒤, 준비됐을 때 이 워크플로를 눌러서 EC2에 반영한다.
+#
+# 필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
+#   EC2_HOST     EC2 퍼블릭 IP(Elastic IP) 또는 도메인
+#   EC2_SSH_KEY  EC2 접속용 프라이빗 키(.pem 파일 내용 전체)
+#   EC2_USER     접속 계정 (보통 ubuntu — 비워두면 ubuntu로 기본 동작)
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker-compose.prod.yml을 EC2로 복사
+        # nginx 설정은 이미지 안에 이미 포함돼 있어서(Dockerfile.prod) 따로 옮길 필요 없다.
+        # EC2에 남아있어야 하는 인프라 파일은 이 compose 파일 하나뿐이다.
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "~/app"
+
+      - name: EC2에서 이미지 pull & 재기동
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/app
+            mkdir -p logs
+            docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+            docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T core python manage.py migrate --noinput
+            docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T core python manage.py collectstatic --noinput
+
+# 참고 — GHCR 패키지를 나중에 비공개(Private)로 바꾸면, 위 EC2 스텝 맨 앞에
+# `docker login ghcr.io -u <user> -p ${{ secrets.GHCR_PAT }}` 한 줄을 추가해야 한다.
+# 지금은 패키지를 공개로 가정하고 로그인 없이 pull한다(aws-deployment-plan-v1.md §4-7).

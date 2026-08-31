@@ -1,0 +1,114 @@
+name: skn-settlement-prod
+
+# 운영(EC2) 배포용 docker-compose.
+# 로컬 개발용 docker-compose.yml과의 차이(aws-deployment-plan-v1.md §4-1):
+#   - 이미지는 EC2에서 빌드하지 않고 GHCR에서 pull만 한다(build: 대신 image:)
+#   - 소스코드 바인드마운트는 제거한다(코드는 이미지 안에 있다) — 단 media/static은
+#     core·ai·nginx가 함께 읽고 쓰는 공유 자원이라 named volume으로 그대로 남긴다
+#     (여기를 지우면 규정문서 업로드·영수증 판독·admin 정적파일이 조용히 깨진다)
+#   - core/ai는 호스트 포트를 열지 않는다 — nginx만 80으로 외부에 노출된다
+#   - web은 별도 컨테이너가 아니라 nginx 이미지 안에 정적 빌드 산출물로 포함된다
+#     (infra/nginx/Dockerfile.prod 참고 — 컨테이너 하나 절약)
+#
+# 실행: docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+# (.env.prod는 레포에 없다 — .env.prod.example을 참고해 EC2에서 직접 작성한다)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-settlement}
+      POSTGRES_USER: ${POSTGRES_USER:-settlement}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-settlement}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-settlement}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  chroma:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - chromadata:/data
+
+  core:
+    image: ghcr.io/sknetworks-family-aicamp/skn29-final-1team-core:latest
+    restart: unless-stopped
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_DB: ${POSTGRES_DB:-settlement}
+      POSTGRES_USER: ${POSTGRES_USER:-settlement}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-settlement}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      AI_BASE_URL: http://ai:9000
+      AI_SERVICE_USER: ${AI_SERVICE_USER:-rule-agent}
+      AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD}
+      LOG_DIR: /logs
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+      - ./logs:/logs
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ai:
+    image: ghcr.io/sknetworks-family-aicamp/skn29-final-1team-ai:latest
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9000
+    environment:
+      CORE_BASE_URL: http://core:8000
+      CHROMA_HOST: chroma
+      CHROMA_PORT: 8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      LLM_FAST_MODEL: ${LLM_FAST_MODEL:-gpt-4o-mini}
+      LLM_HEAVY_MODEL: ${LLM_HEAVY_MODEL:-gpt-5-mini}
+      LLM_HEAVY_REASONING_EFFORT: ${LLM_HEAVY_REASONING_EFFORT:-low}
+      AI_SERVICE_USER: ${AI_SERVICE_USER:-rule-agent}
+      AI_SERVICE_PASSWORD: ${AI_SERVICE_PASSWORD}
+      RULE_AGENT_MODEL: ${RULE_AGENT_MODEL:-gpt-4o-mini}
+      RULE_AGENT_MODEL_HEAVY: ${RULE_AGENT_MODEL_HEAVY:-gpt-5-mini}
+      RULE_AGENT_MODEL_HEAVY_REASONING_EFFORT: ${RULE_AGENT_MODEL_HEAVY_REASONING_EFFORT:-low}
+      LOG_DIR: /logs
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RAG_MEDIA_ROOT: /data/media
+      VISION_MODEL: ${VISION_MODEL:-gpt-4o}
+      VISION_MAX_PAGES: ${VISION_MAX_PAGES:-8}
+    volumes:
+      - media:/data/media:ro
+      - ./logs:/logs
+    expose:
+      - "9000"
+    depends_on:
+      - chroma
+
+  nginx:
+    image: ghcr.io/sknetworks-family-aicamp/skn29-final-1team-web:latest
+    restart: unless-stopped
+    volumes:
+      - static:/usr/share/nginx/static:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - core
+
+volumes:
+  pgdata:
+  chromadata:
+  media:
+  static:
