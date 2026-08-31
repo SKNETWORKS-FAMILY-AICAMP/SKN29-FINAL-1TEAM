@@ -7,6 +7,9 @@ name: Deploy to EC2
 #   EC2_HOST     EC2 퍼블릭 IP(Elastic IP) 또는 도메인
 #   EC2_SSH_KEY  EC2 접속용 프라이빗 키(.pem 파일 내용 전체)
 #   EC2_USER     접속 계정 (보통 ubuntu — 비워두면 ubuntu로 기본 동작)
+#   GHCR_USER    GHCR pull용 PAT를 발급한 GitHub 아이디
+#   GHCR_PAT     read:packages 권한만 있는 PAT(Personal Access Token, classic)
+#                조직 정책상 GHCR 패키지를 Public으로 못 바꿔서(§4-7 예상과 다름) 필요해졌다.
 on:
   workflow_dispatch: {}
 
@@ -37,11 +40,8 @@ jobs:
             set -e
             cd ~/app
             mkdir -p logs
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ secrets.GHCR_USER }} --password-stdin
             docker compose --env-file .env.prod -f docker-compose.prod.yml pull
             docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
             docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T core python manage.py migrate --noinput
             docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T core python manage.py collectstatic --noinput
-
-# 참고 — GHCR 패키지를 나중에 비공개(Private)로 바꾸면, 위 EC2 스텝 맨 앞에
-# `docker login ghcr.io -u <user> -p ${{ secrets.GHCR_PAT }}` 한 줄을 추가해야 한다.
-# 지금은 패키지를 공개로 가정하고 로그인 없이 pull한다(aws-deployment-plan-v1.md §4-7).
