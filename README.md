@@ -51,13 +51,13 @@
 팀명 **BUBSAN**은 "법인카드 정산"에서 따왔다. 프로젝트를 시작할 때 담당 멘토님이 남긴
 "호랑이를 그려야 고양이라도 그려진다"는 말씀에서 팀명 **호냥이**와 가상기업 **타이거 주식회사**가 탄생했다.
 
-| 이름 | GitHub | 주요 기여 영역 |
-|---|---|---|
-| 정영석 | [@YoungSton3](https://github.com/YoungSton3) | PM — 프로젝트 총괄, AI·데이터 수집/전처리 |
-| 김정민 | [@min1i](https://github.com/min1i) | Frontend — 프론트엔드 개발, QA·문서화 |
-| 김진욱 | [@keroro729](https://github.com/keroro729) | Backend — 백엔드 개발, DB·인프라 |
-| 이지현 | [@LeeJiHyeon](https://github.com/LeeJiHyeon) | ML — ML 모델, 데이터·품질 |
-| 한경찬 | [@skn29hkc28](https://github.com/skn29hkc28) | AI Agent — AI Agent 개발, 데이터 수집/전처리 |
+| | 이름 | GitHub | 주요 기여 영역 |
+|---|---|---|---|
+| <img src="docs/assets/team-jeong-youngseok.png" width="64" /> | 정영석 | [@YoungSton3](https://github.com/YoungSton3) | PM — 프로젝트 총괄, AI·데이터 수집/전처리 |
+| <img src="docs/assets/team-kim-jeongmin.png" width="64" /> | 김정민 | [@min1i](https://github.com/min1i) | Frontend — 프론트엔드 개발, QA·문서화 |
+| <img src="docs/assets/team-kim-jinwook.png" width="64" /> | 김진욱 | [@keroro729](https://github.com/keroro729) | Backend — 백엔드 개발, DB·인프라 |
+| <img src="docs/assets/team-lee-jihyeon.png" width="64" /> | 이지현 | [@LeeJiHyeon](https://github.com/LeeJiHyeon) | ML — ML 모델, 데이터·품질 |
+| <img src="docs/assets/team-han-gyeongchan.png" width="64" /> | 한경찬 | [@skn29hkc28](https://github.com/skn29hkc28) | AI Agent — AI Agent 개발, 데이터 수집/전처리 |
 
 ---
 
