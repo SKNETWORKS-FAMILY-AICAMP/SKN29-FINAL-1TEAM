@@ -193,12 +193,56 @@ docker compose exec core python manage.py seed_adopted
 | 예산 관리(S-08) · 카드 관리(S-09) · ERP 전표(안) 확인 | 완료 · 실 API | |
 | 증빙 첨부 업로드 → 비전 판독 → EvalContext | 완료 · 실동작 | 업로드가 곧 판독 트리거 |
 
-전체 미완/미연동 항목, 알려진 함정, 디렉터리 구조는 **[`docs/SETUP.md`](docs/SETUP.md)** 에 정리돼 있다.
+전체 미완/미연동 항목, 알려진 함정은 **[`docs/SETUP.md`](docs/SETUP.md)** 에 정리돼 있다.
 
 ---
 
-## 9. 더 알아보기
+## 9. 디렉터리 구조
+
+```
+.
+├── docker-compose.yml          # db · chroma · core · ai · web · nginx
+├── .env.example                # 환경변수 + 각 값의 의미·주의사항 (→ .env로 복사)
+├── infra/nginx/                # 리버스 프록시 ( / → web, /api → core )
+├── logs/                       # 컨테이너 로그 바인드 (git 미추적) — 디버깅은 여기부터
+├── llm_wiki/                   # 설계·기획 산출물. 진입점 _index.md
+│   ├── docs/                   #   팀 관리 기준 문서 (요구사항·기술명세서·기획·RULE 명세서)
+│   ├── _context/                #   AI가 관리하는 구현 캐논·실측 기록
+│   └── 화면설계서/ · figma_mockup/
+├── tiger_inc/                   # RAG 소스 데이터(사내 규정·조직 문서) — 직접 열람 자제
+├── docling_eval/                # 파싱·청킹·임베딩 평가 노트북 + 파싱 덤프(적재 배치 입력)
+├── scrum/                       # 주차별 스크럼·발표 산출물
+├── docs/                        # 사람이 읽는 운영·셋업 문서(SETUP.md) + README 이미지 자산
+└── apps/
+    ├── web/                    # React + Vite + TS (SPA)
+    │   └── src/{api,screens,components,context,lib,data}
+    ├── core/                   # Django + DRF (SoR)
+    │   ├── config/
+    │   └── domain/
+    │       ├── accounts/       #   users · teams · roles · capabilities · 직책/직급
+    │       ├── cards/          #   cards
+    │       ├── transactions/   #   transactions · receipts · 가맹점 업종 어휘(정본)
+    │       ├── settlements/    #   settlements · events(상태머신) · attachments · ERP 수집
+    │       ├── policies/       #   룰 그래프 · DSL · 엔진 · EvalContext · 별표 · 플래그 · 규정문서
+    │       ├── risk/           #   risk_reviews · decision_labels
+    │       ├── erp/            #   erp_vouchers
+    │       └── common/         #   health · dashboard · 관리 명령(seed 등)
+    └── ai/                     # FastAPI (AI Orchestrator, 내부 전용)
+        └── app/
+            ├── api/            #   /agent · /ml · /embeddings · /lab
+            ├── agents/         #   draft · risk_review · rule_agent_v0
+            ├── mcp/            #   단일 FastMCP 서버 + 도구 12종
+            ├── rag/            #   parsing · chunking · embedding · retrieval · ingest
+            ├── vision/         #   영수증·증빙문서 판독 (도구는 있으나 흐름 미연동)
+            ├── ml/             #   비지도 이상탐지 + 레지스트리 + 학습 CLI
+            ├── merchant/       #   가맹점 업종 분류 캐스케이드
+            └── clients/        #   Django 내부 API 클라이언트 · 서비스 계정 인증
+```
+
+---
+
+## 10. 더 알아보기
 
 - **[`CLAUDE.md`](CLAUDE.md)** — 팀 공용 개발 컨텍스트, 핵심 설계 결정과 그 이유, 최신 상태 보드
 - **[`llm_wiki/_index.md`](llm_wiki/_index.md)** — 요구사항·기술명세서·RULE 명세서·화면설계서로 가는 색인
-- **[`docs/SETUP.md`](docs/SETUP.md)** — 시드 데이터 전략, RAG 적재, 자주 쓰는 명령, 알려진 함정, 디렉터리 구조
+- **[`docs/SETUP.md`](docs/SETUP.md)** — 시드 데이터 전략, RAG 적재, 자주 쓰는 명령, 알려진 함정
