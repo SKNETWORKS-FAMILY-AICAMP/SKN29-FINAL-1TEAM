@@ -4,7 +4,7 @@
 
 # 법인카드 정산 자동화 플랫폼
 
-**Hybrid AI 기반 법인카드 정산 자동화 — 3개 AI Agent + 결정론적 룰 엔진 + 사람 최종 확정**
+**법인카드 정산 자동화 — 3개 AI Agent + 결정론적 룰 엔진 + 사람 최종 확정**
 
 가상기업 "타이거 주식회사" 페르소나로 구성된 SKN29 Family AI Camp 최종 프로젝트
 
@@ -51,15 +51,13 @@
 팀명 **BUBSAN**은 "법인카드 정산(法人카드 精算)"에서 따왔다. 우리가 다루는 가상기업이
 "타이거 주식회사"인 데서 착안해, 팀 마스코트는 호랑이와 고양이 콤비로 정했다.
 
-> 아래 표는 커밋 이력에서 뽑은 초안이다. 담당 파트·한 줄 소개는 각자 확인 후 채워 넣을 것.
-
-| 이름 | GitHub | 주요 기여 영역(커밋 기반 초안) | 한 줄 소개 |
-|---|---|---|---|
-| 이지현 | [@LeeJiHyeon](https://github.com/LeeJiHyeon) | 프론트엔드(SPA) · ML(비지도 이상탐지) | _작성 예정_ |
-| keroro729 | [@keroro729](https://github.com/keroro729) | Django Core · FastAPI AI · 문서/설계(`llm_wiki`) | _작성 예정_ |
-| 한경찬 | — | FastAPI AI · RAG 컨텍스트 · ML 데이터셋 | _작성 예정_ |
-| YoungSton3 | [@YoungSton3](https://github.com/YoungSton3) | FastAPI AI · RAG 파싱(`tiger_inc`) | _작성 예정_ |
-| Kim-Jeongmin | [@min1i](https://github.com/min1i) | 프론트엔드(SPA) | _작성 예정_ |
+| 이름 | GitHub | 주요 기여 영역 |
+|---|---|---|
+| 정영석 | [@YoungSton3](https://github.com/YoungSton3) | PM — 프로젝트 총괄, AI·데이터 수집/전처리 |
+| 김정민 | [@min1i](https://github.com/min1i) | Frontend — 프론트엔드 개발, QA·문서화 |
+| 김진욱 | [@keroro729](https://github.com/keroro729) | Backend — 백엔드 개발, DB·인프라 |
+| 이지현 | [@LeeJiHyeon](https://github.com/LeeJiHyeon) | ML — ML 모델, 데이터·품질 |
+| 한경찬 | [@skn29hkc28](https://github.com/skn29hkc28) | AI Agent — AI Agent 개발, 데이터 수집/전처리 |
 
 ---
 
@@ -171,26 +169,25 @@ docker compose exec core python manage.py seed_adopted
 
 ---
 
-## 8. 구현 상태 한눈에
+## 8. 구현 상태
 
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Django 도메인 모델 · 상태머신 · Capability RBAC | ✅ | 8도메인 18테이블, 4단계 상태머신 |
-| 룰 엔진 (EvalContext 조립 → 그래프 선택 → 결정론적 순회) | ✅ | 제출이 판정을 자동으로 이어 돌린다 |
-| 룰 콘솔 (S-04) 3개 탭 | ✅ 실 API | 초안 편집·시뮬레이션·ACTIVE 승인·버전 롤백·대화형 수정 |
-| Rule Agent (규정 → 룰 그래프 DRAFT) | ✅ | RAG → LLM 툴콜링 → 결정론적 조립 → 저장 |
-| Draft Agent (초안 작성) | ✅ v2 | 저장 먼저 → 비전 판독 → 초안. 판정은 LLM이 예측하지 않고 엔진 dry-run 결과를 서술한다 |
-| Risk Review Agent (① 이상탐지 → ② RAG 내규 검증) | ✅ 실동작 | ①은 학습된 모델 파일이 있어야 실값 — `docs/SETUP.md` §4.1 |
-| 규정 문서 업로드 → 인덱싱 → 룰 트리거 | ✅ | `docs/SETUP.md` §3-① |
-| RAG 파싱·청킹·임베딩 전략 | ✅ 구현+평가 완료 | 채점 노트북은 `docling_eval/` |
-| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | ✅ P0 | DSL·EvalContext 경로·별표 축·판정 선택지·플래그를 live 모델에서 조립해 프롬프트에 주입 |
-| 결정 사례 적재 (`case_history`) | ✅ | 사람이 AI와 다르게 판단한 건만. `seed_adopted` 30건 + 결정 시 자동 적재 |
-| 알림 11종 · 규정문서 덤프/복원 | ✅ | 상태 전이·비동기 완료·룰 콘솔 사건 / `dump_policy_docs`·`load_policy_docs` |
-| 검토 워크스페이스(S-03) · 규정 문서 관리(S-05) · 팀 취합(S-02) | ✅ 실 API | |
-| 내 지출(S-01) · 내역 불러오기 | ✅ 실 API | ERP 결제기록 수집 → DRAFT 생성 |
-| 예산 관리(S-08) · 카드 관리(S-09) · ERP 전표(안) 확인 | ✅ 실 API | |
-| 증빙 첨부 업로드 → 비전 판독 → EvalContext | ✅ 실동작 | 업로드가 곧 판독 트리거 |
-| 거버넌스 대시보드 | 🚧 목업 | `docs/SETUP.md` §4.2 |
+| Django 도메인 모델 · 상태머신 · Capability RBAC | 완료 | 8도메인 18테이블, 4단계 상태머신 |
+| 룰 엔진 (EvalContext 조립 → 그래프 선택 → 결정론적 순회) | 완료 | 제출이 판정을 자동으로 이어 돌린다 |
+| 룰 콘솔 (S-04) 3개 탭 | 완료 · 실 API | 초안 편집·시뮬레이션·ACTIVE 승인·버전 롤백·대화형 수정 |
+| Rule Agent (규정 → 룰 그래프 DRAFT) | 완료 | RAG → LLM 툴콜링 → 결정론적 조립 → 저장 |
+| Draft Agent (초안 작성) | 완료 v2 | 저장 먼저 → 비전 판독 → 초안. 판정은 LLM이 예측하지 않고 엔진 dry-run 결과를 서술한다 |
+| Risk Review Agent (① 이상탐지 → ② RAG 내규 검증) | 완료 · 실동작 | ①은 학습된 모델 파일이 있어야 실값 — `docs/SETUP.md` §4.1 |
+| 규정 문서 업로드 → 인덱싱 → 룰 트리거 | 완료 | `docs/SETUP.md` §3-① |
+| RAG 파싱·청킹·임베딩 전략 | 완료 · 평가 완료 | 채점 노트북은 `docling_eval/` |
+| 에이전트 컨텍스트 툴 (도메인 카탈로그 주입) | 완료 P0 | DSL·EvalContext 경로·별표 축·판정 선택지·플래그를 live 모델에서 조립해 프롬프트에 주입 |
+| 결정 사례 적재 (`case_history`) | 완료 | 사람이 AI와 다르게 판단한 건만. `seed_adopted` 30건 + 결정 시 자동 적재 |
+| 알림 11종 · 규정문서 덤프/복원 | 완료 | 상태 전이·비동기 완료·룰 콘솔 사건 / `dump_policy_docs`·`load_policy_docs` |
+| 검토 워크스페이스(S-03) · 규정 문서 관리(S-05) · 팀 취합(S-02) | 완료 · 실 API | |
+| 내 지출(S-01) · 내역 불러오기 | 완료 · 실 API | ERP 결제기록 수집 → DRAFT 생성 |
+| 예산 관리(S-08) · 카드 관리(S-09) · ERP 전표(안) 확인 | 완료 · 실 API | |
+| 증빙 첨부 업로드 → 비전 판독 → EvalContext | 완료 · 실동작 | 업로드가 곧 판독 트리거 |
 
 전체 미완/미연동 항목, 알려진 함정, 디렉터리 구조는 **[`docs/SETUP.md`](docs/SETUP.md)** 에 정리돼 있다.
 
