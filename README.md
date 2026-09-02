@@ -140,10 +140,8 @@ Django 경유 / 벡터는 Chroma 직접**(LLM·Tool의 Postgres 직접 SQL 금�
 |---|---|
 | **내 지출 등록 (S-01)**<br>영수증 업로드 → 비전 판독 → 초안 자동 생성<br><img src="docs/assets/s01-my-expenses.png" width="420" /> | **팀 취합·제출 (S-02)**<br>정상 건은 접고 이상 건만 강조, 나머지는 일괄 제출<br><img src="docs/assets/s02-team-collect.png" width="420" /> |
 | **검토 워크스페이스 (S-03)**<br>이상탐지 결과 + RAG 내규 검증 근거를 함께 보고 확정<br><img src="docs/assets/s03-review-workspace.png" width="420" /> | **룰 콘솔 (S-04)**<br>초안 편집 · 시뮬레이션 · Active 승인/롤백, 대화형 수정<br><img src="docs/assets/s04-rule-console.png" width="420" /> |
-| **카드 관리 (S-09)**<br>팀·개인별 법인카드 배정 현황과 회수/중지 큐<br><img src="docs/assets/s09-card-management.png" width="420" /> | **예산 관리 (S-08)**<br>계정과목별 예산 소진율·산정 지표·지출 추세<br><img src="docs/assets/s08-budget.png" width="420" /> |
-| **AI-LAB (관리자 실험)**<br>운영과 같은 코드로 Agent·RAG를 단독 실행, 근거를 그대로 노출<br><img src="docs/assets/ai-lab.png" width="420" /> | |
-
-> 규정 문서 관리(S-05) 캡처는 추후 업데이트 예정.
+| **규정 문서 관리 (S-05)**<br>조 단위로 조항을 정리하고, 확인 필요 조항마다 룰 생성 여부를 결정<br><img src="docs/assets/s05-policy-docs.png" width="420" /> | **예산 관리 (S-08)**<br>계정과목별 예산 소진율·산정 지표·지출 추세<br><img src="docs/assets/s08-budget.png" width="420" /> |
+| **카드 관리 (S-09)**<br>팀·개인별 법인카드 배정 현황과 회수/중지 큐<br><img src="docs/assets/s09-card-management.png" width="420" /> | **AI-LAB (관리자 실험)**<br>운영과 같은 코드로 Agent·RAG를 단독 실행, 근거를 그대로 노출<br><img src="docs/assets/ai-lab.png" width="420" /> |
 
 화면별 상세는 [`llm_wiki/화면설계서/`](llm_wiki/) 참고.
 
