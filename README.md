@@ -68,15 +68,15 @@
 
 ```mermaid
 flowchart LR
-    A["① 개인 보유\nDRAFT"] -->|raise_to_team| B["② 팀 취합\nTEAM_COLLECTING"]
-    B -->|보완요청/반려| B
-    B -->|submit| C["③ 제출 · 룰엔진 판정\nSUBMITTED → RPA_JUDGED"]
-    C -->|"PASS"| D["④ 회계 검토·확정"]
-    C -->|"REVIEW"| D
-    C -->|"RETURN/REJECT"| D
-    D -->|확정| E(["CONFIRMED\n→ ERP 전표(안)"])
+    A["① 개인 보유<br/>DRAFT"] -->|raise_to_team| B["② 팀 취합<br/>TEAM_COLLECTING"]
+    B -->|보완요청 · 반려| B
+    B -->|submit| C["③ 제출 · 룰엔진 판정<br/>SUBMITTED → RPA_JUDGED"]
+    C -->|PASS| D["④ 회계 검토 · 확정"]
+    C -->|REVIEW| D
+    C -->|RETURN / REJECT| D
+    D -->|확정| E(["CONFIRMED<br/>ERP 전표안"])
     D -->|보완요청| B
-    D -->|최종반려| F(["REJECT\n재제출 불가"])
+    D -->|최종반려| F(["REJECT<br/>재제출 불가"])
 
     style A fill:#eef2ff,stroke:#6366f1
     style E fill:#dcfce7,stroke:#16a34a
@@ -93,23 +93,23 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    U(["브라우저"]) --> N["Nginx\n(리버스 프록시)"]
-    N --> W["React SPA (Vite)"]
+    U(["브라우저"]) --> N["Nginx<br/>리버스 프록시"]
+    N --> W["React SPA - Vite"]
     N --> C
 
-    subgraph Core["Django + DRF — System of Record"]
-        C["확정 데이터 · 상태머신\nCapability RBAC · ERP 전표(안)"]
+    subgraph Core ["Django + DRF - System of Record"]
+        C["확정 데이터 · 상태머신<br/>Capability RBAC · ERP 전표안"]
     end
 
     C -->|내부 전용 REST| AI
 
-    subgraph AIOrch["FastAPI — AI Orchestrator (내부 전용)"]
-        AI["Draft / Rule / Risk Review Agent\n단일 FastMCP 서버(도구 12종)\n비지도 이상탐지 서빙"]
+    subgraph AIOrch ["FastAPI - AI Orchestrator, 내부 전용"]
+        AI["Draft / Rule / Risk Review Agent<br/>단일 FastMCP 서버 - 도구 12종<br/>비지도 이상탐지 서빙"]
     end
 
-    C --> PG[("PostgreSQL\n확정 데이터 SoT")]
-    AI --> CH[("Chroma\n규정·사례 임베딩(RAG)")]
-    AI -.->|영수증 비전 판독\n임베딩 호출| OAI(["OpenAI API"])
+    C --> PG[("PostgreSQL<br/>확정 데이터 SoT")]
+    AI --> CH[("Chroma<br/>규정 사례 임베딩 RAG")]
+    AI -.->|영수증 비전 판독 · 임베딩 호출| OAI(["OpenAI API"])
 
     style Core fill:#eef2ff,stroke:#6366f1
     style AIOrch fill:#fdf4ff,stroke:#a855f7
