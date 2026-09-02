@@ -390,4 +390,4 @@ docker compose down [-v]              # 종료 (-v: 볼륨까지 삭제)
 
 ## 7. 디렉터리 구조
 
-[`README.md` §9](../README.md#9-디렉터리-구조) 참고.
+[`README.md` §10](../README.md#10-디렉터리-구조) 참고.

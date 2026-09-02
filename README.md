@@ -149,7 +149,16 @@ Django 경유 / 벡터는 Chroma 직접**(LLM·Tool의 Postgres 직접 SQL 금�
 
 ---
 
-## 7. 빠른 시작
+## 7. 시연 영상 · 발표자료
+
+| | |
+|---|---|
+| 시연 영상 | _업로드 예정_ |
+| 발표 자료 (PDF) | _업로드 예정_ |
+
+---
+
+## 8. 빠른 시작
 
 ```bash
 cp .env.example .env          # OPENAI_API_KEY 등 각 값의 의미는 .env.example 주석 참고 — 없어도 부팅은 된다
@@ -174,7 +183,7 @@ docker compose exec core python manage.py seed_adopted
 
 ---
 
-## 8. 구현 상태
+## 9. 구현 상태
 
 | 영역 | 상태 | 메모 |
 |---|---|---|
@@ -198,7 +207,7 @@ docker compose exec core python manage.py seed_adopted
 
 ---
 
-## 9. 디렉터리 구조
+## 10. 디렉터리 구조
 
 ```
 .
@@ -242,7 +251,7 @@ docker compose exec core python manage.py seed_adopted
 
 ---
 
-## 10. 더 알아보기
+## 11. 더 알아보기
 
 - **[`CLAUDE.md`](CLAUDE.md)** — 팀 공용 개발 컨텍스트, 핵심 설계 결정과 그 이유, 최신 상태 보드
 - **[`llm_wiki/_index.md`](llm_wiki/_index.md)** — 요구사항·기술명세서·RULE 명세서·화면설계서로 가는 색인
