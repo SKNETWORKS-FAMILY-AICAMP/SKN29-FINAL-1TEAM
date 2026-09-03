@@ -12,6 +12,9 @@ import { useReadOpenTarget } from '../../lib/notifications'
 
 type ApiMessage = { role: 'user' | 'ai'; text: string; appliedNote: string }
 
+// 초안 편집 탭의 scope 구간 표시 순서(시연 배치용) — 목록에 없는 scope는 뒤로 밀린다.
+const SCOPE_DISPLAY_ORDER = ['접대', '회식', '회의', 'GLOBAL', '식대', '출장', '기타']
+
 const emptyNode = (nodeKey: string): GraphNode => ({
   nodeKey, title: '(제목 미설정)', origin: 'new', description: '',
   plain: { action: '' }, conditionExpr: '', sourceClause: '',
@@ -70,7 +73,10 @@ export function DraftTab({ newRuleOpen, setNewRuleOpen }: { newRuleOpen: boolean
   const visibleScopes = useMemo(() => Object.entries(visibleGraphs.reduce<Record<string, RuleGraph[]>>((groups, graph) => {
     ;(groups[graph.scope] ??= []).push(graph)
     return groups
-  }, {})), [visibleGraphs])
+  }, {})).sort(([a], [b]) => {
+    const rank = (scope: string) => { const i = SCOPE_DISPLAY_ORDER.indexOf(scope); return i === -1 ? SCOPE_DISPLAY_ORDER.length : i }
+    return rank(a) - rank(b)
+  }), [visibleGraphs])
   const nodesFor = (graph: RuleGraph) => graph.nodes
   const selGraph = graphs.find((graph) => graph.id === sel?.graphId)
   //  **화면에 열려 있으면 알림을 접는다.** 「룰 수정 완료는 그래프 수정 화면을 벗어나
